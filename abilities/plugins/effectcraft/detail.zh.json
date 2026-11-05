@@ -3,7 +3,7 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "在活动面板里用 EffectCraft",
+      "title": "合成、关键帧与渲染队列",
       "eyebrow": "动态图形",
       "description": "合成、关键帧与渲染队列——上游原版 EffectCraft 合成器跑在 Astravia 里，打开的就是工作区里的那个工程。",
       "badges": [
@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "打开 EffectCraft，用 @素材/封面.png 把背景换成渐变蓝色。",
-        "assistant_reply": "已载入封面，正在把背景换成渐变蓝。"
+        "user_prompt": "在 EffectCraft 里把 @素材/片头.aep 的 logo 用 12 帧淡入，然后渲一版预览。",
+        "assistant_reply": "第 0 帧和第 12 帧的透明度关键帧已经打好，预览渲染排进队列了。截图取的是第 6 帧，淡入到一半的位置。"
       }
     },
     {
@@ -41,14 +41,9 @@
           "icon": "solar:chat-round-linear"
         },
         {
-          "title": "在对话里驱动",
-          "description": "在对话里说要做什么，面板里就跟着做：指针与键盘动作依次落在编辑器里，每一步都在画布上写着正在做什么。",
+          "title": "在最关键的那一帧上验收",
+          "description": "在时间线上打关键帧，把播放头拖到某一帧再截那一帧——动效是在决定成败的那一帧上看的。",
           "icon": "solar:cursor-bold"
-        },
-        {
-          "title": "上次编辑的文件，一点就回来",
-          "description": "状态栏记住最近打开过的文件，用编辑器同一条桥送回去。上游自带的「最近」列表在网页构建里打不开工作区路径，所以这条列表由插件自己维护。",
-          "icon": "solar:clock-circle-linear"
         }
       ]
     },
@@ -87,7 +82,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "自动化走的是正常操作路径，不是宏播放器：一批动作就是一段指针与按键序列，编辑器收到的与手做时完全一样，并且按帧节流——按下真的是一次按下。画布会回一份文字地图与平均色，agent 靠它确认改动真的发生了，再向你汇报。"
+      "content": "它拖时间线、打关键帧、点渲染，一次一步。它说改过的那一帧会先被截下来，所以动效是照着画面汇报的，不是照着关键帧列表。"
     },
     {
       "type": "links",

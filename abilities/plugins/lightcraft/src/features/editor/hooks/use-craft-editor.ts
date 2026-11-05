@@ -9,7 +9,6 @@ import { APP } from "../../../app.config.ts";
 import { editorStrings } from "../strings.ts";
 import type { EditorStrings } from "../strings.ts";
 import {
-  askCraftFrame,
   publishCraftProgress,
   setCraftFrame,
   settleCraftReply,
@@ -20,6 +19,13 @@ import type { WorkspaceFile } from "../services/workspace-files.ts";
 import { useContainerFullscreen } from "./use-container-fullscreen.ts";
 
 export type EditorPhase = "starting" | "ready" | "failed";
+
+/**
+ * How long a mounted-but-never-shown tab waits before loading an engine anyway. It
+ * exists only for hosts that do not report tab visibility at all; on a host that does,
+ * the tab wakes on its first `active` and this timer is cleared long before it fires.
+ */
+const WAKE_FALLBACK_MS = 20000;
 
 /**
  * What the boot cover needs, all of it observed rather than estimated: when this frame's
@@ -33,16 +39,11 @@ export interface BootState {
   slow: boolean;
 }
 
-/** One entry of the tab's own Recent list: a workspace path the host can still read. */
-export interface RecentFile {
-  path: string;
-  name: string;
-  at: number;
-}
-
 export interface EditorSession {
   strings: EditorStrings;
   phase: EditorPhase;
+  /** False while the tab has never been shown and no engine has been started. */
+  awake: boolean;
   backend: string;
   binding: WorkspaceFile | null;
   candidate: WorkspaceFile | null;
@@ -60,10 +61,6 @@ export interface EditorSession {
   containerRef: RefObject<HTMLDivElement | null>;
   isFullscreen: boolean;
   overlay: boolean;
-  /** Files this tab opened or saved before, newest first. */
-  recent: RecentFile[];
-  /** Re-open one of them: read the bytes again and hand them to the app's own open path. */
-  openRecent: (entry: RecentFile) => void;
   toggleFullscreen: () => void;
   reload: () => void;
 }
@@ -107,53 +104,23 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   }));
   const [nonce, setNonce] = useState(0);
   const [mode, setMode] = useState<Downgrade>("auto");
-  const [recent, setRecent] = useState<RecentFile[]>([]);
 
-  // The tab's own Recent list. Upstream's list stores absolute paths and re-reads
-  // them with std::fs, which the browser build refuses (`files are opened through
-  // the browser on the web`), so that list is a dead end on the web for every one
-  // of these apps. This one keeps the workspace paths the host itself handed over
-  // and re-opens them through ctx.fs, which is the only reader that exists here.
-  const recentRef = useRef<RecentFile[]>([]);
-  recentRef.current = recent;
-  const remember = useCallback(
-    (file: WorkspaceFile): void => {
-      const entry: RecentFile = { path: file.path, name: file.name, at: Date.now() };
-      const next = [entry, ...recentRef.current.filter((old) => old.path !== file.path)].slice(0, 8);
-      recentRef.current = next;
-      setRecent(next);
-      void ctx.storage.writeFile("editor/recent.json", JSON.stringify(next), "utf8").catch(() => {
-        /* a read-only plugin namespace must not break opening a file */
-      });
-    },
-    [ctx],
-  );
-
+  // A tab the host keeps mounted but has never shown does not get an engine. Fifteen
+  // of these apps selected at launch would otherwise compile fifteen 13–32 MB wasm
+  // builds in the same renderer, which is the stall the operating system sees as a
+  // frozen window. The tab wakes on the first `active` the host reports; a host that
+  // predates that context never reports it, so a long fallback wakes the tab anyway
+  // instead of leaving a blank frame that only a reload could explain.
+  const [awake, setAwake] = useState(tab.active === true);
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const raw = await ctx.storage.readFile("editor/recent.json", "utf8");
-        if (cancelled || !raw) return;
-        const parsed: unknown = JSON.parse(raw);
-        if (!Array.isArray(parsed)) return;
-        const entries = parsed.filter(
-          (item): item is RecentFile =>
-            !!item &&
-            typeof item === "object" &&
-            typeof (item as RecentFile).path === "string" &&
-            typeof (item as RecentFile).name === "string",
-        );
-        recentRef.current = entries;
-        setRecent(entries);
-      } catch {
-        /* a corrupt list is not worth a notice: the next open rewrites it */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [ctx]);
+    if (awake) return;
+    if (tab.active) {
+      setAwake(true);
+      return;
+    }
+    const timer = setTimeout(() => setAwake(true), WAKE_FALLBACK_MS);
+    return () => clearTimeout(timer);
+  }, [awake, tab.active]);
 
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const baseUrlRef = useRef<string | null>(null);
@@ -180,8 +147,11 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   // ------------------------------------------------------------- page document
 
   // The site is a file in this package, so "starting" is a fetch and an inline
-  // rewrite rather than a service spawn: no process, no first-open download.
+  // rewrite rather than a service spawn: no process, no first-open download. It only
+  // runs once the tab has been shown (see `awake`), which is what keeps fifteen
+  // installed plugins from opening fifteen engines at launch.
   useEffect(() => {
+    if (!awake) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -200,7 +170,7 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
     return () => {
       cancelled = true;
     };
-  }, [ctx, mode, uiLang, nonce]);
+  }, [awake, ctx, mode, uiLang, nonce]);
 
   // ------------------------------------------------------- frame handle (tools)
 
@@ -267,58 +237,13 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
         // Only the first save binds a path: an export must not steal the
         // document's own save target.
         if (!bindingRef.current) setBinding(saved);
-        remember(saved);
-        setSavedAt(Date.now());
-        setNotice(`${strings.saved} · ${saved.name}`);
         setSavedAt(Date.now());
         setNotice(`${strings.saved} · ${saved.name}`);
       } catch (error) {
         setNotice(`${strings.saveFailed}: ${String((error as Error)?.message ?? error)}`);
       }
     },
-    [ctx, strings, remember],
-  );
-
-  // Re-opening a remembered file reuses the app's own open path: stage the bytes
-  // and press its open shortcut. The bridge answers the pick that shortcut
-  // triggers from that staged copy instead of showing a file dialog, exactly as
-  // the Agent's open tool does — the difference is only who asked for it.
-  const openRecent = useCallback(
-    (entry: RecentFile): void => {
-      void (async () => {
-        setNotice(`${strings.opening} · ${entry.name}`);
-        try {
-          const loaded = await readWorkspaceFile(ctx, { path: entry.path, name: entry.name });
-          if (!loaded) {
-            setNotice(strings.openFailed);
-            return;
-          }
-          const staged = await askCraftFrame(
-            "craft:stage",
-            { name: entry.name, mime: loaded.mimeType, bytes: loaded.bytes },
-            15000,
-          );
-          if (staged.ok === false) {
-            setNotice(strings.openFailed);
-            return;
-          }
-          await askCraftFrame(
-            "craft:act",
-            { stopOnError: false, steps: [{ op: "key", key: "ctrl+o" }, { op: "wait", ms: 900 }] },
-            60000,
-          );
-          const next = { path: entry.path, name: entry.name };
-          bindingRef.current = next;
-          setBinding(next);
-          setSavedAt(null);
-          remember(next);
-          setNotice(`${strings.open}: ${entry.name}`);
-        } catch (error) {
-          setNotice(`${strings.openFailed}: ${String((error as Error)?.message ?? error)}`);
-        }
-      })();
-    },
-    [ctx, remember, strings],
+    [ctx, strings],
   );
 
   // --------------------------------------------------------- message protocol
@@ -407,10 +332,6 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
           const next = { path: file.path, name: file.name };
           setBinding(next);
           bindingRef.current = next;
-          remember(next);
-          setSavedAt(null);
-          setBinding(next);
-          bindingRef.current = next;
           setSavedAt(null);
         });
         return;
@@ -446,6 +367,7 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   return {
     strings,
     phase,
+    awake,
     backend,
     binding,
     candidate,
@@ -461,8 +383,6 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
     containerRef: fullscreen.containerRef,
     isFullscreen: fullscreen.isFullscreen,
     overlay: fullscreen.overlay,
-    recent,
-    openRecent,
     toggleFullscreen: fullscreen.toggle,
     reload,
   };

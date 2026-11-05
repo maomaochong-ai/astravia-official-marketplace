@@ -34,6 +34,7 @@ const FAMILY_DOCS = [
 	"craft-0013-a-slow-boot-is-not-a-failure.md",
 	"craft-0014-recent-files-are-the-hosts-not-the-apps.md",
 	"craft-0015-a-skill-must-survive-a-strict-yaml-parse.md",
+	"craft-0016-three-controls-and-a-status-glyph.md",
 	"craft-CONTEXT.md",
 ];
 

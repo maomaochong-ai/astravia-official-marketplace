@@ -3,7 +3,7 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "活动面板里的 Craft Anything",
+      "title": "拆开一个应用，再把它拼回去",
       "eyebrow": "拆解与复刻",
       "description": "选一个目标，先看清它是怎么搭起来的，再一步步重建——上游 Craft Anything 工作台跑在 Astravia 里。",
       "badges": [
@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "打开 Craft Anything，用 @素材/封面.png 把背景换成渐变蓝色。",
-        "assistant_reply": "已载入封面，正在把背景换成渐变蓝。"
+        "user_prompt": "用 Craft Anything 研究 @素材/结账页.png 这张截图，再按我们自己的风格把它重做出来。",
+        "assistant_reply": "先把这张页面的状态摸清了：空、已填、报错；然后按阶段重做。每个阶段都留了截图，随时可以叫停。"
       }
     },
     {
@@ -41,14 +41,9 @@
           "icon": "solar:chat-round-linear"
         },
         {
-          "title": "在对话里驱动",
-          "description": "在对话里说要做什么，面板里就跟着做：指针与键盘动作依次落在编辑器里，每一步都在画布上写着正在做什么。",
+          "title": "每一步都留了张图",
+          "description": "每个阶段结束都截一张，出问题时能定位到具体哪一步，而不是整份重做要么全收要么全扔。",
           "icon": "solar:cursor-bold"
-        },
-        {
-          "title": "上次编辑的文件，一点就回来",
-          "description": "状态栏记住最近打开过的文件，用编辑器同一条桥送回去。上游自带的「最近」列表在网页构建里打不开工作区路径，所以这条列表由插件自己维护。",
-          "icon": "solar:clock-circle-linear"
         }
       ]
     },
@@ -82,7 +77,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "自动化走的是正常操作路径，不是宏播放器：一批动作就是一段指针与按键序列，编辑器收到的与手做时完全一样，并且按帧节流——按下真的是一次按下。画布会回一份文字地图与平均色，agent 靠它确认改动真的发生了，再向你汇报。"
+      "content": "每个阶段都是普通输入加一次截图，然后和上一阶段比。复刻走偏时是在走偏的那一步被抓到，不是到最后才发现。"
     },
     {
       "type": "links",

@@ -3,8 +3,8 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "Craft Anything in the activity panel",
-      "eyebrow": "拆解与复刻",
+      "title": "Take an app apart, then rebuild it",
+      "eyebrow": "Rebuilding apps",
       "description": "Pick a target, study how it is put together, then rebuild it step by step — the upstream Craft Anything workbench running inside Astravia.",
       "badges": [
         "No fork",
@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "Open Craft Anything and turn the background of @assets/cover.png into a blue gradient.",
-        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
+        "user_prompt": "Study the checkout screen in @assets/checkout.png with Craft Anything, then rebuild it in our own styles.",
+        "assistant_reply": "The screen's states were mapped first — empty, filled, error — then the rebuild ran stage by stage. Every stage has a capture, so you can stop it at any point."
       }
     },
     {
@@ -41,14 +41,9 @@
           "icon": "solar:chat-round-linear"
         },
         {
-          "title": "Driven from the conversation",
-          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
+          "title": "Each step has a picture",
+          "description": "A capture is taken at the end of every stage, so a rebuild can be reviewed where it went wrong instead of being accepted or rejected as a whole.",
           "icon": "solar:cursor-bold"
-        },
-        {
-          "title": "Reopen what you were editing",
-          "description": "The status bar remembers the last files you opened and takes you back to one through the same bridge the editor already uses. The upstream Recent list cannot reopen a workspace path in the browser build, so this list is the plugin’s own.",
-          "icon": "solar:clock-circle-linear"
         }
       ]
     },
@@ -82,7 +77,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
+      "content": "Every stage is ordinary input followed by a capture, and the capture is compared with the stage before it. A rebuild that drifted is caught at the stage that drifted, not at the end."
     },
     {
       "type": "links",

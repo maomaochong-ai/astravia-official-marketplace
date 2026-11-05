@@ -20,7 +20,9 @@ import type { EditorStrings } from "../strings.ts";
  * The bar is not a byte counter — nothing in the page reports bytes. It moves with the
  * boot's real phases (read the package, start the engine, first frame) and then climbs
  * slowly, so the difference between "working" and "wedged" comes from the phase text and
- * the elapsed seconds, never from a bar that stalls at 90 %.
+ * the elapsed seconds, never from a bar that stalls at 90 %. The cover does not animate:
+ * a spinning glyph next to a stalled bar reads as a second clock, and one bar style across
+ * the family is what makes fifteen plugins look like one product.
  *
  * ADR: docs/adr/<slug>/craft-0013-a-slow-boot-is-not-a-failure.md
  */
@@ -32,12 +34,15 @@ interface BootCoverProps {
   notice: string | null;
   /** Package-relative icon, or null before the package root is known. */
   iconUrl: string | null;
+  /** False while the tab has never been shown: no engine, so nothing to tick. */
+  awake: boolean;
   onReload: () => void;
 }
 
 /** Upstream's own notice appears at 20 s; ours should be in place before that. */
 const DWARF_SLOW_MS = 18000;
-const TICK_MS = 400;
+/** Five ticks a second is enough for a bar that climbs by a few pixels. */
+const TICK_MS = 500;
 
 function ratioFor(phase: EditorPhase, hasDocument: boolean, elapsedMs: number): number {
   if (phase === "ready") return 1;
@@ -53,6 +58,7 @@ export function BootCover({
   strings,
   notice,
   iconUrl,
+  awake,
   onReload,
 }: BootCoverProps): JSX.Element {
   const finished = phase === "ready";
@@ -60,10 +66,10 @@ export function BootCover({
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    if (finished || failed) return;
+    if (!awake || finished || failed) return;
     const timer = setInterval(() => setNow(Date.now()), TICK_MS);
     return () => clearInterval(timer);
-  }, [finished, failed]);
+  }, [awake, finished, failed]);
 
   // The icon is a package file like the site itself; a dev link or a stripped package
   // simply has none, and a broken image marker in the middle of the cover is worse than
@@ -89,7 +95,6 @@ export function BootCover({
 
   const accent = failed ? "text-rose-300" : "text-sky-300";
   const ring = failed ? "ring-rose-400/40" : "ring-white/10";
-  const live = !failed;
 
   return (
     <div
@@ -103,19 +108,10 @@ export function BootCover({
       role="status"
       aria-live="polite"
     >
-      {/* Mark: the plugin's own icon inside a tile, with an arc that turns only while
-          the engine is still starting. It is decoration, never the progress signal. */}
+      {/* Mark: the plugin's own icon inside one static tile. Nothing in this cover
+          moves on its own — the bar is the only thing that changes, and it keeps the
+          same shape in all fifteen apps. */}
       <div className="relative flex h-[74px] w-[74px] items-center justify-center">
-        {live ? (
-          <span
-            aria-hidden="true"
-            className="absolute inset-0 animate-spin rounded-[26px] opacity-70 blur-[3px] [animation-duration:2.6s]"
-            style={{
-              background:
-                "conic-gradient(from 0deg, rgba(56,189,248,0) 0deg, rgba(56,189,248,0.55) 110deg, rgba(56,189,248,0) 250deg)",
-            }}
-          />
-        ) : null}
         <span
           className={`relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-[20px] bg-neutral-900/90 ring-1 ${ring} shadow-[0_10px_30px_-12px_rgba(0,0,0,0.9)]`}
         >
@@ -139,21 +135,12 @@ export function BootCover({
         <div className={`text-[11px] ${accent}`}>{stage}</div>
       </div>
 
-      <div className="relative h-[3px] w-60 overflow-hidden rounded-full bg-white/[0.08]">
+      {/* One bar, one style, every app: a 3 px track and a flat accent fill. */}
+      <div className="h-[3px] w-60 overflow-hidden rounded-full bg-white/[0.08]">
         <div
-          className={`h-full rounded-full transition-[width] duration-500 ease-out ${
-            failed
-              ? "bg-rose-400/80"
-              : "bg-gradient-to-r from-sky-400/70 to-sky-300 shadow-[0_0_12px_rgba(56,189,248,0.55)]"
-          }`}
+          className={`h-full rounded-full transition-[width] duration-300 ease-out ${failed ? "bg-rose-400" : "bg-sky-400"}`}
           style={{ width: `${Math.round(ratio * 100)}%` }}
         />
-        {live ? (
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/25 to-transparent"
-          />
-        ) : null}
       </div>
 
       <div className="flex items-center gap-2 text-[11px] text-neutral-500">

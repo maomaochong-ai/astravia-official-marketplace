@@ -3,8 +3,8 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "在活动面板里用 Photocraft",
-      "eyebrow": "图片编辑",
+      "title": "侧边栏里的图层修图台",
+      "eyebrow": "图像编辑",
       "description": "图层、蒙版、文字与真实的 PSD 文件——上游原版 Photocraft 编辑器跑在 Astravia 里，在你自己的机器上，打开的就是工作区里选中的那个文件。",
       "badges": [
         "不改上游",
@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "打开 Photocraft，用 @素材/封面.png 把背景换成渐变蓝色。",
-        "assistant_reply": "已载入封面，正在把背景换成渐变蓝。"
+        "user_prompt": "在 Photocraft 里打开 @素材/封面.png，加一层曲线把高光压下来，再另存一份 1600 px 的 JPEG 到旁边。",
+        "assistant_reply": "封面已打开，曲线层已加上，高光端压了下来。1600 px 的 JPEG 已经存回原文件旁边；白点还要再低一点就说一声。"
       }
     },
     {
@@ -41,14 +41,9 @@
           "icon": "solar:chat-round-linear"
         },
         {
-          "title": "在对话里驱动",
-          "description": "在对话里说要做什么，面板里就跟着做：指针与键盘动作依次落在编辑器里，每一步都在画布上写着正在做什么。",
+          "title": "改完先看见，再落盘",
+          "description": "选图层、开调整面板、用画笔，每一步之间都截一次画布，所以调得对不对是看画面判断的，不是听描述判断的。",
           "icon": "solar:cursor-bold"
-        },
-        {
-          "title": "上次编辑的文件，一点就回来",
-          "description": "状态栏记住最近打开过的文件，用编辑器同一条桥送回去。上游自带的「最近」列表在网页构建里打不开工作区路径，所以这条列表由插件自己维护。",
-          "icon": "solar:clock-circle-linear"
         }
       ]
     },
@@ -82,7 +77,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "自动化走的是正常操作路径，不是宏播放器：一批动作就是一段指针与按键序列，编辑器收到的与手做时完全一样，并且按帧节流——按下真的是一次按下。画布会回一份文字地图与平均色，agent 靠它确认改动真的发生了，再向你汇报。"
+      "content": "agent 不在编辑器里跑脚本：它移动指针、按下工具、敲进手会敲的数字，一次一步。修完之后它把画布读回来——文字地图与平均色——才说背景真的变了。"
     },
     {
       "type": "links",

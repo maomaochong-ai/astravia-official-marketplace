@@ -48,6 +48,7 @@ export function CraftTab({ ctx }: { ctx: PluginContext }): JSX.Element {
         <BootCover
           phase={phase}
           boot={boot}
+          awake={session.awake}
           strings={strings}
           notice={notice}
           iconUrl={iconUrl}

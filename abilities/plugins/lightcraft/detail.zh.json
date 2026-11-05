@@ -3,7 +3,7 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "在活动面板里用 LightCraft",
+      "title": "RAW 目录与暗房",
       "eyebrow": "照片库",
       "description": "一个目录加一间暗房——上游原版 LightCraft 显影器跑在 Astravia 里，打开的就是工作区里的那些照片。",
       "badges": [
@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "打开 LightCraft，用 @素材/封面.png 把背景换成渐变蓝色。",
-        "assistant_reply": "已载入封面，正在把背景换成渐变蓝。"
+        "user_prompt": "在 LightCraft 里从 @素材/拍摄/ 挑出最锐的 12 张标成保留，再给它们统一白平衡。",
+        "assistant_reply": "12 张标成了保留，白平衡一次套到全部。没选上的还留在目录里，没有为了挑选删过东西。"
       }
     },
     {
@@ -41,14 +41,9 @@
           "icon": "solar:database-linear"
         },
         {
-          "title": "在对话里驱动",
-          "description": "在对话里说要做什么，面板里就跟着做：指针与键盘动作依次落在编辑器里，每一步都在画布上写着正在做什么。",
+          "title": "一张调好，套到选中的那一批",
+          "description": "先在一张上把参数调出来，再套给所有标了保留的帧，然后截图——暗房看到的样子就是导出的样子。",
           "icon": "solar:cursor-bold"
-        },
-        {
-          "title": "上次编辑的文件，一点就回来",
-          "description": "状态栏记住最近打开过的文件，用编辑器同一条桥送回去。上游自带的「最近」列表在网页构建里打不开工作区路径，所以这条列表由插件自己维护。",
-          "icon": "solar:clock-circle-linear"
         }
       ]
     },
@@ -87,7 +82,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "自动化走的是正常操作路径，不是宏播放器：一批动作就是一段指针与按键序列，编辑器收到的与手做时完全一样，并且按帧节流——按下真的是一次按下。画布会回一份文字地图与平均色，agent 靠它确认改动真的发生了，再向你汇报。"
+      "content": "它在网格里标帧、开暗房、拖滑块。每改一次显影参数就截那一帧，所以“更暖一点”是你眼睛能看到的东西。"
     },
     {
       "type": "links",

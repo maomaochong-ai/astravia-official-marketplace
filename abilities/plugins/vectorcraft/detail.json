@@ -3,7 +3,7 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "VectorCraft in the activity panel",
+      "title": "Bezier paths that leave as SVG",
       "eyebrow": "Vector illustration",
       "description": "Paths, handles and fills — the upstream VectorCraft illustration app running inside Astravia, on your own machine, with the drawing you opened in the workspace.",
       "badges": [
@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "Open VectorCraft and turn the background of @assets/cover.png into a blue gradient.",
-        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
+        "user_prompt": "In VectorCraft, redraw the wordmark in @assets/logo.svg as outlines and keep the original beside it.",
+        "assistant_reply": "Outlined copy made from the live text and saved as logo-outlined.svg; the original is untouched. Captured the canvas so the curve can be checked at real size."
       }
     },
     {
@@ -41,14 +41,9 @@
           "icon": "solar:chat-round-linear"
         },
         {
-          "title": "Driven from the conversation",
-          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
+          "title": "A curve judged at real size",
+          "description": "Paths are drawn, handles moved and fills set, then the canvas is captured — a curve is judged at the size it will be printed or shipped at.",
           "icon": "solar:cursor-bold"
-        },
-        {
-          "title": "Reopen what you were editing",
-          "description": "The status bar remembers the last files you opened and takes you back to one through the same bridge the editor already uses. The upstream Recent list cannot reopen a workspace path in the browser build, so this list is the plugin’s own.",
-          "icon": "solar:clock-circle-linear"
         }
       ]
     },
@@ -87,7 +82,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
+      "content": "It draws a path, moves a handle and sets a fill, one step at a time. A change is reported after the canvas has been captured at the size the drawing will ship at."
     },
     {
       "type": "links",

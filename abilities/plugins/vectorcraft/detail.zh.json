@@ -3,7 +3,7 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "在活动面板里用 VectorCraft",
+      "title": "出厂即 SVG 的贝塞尔路径",
       "eyebrow": "矢量插画",
       "description": "路径、控制柄、填充——上游原版 VectorCraft 插画应用跑在 Astravia 里，打开的就是工作区里的那张图。",
       "badges": [
@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "打开 VectorCraft，用 @素材/封面.png 把背景换成渐变蓝色。",
-        "assistant_reply": "已载入封面，正在把背景换成渐变蓝。"
+        "user_prompt": "在 VectorCraft 里把 @素材/logo.svg 的字标转成曲线，原件留在旁边。",
+        "assistant_reply": "用可编辑文字转出了一份曲线的副本，存成 logo-outlined.svg，原件没动。画布截了图，曲线的走势可以按实际大小核。"
       }
     },
     {
@@ -41,14 +41,9 @@
           "icon": "solar:chat-round-linear"
         },
         {
-          "title": "在对话里驱动",
-          "description": "在对话里说要做什么，面板里就跟着做：指针与键盘动作依次落在编辑器里，每一步都在画布上写着正在做什么。",
+          "title": "曲线按实际大小看",
+          "description": "画路径、拖手柄、填色，然后截画布——曲线是按它最终印出来或上线的尺寸判断的。",
           "icon": "solar:cursor-bold"
-        },
-        {
-          "title": "上次编辑的文件，一点就回来",
-          "description": "状态栏记住最近打开过的文件，用编辑器同一条桥送回去。上游自带的「最近」列表在网页构建里打不开工作区路径，所以这条列表由插件自己维护。",
-          "icon": "solar:clock-circle-linear"
         }
       ]
     },
@@ -87,7 +82,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "自动化走的是正常操作路径，不是宏播放器：一批动作就是一段指针与按键序列，编辑器收到的与手做时完全一样，并且按帧节流——按下真的是一次按下。画布会回一份文字地图与平均色，agent 靠它确认改动真的发生了，再向你汇报。"
+      "content": "它画路径、拖手柄、设填充，一次一步。改完之后按这份图最终出厂的尺寸截一张画布才汇报。"
     },
     {
       "type": "links",

@@ -3,7 +3,7 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "DesignCraft in the activity panel",
+      "title": "Spreads, parent pages, threaded text",
       "eyebrow": "Page layout",
       "description": "Spreads, parent pages and threaded text frames — the upstream DesignCraft publishing editor running inside Astravia, with the document you opened in the workspace.",
       "badges": [
@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "Open DesignCraft and turn the background of @assets/cover.png into a blue gradient.",
-        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
+        "user_prompt": "Open @assets/brochure.idml in DesignCraft and pull the overflow from page 3 into page 4.",
+        "assistant_reply": "Page 4 opened, the text frame threaded to page 3 and the overflow pulled in. Captured the spread so you can see the new break before exporting."
       }
     },
     {
@@ -41,14 +41,9 @@
           "icon": "solar:chat-round-linear"
         },
         {
-          "title": "Driven from the conversation",
-          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
+          "title": "Overflow you can see",
+          "description": "Text is threaded from frame to frame and the spread is captured afterwards, so the place where the story breaks is visible instead of hidden behind a red plus.",
           "icon": "solar:cursor-bold"
-        },
-        {
-          "title": "Reopen what you were editing",
-          "description": "The status bar remembers the last files you opened and takes you back to one through the same bridge the editor already uses. The upstream Recent list cannot reopen a workspace path in the browser build, so this list is the plugin’s own.",
-          "icon": "solar:clock-circle-linear"
         }
       ]
     },
@@ -87,7 +82,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
+      "content": "Frames are placed and text is clicked into the way a hand clicks into it. After threading, the spread is read back and the overflow checked, so “it fits now” is a reading rather than a hope."
     },
     {
       "type": "links",

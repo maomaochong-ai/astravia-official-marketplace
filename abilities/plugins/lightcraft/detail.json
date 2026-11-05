@@ -3,7 +3,7 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "LightCraft in the activity panel",
+      "title": "A raw catalog and a darkroom",
       "eyebrow": "Photo library",
       "description": "A catalog and a darkroom — the upstream LightCraft raw developer running inside Astravia, on your own machine, with the images you opened in the workspace.",
       "badges": [
@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "Open LightCraft and turn the background of @assets/cover.png into a blue gradient.",
-        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
+        "user_prompt": "In LightCraft, flag the 12 sharpest frames in @assets/shoot/ and give them the same white balance.",
+        "assistant_reply": "12 frames flagged as picks and one white balance applied to all of them. The rejects stay in the catalog, so nothing was deleted to get there."
       }
     },
     {
@@ -41,14 +41,9 @@
           "icon": "solar:database-linear"
         },
         {
-          "title": "Driven from the conversation",
-          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
+          "title": "The develop setting, applied to a selection",
+          "description": "A setting is dialled in on one frame, applied to the flagged selection and captured — what the darkroom shows is what gets exported.",
           "icon": "solar:cursor-bold"
-        },
-        {
-          "title": "Reopen what you were editing",
-          "description": "The status bar remembers the last files you opened and takes you back to one through the same bridge the editor already uses. The upstream Recent list cannot reopen a workspace path in the browser build, so this list is the plugin’s own.",
-          "icon": "solar:clock-circle-linear"
         }
       ]
     },
@@ -87,7 +82,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
+      "content": "It flags frames in the grid, opens the darkroom and drags sliders. Each develop change ends with a capture of the frame, so “warmer” is something you can look at."
     },
     {
       "type": "links",
