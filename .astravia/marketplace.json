@@ -13827,8 +13827,69 @@
           }
         }
       ]
+    },
+    {
+      "type": "plugin",
+      "slug": "boardmix",
+      "name": "Boardmix Whiteboard",
+      "description": "Boardmix's own whiteboard inside a side panel: sign in once and work on your boards without leaving the conversation, while the agent can open the panel and take you to the workspace, a new board or an AI entry.",
+      "version": "0.0.1",
+      "configVersion": 1,
+      "license": "Proprietary",
+      "author": "Astravia",
+      "category": "Diagrams",
+      "categoryI18n": {
+        "zh": "图表",
+        "en": "Diagrams"
+      },
+      "tags": [
+        "whiteboard",
+        "boardmix",
+        "brainstorm",
+        "mindmap",
+        "flowchart"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "Boardmix 白板",
+            "description": "把 boardmix 自己的白板放进侧边面板：登录一次，就能在对话里直接画，Agent 还能帮你打开面板并切到工作台、新建白板或 AI 入口。",
+            "tags": [
+              "白板",
+              "boardmix",
+              "脑暴",
+              "思维导图",
+              "流程图"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/boardmix"
+      },
+      "releases": [
+        {
+          "version": "0.0.1",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "storage.read",
+            "storage.write",
+            "shell.openExternal",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-boardmix/boardmix-0.0.1.astraviapkg",
+            "sha256": "0fe3b0bea8204c1245b881fb4bda1f0e8cb54ad9ed1c8e46cdd9af85e9a3ec84"
+          }
+        }
+      ]
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.11.05-1"
+  "marketplaceVersion": "2026.11.05-2"
 }

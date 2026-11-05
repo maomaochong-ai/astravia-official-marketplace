@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "Boardmix Whiteboard",
+      "title": "The real Boardmix whiteboard, in a panel beside the conversation",
+      "description": "Sign in once and work on your boards without leaving Astravia: the panel is Boardmix's own web app, not a stripped-down reimplementation of it.",
+      "badges": [
+        "Boardmix's own UI",
+        "Login stays in the panel",
+        "Agent can open and route it"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "user_prompt": "Open Boardmix and take me to the AI flowchart page — I want to sketch a signup flow.",
+        "assistant_reply": "Opened the Boardmix panel and switched it to the AI flowchart entry. Sign in there if you have not yet; the canvas is yours to drive and I can follow along with what you tell me."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        {
+          "title": "The product, not a copy",
+          "description": "Canvas, templates, AI generation, comments and export are all the ones Boardmix ships. Interface updates arrive the moment Boardmix deploys them.",
+          "icon": "solar:widget-5-linear"
+        },
+        {
+          "title": "Sign-in you control",
+          "description": "Log in on Boardmix's own page inside the panel. The session lives in this panel's storage, and the plugin never asks for or stores your password.",
+          "icon": "solar:lock-keyhole-minimalistic-linear"
+        },
+        {
+          "title": "Reopens where you left off",
+          "description": "The panel remembers the last Boardmix address it actually landed on and reopens there next time, within the Boardmix site.",
+          "icon": "solar:history-2-linear"
+        },
+        {
+          "title": "Agent can route the panel",
+          "description": "Six tools let the agent open the panel, jump to the workspace, recent files, blank board or an AI entry, and report what is on screen.",
+          "icon": "solar:routing-2-linear"
+        },
+        {
+          "title": "Falls back instead of dying",
+          "description": "If the remembered address stops working, the panel tries the workspace root and then the site root, and only then offers a retry or your browser.",
+          "icon": "solar:refresh-circle-linear"
+        },
+        {
+          "title": "Popups go to your browser",
+          "description": "Links that leave Boardmix open the way the site intends, so nothing is trapped inside the panel.",
+          "icon": "solar:square-top-down-linear"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "This plugin is a window onto a hosted product. Boardmix runs on its own servers: boards, assets and AI generation are processed there, not on your machine, and the panel needs a network connection to show anything."
+    },
+    {
+      "type": "steps",
+      "items": [
+        {
+          "title": "Open the Boardmix tab",
+          "description": "Use the Boardmix tab, or ask the agent to open it for you."
+        },
+        {
+          "title": "Sign in on Boardmix's page",
+          "description": "The first visit shows Boardmix's own login page. Create an account or sign in there; the panel keeps the session from then on."
+        },
+        {
+          "title": "Work on your boards",
+          "description": "Open a board from the workspace, start from a template, or use an AI entry to generate a first draft."
+        },
+        {
+          "title": "Ask the agent to take you somewhere",
+          "description": "Say which part of Boardmix you want — workspace, recent files, a new board, AI PPT, AI flowchart or AI chat — and it will route the panel there."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "content": "What the agent cannot do: it cannot read the canvas, click inside Boardmix, generate an image or a deck for you, or export your file. Those actions happen on Boardmix's servers through Boardmix's own interface, so you drive them in the panel and the agent helps around them."
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "content": "Boardmix's free tier is limited: currently three files, 150 canvas elements, and standard-definition export with a watermark. Paid plans are sold by Boardmix, and this plugin neither includes nor bypasses them."
+    },
+    {
+      "type": "links",
+      "items": [
+        {
+          "label": "Boardmix",
+          "href": "https://boardmix.cn/"
+        },
+        {
+          "label": "Help centre",
+          "href": "https://boardmix.cn/help-center/"
+        },
+        {
+          "label": "Plans and pricing",
+          "href": "https://boardmix.cn/price/"
+        }
+      ]
+    }
+  ]
+}
