@@ -97,6 +97,9 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   // predates the hook never pauses a live editor — we only pause after seeing active.
   const tab = useActivityTab();
   const everActive = useRef(false);
+  /** `tab.active` is a value, not a getter: a scope registered once must read it live. */
+  const activeRef = useRef(false);
+  activeRef.current = tab.active === true;
   if (tab.active) everActive.current = true;
   const paused = everActive.current && !tab.active;
   const uiLang: "zh" | "en" = /^zh/i.test(ctx.i18n.locale || "") ? "zh" : "en";
@@ -497,7 +500,7 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
     const scope = ctx.ui.registerShortcutScope({
       id: `${APP.id}:editor`,
       kind: "surface",
-      enabled: () => (everActive.current ? tab.active === true : awakeRef.current),
+      enabled: () => (everActive.current ? activeRef.current : awakeRef.current),
       bindings: [
         { key: "mod+shift+r", run: () => reloadRef.current() },
         { key: "mod+shift+f", run: () => toggleRef.current() },
