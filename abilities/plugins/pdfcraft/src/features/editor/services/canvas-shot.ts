@@ -2,7 +2,7 @@ import type { PluginContext } from "@astravia-org/plugin-sdk";
 import { APP } from "../../../app.config.ts";
 import { bytesToBase64 } from "../../../shared/formatters/base64.ts";
 import type { LinkMessage } from "../../../domain/link-protocol.ts";
-import { askCraftFrame, craftWorkspace } from "../session-registry.ts";
+import { askCraftFrame, craftWorkspace, recordCraftShot } from "../session-registry.ts";
 
 /**
  * A picture of the canvas, on disk, where the Agent can look at it.
@@ -117,6 +117,7 @@ export async function saveCanvasShot(ctx: PluginContext, request: ShotRequest = 
     return null;
   }
   await prune(ctx, dir);
+  recordCraftShot(path);
   return {
     path,
     name,

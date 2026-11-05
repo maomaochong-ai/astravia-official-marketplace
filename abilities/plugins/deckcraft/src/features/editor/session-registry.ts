@@ -57,6 +57,24 @@ export function craftWorkspace(): string | null {
 }
 
 /**
+ * The newest capture the agent took, as a path inside the project.
+ *
+ * The prompt attachment is built by React, the picture is taken by a tool. They
+ * meet here: once a shot exists, every following prompt can name the file instead
+ * of spending a probe call to find it again. Cleared on reload, because the next
+ * frame has nothing to do with the old picture.
+ */
+let shotPath: string | null = null;
+
+export function recordCraftShot(path: string | null): void {
+  shotPath = path;
+}
+
+export function craftShotPath(): string | null {
+  return shotPath;
+}
+
+/**
  * The tab is mounted lazily; a tool that opens it first waits for the handle.
  *
  * A handle is not the same thing as a listening page: it exists as soon as the tab's

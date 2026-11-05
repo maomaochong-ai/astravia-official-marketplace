@@ -17,6 +17,8 @@ import type { EditorStrings } from "../strings.ts";
 import {
   craftNotes,
   publishCraftNote,
+  craftShotPath,
+  recordCraftShot,
   publishCraftProgress,
   resetCraftNotes,
   setCraftFrame,
@@ -467,6 +469,7 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
     // The new frame starts with an empty log; keeping the old one would describe a
     // page that no longer exists.
     resetCraftNotes();
+    recordCraftShot(null);
     setBoot({ startedAt: Date.now(), hasDocument: false, line: "", slow: false });
   }, []);
 
@@ -526,6 +529,7 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
           path: binding?.path ?? null,
           phase,
           backend: backend || null,
+          capture: craftShotPath(),
           recent: craftNotes()
             .slice(-6)
             .map((note) => ({ kind: note.kind, detail: note.detail, ok: note.ok })),
