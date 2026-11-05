@@ -8,7 +8,8 @@
  * 所以模型读到的 (x, y) 可以直接拿去点。
  */
 export const PAGE_OUTLINE_SCRIPT = `(() => {
-  const clean = value => String(value == null ? "" : value).replace(/\\s+/g, " ").trim().slice(0, 80);
+  const squish = value => String(value == null ? "" : value).replace(/\\s+/g, " ").trim();
+  const clean = value => squish(value).slice(0, 80);
   const SELECTOR = 'a,button,[role="button"],[role="tab"],[role="menuitem"],input,textarea,select,[contenteditable="true"]';
   const items = [];
   const nodes = document.querySelectorAll(SELECTOR);
@@ -38,6 +39,6 @@ export const PAGE_OUTLINE_SCRIPT = `(() => {
     size: { width: window.innerWidth, height: window.innerHeight },
     scroll: { x: Math.round(window.scrollX), y: Math.round(window.scrollY) },
     items,
-    text: clean(body ? body.innerText : "").slice(0, 1800)
+    text: squish(body ? body.innerText : "").slice(0, 1800)
   };
 })()`;
