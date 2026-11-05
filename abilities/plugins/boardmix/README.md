@@ -85,6 +85,11 @@ npm run build        # vite build, emits dist/ and release/*.astraviapkg
 
 `dist/` and `release/` are build output and are not committed; the marketplace build produces the
 signed package in CI.
+One trap worth knowing before bumping a dependency: CI checks out the OpenAstravia tooling at the
+commit named in `.astravia/publish.json` and rewrites `@astravia-org/*` to that checkout. A range
+that the pinned SDK does not satisfy (for example `^0.3.11` while the pin ships `0.3.10`) makes npm
+fall back to the public registry, and the build fails with `E404 @astravia-org/plugin-sdk`. Keep
+these ranges wide enough to accept the pinned version, and only narrow them once the pin moves.
 
 Tests cover the two places where a mistake is expensive: the entry ladder and origin gate
 (`src/domain/boardmix-entry.test.ts`) and the surface's reaction to `dom-ready`, `did-navigate`
