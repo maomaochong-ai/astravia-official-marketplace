@@ -54,6 +54,8 @@ export interface OpenResult {
 export interface CanvasDelta {
   changed: boolean;
   distance: number;
+  /** Share of cells that changed letter since the previous probe of the same region. */
+  cellsMoved: number | null;
   /** Hex strings as the probe reports them (`#rrggbb`); `distance` carries the numbers. */
   meanBefore: string;
   meanAfter: string;
@@ -97,12 +99,16 @@ export function describeDelta(
   const [r0, g0, b0] = before.meanRgb;
   const [r1, g1, b1] = after.meanRgb;
   const distance = Math.round(Math.hypot(r1 - r0, g1 - g0, b1 - b0));
+  const moved = typeof after.drift === "number" ? after.drift : null;
   return {
     meanBefore: before.mean,
     meanAfter: after.mean,
     rgbDelta: [r1 - r0, g1 - g0, b1 - b0],
     distance,
-    changed: distance > 6,
+    cellsMoved: moved,
+    // Either signal is enough: a small swatch moves cells without moving the mean,
+    // and a full-screen fade moves the mean with an almost identical letter map.
+    changed: distance > 6 || (moved !== null && moved > 0.02),
   };
 }
 

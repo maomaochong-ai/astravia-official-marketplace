@@ -3,7 +3,7 @@
   "name": "%name%",
   "description": "%description%",
   "icon": "assets/icon.png",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -23,7 +23,9 @@
     "agent.toolHandler.execute",
     "agent.hooks.register",
     "agent.hookHandler.execute",
-    "agent.skills.control"
+    "agent.skills.control",
+    "fs.read",
+    "fs.write"
   ],
   "agent": {
     "skillPaths": [

@@ -75,7 +75,9 @@ Group names survive redesigns. Do not hand out coordinates.
 - Do not send messages, invites, or touch any account credential.
 - Do not promise `链接一定可以公开访问` — whether it can is an organisation setting, not a fact you
   know.
-- Do not describe someone else's board or its comments; you cannot read them.
+- Do not describe someone else's board or its comments from guesswork. `boardmix_shot` shows you what is
+  drawn (the share dialog, the comment pins); the comment text itself is loaded on demand and is not
+  in the page outline.
 
 ## References (read on demand)
 

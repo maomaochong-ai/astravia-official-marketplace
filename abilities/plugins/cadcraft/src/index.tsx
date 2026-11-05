@@ -4,6 +4,7 @@ import { definePlugin } from "@astravia-org/plugin-sdk";
 import type { JSX } from "react";
 import { APP } from "./app.config.ts";
 import { ActTimeline } from "./features/agent/act-timeline.tsx";
+import { connectConversation } from "./features/agent/conversation-bridge.ts";
 import { registerCraftTools } from "./features/agent/craft-tools.ts";
 import { CraftTab } from "./features/editor/components/craft-tab.tsx";
 
@@ -57,7 +58,11 @@ export default definePlugin({
       component: ActTimeline,
     });
 
-    const activation: Activation = { owned: [tab, ...tools, timeline], released: false };
+    // The panel learns what the model is about to do (and where the project is)
+    // before any tool result exists; see conversation-bridge.ts.
+    const conversation = connectConversation(ctx);
+
+    const activation: Activation = { owned: [tab, ...tools, timeline, conversation], released: false };
     return () => release(activation);
   },
   deactivate() {},

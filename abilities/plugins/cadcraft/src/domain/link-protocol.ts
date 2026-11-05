@@ -85,6 +85,13 @@ export interface CraftProbe {
   mean: string;
   meanRgb: [number, number, number];
   contrast: number;
+  /**
+   * Fraction of cells whose letter differs from the previous probe of the same
+   * region and grid (0–1), or `null` on the first look. This is the measurable
+   * answer to "did my click land?": the mean colour barely moves when one swatch
+   * changes, while the cell map jumps.
+   */
+  drift?: number | null;
   width: number;
   height: number;
 }

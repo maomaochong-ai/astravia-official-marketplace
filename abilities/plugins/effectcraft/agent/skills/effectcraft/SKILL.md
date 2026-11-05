@@ -18,8 +18,8 @@ description: "Animate compositions in EffectCraft inside Astravia: layers, keyfr
 | --- | --- | --- |
 | 打开编辑器 / 载入工作区里的文件 | `effectcraft_open_editor` | `{open, url, ready, canvas, secure, staged, probe}` |
 | 只想看状态，不打开任何东西 | `effectcraft_editor_status` | 同上，或 `{open:false}` |
-| 一次做完一串指针与键盘动作 | `effectcraft_act` | `{ok, steps[], elapsedMs, before, after, change}` |
-| 读画布：文字地图 + 平均色 | `effectcraft_probe` | `{cells, cols, rows, mean, meanRgb, contrast}` |
+| 一次做完一串指针与键盘动作 | `effectcraft_act` | `{ok, steps[], elapsedMs, before, after, change, shot, previewed}` |
+| 读画布：文字地图 + 平均色 | `effectcraft_probe` | `{cells, cols, rows, mean, meanRgb, contrast, shot, previewed}` |
 | 把文件真正打开（暂存 + Ctrl+O + 等载入） | `effectcraft_open_document` | `{opened, probe, change}` |
 
 `effectcraft_act` 的 `steps` 是一个数组，`op` 取 `click` / `move` / `drag` / `scroll` / `type` / `key` / `wait` /
@@ -29,7 +29,7 @@ description: "Animate compositions in EffectCraft inside Astravia: layers, keyfr
 
 ## 怎么"看见"画布
 
-工具结果只能以文本回到你这里，图片到不了。所以 `effectcraft_probe` 回的是**一张文字地图**：默认 32 列 × 18 行，
+工具结果只能以文本回到你这里，画布不会自己变成一张图送到你眼前——但它会**存成文件并把路径还给你**，你 `Read` 那个路径就等于看见了画面（想让人也看见，见下面「两双眼睛」）。所以 `effectcraft_probe` 回的是**一张文字地图**：默认 32 列 × 18 行，
 每格一个字母。`K` 近黑、`W` 很亮、`w` 中亮、`k` 中暗、`R O Y G C B P M` 分别是红橙黄绿青蓝紫，
 小写表示偏暗。配合 `mean`（平均色的十六进制）、`meanRgb` 与 `contrast`（对比度），足够回答三个问题：
 
@@ -39,6 +39,19 @@ description: "Animate compositions in EffectCraft inside Astravia: layers, keyfr
 
 它不替代眼睛：文字的排布细节、细小控件的位置、字体与字距都看不出来。要精确到像素的判断，让用户看屏幕，
 或者 `effectcraft_probe` 时把 `region` 收窄到那一块、把 `columns` / `rows` 调大到 64 × 36 再读。
+
+## 两双眼睛
+
+`_probe` 与 `_act` 每次同时服务两个读者：回**文字地图**给你，把同一帧存成 PNG 写进项目
+`.craft/shots/`（只留最新 6 张），路径以 `shot` 回到工具结果里；再把那张图交给宿主预览器打开，
+给**用户**看。
+
+- 给你：`Read` 那个 `shot` 路径，看到的是真实像素。对齐、字距、渐变走向、留白比例——文字地图
+  答不了的问题，它答得了。判颜色、判排版、判"像不像设计稿"，看图片；判"变没变"，看 `change`。
+- 给用户：预览器里是同一张图。所以"我调好了"是可核对的，你们看的不是两样东西。
+- `shot: false` 跳过写文件（只要地图，更快）；`preview: false` 不弹预览器。返回里的 `previewed`
+  说明预览到底有没有弹出来——宿主太旧会是 `false`，**那不是失败**，别当错误报给用户。
+
 
 ## 一次完整的任务长什么样
 

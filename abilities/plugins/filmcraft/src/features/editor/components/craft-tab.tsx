@@ -57,9 +57,15 @@ export function CraftTab({ ctx }: { ctx: PluginContext }): JSX.Element {
 					isFullscreen={session.isFullscreen}
 					onReload={session.reload}
 					onToggleFullscreen={session.toggleFullscreen}
+					onAskAgent={session.askAgent}
 				/>
 
-				<ActivityStrip strings={strings} progress={session.progress} notes={session.notes} />
+				<ActivityStrip
+					strings={strings}
+					progress={session.progress}
+					notes={session.notes}
+					intent={session.intent}
+				/>
 
 				{/* Covers the frame until the engine reports its first frame: upstream's own
 				    loading line is one grey sentence on black, and its twenty-second "taking

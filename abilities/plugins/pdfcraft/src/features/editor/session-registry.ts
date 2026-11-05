@@ -38,6 +38,25 @@ export function craftFrame(): CraftFrameHandle | null {
 }
 
 /**
+ * Where this tab's project lives.
+ *
+ * A screenshot has to be written somewhere the host allows (`ctx.fs` is
+ * project-scoped), and the tools run outside React with no access to the panel's
+ * own `cwd`. So the value is published from two sides — the mounted hook knows it
+ * from the activity tab, the conversation knows it from `conversation-changed` —
+ * and whichever lands first wins. Null simply means "no shot this time".
+ */
+let workspaceCwd: string | null = null;
+
+export function setCraftWorkspace(cwd: string | null): void {
+  if (typeof cwd === "string" && cwd.trim() !== "") workspaceCwd = cwd;
+}
+
+export function craftWorkspace(): string | null {
+  return workspaceCwd;
+}
+
+/**
  * The tab is mounted lazily; a tool that opens it first waits for the handle.
  *
  * A handle is not the same thing as a listening page: it exists as soon as the tab's
@@ -180,5 +199,44 @@ export function subscribeCraftNotes(listener: (notes: CraftNote[]) => void): () 
   listener(notes);
   return () => {
     noteListeners.delete(listener);
+  };
+}
+
+/**
+ * What the Agent is about to do, before it does it.
+ *
+ * `craft:progress` narrates a batch that is already running. This is one step
+ * earlier: the model is still generating the arguments, `tool-call-args` has named
+ * the tool and the step count, and the panel can say "3 steps queued" instead of
+ * sitting still for the length of a generation. Cleared when the call ends, so a
+ * finished batch never leaves a stale promise on screen.
+ */
+export interface CraftIntent {
+  at: number;
+  /** Tool id with the app prefix stripped, e.g. `act`. */
+  tool: string;
+  /** How many steps the arguments hold so far (0 while they stream). */
+  steps: number;
+  /** First step label the model already wrote, in the user's language. */
+  label: string | null;
+}
+
+let intent: CraftIntent | null = null;
+const intentListeners = new Set<(intent: CraftIntent | null) => void>();
+
+export function craftIntent(): CraftIntent | null {
+  return intent;
+}
+
+export function publishCraftIntent(next: CraftIntent | null): void {
+  intent = next;
+  for (const listener of intentListeners) listener(next);
+}
+
+export function subscribeCraftIntent(listener: (intent: CraftIntent | null) => void): () => void {
+  intentListeners.add(listener);
+  listener(intent);
+  return () => {
+    intentListeners.delete(listener);
   };
 }

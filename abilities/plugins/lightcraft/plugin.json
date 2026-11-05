@@ -2,7 +2,7 @@
   "id": "lightcraft",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -23,7 +23,9 @@
     "agent.skills.control",
     "ui.shortcuts.register",
     "ui.slot.input-action",
-    "ui.slot.tool-call"
+    "ui.slot.tool-call",
+    "agent.session.read",
+    "agent.session.write"
   ],
   "agent": {
     "skillPaths": [

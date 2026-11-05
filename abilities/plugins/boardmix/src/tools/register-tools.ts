@@ -2,9 +2,10 @@ import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { registerAutomationTool } from "./boardmix-automation-tools";
 import { registerDestinationTools } from "./boardmix-destination-tools";
 import { registerNavigationTools } from "./boardmix-navigation-tools";
+import { registerSurfaceTools } from "./boardmix-surface-tools";
 
 /**
- * 七个工具的唯一注册点。没有 `agent.tools.register` 就整体不注册——
+ * 十个工具的唯一注册点。没有 `agent.tools.register` 就整体不注册——
  * 少一个能力，而不是留一个调不通的工具在目录里。
  */
 export function registerTools(ctx: PluginContext): Disposable[] {
@@ -13,5 +14,6 @@ export function registerTools(ctx: PluginContext): Disposable[] {
 		...registerNavigationTools(ctx),
 		...registerDestinationTools(ctx),
 		...registerAutomationTool(ctx),
+		...registerSurfaceTools(ctx),
 	];
 }

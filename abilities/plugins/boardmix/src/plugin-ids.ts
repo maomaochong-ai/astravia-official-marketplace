@@ -10,4 +10,7 @@ export const TOOL_IDS = {
 	tabStatus: "boardmix_tab_status",
 	openInBrowser: "boardmix_open_in_browser",
 	automate: "boardmix_automate",
+	read: "boardmix_read",
+	shot: "boardmix_shot",
+	act: "boardmix_act",
 } as const;

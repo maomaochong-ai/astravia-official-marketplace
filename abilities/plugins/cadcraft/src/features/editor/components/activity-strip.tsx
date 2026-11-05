@@ -1,5 +1,6 @@
 import type { JSX } from "react";
 import { useEffect, useState } from "react";
+import type { CraftIntent } from "../session-registry.ts";
 import type { CraftNote } from "../../../domain/link-protocol.ts";
 import type { EditorStrings } from "../strings.ts";
 
@@ -33,10 +34,13 @@ export function ActivityStrip({
 	strings,
 	progress,
 	notes,
+	intent,
 }: {
 	strings: EditorStrings;
 	progress: string | null;
 	notes: CraftNote[];
+	/** The call the model is still writing. Drawn only while nothing is running yet. */
+	intent: CraftIntent | null;
 }): JSX.Element | null {
 	const last = notes.length ? notes[notes.length - 1] : null;
 	const [now, setNow] = useState(() => Date.now());
@@ -53,8 +57,11 @@ export function ActivityStrip({
 	// A notice is an instruction ("use File › Open; your selection is waiting"), not a
 	// transient event, so it stays until the page does something else.
 	const pinned = last?.kind === "notice";
-	const visible = progress !== null || (last !== null && (pinned || last.at + HOLD_MS > now));
+	const visible =
+		progress !== null || intent !== null || (last !== null && (pinned || last.at + HOLD_MS > now));
 	if (!visible) return null;
+
+	const pending = progress === null && intent !== null;
 
 	const rows = notes.slice(-ROWS);
 
@@ -68,6 +75,13 @@ export function ActivityStrip({
 			{progress ? (
 				<span className="truncate rounded bg-black/60 px-1.5 py-0.5 text-amber-300">
 					{strings.acting} {progress}
+				</span>
+			) : null}
+			{pending ? (
+				<span className="truncate rounded bg-black/60 px-1.5 py-0.5 text-sky-300">
+					{strings.agentQueued}
+					{intent && intent.steps > 0 ? ` · ${strings.agentSteps.replace("{n}", String(intent.steps))}` : ""}
+					{intent?.label ? ` · ${intent.label}` : ""}
 				</span>
 			) : null}
 			{rows.map((note) => (

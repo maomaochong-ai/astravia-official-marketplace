@@ -48,12 +48,15 @@ export function EditorDock({
 	isFullscreen,
 	onReload,
 	onToggleFullscreen,
+	onAskAgent,
 }: {
 	strings: EditorStrings;
 	disabled: boolean;
 	isFullscreen: boolean;
 	onReload: () => void;
 	onToggleFullscreen: () => void;
+	/** Puts this panel's state into the message box; the user still presses Enter. */
+	onAskAgent: () => void;
 }): JSX.Element {
 	const fullscreenLabel = isFullscreen ? strings.exitFullscreen : strings.fullscreen;
 
@@ -95,6 +98,20 @@ export function EditorDock({
 				<svg {...ICON}>
 					<path d="M13.5 8a5.5 5.5 0 1 1-1.9-4.2" />
 					<path d="M13.5 2.5V6H10" />
+				</svg>
+			</button>
+
+			<button
+				type="button"
+				title={strings.askAgent}
+				aria-label={strings.askAgent}
+				disabled={disabled}
+				onClick={onAskAgent}
+				className={BUTTON}
+			>
+				<svg {...ICON}>
+					<path d="M3 3.5h10v6H7.5L5 12v-2.5H3z" />
+					<path d="M5.5 6.2h5" />
 				</svg>
 			</button>
 		</div>

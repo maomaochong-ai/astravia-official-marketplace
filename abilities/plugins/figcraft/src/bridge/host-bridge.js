@@ -753,6 +753,8 @@
 
   var MAP_COLUMNS = 32;
   var MAP_ROWS = 18;
+  /** Last letter map per region+grid, so a probe can say how much of the view moved. */
+  var lastMaps = {};
 
   /** One letter per bucket: hue letter, lowercase when dark. */
   function classify(r, g, b) {
@@ -838,14 +840,31 @@
       var text = Math.round(value).toString(16);
       return text.length < 2 ? "0" + text : text;
     };
+    var map = lines.join("\n");
+    // How much of this exact view moved since the last probe of it. The Agent's
+    // questions are always "did my click land?"; one mean colour is too coarse to
+    // answer that (a swatch changes two cells, the mean barely moves), so compare
+    // the letter maps cell by cell. Null on the first look — nothing to compare.
+    var key = box.x + "," + box.y + "," + box.w + "," + box.h + "," + cols + "x" + height;
+    var previous = lastMaps[key] || null;
+    var drift = null;
+    if (typeof previous === "string" && previous.length === map.length) {
+      var moved = 0;
+      for (var i = 0; i < map.length; i += 1) {
+        if (previous.charAt(i) !== map.charAt(i)) moved += 1;
+      }
+      drift = Math.round((moved / map.length) * 1000) / 1000;
+    }
+    lastMaps[key] = map;
     return {
       region: box,
       cols: cols,
       rows: height,
-      cells: lines.join("\n"),
+      cells: map,
       mean: "#" + hex(totalR / count) + hex(totalG / count) + hex(totalB / count),
       meanRgb: [Math.round(totalR / count), Math.round(totalG / count), Math.round(totalB / count)],
       contrast: Math.round((lightest - darkest) / 255 * 100) / 100,
+      drift: drift,
       width: canvas.width,
       height: canvas.height,
     };

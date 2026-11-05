@@ -1,6 +1,6 @@
 ---
 name: boardmix-canvas
-description: "Put structure on a Boardmix canvas: mind maps, flowcharts, swimlanes, architecture diagrams, sticky walls, doc cards, tables. Deliver Mermaid or Markdown the canvas can absorb, plus the exact panel path to place it. Use when the user wants to turn notes into a diagram, draw a process or architecture, brainstorm on stickies, or build an outline into a mind map. Do NOT use for generating the artifact with Boardmix's own AI (that is boardmix-ai), for reading what is already on a board (impossible — the agent cannot see canvas contents), or for drawing inside the user's own repository."
+description: "Put structure on a Boardmix canvas: mind maps, flowcharts, swimlanes, architecture diagrams, sticky walls, doc cards, tables. Deliver Mermaid or Markdown the canvas can absorb, plus the exact panel path to place it, then confirm with a boardmix_shot you actually looked at. Use when the user wants to turn notes into a diagram, draw a process or architecture, brainstorm on stickies, or build an outline into a mind map. Do NOT use for generating the artifact with Boardmix's own AI (that is boardmix-ai), or for drawing inside the user's own repository. Canvas shapes are pixels: see them through a screenshot, never as parsed structure."
 ---
 
 # Canvas work
@@ -60,8 +60,8 @@ it.
 
 ## Do not do
 
-- Do not guess what is already on the board. "接着上次那张图" means ask for the link or ask them to
-  describe it — you cannot see it.
+- Do not guess what is already on the board. "接着上次那张图" means capture it (`boardmix_shot`) and
+  look at the PNG, or ask them to describe it — a canvas is pixels, not structure you can parse.
 - Do not write `已帮你画好了`, `已生成图表`, or a description of a canvas you never observed.
 - Do not omit the element budget to sound more capable. The user hits that wall half an hour later
   and remembers who did not mention it.

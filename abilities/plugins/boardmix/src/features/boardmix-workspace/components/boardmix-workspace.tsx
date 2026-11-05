@@ -1,9 +1,10 @@
 import { useEffect, useRef } from "react";
-import { useTranslation, type PluginContext } from "@astravia-org/plugin-sdk";
+import { useActivityTab, useTranslation, type PluginContext } from "@astravia-org/plugin-sdk";
 import { AutomationOverlay } from "./automation-overlay";
 import { BoardmixSurface } from "./boardmix-surface";
 import { useBoardmixEntry } from "../hooks/use-boardmix-entry";
 import { setBoardmixTab, type BoardmixTabHandle } from "../services/tab-registry";
+import { setBoardmixWorkspace } from "../services/workspace-cwd";
 
 export interface BoardmixWorkspaceProps {
 	ctx: PluginContext;
@@ -15,6 +16,11 @@ export interface BoardmixWorkspaceProps {
  */
 export function BoardmixWorkspace({ ctx }: BoardmixWorkspaceProps) {
 	const { t } = useTranslation();
+	const { cwd } = useActivityTab();
+	// 截图要落在项目里，而工具侧拿不到 cwd：由面板把当前 scope 交过去。
+	useEffect(() => {
+		setBoardmixWorkspace(cwd);
+	}, [cwd]);
 	const entry = useBoardmixEntry(ctx);
 	const surfaceRef = useRef<BoardmixTabHandle | null>(null);
 

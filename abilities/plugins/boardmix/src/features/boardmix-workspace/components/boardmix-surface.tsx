@@ -16,6 +16,7 @@ import {
 } from "../../../domain/boardmix-entry";
 import { boardmixUrlOf, type BoardmixPhase } from "../../../domain/boardmix-destinations";
 import { WEBVIEW_PARTITION } from "../../../plugin-ids";
+import { missingPrimitives, primitivesOf } from "../../../domain/boardmix-primitive";
 import type { BoardmixTabHandle } from "../services/tab-registry";
 import { LoadFailureNotice } from "./load-failure-notice";
 import { LoginRequiredNotice } from "./login-required-notice";
@@ -69,6 +70,8 @@ export const BoardmixSurface = forwardRef<BoardmixTabHandle, BoardmixSurfaceProp
 		const landedAtRef = useRef<string | null>(null);
 		const bootedRef = useRef(false);
 		const pendingRef = useRef<((snapshot: BoardmixSnapshot) => void) | null>(null);
+		// 三个能力不缓存：`<webview>` 的方法是 attach 之后才出现的，挂载时就检测会把
+		// 「还没准备好」错记成「永远没有」。调用时再问一次，代价是一次属性查找。
 		const timerRef = useRef<number | null>(null);
 
 		const [status, setStatus] = useState<SurfaceStatus>("booting");
@@ -138,9 +141,34 @@ export const BoardmixSurface = forwardRef<BoardmixTabHandle, BoardmixSurfaceProp
 					}),
 				snapshot,
 				openInBrowser: openCurrentInBrowser,
+				async read(code) {
+					const primitives = primitivesOf(webviewRef.current);
+					if (!primitives) return null;
+					try {
+						return await primitives.run(code);
+					} catch {
+						// 访客页换了文档、或脚本自身报错：当「读到的是空的」处理。
+						return null;
+					}
+				},
+				async shot() {
+					const primitives = primitivesOf(webviewRef.current);
+					if (!primitives) return null;
+					try {
+						return await primitives.shot();
+					} catch {
+						return null;
+					}
+				},
+				input(events) {
+					const primitives = primitivesOf(webviewRef.current);
+					return primitives ? primitives.input(events) : false;
+				},
+				gaps: () => missingPrimitives(webviewRef.current),
 			}),
 			[loadUrl, openCurrentInBrowser, settlePending, snapshot],
 		);
+
 
 		useEffect(() => {
 			const element = webviewRef.current;

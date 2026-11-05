@@ -45,6 +45,18 @@ export interface EditorStrings {
   bootSeconds: string;
   /** Shown once a boot passes what a warm start needs. */
   bootSlow: string;
+  /** Dock button: put this panel's state into the message box for the user to send. */
+  askAgent: string;
+  /** First line of that drafted message. */
+  askAgentLead: string;
+  /** Label in the drafted message before the renderer name. */
+  backendLabel: string;
+  askAgentSent: string;
+  askAgentFailed: string;
+  /** Activity strip: the model is still writing the call, nothing has run yet. */
+  agentQueued: string;
+  /** "{n}" is the step count the arguments already hold. */
+  agentSteps: string;
 }
 
 const en: EditorStrings = {
@@ -76,6 +88,13 @@ const en: EditorStrings = {
   bootSeconds: "{n}s",
   bootSlow:
     "A cold start compiles the whole engine in this frame — tens of seconds is normal the first time, and much faster afterwards.",
+  askAgent: "Hand to AI",
+  askAgentLead: "Editor state —",
+  backendLabel: "Renderer",
+  askAgentSent: "Panel state added to the message box",
+  askAgentFailed: "Could not reach the conversation",
+  agentQueued: "Preparing",
+  agentSteps: "{n} steps",
 };
 
 const zh: EditorStrings = {
@@ -106,6 +125,13 @@ const zh: EditorStrings = {
   bootDraw: "绘制首帧",
   bootSeconds: "{n} 秒",
   bootSlow: "首次启动要在这个框里编译整个引擎，十几秒到几十秒都算正常，之后会快得多。",
+  askAgent: "交给 AI",
+  askAgentLead: "编辑器状态 —",
+  backendLabel: "渲染方式",
+  askAgentSent: "面板状态已放进输入框",
+  askAgentFailed: "没能连到对话",
+  agentQueued: "正在准备",
+  agentSteps: "{n} 步",
 };
 
 export function editorStrings(locale: string | undefined): EditorStrings {

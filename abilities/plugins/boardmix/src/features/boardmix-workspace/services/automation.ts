@@ -110,8 +110,9 @@ export function describeRunForModel(run: AutomationRun): string {
 		return [
 			`Boardmix automation already ran before this turn (recipe "${run.recipe}", steps ${trail}).`,
 			`The Boardmix panel is showing ${landing}.`,
-			"Do not call boardmix_open for the same screen. You still cannot read, click, draw on or export the canvas —",
-			"tell the user the address and the single click that is left.",
+			"Do not call boardmix_open for the same screen. You can read it (boardmix_read), act on it " +
+			"(boardmix_act) and look at it (boardmix_shot); canvas shapes are pixels, so a screenshot is the only " +
+			"way to see them and must not be described as data you read.",
 		].join(" ");
 	}
 

@@ -66,7 +66,8 @@ export function registerAutomationTool(ctx: PluginContext): Disposable[] {
 					needsUserAction,
 					next: needsUserAction
 						? "Tell the user the step that is theirs to click. Do not claim a board, deck or diagram was created."
-						: "Report the landing address. You still cannot read, click or export the canvas.",
+						: "Report the landing address. Then use boardmix_read (controls plus click points), boardmix_act " +
+							"(real clicks and typing) and boardmix_shot (a PNG you can look at) to carry on yourself.",
 				});
 			},
 		}),

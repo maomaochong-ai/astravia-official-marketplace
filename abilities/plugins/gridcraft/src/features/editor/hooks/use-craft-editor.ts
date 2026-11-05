@@ -20,10 +20,13 @@ import {
   publishCraftProgress,
   resetCraftNotes,
   setCraftFrame,
+  setCraftWorkspace,
   settleCraftReply,
+  subscribeCraftIntent,
   subscribeCraftNotes,
   subscribeCraftProgress,
 } from "../session-registry.ts";
+import type { CraftIntent } from "../session-registry.ts";
 import { readWorkspaceFile, saveRenderedFile, selectionAccess } from "../services/workspace-files.ts";
 import { openDocument } from "../services/open-document.ts";
 import type { WorkspaceFile } from "../services/workspace-files.ts";
@@ -67,6 +70,8 @@ export interface EditorSession {
   progress: string | null;
   /** What the page has done lately, oldest first — the strip under the frame. */
   notes: CraftNote[];
+  /** The call the model is still writing; null once it runs or ends. */
+  intent: CraftIntent | null;
   /** Upstream's page as an inline document; null until the package file is read. */
   iframeDoc: string | null;
   iframeKey: string;
@@ -76,6 +81,8 @@ export interface EditorSession {
   overlay: boolean;
   toggleFullscreen: () => void;
   reload: () => void;
+  /** Draft the panel's state into the message box; the user still presses Enter. */
+  askAgent: () => Promise<void>;
 }
 
 /**
@@ -113,6 +120,7 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   const [notice, setNotice] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
   const [notes, setNotes] = useState<CraftNote[]>([]);
+  const [intent, setIntent] = useState<CraftIntent | null>(null);
   const [boot, setBoot] = useState<BootState>(() => ({
     startedAt: Date.now(),
     hasDocument: false,
@@ -234,6 +242,18 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   // The page reports what it did (`craft:note`); the registry keeps the last twenty-four
   // so a tool can ask for them while this hook is unmounted. The strip renders the tail.
   useEffect(() => subscribeCraftNotes(setNotes), []);
+
+  // One press: the tab says what the Agent is about to do, before it does it. The
+  // conversation pushes this while the arguments stream; a host without
+  // `agent.session.read` never sends it and the strip simply has nothing to pin.
+  useEffect(() => subscribeCraftIntent(setIntent), []);
+
+  // The Agent's screenshots are written through `ctx.fs`, which is project-scoped,
+  // and the tools have no `cwd` of their own. Publishing it here covers the case the
+  // conversation cannot: a panel opened with no session attached yet.
+  useEffect(() => {
+    setCraftWorkspace(tab.cwd);
+  }, [tab.cwd]);
 
   // A notice is the tab's own voice — a failed read, a save that landed, the rendering
   // ladder stepping down. It used to live in the header, which no longer exists, so it
@@ -453,6 +473,32 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   reloadRef.current = reload;
   toggleRef.current = fullscreen.toggle;
 
+  // ------------------------------------------------------------ hand it back
+
+  /**
+   * The other direction of "say it and see it": one click puts the panel's own
+   * state into the input box, so the person can add a sentence and send, instead of
+   * describing what is on screen from memory. It goes through `insertText` rather
+   * than `sendPrompt` — the host leaves the caret in the message, so this is a
+   * draft the user still owns. Nothing is sent without them pressing Enter.
+   */
+  const askAgent = useCallback(async (): Promise<void> => {
+    const lines = [
+      `${strings.askAgentLead} ${APP.name} · ${binding?.name ?? strings.untitled} · ${phase}`,
+      `${strings.backendLabel} ${backend || "—"}`,
+    ];
+    const tail = craftNotes()
+      .slice(-3)
+      .map((note) => `· ${note.kind}: ${note.detail}`);
+    if (tail.length > 0) lines.push(`${strings.activity}:`, ...tail);
+    try {
+      await ctx.conversation.insertText(`${lines.join("\n")}\n`);
+      publishCraftNote({ at: Date.now(), kind: "notice", detail: strings.askAgentSent, ok: true });
+    } catch {
+      publishCraftNote({ at: Date.now(), kind: "notice", detail: strings.askAgentFailed, ok: false });
+    }
+  }, [backend, binding, ctx, phase, strings]);
+
   // ------------------------------------------------- what the model should know
 
   // The state of this tab is attached to every prompt the user sends while it is
@@ -521,6 +567,7 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
     iconUrl,
     progress,
     notes,
+    intent,
     iframeDoc,
     // Re-mounting the frame is what reloads the app: same document text, new key.
     iframeKey: `${baseUrl ?? ""}#${nonce}#${mode}`,
@@ -530,5 +577,6 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
     overlay: fullscreen.overlay,
     toggleFullscreen: fullscreen.toggle,
     reload,
+    askAgent,
   };
 }

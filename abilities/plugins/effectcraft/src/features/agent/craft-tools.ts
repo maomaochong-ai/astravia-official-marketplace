@@ -14,6 +14,7 @@ import { readWorkspaceFile, selectionAccess } from "../editor/services/workspace
 import { editorStrings } from "../editor/strings.ts";
 import { isCraftNote } from "../../domain/link-protocol.ts";
 import type { CraftNote, LinkMessage } from "../../domain/link-protocol.ts";
+import { previewCanvasShot, saveCanvasShot } from "../editor/services/canvas-shot.ts";
 
 /**
  * The natural-language surface: five tools, one of which (`act`) carries the whole
@@ -231,7 +232,10 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
         `which is how the person watching sees what the agent is doing. ` +
         `The result carries the canvas map and mean colour from before and after the batch, so read ` +
         `\`change.distance\` to tell whether anything actually happened before calling it a success. ` +
-        `Batch related steps (open a tool, move a slider, commit) instead of one call per click.`,
+        `Batch related steps (open a tool, move a slider, commit) instead of one call per click. ` +
+        `\`cellsMoved\` is the share of map cells that changed; a click that moved nothing leaves it at 0. ` +
+        `The result also carries \`shot\`: a PNG of the canvas written into the project. Read that file ` +
+        `when the question is about looks — alignment, type, banding — not about whether anything moved.`,
       parameters: {
         type: "object",
         properties: {
@@ -244,6 +248,16 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
             type: "boolean",
             description: "Report the canvas map and colour after the batch. Defaults to true.",
           },
+          shot: {
+            type: "boolean",
+            description:
+              "Capture the canvas and return its path. Defaults to true.",
+          },
+          preview: {
+            type: "boolean",
+            description:
+              "Open that capture in Astravia's own previewer so the user can see the editor. Defaults to true.",
+          },
         },
         required: ["steps"],
         additionalProperties: false,
@@ -255,6 +269,8 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
           steps?: unknown[];
           stop_on_error?: boolean;
           probe?: boolean;
+          shot?: boolean;
+          preview?: boolean;
         };
         if (!Array.isArray(input.steps) || input.steps.length === 0) {
           return text({ ok: false, error: "steps-required" });
@@ -280,12 +296,16 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
           return text({ ok: false, error: reply.error ?? "act-failed" });
         }
         const after = input.probe === false ? null : await readCanvas();
+        const shot = input.shot === false ? null : await saveCanvasShot(ctx, { tag: "act" });
+        const previewed = input.preview === false ? false : previewCanvasShot(ctx, shot);
         return text({
           ok: reply.ok !== false,
           steps: reply.steps ?? [],
           elapsedMs: reply.elapsedMs ?? null,
           change: describeDelta(before, after),
           probe: after,
+          shot: shot?.path ?? null,
+          previewed,
         });
       },
     }),
@@ -301,7 +321,10 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
         `region, and its contrast. Use \`region\` to inspect one part closely — the tool rail, a slider, the ` +
         `canvas centre — and a small \`columns\`/\`rows\` for a coarse overview. ` +
         `Set \`save\` when the user asked for a screenshot: that writes a real PNG the user picks a location ` +
-        `for, which the model does not receive.`,
+        `for, which the model does not receive. ` +
+        `Every call also writes a PNG into the project (\`.craft/shots/\`, newest six kept), returns its ` +
+        `path as \`shot\`, and opens it in Astravia's own previewer so the user sees the editor too. ` +
+        `Read the file when the answer depends on how the canvas actually looks.`,
       parameters: {
         type: "object",
         properties: {
@@ -311,6 +334,10 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
           save: { type: "boolean", description: "Also write a PNG the user chooses a path for." },
           file_name: { type: "string", description: `PNG name when saving, e.g. "${id}-view.png".` },
           scale: { type: "number", description: "PNG magnification when saving, 1–4." },
+          preview: {
+            type: "boolean",
+            description: "Open the capture in Astravia's own previewer so the user can see it. Defaults to true.",
+          },
         },
         additionalProperties: false,
       },
@@ -321,11 +348,15 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
           save?: boolean;
           file_name?: string;
           scale?: number;
+          preview?: boolean;
         };
         if (!craftFrame()) return text({ ok: false, error: "editor-not-open" });
         const probe = await readCanvas({ region: input.region, columns: input.columns, rows: input.rows });
         if (!probe) return text({ ok: false, error: "probe-failed" });
-        if (!input.save) return text({ ok: true, probe });
+        // The text map is the cheap reading; the picture is the one a person would look at.
+        const shot = await saveCanvasShot(ctx, { region: input.region, scale: input.scale, tag: "probe" });
+        const previewed = input.preview === false ? false : previewCanvasShot(ctx, shot);
+        if (!input.save) return text({ ok: true, probe, shot: shot?.path ?? null, previewed });
         const name = input.file_name || `${id}-view.png`;
         let reply: LinkMessage;
         try {
@@ -344,7 +375,7 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
           filters: [{ name: "PNG image", extensions: ["png"] }],
         });
         if (!saved) return text({ ok: false, probe, error: "save-cancelled" });
-        return text({ ok: true, probe, path: saved, name: basename(saved) });
+        return text({ ok: true, probe, shot: shot?.path ?? null, previewed, path: saved, name: basename(saved) });
       },
     }),
   );

@@ -60,7 +60,9 @@ export function registerNavigationTools(ctx: PluginContext): Disposable[] {
 			description:
 				"Open the Boardmix whiteboard workspace in its activity tab and return where it landed. " +
 				"Use when the user wants to work in Boardmix itself. " +
-				"You cannot read the canvas, click inside it, or export files: after this call, hand the user the address and let them drive.",
+				"After this call the panel is readable: boardmix_read lists the controls on screen with the points to " +
+				"click, boardmix_act clicks and types, boardmix_shot captures what is drawn. Canvas shapes themselves " +
+				"are pixels, so look at a screenshot rather than claiming what a layer contains.",
 			parameters: { type: "object", properties: {}, additionalProperties: false },
 			scope_use: TOOL_SCOPE,
 			timeoutMs: 30_000,
