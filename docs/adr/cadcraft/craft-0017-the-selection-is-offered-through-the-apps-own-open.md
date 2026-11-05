@@ -34,6 +34,11 @@ Two more things were measured rather than assumed:
 2. the platform's open chord — `meta+o` on a Mac, `ctrl+o` elsewhere, then the other one.
 3. `alt+f`, then `o` — the menu bar's own mnemonic path.
 
+The last two rungs work because the bytes are already staged: when the app opens its own
+file dialog (`rfd` on the web click a hidden `<input type="file">`), the bridge answers
+that click with the staged file, so the dialog never appears and the app receives exactly
+the document the user selected.
+
 Each rung is followed by `craft:probe` and compared with a baseline taken before staging, so
 `opened` is true only when the canvas measurably changed. The result always carries
 `attempts`, and a ladder that reaches the end leaves the bytes staged: the app's own

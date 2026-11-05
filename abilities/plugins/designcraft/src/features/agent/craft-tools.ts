@@ -337,11 +337,12 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
       id: `${id}_open_document`,
       label: "%tool.document%",
       description:
-        `Open a workspace file in ${APP.name} for real: the bytes are handed to the app through its own ` +
-        `file input, and if the app does not take them the tool tries a drop, then the platform's open ` +
-        `chord, then the menu mnemonics — reporting every attempt. \`opened\` is true only when the canvas ` +
-        `measurably changed, so treat false as "not loaded" and let the user open it once by hand. ` +
-        `Use this whenever the user names a file to work on; \`${id}_act\` alone cannot load a document.`,
+        `Open a workspace file in ${APP.name} for real. The bytes are staged in the page and offered the ` +
+        `way the app itself accepts a file: a drop on its canvas first, then the platform's open chord, then ` +
+        `the menu mnemonics — and every attempt is reported. When the app's own dialog does open, the staged ` +
+        `bytes are what it receives. \`opened\` is true only when the canvas measurably changed, so treat ` +
+        `false as "not loaded" and let the user open it once by hand. Use this whenever the user names a ` +
+        `file to work on; \`${id}_act\` alone cannot load a document.`,
       parameters: {
         type: "object",
         properties: {
