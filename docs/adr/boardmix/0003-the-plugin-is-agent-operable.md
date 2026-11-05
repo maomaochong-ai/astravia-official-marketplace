@@ -5,7 +5,7 @@
 - 影响面：`plugin.json`（`permissions` / `agent`）、`src/index.tsx`、`src/tools/`、`src/features/boardmix-workspace/services/`、`agent/skills/boardmix/`
 
 > 本文的「四个工具 + 一个技能」已由 [0004](0004-tools-reach-the-page-skills-carry-the-work.md) 修订为
-> 「六个工具 + 五份技能」，技能写法又由 [0005](0005-the-skill-index-is-its-description.md) 重写。
+> 「七个工具 + 五份技能」，第七个工具由 [0006](0006-automation-runs-before-the-answer.md) 加入，技能写法又由 [0005](0005-the-skill-index-is-its-description.md) 重写。
 > **边界（三条不变量）、接线方式、origin 闸门、注册表约定仍然有效**，被替换的只有工具清单、
 > 技能划分与技能正文。
 
@@ -29,7 +29,7 @@
 
 内容级能力只能来自 boardmix 官方开放端点，落点是同一插件内的 `agent.mcpServers`（见文末）。
 
-## 决定：四个工具 + 一个技能（工具集已由 0004 扩到六个）
+## 决定：四个工具 + 一个技能（工具集已由 0004 扩到七个）
 
 ### 工具
 

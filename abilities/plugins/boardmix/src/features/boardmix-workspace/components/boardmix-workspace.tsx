@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTranslation, type PluginContext } from "@astravia-org/plugin-sdk";
+import { AutomationOverlay } from "./automation-overlay";
 import { BoardmixSurface } from "./boardmix-surface";
 import { useBoardmixEntry } from "../hooks/use-boardmix-entry";
 import { setBoardmixTab, type BoardmixTabHandle } from "../services/tab-registry";
@@ -34,14 +35,17 @@ export function BoardmixWorkspace({ ctx }: BoardmixWorkspaceProps) {
 	}
 
 	return (
-		<BoardmixSurface
-			ref={element => {
-				surfaceRef.current = element;
-			}}
-			ladder={entry.ladder}
-			onLanded={entry.persistLanded}
-			openExternal={entry.openExternal}
-			translate={t}
-		/>
+		<div className="relative flex h-full w-full flex-col">
+			<AutomationOverlay ctx={ctx} translate={t} />
+			<BoardmixSurface
+				ref={element => {
+					surfaceRef.current = element;
+				}}
+				ladder={entry.ladder}
+				onLanded={entry.persistLanded}
+				openExternal={entry.openExternal}
+				translate={t}
+			/>
+		</div>
 	);
 }

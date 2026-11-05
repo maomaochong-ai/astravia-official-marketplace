@@ -15,7 +15,7 @@
 ## 决定
 
 **做插件，不做 MCP。** 载体是 `ui.slot.activity-tab` 里的原生 `<webview>`，加载 boardmix 自己的 origin；
-地址由 0002 的阶梯解析，Agent 面由 0003 / 0004 的六个工具与五份技能提供。
+地址由 0002 的阶梯解析，Agent 面由 0003 / 0004 的七个工具与五份技能提供（第七个工具见 [0006](0006-automation-runs-before-the-answer.md)）。
 
 ## 否决 MCP 的三条事实
 
@@ -136,7 +136,7 @@ abilities/plugins/boardmix/
     │   ├── boardmix-destinations.ts  # 唯一写死域名的地方：origin、目的地、登录前缀
     │   ├── boardmix-entry.ts       # 种子阶梯 + lastGood 读写 schema（纯函数）
     │   └── boardmix-entry.test.ts
-    ├── plugin-ids.ts               # 标签页 id、webview partition、六个工具 id
+    ├── plugin-ids.ts               # 标签页 id、webview partition、七个工具 id
     ├── jsx.d.ts                    # 补 <webview> 的运行时方法声明
     ├── tools/
     │   ├── register-tools.ts
@@ -218,7 +218,7 @@ abilities/plugins/boardmix/
 | `ui.slot.activity-tab` | 提供标签页表面 |
 | `storage.read` / `storage.write` | 记 `lastGoodUrl` 与人工覆盖的入口 |
 | `shell.openExternal` | 阶梯全败时的逃生口，也是 `boardmix_open_in_browser` |
-| `agent.tools.register` / `agent.toolHandler.execute` | 注册并执行 0003 / 0004 的六个工具 |
+| `agent.tools.register` / `agent.toolHandler.execute` | 注册并执行 0003 / 0004 / 0006 的七个工具 |
 | `agent.skills.control` | 提供五份技能，见 0003、0004 |
 
 **不声明** `network.fetch`、`secrets.read/write`、`fs.*`：壳不代理任何请求、不落盘用户内容，凭据只存在
@@ -254,8 +254,8 @@ abilities/plugins/boardmix/
 
 ## Agent 面
 
-六个工具：`boardmix_open` / `boardmix_goto` / `boardmix_new` / `boardmix_ai` /
-`boardmix_tab_status` / `boardmix_open_in_browser`，配五份技能，全部作用于壳、不触碰画布内容。
+七个工具：`boardmix_open` / `boardmix_goto` / `boardmix_new` / `boardmix_ai` /
+`boardmix_tab_status` / `boardmix_open_in_browser` / `boardmix_automate`，配五份技能，全部作用于壳、不触碰画布内容。
 工具只能把用户**送到**能办事的那一屏，真正的操作在页面里——这个取舍与能力覆盖矩阵见
 [0004](0004-tools-reach-the-page-skills-carry-the-work.md)，边界、接线与验收见 [0003](0003-the-plugin-is-agent-operable.md)。
 
@@ -277,7 +277,7 @@ abilities/plugins/boardmix/
 | --- | --- | --- |
 | 用户能用到网页版产品 | 不能，没有界面 | 能，就是 boardmix 本身 |
 | 登录态 | 只对 Agent 有效 | `persist:` 分区，一次登录长期有效 |
-| Agent 可调用面 | 取决于官方端点（目前没有） | 六个工具 + 五份技能，进程内直连 |
+| Agent 可调用面 | 取决于官方端点（目前没有） | 七个工具 + 五份技能，进程内直连 |
 | 包体积 | 极小 | 几百 KB |
 | 上游改版影响 | 无（也无效） | 页面自动跟随 |
 | 主要代价 | 答非所问 | 在线依赖；内容级 Agent 能力要等官方端点 |

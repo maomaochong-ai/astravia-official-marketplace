@@ -1836,7 +1836,7 @@
       "slug": "boardmix",
       "name": "Boardmix Whiteboard",
       "description": "Boardmix's own whiteboard inside a side panel: sign in once and work on your boards without leaving the conversation, while the agent can open the panel and take you to the workspace, a new board or an AI entry.",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "configVersion": 1,
       "license": "Proprietary",
       "author": "Astravia",

@@ -8,8 +8,9 @@
 | [0001](0001-the-web-product-is-a-plugin-tab-not-an-mcp.md) | 插件标签页 + 远端 `webview` 承载，不用 MCP |
 | [0002](0002-pin-the-origin-not-the-path.md) | 只钉 origin，路径运行时学习 |
 | [0003](0003-the-plugin-is-agent-operable.md) | 向 Agent 开放工具与技能，作用域限于壳 |
-| [0004](0004-tools-reach-the-page-skills-carry-the-work.md) | 工具只到「到达」：六个工具 + 五份技能，附能力覆盖矩阵 |
+| [0004](0004-tools-reach-the-page-skills-carry-the-work.md) | 工具只到「到达」：七个工具 + 五份技能，附能力覆盖矩阵 |
 | [0005](0005-the-skill-index-is-its-description.md) | 技能的索引面是 description，正文按需加载；五份技能骨架统一，细节下沉 references，另加一份人格 |
+| [0006](0006-automation-runs-before-the-answer.md) | 自动化是一次「运行」：提问时 hook 先行执行，状态落存储，面板覆盖层与对话同步显示 |
 
 ## 一句话版本
 
@@ -17,8 +18,9 @@
 - 产品在 boardmix 的服务器上，插件里只有壳；壳不代理、不缓存、不镜像任何用户内容。
 - `/app/*` 是 SPA catch-all，垃圾路径也 200，所以**删路由是静默的**：地址靠运行时学习，不靠探测。
 - Agent 能开页、能定位、能建新页、能送 AI 入口、能交还地址；**读不到画布内容也点不了按钮**。
-- 四个工具不够用，六个也还是不够：**工具只到「到达」，干活靠五份技能**。
+- 四个工具不够用，七个也还是不够：**工具只到「到达」，干活靠五份技能**。
 - 五份技能怎么被选中：`description` 是唯一路由面，正文按需加载，细节在各自的 `references/`。
+- 自动化不靠模型自觉：用户在提问里提到 `boardmix` / 白板，面板在回答之前就已经走到位了。
 - 免费账号 3 个文件 / 单文件 150 图元 / 导出带水印——限额要在动手前说，别在结算页才说。
 
 ## 两种载体
@@ -27,7 +29,7 @@
 | --- | --- | --- |
 | 用户能用到网页版产品 | 不能 | 能，就是 boardmix 本身 |
 | 登录态 | 只对 Agent 有效 | `persist:` 分区，一次登录长期有效 |
-| Agent 可调用面 | 取决于官方端点（目前没有） | 六个工具 + 五份技能 |
+| Agent 可调用面 | 取决于官方端点（目前没有） | 七个工具 + 五份技能 |
 | 包体积 | 极小 | 几百 KB 的壳 |
 
 ## 入口地址的处理
@@ -51,6 +53,7 @@
 | `boardmix_open_in_browser` | 系统浏览器打开当前地址（逃生口） |
 | `boardmix_new` | 送到新建入口（`/app/create`），`needsUserAction: true` |
 | `boardmix_ai` | 送到 AI 入口，`kind` ∈ `ppt` / `flowchart` / `chat` |
+| `boardmix_automate` | 跑一条 recipe（focus / create / ai-* / open-url），返回逐步骤结果与落点 |
 
 五个技能写在 `agent/skills/`，主技能做路由，四份子技能管领域操作路径。模型每轮只看得到
 `name` + `description` 的索引，正文按需加载，深细节在各自的 `references/`（见 0005）：

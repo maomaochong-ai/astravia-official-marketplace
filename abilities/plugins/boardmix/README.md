@@ -10,15 +10,22 @@ the product.
 
 ```text
 src/
-  index.tsx                        # definePlugin: tab + tools
+  index.tsx                        # definePlugin: tab + tools + automation slot + prompt hook
   domain/
     boardmix-destinations.ts       # the only place a hostname is written down
     boardmix-entry.ts              # entry state, seed ladder, load-failure rules
+    boardmix-run.ts                # what a run is: recipes, step plan, landing
+    boardmix-intent.ts             # the three signals that start a run
   features/boardmix-workspace/
     services/entry-target.ts       # the origin gate every navigation passes through
     services/tab-registry.ts       # the handle the tools talk to
+    services/automation.ts         # runAutomation: one step at a time, persisted
+    services/run-store.ts          # run.json + a 600 ms poll for cross-realm readers
     hooks/use-boardmix-entry.ts    # reads/writes entry/state.json
+    hooks/use-automation-run.ts    # the live run, if there is one
     components/boardmix-surface.tsx# the only owner of the <webview>
+    components/automation-*.tsx    # overlay in the panel, slot in the conversation
+  hooks/prompt-submit-automation.ts# UserPromptSubmit: act first, then tell the model
   tools/                           # ctx.agent.registerTool() only
 agent/skills/                      # five skills; references/ holds the on-demand detail
 agent/agents/boardmix-guide.md     # the persona whose systemPromptPath points here
@@ -54,12 +61,28 @@ tool cannot forget it.
 | `boardmix_ai` | Sends the tab to the AI PPT / flowchart / chat entry |
 | `boardmix_tab_status` | Reads the snapshot; never opens the tab |
 | `boardmix_open_in_browser` | Hands the current address to the system browser |
+| `boardmix_automate` | Runs one recipe (focus / create / ai-ppt / ai-flowchart / ai-chat / open-url) as a sequence of steps and returns the run |
 
 Every tool returns the same envelope: `{ ok, open, url, origin, phase, seedLevel, landedAt, next }`,
 serialized as JSON. `next` is a sentence the model can act on, not a code. The tools are
 deliberately limited to *reaching* a place; reading the canvas, clicking inside boardmix, running
 a generation or exporting a file are not exposed, because no supported interface exists for them.
-`boardmix_new` and `boardmix_ai` say so with `needsUserAction: true`.
+`boardmix_new`, `boardmix_ai` and the handoff recipes of `boardmix_automate` say so with
+`needsUserAction: true`.
+
+## Automation runs before the answer
+
+A run is a record, not a message. `UserPromptSubmit` fires before the model replies, so a prompt that
+names boardmix (or 白板 / whiteboard) already has the panel walking to its destination while the answer
+is still being written. `automation/run.json` holds `{ id, recipe, status, steps[], landing }` and is
+written on every transition, so what the UI shows is where the run actually is. Only three intent
+signals are recognised on purpose — a wide match would drag unrelated questions into the panel.
+
+The same record is displayed twice: as a `pointer-events-none` overlay in the corner of the panel,
+and as a tool-call slot keyed on `boardmix_automate`, whose result *is* the run. Plugin tools cannot
+emit `details.cards`, so those two surfaces are the available ones. The run's facts also go back to
+the model through `additionalContexts`, including "do not call `boardmix_open` again" and "you cannot
+read, click or export the canvas".
 
 The five skills under `agent/skills/` carry the part that is not a tool call. Only each skill's
 `name` and `description` enter the model's context, so the description is what actually routes:

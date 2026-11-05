@@ -3,7 +3,7 @@
   "name": "%name%",
   "description": "%description%",
   "icon": "assets/icon.png",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -15,11 +15,14 @@
   ],
   "permissions": [
     "ui.slot.activity-tab",
+    "ui.slot.tool-call",
     "storage.read",
     "storage.write",
     "shell.openExternal",
     "agent.tools.register",
     "agent.toolHandler.execute",
+    "agent.hooks.register",
+    "agent.hookHandler.execute",
     "agent.skills.control"
   ],
   "agent": {
@@ -33,11 +36,16 @@
     "skillPresentation": {
       "defaultVisibility": "visible",
       "surfaces": {
-        "commandPalette": "visible",
-        "skillPicker": "visible"
+        "commandPalette": "hidden",
+        "skillPicker": "hidden",
+        "pluginDetail": "visible"
       },
       "skills": {
         "boardmix": {
+          "surfaces": {
+            "commandPalette": "visible",
+            "skillPicker": "visible"
+          },
           "displayName": "%skill.boardmix.name%",
           "displayDescription": "%skill.boardmix.description%"
         },

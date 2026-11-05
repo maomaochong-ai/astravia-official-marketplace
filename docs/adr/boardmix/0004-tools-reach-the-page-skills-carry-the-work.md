@@ -4,6 +4,8 @@
 - 相关：[0001](0001-the-web-product-is-a-plugin-tab-not-an-mcp.md)、[0002](0002-pin-the-origin-not-the-path.md)、[0003](0003-the-plugin-is-agent-operable.md)
 - 影响面：0003 的工具集与技能集（四个工具 → 六个工具，一份技能 → 五份技能）、`src/domain/boardmix-destinations.ts`、`src/tools/boardmix-destination-tools.ts`、`agent/skills/`
 
+> 第七个工具 `boardmix_automate` 由 [0006](0006-automation-runs-before-the-answer.md) 加入，分工原则不变：仍然只到「到达」，只是把多步到达变成一次可观察的运行。
+
 ## 问题
 
 0003 定了四个工具：开页、导航、看状态、逃生口。它们诚实地覆盖了「到达」，但用户嘴里的日常任务是另一批话：
