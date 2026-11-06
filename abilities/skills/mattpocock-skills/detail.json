@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "MATT POCOCK SKILLS IN ASTRAVIA",
+      "title": "Real engineering loops, one composable package",
+      "description": "38 skill modules consolidated from mattpocock/skills — the workflows Matt Pocock uses every day to do real engineering, not vibe coding. Module names, file layout and content mirror the upstream repository exactly.",
+      "badges": ["TDD", "Code Review", "Diagnosis", "Specs & Tickets", "Planning", "Writing"]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "brand_name": "Astravia",
+        "user_prompt": "We just merged a risky branch. Review it since main, then turn what we discussed into tickets for the tracker.",
+        "assistant_reply": "I'll run code-review since main along the Standards and Spec axes in parallel sub-agents, then push the follow-up work into tracer-bullet tickets with blocking edges via to-tickets. If anything is ambiguous, I'll grill you before writing the tickets."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "Small, composable, easy to adapt",
+      "items": [
+        {
+          "title": "Engineering loops",
+          "description": "TDD, code review, bug diagnosis, prototyping, research, retrospectives, PR writing, issue triage and giant-work planning (wayfinder) — the core daily loops, each with its own module.",
+          "icon": "solar:branching-paths-up-bold"
+        },
+        {
+          "title": "Specs and tickets that survive handoff",
+          "description": "to-spec and to-tickets turn a conversation into a spec or tracer-bullet tickets on your issue tracker; implement-spec carries them into code. Setup wires the tracker in once.",
+          "icon": "solar:checklist-minimalistic-bold"
+        },
+        {
+          "title": "Grilling built in",
+          "description": "grilling, grill-me and grill-with-docs stress-test plans through relentless interviews — writing ADRs and glossary entries as they go instead of letting weak assumptions reach the code.",
+          "icon": "solar:question-circle-bold"
+        },
+        {
+          "title": "Continuity between sessions",
+          "description": "handoff and claude-handoff compact a conversation into a document another agent picks up immediately; chief-of-staff pursues long-running goals by coordinating subagents.",
+          "icon": "solar:refresh-circle-bold"
+        },
+        {
+          "title": "Guardrails and hygiene",
+          "description": "git-guardrails blocks destructive git commands through hooks; setup-pre-commit adds Husky with lint-staged, type checking and tests; setup-ts-deep-modules wires dependency-cruiser.",
+          "icon": "solar:shield-check-bold"
+        },
+        {
+          "title": "Writing for humans and agents",
+          "description": "writing-for-agents sharpens AGENTS.md and skill files; the writing-fragments / writing-shape / writing-beats trio takes raw material to a finished article.",
+          "icon": "solar:pen-new-square-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "Get started",
+      "items": [
+        {
+          "title": "Ask for a workflow by name",
+          "description": "Say \"review since main\", \"grill me on this design\", \"write this up as tickets\" or \"set up pre-commit hooks\" — the agent loads the matching module from the catalog."
+        },
+        {
+          "title": "Run the one-time setup",
+          "description": "For tracker-based skills (to-spec, to-tickets, triage, wayfinder), run setup-matt-pocock-skills once to configure the issue tracker, triage labels and domain doc layout."
+        },
+        {
+          "title": "Compose the loops",
+          "description": "Modules are designed to chain: research → to-spec → to-tickets → implement-spec → code-review → pr. The agent follows each module's own preconditions."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "title": "Faithful to upstream",
+      "content": "All 38 modules are byte-identical to mattpocock/skills (MIT, revision 4ae2317) — including supporting docs, scripts and agent definitions. Modules marked as user-invoked upstream (grill-me, to-spec, retro and others) trigger when you ask for them by name. See NOTICE.md for attribution."
+    },
+    {
+      "type": "markdown",
+      "content": "## Module map\n\n- **Engineering (20)**: ask-matt, code-review, codebase-design, diagnosing-bugs, domain-modeling, grill-with-docs, implement-spec, implement, improve-codebase-architecture, pr, prototype, research, retro, setup-matt-pocock-skills, tdd, to-spec, to-tickets, triage, wayfinder, wizard\n- **Productivity (7)**: grill-me, grilling, handoff, teach, to-questionnaire, wait-what, writing-for-agents\n- **Misc (4)**: git-guardrails-claude-code, migrate-to-shoehorn, scaffold-exercises, setup-pre-commit\n- **In progress (8)**: chief-of-staff, claude-handoff, loop-me, setup-ts-deep-modules, software-factory, writing-beats, writing-fragments, writing-shape\n\nThese skills are intentionally small and hackable. If one fights your repo's conventions, change it — they are designed to be adapted."
+    }
+  ]
+}

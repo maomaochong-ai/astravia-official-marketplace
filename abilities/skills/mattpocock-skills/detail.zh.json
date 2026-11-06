@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "MATT POCOCK SKILLS IN ASTRAVIA",
+      "title": "真实工程流程，一个可组合的包",
+      "description": "自 mattpocock/skills 汇聚的 38 个技能模块——Matt Pocock 每天用来做真实工程（而不是凭感觉编码）的工作流。模块名称、文件布局与内容与上游仓库逐字对齐。",
+      "badges": ["TDD", "代码评审", "缺陷诊断", "规格与工单", "规划", "写作"]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "brand_name": "Astravia",
+        "user_prompt": "我们刚合入一个风险较高的分支。请对比 main 做评审，然后把刚才讨论的内容转成工单。",
+        "assistant_reply": "我会用 code-review 以 main 为基准点，沿 Standards 和 Spec 两条线并行子代理评审；随后用 to-tickets 把后续工作拆成带阻塞关系的 tracer-bullet 工单。有歧义的地方，我会先拷问你确认，再落工单。"
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "小而可组合，随手可改",
+      "items": [
+        {
+          "title": "工程核心循环",
+          "description": "TDD、代码评审、缺陷诊断、原型验证、调研、复盘、PR 撰写、问题分诊与超大规模规划（wayfinder）——日常核心循环，各自独立成模块。",
+          "icon": "solar:branching-paths-up-bold"
+        },
+        {
+          "title": "能扛住交接的规格与工单",
+          "description": "to-spec、to-tickets 把对话沉淀为规格或带阻塞关系的工单并发布到你的 issue tracker；implement-spec 再把它们落成代码。一次性 setup 配置好 tracker。",
+          "icon": "solar:checklist-minimalistic-bold"
+        },
+        {
+          "title": "内置拷问环节",
+          "description": "grilling、grill-me、grill-with-docs 通过毫不留情的追问给方案压力测试——过程中顺手沉淀 ADR 与术语表，而不是让含糊的假设流进代码。",
+          "icon": "solar:question-circle-bold"
+        },
+        {
+          "title": "跨会话的连续性",
+          "description": "handoff、claude-handoff 把当前会话压缩成交接文档，下一个代理立即接手；chief-of-staff 通过协调子代理推进长期目标。",
+          "icon": "solar:refresh-circle-bold"
+        },
+        {
+          "title": "护栏与工程卫生",
+          "description": "git-guardrails 用 hooks 拦截危险的 git 命令；setup-pre-commit 配置 Husky + lint-staged、类型检查与测试；setup-ts-deep-modules 接入 dependency-cruiser。",
+          "icon": "solar:shield-check-bold"
+        },
+        {
+          "title": "为人也 为代理写作",
+          "description": "writing-for-agents 打磨 AGENTS.md 与技能文档；writing-fragments / writing-shape / writing-beats 三部曲把素材一路推进成成文的文章。",
+          "icon": "solar:pen-new-square-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "上手方式",
+      "items": [
+        {
+          "title": "按名字点名工作流",
+          "description": "直接说\"对比 main 评审\"、\"拷问我这个设计\"、\"把讨论整理成工单\"、\"配置 pre-commit\"——代理会从模块目录里加载对应模块。"
+        },
+        {
+          "title": "先跑一次性配置",
+          "description": "要用 tracker 类技能（to-spec、to-tickets、triage、wayfinder）时，先运行 setup-matt-pocock-skills 配置 issue tracker、分诊标签与领域文档布局。"
+        },
+        {
+          "title": "把循环串起来",
+          "description": "模块天然可串联：research → to-spec → to-tickets → implement-spec → code-review → pr。每个模块自带前置条件，代理会逐一遵守。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "title": "忠实还原上游",
+      "content": "全部 38 个模块与 mattpocock/skills（MIT，revision 4ae2317）逐字节一致——包括附属文档、脚本与 agent 定义。上游标记为用户手动调用（user-invoked）的模块（grill-me、to-spec、retro 等）会在你点名时触发。署名信息见 NOTICE.md。"
+    },
+    {
+      "type": "markdown",
+      "content": "## 模块地图\n\n- **Engineering（20）**：ask-matt、code-review、codebase-design、diagnosing-bugs、domain-modeling、grill-with-docs、implement-spec、implement、improve-codebase-architecture、pr、prototype、research、retro、setup-matt-pocock-skills、tdd、to-spec、to-tickets、triage、wayfinder、wizard\n- **Productivity（7）**：grill-me、grilling、handoff、teach、to-questionnaire、wait-what、writing-for-agents\n- **Misc（4）**：git-guardrails-claude-code、migrate-to-shoehorn、scaffold-exercises、setup-pre-commit\n- **In progress（8）**：chief-of-staff、claude-handoff、loop-me、setup-ts-deep-modules、software-factory、writing-beats、writing-fragments、writing-shape\n\n这些技能刻意做得小而可改。如果某个模块与你的仓库约定冲突，直接改它——它们本来就是为被改造而设计的。"
+    }
+  ]
+}

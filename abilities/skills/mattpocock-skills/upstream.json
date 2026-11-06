@@ -1,0 +1,13 @@
+{
+  "repository": "https://github.com/mattpocock/skills",
+  "revision": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d",
+  "sourcePath": "skills",
+  "license": "MIT",
+  "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+  "adaptations": [
+    "Consolidate all upstream skill categories (engineering, productivity, misc, in-progress, deprecated) into one Astravia skill package under references/, preserving every file byte-identically, including scripts and agents/openai.yaml definitions.",
+    "Add a package-level SKILL.md router that catalogs all modules and routes to their original per-module SKILL.md files.",
+    "Add Astravia-required version 1.0.0 frontmatter to the package-level SKILL.md; module files are untouched.",
+    "Add bilingual Astravia catalog metadata, product details, a Solar set icon (upstream ships no standalone logo asset), and the repository MIT license copy."
+  ]
+}
