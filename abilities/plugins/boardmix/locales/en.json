@@ -7,6 +7,7 @@
   "panel.login.body": "This is Boardmix's own login page. Sign in here and the session stays with this panel; the plugin never sees your credentials.",
   "panel.failure.title": "Boardmix did not load",
   "panel.failure.body": "The workspace address and its fallbacks both failed. Retry, or open it in your browser and keep working there.",
+  "panel.offline": "No network. The panel loads again as soon as the connection is back.",
   "panel.failure.retry": "Retry",
   "panel.failure.external": "Open in browser",
   "tool.open.label": "Open Boardmix",

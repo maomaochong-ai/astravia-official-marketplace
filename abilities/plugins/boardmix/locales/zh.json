@@ -7,6 +7,7 @@
   "panel.login.body": "这是 Boardmix 自己的登录页。在这里登录，登录态留在本面板；插件看不到你的账号密码。",
   "panel.failure.title": "Boardmix 没能加载出来",
   "panel.failure.body": "工作台地址和它的备用落点都没打开。可以重试，或在浏览器里打开继续做事。",
+  "panel.offline": "现在没有网络。连接一恢复，面板会自己重新加载。",
   "panel.failure.retry": "重试",
   "panel.failure.external": "在浏览器打开",
   "tool.open.label": "打开 Boardmix",
