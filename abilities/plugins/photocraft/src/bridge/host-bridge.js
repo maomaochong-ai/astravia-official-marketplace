@@ -321,6 +321,33 @@
 
   // ------------------------------------------------------------- messages
 
+  // ------------------------------------------------- the canvas offers itself
+  //
+  // A right-click inside the page never reaches the shell: pointer events over an
+  // iframe stay in that iframe's own document, so a `contextmenu` handler on the frame
+  // element in the shell is dead code. The press is forwarded as a position instead,
+  // and the shell decides what to put there (hand this area to the AI, reload, full
+  // screen). Holding Shift leaves the press to the app, whose own menu still works.
+  if (typeof document !== "undefined" && document.addEventListener) {
+    document.addEventListener(
+      "contextmenu",
+      function (event) {
+        if (event.shiftKey) return;
+        var canvas = canvasNode();
+        if (!canvas || typeof canvas.getBoundingClientRect !== "function") return;
+        var box = canvas.getBoundingClientRect();
+        if (!box.width || !box.height) return;
+        var x = (event.clientX - box.left) / box.width;
+        var y = (event.clientY - box.top) / box.height;
+        if (x < 0 || y < 0 || x > 1 || y > 1) return;
+        event.preventDefault();
+        post({ type: "craft:contextmenu", x: x, y: y });
+        return undefined;
+      },
+      true,
+    );
+  }
+
   window.addEventListener("message", function (event) {
     if (event.source !== parentWindow) return;
     var data = event.data;

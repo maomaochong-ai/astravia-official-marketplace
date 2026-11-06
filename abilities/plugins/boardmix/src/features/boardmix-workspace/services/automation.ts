@@ -13,7 +13,7 @@ import {
 import { ACTIVITY_TAB_ID } from "../../../plugin-ids";
 import { resolveEntryTarget } from "./entry-target";
 import { persistAutomationRun } from "./run-store";
-import { boardmixTab, waitForBoardmixTab } from "./tab-registry";
+import { boardmixTab, waitForBoardmixTab, type BoardmixTabHandle } from "./tab-registry";
 
 const DESTINATION_OF: Record<Exclude<AutomationRecipeId, "open-url">, DestinationKey> = {
 	focus: "workspace",
@@ -23,6 +23,48 @@ const DESTINATION_OF: Record<Exclude<AutomationRecipeId, "open-url">, Destinatio
 	"ai-chat": "aiChat",
 };
 
+/** 一次挂载尝试等多久；三次是「面板正在起」与「面板根本没来」的分界。 */
+const TAB_WAIT_MS = 4_000;
+const TAB_TRIES = 3;
+
+interface AttachResult {
+	handle: BoardmixTabHandle | null;
+	reason: string;
+	attempts: number;
+}
+
+function offlineNow(): boolean {
+	return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
+/**
+ * 让面板出现在会话里，并等到句柄挂上。
+ *
+ * 两个 API 都要调：
+ * - `openActivityTab` 是「用户此刻要看它」——标签卡从未开过时由它创建；
+ * - `setActivityTabVisible` 是「它该不该在栏里」——`initiallyVisible: false` 之后，
+ *   已经存在但被收起或被减号隐藏的标签卡只有它叫得回来。
+ *
+ * 只调前一个时，第二次及以后的执行会停在 `tab-not-ready`：面板存在，但不在屏上，
+ * `<webview>` 不挂载，句柄就永远不注册。重试是给「正在挂载」留时间，不是掩盖死锁。
+ *
+ * `cwd` 必须显式传：工具 handler 跑在会话上下文里，宿主当前显示的会话未必是同一个。
+ */
+async function attachPanel(ctx: PluginContext, cwd: string | undefined, waitMs: number): Promise<AttachResult> {
+	const existing = boardmixTab();
+	if (existing) return { handle: existing, reason: "panel-open", attempts: 0 };
+
+	const target = cwd ? { cwd } : undefined;
+	ctx.ui.openActivityTab(ACTIVITY_TAB_ID, { width: "max", ...target });
+	ctx.ui.setActivityTabVisible(ACTIVITY_TAB_ID, true, target);
+
+	for (let attempt = 1; attempt <= TAB_TRIES; attempt += 1) {
+		const handle = await waitForBoardmixTab(Math.max(waitMs, TAB_WAIT_MS));
+		if (handle) return { handle, reason: "panel-open", attempts: attempt };
+	}
+	return { handle: null, reason: offlineNow() ? "network" : "tab-never-mounted", attempts: TAB_TRIES };
+}
+
 export interface AutomationRequest {
 	recipe: AutomationRecipeId;
 	/** 只有 `open-url` 用它；其余 recipe 的落点由 DESTINATION_OF 决定。 */
@@ -30,6 +72,8 @@ export interface AutomationRequest {
 	reason: "prompt" | "tool";
 	/** 等标签页挂上句柄的上限。提问时自动跑的路径给得短，别让人等。 */
 	waitMs?: number;
+	/** 发起这次执行的会话 cwd；两个 tab API 都要靠它才作用于正确的会话。 */
+	cwd?: string;
 }
 
 /**
@@ -63,24 +107,23 @@ export async function runAutomation(ctx: PluginContext, request: AutomationReque
 	}
 
 	await tick("tab", "running");
-	let handle = boardmixTab();
-	if (!handle) {
-		ctx.ui.openActivityTab(ACTIVITY_TAB_ID, { width: "max" });
-		handle = await waitForBoardmixTab(request.waitMs ?? 5000);
-	}
-	if (!handle) {
-		await tick("tab", "failed", "tab-not-ready");
-		run = finishRun(run, "failed", "tab-not-ready", at());
+	const attached = await attachPanel(ctx, request.cwd, request.waitMs ?? TAB_WAIT_MS);
+	if (!attached.handle) {
+		await tick("tab", "failed", attached.reason);
+		run = finishRun(run, "failed", attached.reason, at());
 		await persistAutomationRun(ctx, run);
 		return run;
 	}
-	await tick("tab", "done", "panel-open");
+	const handle = attached.handle;
+	await tick("tab", "done", attached.attempts > 1 ? `panel-open-after-${attached.attempts}` : "panel-open");
 
 	await tick("navigate", "running");
 	const snapshot = await handle.navigate(target.url);
 	if (!snapshot.open) {
-		await tick("navigate", "failed", "tab-not-ready");
-		run = finishRun(run, "failed", "tab-not-ready", at());
+		const offline = offlineNow();
+		const reason = offline ? "network" : "page-not-loaded";
+		await tick("navigate", "failed", reason);
+		run = finishRun(run, "failed", reason, at());
 		await persistAutomationRun(ctx, run);
 		return run;
 	}

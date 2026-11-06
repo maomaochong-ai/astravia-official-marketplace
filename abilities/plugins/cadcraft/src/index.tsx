@@ -3,9 +3,9 @@ import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { definePlugin } from "@astravia-org/plugin-sdk";
 import type { JSX } from "react";
 import { APP } from "./app.config.ts";
-import { ActTimeline } from "./features/agent/act-timeline.tsx";
+import { ActTimeline } from "./features/agent/components/act-timeline.tsx";
 import { connectConversation } from "./features/agent/conversation-bridge.ts";
-import { registerCraftTools } from "./features/agent/craft-tools.ts";
+import { registerCraftTools } from "./tools/craft-tools.ts";
 import { CraftTab } from "./features/editor/components/craft-tab.tsx";
 
 export const TAB_ID = APP.tabId;

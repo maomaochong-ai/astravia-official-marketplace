@@ -18,21 +18,10 @@ import type { EditorStrings } from "../strings.ts";
  *
  * ADR: docs/adr/<slug>/craft-0018-the-header-became-a-corner.md
  */
-const HOLD_MS = 6000;
-/**
- * A notice is an instruction, not an event, so it is allowed to linger longer than a
- * step report — but not forever. It used to never expire, which left one strip of text
- * permanently on top of the canvas it was describing.
- */
-const NOTICE_MS = 20000;
 const ROWS = 2;
 // An intent is cleared by `tool-call-end`. If that event never arrives (the turn was
 // aborted mid-stream), the hint must not sit there claiming work is queued.
 const INTENT_TTL_MS = 120_000;
-
-function holdFor(note: CraftNote | null): number {
-	return note?.kind === "notice" ? NOTICE_MS : HOLD_MS;
-}
 const TONE: Record<string, string> = {
 	notice: "text-amber-300",
 	step: "text-sky-300",
@@ -54,20 +43,10 @@ export function ActivityStrip({
 	/** The call the model is still writing. Drawn only while nothing is running yet. */
 	intent: CraftIntent | null;
 }): JSX.Element | null {
-	const last = notes.length ? notes[notes.length - 1] : null;
 	const [now, setNow] = useState(() => Date.now());
 
-	// Re-render once the hold expires, so a finished batch fades instead of leaving a
-	// permanent strip on a canvas the user is trying to look at.
-	useEffect(() => {
-		if (!last) return;
-		const wait = Math.max(0, last.at + holdFor(last) - Date.now()) + 20;
-		const timer = setTimeout(() => setNow(Date.now()), wait);
-		return () => clearTimeout(timer);
-	}, [last]);
-
-	// Same for the queued hint: it is the only thing on screen when nothing has run yet,
-	// so its expiry has to wake the component or it never fades.
+	// The queued hint is the only thing on screen before a batch starts, so its expiry has
+	// to wake the component or it never fades.
 	useEffect(() => {
 		if (!intent) return;
 		const wait = Math.max(0, intent.at + INTENT_TTL_MS - Date.now()) + 20;
@@ -75,9 +54,14 @@ export function ActivityStrip({
 		return () => clearTimeout(timer);
 	}, [intent]);
 
+	// Hidden by default, on purpose. The strip used to hold the last note for six seconds
+	// and a notice for twenty, so while someone was working it was never actually gone: a
+	// block of text sitting on the bottom-left corner of the canvas they were trying to
+	// look at. It is a progress indicator, so it exists while something is running and not
+	// one tick longer. The same history reaches the Agent through the prompt attachment,
+	// which costs no pixels.
 	const queued = intent !== null && intent.at + INTENT_TTL_MS > now;
-	const visible =
-		progress !== null || queued || (last !== null && last.at + holdFor(last) > now);
+	const visible = progress !== null || queued;
 	if (!visible) return null;
 
 	const pending = progress === null && queued;

@@ -35,3 +35,7 @@ docs/daily-reports/
 # so that stays out of the archive.
 .cache/
 abilities/plugins/*/web/
+
+# Craft panels write their screenshots and their last-document memory into the open project
+# (`.craft/shots`, `.craft/last-document.json`). Those are this machine's state, not source.
+.craft/

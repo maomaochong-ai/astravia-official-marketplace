@@ -37,9 +37,17 @@ export interface CanvasShot {
   bytes: number;
 }
 
+/** A crop of the page, as fractions of its width and height — never pixels. */
+export interface RegionRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface ShotRequest {
   /** Extra PNG copies for the same call: a region zoom, or a step-by-step capture. */
-  region?: { x: number; y: number; w: number; h: number };
+  region?: RegionRect;
   scale?: number;
   /** Slug in the file name, e.g. `act` or `probe`, so six shots stay readable. */
   tag?: string;

@@ -22,6 +22,8 @@ import { LoadFailureNotice } from "./load-failure-notice";
 import { LoginRequiredNotice } from "./login-required-notice";
 
 const NAVIGATE_TIMEOUT_MS = 12_000;
+/** 断网恢复后自动重试一次；不叠加退避，只确保「网络回来了」不需要人再点一次。 */
+const ONLINE_RETRY_DELAY_MS = 1_500;
 
 type SurfaceStatus = "booting" | "ready" | "failed";
 
@@ -76,6 +78,8 @@ export const BoardmixSurface = forwardRef<BoardmixTabHandle, BoardmixSurfaceProp
 
 		const [status, setStatus] = useState<SurfaceStatus>("booting");
 		const [phase, setPhase] = useState<BoardmixPhase>("unknown");
+		// 机器离线时不是「插件坏了」，但也不能留白屏：状态行要写出是可恢复的。
+		const [offline, setOffline] = useState(() => typeof navigator !== "undefined" && navigator.onLine === false);
 
 		const snapshot = useCallback((): BoardmixSnapshot => {
 			const element = webviewRef.current;
@@ -229,8 +233,30 @@ export const BoardmixSurface = forwardRef<BoardmixTabHandle, BoardmixSurfaceProp
 
 		useEffect(() => () => settlePending(CLOSED_SNAPSHOT), [settlePending]);
 
+		// 网络是外部的：开 VPN / 断网 / 链路中途死掉，都不该让面板停在一个再也起不来的失败态上。
+		// 离线只做两件事——把状态写给人看（不留白屏），并记下「是网络，不是页面」。
+		useEffect(() => {
+			const onOffline = () => setOffline(true);
+			const onOnline = () => {
+				setOffline(false);
+				// 回来之后自己再走一次：失败态就从第一级重来，加载中也是。
+				if (status !== "ready") window.setTimeout(retry, ONLINE_RETRY_DELAY_MS);
+			};
+			window.addEventListener("offline", onOffline);
+			window.addEventListener("online", onOnline);
+			return () => {
+				window.removeEventListener("offline", onOffline);
+				window.removeEventListener("online", onOnline);
+			};
+		}, [retry, status]);
+
 		return (
 			<div className="relative flex h-full w-full flex-col bg-background">
+				{offline && status !== "ready" ? (
+					<div className="absolute inset-x-0 top-0 z-10 bg-amber-500/15 px-3 py-2 text-xs text-amber-200">
+						{translate("panel.offline")}
+					</div>
+				) : null}
 				{status === "failed" ? (
 					<LoadFailureNotice
 						retryLabel={translate("panel.failure.retry")}

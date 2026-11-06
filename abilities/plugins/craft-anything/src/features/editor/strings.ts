@@ -16,8 +16,6 @@ export interface EditorStrings {
   fullscreen: string;
   exitFullscreen: string;
   fullscreenFailed: string;
-  /** Accessible name for the two floating controls that replaced the header. */
-  controls: string;
   /** Name for the strip that lists what the page just did. */
   activity: string;
   selectInExplorer: string;
@@ -57,6 +55,20 @@ export interface EditorStrings {
   agentQueued: string;
   /** "{n}" is the step count the arguments already hold. */
   agentSteps: string;
+  /** Right-click menu over the canvas: hand only the dragged area to the model. */
+  menuRegion: string;
+  /** Right-click menu over the canvas: hand the whole page, as before. */
+  menuPage: string;
+  /** Ink bar while the pointer is choosing the area. */
+  regionHint: string;
+  /** The drag was a click, not an area. */
+  regionTooSmall: string;
+  /** One line put into the message box after a region is captured. `{rect}` and `{path}`. */
+  regionLead: string;
+  /** The page could not crop the area (frame gone, canvas unreadable). */
+  regionFailed: string;
+  /** `{name}`: the file the panel reopened on its own after the tab came back. */
+  restored: string;
 }
 
 const en: EditorStrings = {
@@ -68,7 +80,6 @@ const en: EditorStrings = {
   fullscreen: "Full screen",
   exitFullscreen: "Exit full screen",
   fullscreenFailed: "Full screen unavailable",
-  controls: "Editor controls",
   activity: "Recent actions",
   selectInExplorer: "Select one file in the Explorer, then press Open.",
   saved: "Saved",
@@ -95,6 +106,13 @@ const en: EditorStrings = {
   askAgentFailed: "Could not reach the conversation",
   agentQueued: "Preparing",
   agentSteps: "{n} steps",
+  menuRegion: "Hand this area to the AI",
+  menuPage: "Hand the whole page to the AI",
+  regionHint: "Drag the area to hand over · Esc cancels",
+  regionTooSmall: "That is a click, not an area",
+  regionLead: "{app} region · {document} · {rect} · cropped to {path}",
+  regionFailed: "Could not crop that area",
+  restored: "Reopened {name}",
 };
 
 const zh: EditorStrings = {
@@ -106,7 +124,6 @@ const zh: EditorStrings = {
   fullscreen: "全屏",
   exitFullscreen: "退出全屏",
   fullscreenFailed: "无法进入全屏",
-  controls: "编辑器控件",
   activity: "最近动作",
   selectInExplorer: "先在左侧资源管理器选中一个文件，再点打开。",
   saved: "已保存",
@@ -132,6 +149,13 @@ const zh: EditorStrings = {
   askAgentFailed: "没能连到对话",
   agentQueued: "正在准备",
   agentSteps: "{n} 步",
+  menuRegion: "把这一块交给 AI",
+  menuPage: "整页交给 AI",
+  regionHint: "拖出要交出的区域 · Esc 取消",
+  regionTooSmall: "这是点了一下，不是一个区域",
+  regionLead: "{app} 的局部 · {document} · {rect} · 已裁到 {path}",
+  regionFailed: "这块区域截不下来",
+  restored: "已重新打开 {name}",
 };
 
 export function editorStrings(locale: string | undefined): EditorStrings {

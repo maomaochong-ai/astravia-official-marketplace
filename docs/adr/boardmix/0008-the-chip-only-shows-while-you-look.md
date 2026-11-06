@@ -4,7 +4,7 @@
 - **Date:** 2026-11-06
 - **Supersedes:** part of [0002](0002-the-panel-is-a-webview-not-a-canvas.md) — the tab used to be part
   of the bar from the moment the plugin was installed
-- **Context:** `boardmix` 0.0.6 → 0.0.7
+- **Context:** `boardmix` 0.0.3 → 0.0.4
 
 ## The situation
 

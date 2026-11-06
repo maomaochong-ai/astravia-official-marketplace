@@ -11,6 +11,22 @@ import { TOOL_IDS } from "../plugin-ids";
 const TOOL_SCOPE = ["conversation", "project"] as const;
 
 /**
+ * 停在某一步时到底该说什么。每个 detail 都是一种真实成因，处置不同；
+ * 三种都包括在内：**不得说成「面板已经移过去了」**。
+ */
+function stopHint(note: string | null): string {
+	switch (note) {
+		case "tab-never-mounted":
+			return "The panel never attached, so nothing was navigated. Ask the user to open Boardmix once from its tab button, then run this again.";
+		case "network":
+			return "The machine is offline or a VPN dropped the connection. Say that plainly and do not retry in a loop — the panel reloads itself when the network returns.";
+		case "page-not-loaded":
+			return "The panel was open but its page did not answer in time. Ask the user to press Retry in the panel, then run this again.";
+		default:
+			return "Say which step stopped and what the user can do about it.";
+	}
+}
+/**
  * 一条 recipe 换一次真实的多步执行，并把每一跑到哪一步原样带回来。
  * 返回体就是运行记录本身，所以对话里的步骤卡片能直接用工具结果渲染。
  */
@@ -44,7 +60,7 @@ export function registerAutomationTool(ctx: PluginContext): Disposable[] {
 			},
 			scope_use: TOOL_SCOPE,
 			timeoutMs: 40_000,
-			handler: async ({ trigger }) => {
+			handler: async ({ trigger, session }) => {
 				const recipe = trigger.input?.recipe;
 				if (!isAutomationRecipe(recipe)) {
 					return JSON.stringify({
@@ -57,17 +73,23 @@ export function registerAutomationTool(ctx: PluginContext): Disposable[] {
 					recipe,
 					url: typeof trigger.input?.url === "string" ? trigger.input.url : undefined,
 					reason: "tool",
-					waitMs: 5000,
+					// 12 s：面板第一次创建要载入 boardmix 整个前端，4 s 和 5 s 都不够。
+					waitMs: 12_000,
+					cwd: session.cwd,
 				});
 				const needsUserAction = handsOffToUser(recipe);
 				return JSON.stringify({
 					...run,
 					ok: run.status === "done",
 					needsUserAction,
-					next: needsUserAction
-						? "Tell the user the step that is theirs to click. Do not claim a board, deck or diagram was created."
-						: "Report the landing address. Then use boardmix_read (controls plus click points), boardmix_act " +
-							"(real clicks and typing) and boardmix_shot (a PNG you can look at) to carry on yourself.",
+					stoppedAt: run.status === "done" ? null : (run.note ?? null),
+					next:
+						run.status !== "done"
+							? stopHint(run.note)
+							: needsUserAction
+								? "Tell the user the step that is theirs to click. Do not claim a board, deck or diagram was created."
+								: "Report the landing address. Then use boardmix_read (controls plus click points), boardmix_act " +
+									"(real clicks and typing) and boardmix_shot (a PNG you can look at) to carry on yourself.",
 				});
 			},
 		}),

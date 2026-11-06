@@ -43,12 +43,12 @@ export function BoardmixWorkspace({ ctx }: BoardmixWorkspaceProps) {
 	});
 
 	useEffect(() => {
-		if (!entry.ready) return;
-		const handle = surfaceRef.current;
-		if (!handle) return;
-		setBoardmixTab(handle);
+		// Only the unmount half lives here: the surface registers itself through the ref
+		// below the moment it mounts. Waiting for `entry.ready` was the bug — that flag
+		// means "storage read", not "webview attached", so a panel opened by a tool call
+		// stayed invisible to every tool until the user clicked the tab by hand.
 		return () => setBoardmixTab(null);
-	}, [entry.ready]);
+	}, []);
 
 	if (!entry.ready) {
 		return (
@@ -64,6 +64,7 @@ export function BoardmixWorkspace({ ctx }: BoardmixWorkspaceProps) {
 			<BoardmixSurface
 				ref={element => {
 					surfaceRef.current = element;
+					setBoardmixTab(element);
 				}}
 				ladder={entry.ladder}
 				onLanded={onLanded}

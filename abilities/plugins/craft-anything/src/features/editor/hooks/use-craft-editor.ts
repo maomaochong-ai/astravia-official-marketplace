@@ -32,7 +32,29 @@ import type { CraftIntent } from "../session-registry.ts";
 import { readWorkspaceFile, saveRenderedFile, selectionAccess } from "../services/workspace-files.ts";
 import { openDocument } from "../services/open-document.ts";
 import type { WorkspaceFile } from "../services/workspace-files.ts";
+import { saveCanvasShot } from "../services/canvas-shot.ts";
+import type { RegionRect } from "../services/canvas-shot.ts";
+import { recallDocument, rememberDocument } from "../services/last-document.ts";
 import { useContainerFullscreen } from "./use-container-fullscreen.ts";
+
+/** Smallest drag that counts as an area rather than a misplaced click. */
+const MIN_REGION = 0.02;
+
+function clampRegion(rect: RegionRect): RegionRect | null {
+  const x = Math.min(Math.max(rect.x, 0), 1);
+  const y = Math.min(Math.max(rect.y, 0), 1);
+  const x2 = Math.min(Math.max(rect.x + rect.w, 0), 1);
+  const y2 = Math.min(Math.max(rect.y + rect.h, 0), 1);
+  const w = x2 - x;
+  const h = y2 - y;
+  if (w < MIN_REGION || h < MIN_REGION) return null;
+  return { x, y, w, h };
+}
+
+function rectLabel(region: RegionRect): string {
+  const pct = (value: number): string => `${Math.round(value * 100)}%`;
+  return `${pct(region.w)}×${pct(region.h)} at ${pct(region.x)},${pct(region.y)}`;
+}
 
 export type EditorPhase = "starting" | "ready" | "failed";
 
@@ -78,6 +100,16 @@ export interface EditorSession {
   reload: () => void;
   /** Draft the panel's state into the message box; the user still presses Enter. */
   askAgent: () => Promise<void>;
+  /** True while the pointer is drawing the area to hand over. */
+  picking: boolean;
+  /** Where the page reported a right-click, in fractions of the canvas; null = closed. */
+  menu: { x: number; y: number } | null;
+  closeMenu: () => void;
+  /** Arm the marquee. The tab draws it; the frame is never touched. */
+  beginRegion: () => void;
+  cancelRegion: () => void;
+  /** Crop what was drawn, drop it in `.craft/shots/`, and put a line in the message box. */
+  captureRegion: (rect: RegionRect) => Promise<void>;
 }
 
 /**
@@ -116,6 +148,12 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   const [progress, setProgress] = useState<string | null>(null);
   const [notes, setNotes] = useState<CraftNote[]>([]);
   const [intent, setIntent] = useState<CraftIntent | null>(null);
+  /** Armed marquee: the tab paints the rubber band, the page does the cropping. */
+  const [picking, setPicking] = useState(false);
+  /** Open context menu: the position the page reported, in canvas fractions. */
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  /** The last crop handed over, so the chip can name it until the next one. */
+  const [region, setRegion] = useState<{ path: string; rect: RegionRect } | null>(null);
   const [boot, setBoot] = useState<BootState>(() => ({
     startedAt: Date.now(),
     hasDocument: false,
@@ -148,6 +186,8 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   const selectionRef = useRef<WorkspaceFile | null>(null);
   /** The selection is offered once per wake-up, not on every selection change. */
   const autoOpenRef = useRef(false);
+  /** One restore per mount: shutting the tab is not a reason to reopen twice. */
+  const restoreRef = useRef(false);
   /** Read by the shortcut gate, which is registered once and re-checked per keydown. */
   const awakeRef = useRef(false);
   const reloadRef = useRef<() => void>(() => {});
@@ -310,9 +350,37 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
         setBinding(next);
         bindingRef.current = next;
         setSavedAt(null);
+        void rememberDocument(ctx, { path: file.path, name: file.name, mime: "" });
         return;
       }
       setNotice(strings.openManual);
+    })();
+  }, [awake, phase, ctx, strings]);
+
+  // Closing the activity tab destroys the frame, and the frame was holding the document:
+  // the wasm app keeps its own state and the `srcDoc` is rebuilt from scratch, so the
+  // panel came back empty while the file sat untouched in the project — the user then had
+  // to leave the conversation, find it in the file tree and drag it back in. The path is
+  // the only thing that was missing, so it is written on every open and read once here.
+  //
+  // Only after the engine reports a frame, and never over a host selection: a selection
+  // is a fresher instruction than anything we remembered.
+  useEffect(() => {
+    if (!awake || phase !== "ready" || restoreRef.current) return;
+    restoreRef.current = true;
+    if (selectionRef.current) return;
+    void (async () => {
+      const last = await recallDocument(ctx);
+      if (!last || bindingRef.current?.path === last.path) return;
+      const loaded = await readWorkspaceFile(ctx, { path: last.path, name: last.name });
+      if (!loaded) return;
+      const result = await openDocument({ bytes: loaded.bytes, name: last.name, mime: last.mime });
+      if (!result.opened) return;
+      const next = { path: last.path, name: last.name };
+      setBinding(next);
+      bindingRef.current = next;
+      setSavedAt(null);
+      setNotice(strings.restored.replace("{name}", last.name));
     })();
   }, [awake, phase, ctx, strings]);
 
@@ -341,6 +409,18 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
     const onMessage = (event: MessageEvent): void => {
       const target = frameRef.current?.contentWindow;
       if (!target || event.source !== target) return; // 0002 D3: identity, not origin
+
+      // A right-click the page forwarded. It is a position, not a protocol message, so
+      // it is handled before the guard below: pointer events over an iframe never reach
+      // this document, which is why `host-bridge.js` relays the press.
+      const pressed = event.data as { type?: unknown; x?: unknown; y?: unknown } | null;
+      if (pressed && pressed.type === "craft:contextmenu") {
+        setMenu({
+          x: typeof pressed.x === "number" ? pressed.x : 0.5,
+          y: typeof pressed.y === "number" ? pressed.y : 0.5,
+        });
+        return;
+      }
       if (!isLinkMessage(event.data)) return;
       const data = event.data;
 
@@ -494,6 +574,58 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
     }
   }, [backend, binding, ctx, phase, strings]);
 
+  // ------------------------------------------------------ a region, not the page
+
+  /**
+   * "Hand it to the AI" used to mean the whole page. A deck has one slide the question
+   * is about, and a CAD drawing has one detail; describing either in words costs more
+   * than pointing at it. So the marquee the user draws over the frame is cropped by the
+   * page itself (`craft:capture` takes normalized coordinates) and lands on disk, and
+   * the path travels with the prompt.
+   *
+   * What this cannot do: the canvas is one wasm surface, so there are no elements to
+   * pick. The rectangle is the smallest unit the shell can ask for.
+   */
+  const captureRegion = useCallback(
+    async (rect: RegionRect): Promise<void> => {
+      setPicking(false);
+      const area = clampRegion(rect);
+      if (!area) {
+        publishCraftNote({ at: Date.now(), kind: "notice", detail: strings.regionTooSmall, ok: false });
+        return;
+      }
+      try {
+        const shot = await saveCanvasShot(ctx, { region: area, tag: "region" });
+        if (!shot) {
+          publishCraftNote({ at: Date.now(), kind: "notice", detail: strings.regionFailed, ok: false });
+          return;
+        }
+        setRegion({ path: shot.path, rect: area });
+        const line = strings.regionLead
+          .replace("{app}", APP.name)
+          .replace("{document}", bindingRef.current?.name ?? strings.untitled)
+          .replace("{rect}", rectLabel(area))
+          .replace("{path}", shot.path);
+        await ctx.conversation.insertText(`${line}\n`);
+      } catch (error) {
+        publishCraftNote({
+          at: Date.now(),
+          kind: "notice",
+          detail: `${strings.regionFailed} — ${String((error as Error)?.message ?? error)}`,
+          ok: false,
+        });
+      }
+    },
+    [ctx, strings],
+  );
+
+  const beginRegion = useCallback((): void => {
+    setMenu(null);
+    setPicking(true);
+  }, []);
+  const cancelRegion = useCallback((): void => setPicking(false), []);
+  const closeMenu = useCallback((): void => setMenu(null), []);
+
   // ------------------------------------------------- what the model should know
 
   // The state of this editor rides along with the prompt **only while this tab is the
@@ -529,13 +661,16 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
           phase,
           backend: backend || null,
           capture: craftShotPath(),
+          // The crop the user pointed at, so the model knows a region was chosen on
+          // purpose and where the file is. Absent until the first marquee.
+          region: region ? { path: region.path, rect: region.rect } : null,
           recent: craftNotes()
             .slice(-6)
             .map((note) => ({ kind: note.kind, detail: note.detail, ok: note.ok })),
         },
       }),
     });
-  }, [awake, tab.active, binding, phase, backend, notes, ctx]);
+  }, [awake, tab.active, binding, phase, backend, notes, region, ctx]);
 
   // A closed tab must not leave a chip in the input bar pointing at nothing.
   useEffect(() => () => ctx.ui.setPromptAttachment(null), [ctx]);
@@ -581,5 +716,11 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
     toggleFullscreen: fullscreen.toggle,
     reload,
     askAgent,
+    picking,
+    beginRegion,
+    cancelRegion,
+    captureRegion,
+    menu,
+    closeMenu,
   };
 }
