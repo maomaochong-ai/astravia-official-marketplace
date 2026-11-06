@@ -8,10 +8,9 @@
  * The script lives inside the plugin because the thing it produces is the plugin's own
  * runtime payload: `payload/manifest.json` and `web/` are this plugin's files, and
  * `web/` is what the package ships. It reads that manifest, so it has no `--slug`: the
- * plugin it works on is the one it sits in. The repository-level
- * `scripts/build-craft-web.mjs` only forwards to these per-plugin entries, so `--all`
- * and CI's per-slug loop keep one implementation per plugin instead of a shared one
- * outside them.
+ * plugin it works on is the one it sits in. There is no repository-level dispatcher either —
+ * `scripts/marketplace.mjs` runs this file inside the plugin it is packaging, so the download
+ * has exactly one implementation, and it belongs to the plugin that carries it.
  *
  * Every plugin carries `payload/manifest.json` (schemaVersion 4): which upstream
  * repository, which of its releases, the 40-hex commit that release points at, the name
@@ -58,7 +57,7 @@ function parseArgs(argv) {
 		const arg = argv[i];
 		if (arg === "--if-missing") options.ifMissing = true;
 		else if (arg === "--slug" || arg === "--all") {
-			throw new Error(`${arg} belongs to scripts/build-craft-web.mjs: this entry builds ${SLUG} only`);
+			throw new Error(`${arg} is not an argument of this entry: it builds ${SLUG}, the plugin it sits in`);
 		} else throw new Error(`unknown argument: ${arg}`);
 	}
 	return options;

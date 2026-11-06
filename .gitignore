@@ -28,8 +28,9 @@ docs/daily-reports/
 # 逆向产物（反编译的宿主 asar、探针脚本），永不入库
 .re/
 
-# Plugin sites: upstream web builds, produced at pack time by scripts/build-craft-web.mjs and by
-# each plugin's own recipe (excalidraw: abilities/plugins/excalidraw/scripts/build-excalidraw-web.mjs).
+# Plugin sites: upstream web builds, staged at pack time by the script inside the plugin that
+# ships it (abilities/plugins/<slug>/scripts/build-craft-web.mjs), and by each plugin's own recipe
+# (excalidraw: abilities/plugins/excalidraw/scripts/build-excalidraw-web.mjs).
 # The latter unpacks the upstream tree under `.cache/` (a source checkout plus its node_modules),
 # so that stays out of the archive.
 .cache/

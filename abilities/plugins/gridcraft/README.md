@@ -55,7 +55,7 @@ sha256 与上游同版 `SHA256SUMS.txt` 里那一行必须同时对上，然后�
 npm install
 npm run check                                            # tsc --noEmit
 npm run build                                            # tsc --noEmit && vite build
-node ../../scripts/build-craft-web.mjs --slug gridcraft        # 下载并校验上游站点（加 --if-missing 可跳过已就位的）
+node scripts/build-craft-web.mjs        # 下载并校验上游站点（加 --if-missing 可跳过已就位的）
 ```
 
 `src/**` 在十五支 craft 插件之间逐字节相同，唯一按应用不同的是 `src/app.config.ts`（还有

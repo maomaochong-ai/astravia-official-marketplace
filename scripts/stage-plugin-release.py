@@ -18,8 +18,9 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
 RUNTIME_FILES = {"plugin.json", "package.json", "README.md", "LICENSE", "runtime-lock.json", "upstream.json"}
-# `web` is the static site a craft plugin ships: upstream's own web build, produced by
-# scripts/build-craft-web.mjs in CI. It is gitignored and only exists at packaging time.
+# `web` is the static site a craft plugin ships: upstream's own web build, staged by that
+# plugin's own scripts/build-craft-web.mjs while the package is assembled. It is gitignored
+# and only exists at packaging time.
 RUNTIME_DIRS = {"dist", "locales", "agent", "assets", "service", "web"}
 SKIP_DIRS = {"node_modules", "src", "test", "tests", "release", ".git", ".vite"}
 MAX_BYTES = 50 * 1024 * 1024

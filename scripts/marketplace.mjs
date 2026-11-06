@@ -271,8 +271,14 @@ async function main() {
       const payloadPin = join(directory, 'payload/manifest.json');
       if (existsSync(payloadPin)) {
         const pin = JSON.parse(readFileSync(payloadPin, 'utf8'));
-        const builder = pin.build?.kind === 'source-build' ? pin.build.recipe : 'scripts/build-craft-web.mjs';
-        execFileSync(process.execPath, [join(root, builder), '--slug', basename(directory), '--if-missing'], { cwd: root, stdio: 'inherit' });
+        // Two shapes exist, and both live inside the plugin that owns the site: a pinned release
+        // archive (schemaVersion 4) staged by that plugin's `scripts/build-craft-web.mjs`, and an
+        // upstream source build (schemaVersion 5) run from its repo-relative recipe. There is no
+        // repository-level dispatcher — the plugin it belongs to is the one the script works on.
+        const fromSource = pin.build?.kind === 'source-build';
+        const builder = fromSource ? join(root, pin.build.recipe) : join(directory, 'scripts/build-craft-web.mjs');
+        const builderArgs = fromSource ? ['--slug', basename(directory), '--if-missing'] : ['--if-missing'];
+        execFileSync(process.execPath, [builder, ...builderArgs], { cwd: root, stdio: 'inherit' });
       }
     },
   });

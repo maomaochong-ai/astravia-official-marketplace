@@ -17,7 +17,7 @@ cd abilities/plugins/figcraft
 npm install
 npm run check      # tsc --noEmit
 npm run build      # dist/ 供本地预检，正式 .astraviapkg 由 CI 构建
-node ../../scripts/build-craft-web.mjs --slug figcraft   # 下载并校验上游站点；--if-missing 跳过已就位的
+node scripts/build-craft-web.mjs   # 下载并校验上游站点（加 --if-missing 可跳过已就位的）
 ```
 
 ## 改东西的正确位置

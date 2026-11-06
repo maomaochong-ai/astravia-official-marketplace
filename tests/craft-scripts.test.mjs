@@ -2,13 +2,13 @@
  * The site each craft plugin ships is built by a script inside that plugin.
  *
  * `web/` is the plugin's own runtime payload, so the step that produces it belongs beside
- * `payload/manifest.json` rather than in the repository's `scripts/`. The repository keeps
- * only a loop (`scripts/build-craft-web.mjs`) so `--all` and CI's per-slug call still work.
+ * `payload/manifest.json` rather than in the repository's `scripts/`. There is one copy per
+ * plugin and no repository-level forwarder: the packaging step reaches into the plugin it is
+ * building and runs the script sitting there.
  *
  * Fifteen copies of the same download is only acceptable while they stay one download:
- * this test holds them to designcraft's copy byte for byte, and checks that the loop
- * forwards the arguments the packaging step actually passes instead of re-implementing
- * anything itself.
+ * this test holds them to designcraft's copy byte for byte, and checks that the packaging
+ * step still calls a per-plugin entry instead of growing a shared one again.
  */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -47,13 +47,19 @@ test("the site builder works on the plugin it sits in", () => {
 	assert.match(source, /payload\/manifest\.json/);
 });
 
-test("the repository entry only loops over the per-plugin ones", () => {
-	const loop = readFileSync(new URL("../scripts/build-craft-web.mjs", import.meta.url), "utf8");
-	// The shared file must not keep a second implementation of the download.
-	assert.doesNotMatch(loop, /SHA256SUMS\.txt/);
-	assert.doesNotMatch(loop, /repairModuleGraph/);
-	assert.match(loop, /spawnSync\(process\.execPath/);
-	// The packaging step calls it as `--slug <dir> --if-missing`; that contract stays.
-	assert.match(loop, /arg === "--if-missing"/);
-	assert.match(loop, /arg === "--slug"/);
+test("the repository keeps no second copy of the site builder", () => {
+	// A repo-level dispatcher used to forward `--slug`/`--all` here. It was a third place to
+	// keep in sync with nothing to add, and the packaging step can address a plugin directly,
+	// so it is gone; this guards against it growing back.
+	assert.equal(existsSync(new URL("../scripts/build-craft-web.mjs", import.meta.url)), false);
+
+	const packaging = readFileSync(new URL("../scripts/marketplace.mjs", import.meta.url), "utf8");
+	// The pinned-release branch must run the script inside the plugin being built, without a
+	// `--slug`: that argument is what the per-plugin entry rejects.
+	assert.match(packaging, /join\(directory, 'scripts\/build-craft-web\.mjs'\)/);
+	assert.match(packaging, /fromSource\s*\?\s*\['--slug', basename\(directory\), '--if-missing'\]\s*:\s*\['--if-missing'\]/);
+	// Exactly one call site. A leftover second invocation would stage the same site twice and, worse,
+	// the stale one passes `--slug`, which the per-plugin entry rejects outright.
+	assert.equal(packaging.split("execFileSync(process.execPath, [builder").length - 1, 1,
+		"the payload step must reach the builder exactly once");
 });
