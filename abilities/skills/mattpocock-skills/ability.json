@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "type": "skill",
+  "slug": "mattpocock-skills",
+  "name": "Matt Pocock Engineering Workflows",
+  "description": "Run real-engineering loops with Matt Pocock's composable skill modules: TDD, code review, bug diagnosis, specs and tickets, triage, PRs, prototyping, research, grilling interviews, handoffs and more — 38 modules in one package.",
+  "version": "1.0.0",
+  "configVersion": 1,
+  "license": "MIT",
+  "author": "Matt Pocock",
+  "category": "Development",
+  "categoryI18n": { "zh": "开发", "en": "Development" },
+  "tags": ["engineering", "tdd", "code-review", "debugging", "planning", "writing"],
+  "icon": "assets/icon.svg",
+  "detail": {
+    "format": "blocks",
+    "path": "detail.json",
+    "meta": [
+      { "key": "repository", "value": "https://github.com/mattpocock/skills" },
+      { "key": "upstreamRevision", "value": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d" },
+      { "key": "license", "value": "MIT" }
+    ],
+    "i18n": {
+      "zh": {
+        "name": "Matt Pocock 工程工作流",
+        "description": "用 Matt Pocock 的可组合工程技能模块跑真实的工程流程：TDD、代码评审、缺陷诊断、规格与工单、问题分诊、PR 撰写、原型验证、调研、拷问式评审、会话交接等——一个包内含 38 个功能模块。",
+        "tags": ["工程实践", "TDD", "代码评审", "调试", "规划", "写作"],
+        "path": "detail.zh.json"
+      }
+    }
+  }
+}
