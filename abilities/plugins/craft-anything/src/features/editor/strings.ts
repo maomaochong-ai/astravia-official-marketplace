@@ -18,6 +18,8 @@ export interface EditorStrings {
   fullscreenFailed: string;
   /** Name for the strip that lists what the page just did. */
   activity: string;
+  /** Prefix for the last screenshot path, so the agent can open the picture itself. */
+  activityCapture: string;
   selectInExplorer: string;
   saved: string;
   saveFailed: string;
@@ -81,6 +83,7 @@ const en: EditorStrings = {
   exitFullscreen: "Exit full screen",
   fullscreenFailed: "Full screen unavailable",
   activity: "Recent actions",
+  activityCapture: "Screenshot —",
   selectInExplorer: "Select one file in the Explorer, then press Open.",
   saved: "Saved",
   saveFailed: "Save failed",
@@ -125,6 +128,7 @@ const zh: EditorStrings = {
   exitFullscreen: "退出全屏",
   fullscreenFailed: "无法进入全屏",
   activity: "最近动作",
+  activityCapture: "截图 —",
   selectInExplorer: "先在左侧资源管理器选中一个文件，再点打开。",
   saved: "已保存",
   saveFailed: "保存失败",

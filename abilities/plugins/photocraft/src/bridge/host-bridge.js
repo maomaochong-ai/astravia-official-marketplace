@@ -529,6 +529,56 @@
     }
   }
 
+  // ------------------------------------------------------- where the click lands
+  //
+  // The HUD narrates a step; it does not show *where* it happened. On a canvas that
+  // is the difference between watching someone work and reading a log: the pointer
+  // has to be visible at the coordinate the tool used. So every gesture drops a ring
+  // on the page, in the page's own coordinate space, for two thirds of a second.
+  //
+  // It is drawn inside the frame, not in the plugin's React tree, because that is the
+  // only place that knows the canvas box: `pointAt` already resolved the fractions to
+  // viewport pixels, and a fixed overlay in the same document cannot drift.
+
+  var RING_ID = "astravia-craft-pointer";
+  var ringTimer = 0;
+
+  function ringNode() {
+    var node = document.getElementById(RING_ID);
+    if (node) return node;
+    node = document.createElement("div");
+    node.id = RING_ID;
+    node.setAttribute("aria-hidden", "true");
+    node.style.cssText =
+      "position:fixed;z-index:2147483646;width:30px;height:30px;margin:-15px 0 0 -15px;" +
+      "pointer-events:none;opacity:0;transition:opacity .2s ease;" +
+      "border:2px solid rgba(56,189,248,.95);border-radius:50%;" +
+      "box-shadow:0 0 0 5px rgba(56,189,248,.16),0 0 14px rgba(56,189,248,.55);";
+    var dot = document.createElement("div");
+    dot.style.cssText =
+      "position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;" +
+      "border-radius:50%;background:#38bdf8;";
+    node.appendChild(dot);
+    document.body.appendChild(node);
+    return node;
+  }
+
+  /** A ring where the gesture is about to land; failure here must never fail a step. */
+  function mark(point) {
+    try {
+      var node = ringNode();
+      node.style.left = point.x + "px";
+      node.style.top = point.y + "px";
+      node.style.opacity = "1";
+      if (ringTimer) clearTimeout(ringTimer);
+      ringTimer = setTimeout(function () {
+        node.style.opacity = "0";
+      }, 900);
+    } catch (error) {
+      /* a marker that cannot be drawn is not a step that failed */
+    }
+  }
+
   function sleep(ms) {
     return new Promise(function (resolve) {
       setTimeout(resolve, ms);
@@ -609,6 +659,7 @@
     var opts = options || {};
     var point = pointAt(canvas, fx, fy);
     if (!point.width || !point.height) throw new Error("canvas-not-laid-out");
+    mark(point);
     focusCanvas(canvas);
     var button = typeof opts.button === "number" ? opts.button : 0;
     fire(canvas, "pointermove", point, button, 0);
@@ -637,6 +688,7 @@
     var start = pointAt(canvas, from.x, from.y);
     var end = pointAt(canvas, to.x, to.y);
     if (!start.width || !start.height) throw new Error("canvas-not-laid-out");
+    mark(start);
     focusCanvas(canvas);
     var moves = Math.min(24, Math.max(3, count || 8));
     fire(canvas, "pointermove", start, 0, 0);
@@ -653,6 +705,7 @@
       fire(canvas, "mousemove", point, 0, 1);
       await frames(1);
     }
+    mark(end);
     fire(canvas, "pointerup", end, 0, 0);
     fire(canvas, "mouseup", end, 0, 0);
     fire(canvas, "click", end, 0, 0);

@@ -110,7 +110,8 @@ description: "Design interfaces and prototypes inside Astravia — the upstream 
 ## 关掉标签页再打开
 
 关掉活动标签页会销毁 iframe，而文档原本住在里面。所以每次成功打开都会把路径记在
-`.craft/last-document.json`，面板回来时自己把那个文件重新打开一次（不会覆盖资源管理器里当前选中的文件）。
+插件自己的存储（`ctx.storage`，键 `last-document.json`），面板回来时自己把那个文件重新打开一次（不会覆盖资源管理器里当前选中的文件）。
+记下的还有当时的 `cwd`：只有在同一个项目里才恢复——这样两支插件在同一会话里不会互相顶掉对方的文档。
 这就是"产物关一次 tab 就消失"的解法：文件一直在项目里，缺的只是名字。
 
 ## 硬规则

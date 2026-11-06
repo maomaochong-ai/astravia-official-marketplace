@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "plugin",
   "slug": "materialcraft",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "icon": "assets/icon.png",
   "detail": {
     "format": "blocks",

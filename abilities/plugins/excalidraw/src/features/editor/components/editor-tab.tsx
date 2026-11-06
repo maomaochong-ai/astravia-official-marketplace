@@ -21,9 +21,10 @@ export function EditorTab({ ctx }: { ctx: PluginContext }): JSX.Element {
 
   return (
     <div ref={containerRef} className={shell}>
-      <EditorStatusBar session={session} />
-
       <div className="relative min-h-0 flex-1">
+        {/* The bar floats over the app instead of pushing it down; it is only there
+            while the pointer is at the top edge or while it has something to say. */}
+        <EditorStatusBar session={session} />
         {iframeDoc ? (
           <iframe
             key={iframeKey}

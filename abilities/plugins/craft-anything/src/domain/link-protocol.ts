@@ -160,7 +160,13 @@ export function nextDowngrade(current: Downgrade): Downgrade | null {
 /**
  * Only a boot failure is ours to answer. A stray script error reported by the
  * bridge must not cost the user a rendering rung.
+ *
+ * A wasm image that cannot instantiate belongs here too: "Out of memory" is what a
+ * 30 MB build says when the GPU-flavoured backend asks for a heap the renderer will
+ * not give it, and the ladder is exactly the answer — the next rung allocates less.
+ * It used to be classed as a stray error, so those plugins sat on `starting` until
+ * the cover timed out instead of stepping down.
  */
 export function isBootFailure(message: string): boolean {
-  return /failed to start|boot-timeout/i.test(message);
+  return /failed to start|boot-timeout|out of memory|WebAssembly\.(instantiate|compile)/i.test(message);
 }

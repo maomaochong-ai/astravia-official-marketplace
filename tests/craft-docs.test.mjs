@@ -41,6 +41,7 @@ const FAMILY_DOCS = [
 	"craft-0020-the-editor-no-longer-occupies-everything.md",
 	"craft-0021-the-canvas-is-clicked-not-covered.md",
 	"craft-0022-a-document-outlives-its-tab.md",
+	"craft-0023-memory-is-private-and-the-pointer-is-visible.md",
 	"craft-CONTEXT.md",
 ];
 

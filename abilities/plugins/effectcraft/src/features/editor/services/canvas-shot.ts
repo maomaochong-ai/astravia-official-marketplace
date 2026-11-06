@@ -24,7 +24,7 @@ import { askCraftFrame, craftWorkspace, recordCraftShot } from "../session-regis
  *
  * ADR: docs/adr/<slug>/craft-0019-the-agent-looks-at-the-picture.md
  */
-export const SHOT_DIR = ".craft/shots";
+export const SHOT_DIR = `.craft/${APP.id}/shots`;
 const KEEP = 6;
 const CAPTURE_TIMEOUT_MS = 30_000;
 

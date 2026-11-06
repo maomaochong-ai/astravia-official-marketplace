@@ -129,8 +129,28 @@ export interface SiteDocumentRequest {
  * Upstream `index.html` with the base, the URL, the seeds and the bridge in place.
  * Throws when the package carries no site — the tab then says so instead of showing
  * an empty frame.
+ *
+ * The result is cached for the life of the module: the package files only change when
+ * the plugin is reinstalled, and the host unmounts a cold tab while the module stays
+ * loaded, so a second open of the same tab was re-reading and re-rewriting the whole
+ * document for no reason. `forgetSiteDocument()` is what a reload calls, because a
+ * reload means "the frame went wrong", and the document is the one part that might be.
  */
+let cached: { key: string; document: string } | null = null;
+
+export function forgetSiteDocument(): void {
+  cached = null;
+}
+
 export async function buildSiteDocument(request: SiteDocumentRequest): Promise<string> {
+  const key = `${request.mode}:${request.uiLang}`;
+  if (cached && cached.key === key) return cached.document;
+  const built = await renderSiteDocument(request);
+  cached = { key, document: built };
+  return built;
+}
+
+async function renderSiteDocument(request: SiteDocumentRequest): Promise<string> {
   const root = siteRoot();
   const response = await fetch(new URL("index.html", root), { cache: "no-cache" });
   if (!response.ok) throw new Error(`site-index-${response.status}`);

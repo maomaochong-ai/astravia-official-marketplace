@@ -10,7 +10,7 @@ import {
   nextDowngrade,
 } from "../../../domain/link-protocol.ts";
 import type { CraftNote, Downgrade } from "../../../domain/link-protocol.ts";
-import { buildSiteDocument, siteRoot } from "../services/site-document.ts";
+import { buildSiteDocument, forgetSiteDocument, siteRoot } from "../services/site-document.ts";
 import { APP } from "../../../app.config.ts";
 import { editorStrings } from "../strings.ts";
 import type { EditorStrings } from "../strings.ts";
@@ -532,6 +532,8 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   const fullscreen = useContainerFullscreen(reportFullscreenError);
 
   const reload = useCallback((): void => {
+    // A reload means the frame is what went wrong, so the cached document goes too.
+    forgetSiteDocument();
     // A reload is a fresh start: try WebGPU again before falling back.
     modeRef.current = "auto";
     setMode("auto");
@@ -562,6 +564,10 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
       `${strings.askAgentLead} ${APP.name} · ${binding?.name ?? strings.untitled} · ${phase}`,
       `${strings.backendLabel} ${backend || "—"}`,
     ];
+    // The picture itself, when one was already taken: a path the agent can open is
+    // worth more than any adjective about what is on the canvas.
+    const shot = craftShotPath();
+    if (shot) lines.push(`${strings.activityCapture} ${shot}`);
     const tail = craftNotes()
       .slice(-3)
       .map((note) => `· ${note.kind}: ${note.detail}`);

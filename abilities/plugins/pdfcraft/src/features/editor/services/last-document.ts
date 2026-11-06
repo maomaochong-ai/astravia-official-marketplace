@@ -11,13 +11,20 @@ import { craftWorkspace } from "../session-registry.ts";
  * project. The user then had to leave the conversation, find it in the file tree and
  * drag it back — for a file the plugin itself opened a minute earlier.
  *
- * A photo of the path is enough to undo that. It is one small JSON file in the same
- * `.craft/` directory the shots already use, written on every successful open and read
- * once per mount, after the engine reports its first frame. Nothing is remembered about
- * the *content*: if the file changed on disk, the newer bytes are what comes back.
+ * It lives in `ctx.storage`, which the host scopes to *this* plugin: a private
+ * directory per installed plugin, written to disk, surviving a restart. That is the
+ * whole point — an earlier version wrote `.craft/last-document.json` into the project,
+ * one shared file for fifteen plugins, so a deck opened after a document handed the
+ * deck the document. The plugin that remembers has to own its memory.
+ *
+ * The project is part of the record (`cwd`): a file path only means something in the
+ * project it was opened from, and restoring a document from another project would be
+ * worse than restoring nothing. Nothing is remembered about the *content*: if the file
+ * changed on disk, the newer bytes are what comes back.
  */
 
-export const LAST_DOCUMENT = ".craft/last-document.json";
+/** Storage key inside this plugin's private directory. */
+export const LAST_DOCUMENT = "last-document.json";
 
 /** Older than this and the restore is noise, not continuity. */
 const STALE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -29,45 +36,41 @@ export interface LastDocument {
   mime: string;
   /** Epoch ms of the open that recorded this, so a stale entry can be left alone. */
   at: number;
-}
-
-function filePath(): string | null {
-  const cwd = craftWorkspace();
-  return cwd ? `${cwd}/${LAST_DOCUMENT}` : null;
+  /** The project the path belongs to; a different one is not this plugin's business. */
+  cwd: string;
 }
 
 export async function rememberDocument(
   ctx: PluginContext,
   opened: { path: string; name: string; mime: string },
 ): Promise<void> {
-  const target = filePath();
-  if (!target) return;
-  const record: LastDocument = { path: opened.path, name: opened.name, mime: opened.mime, at: Date.now() };
+  const cwd = craftWorkspace();
+  if (!cwd) return;
+  const record: LastDocument = { path: opened.path, name: opened.name, mime: opened.mime, at: Date.now(), cwd };
   try {
-    await ctx.fs.createDirectory(`${craftWorkspace()}/.craft`);
-  } catch {
-    /* already there is the ordinary case */
-  }
-  try {
-    await ctx.fs.writeFile(target, `${JSON.stringify(record, null, 2)}\n`, "utf8");
+    await ctx.storage.writeFile(LAST_DOCUMENT, `${JSON.stringify(record, null, 2)}\n`, "utf8");
   } catch {
     /* a lost memory is not a failed open */
   }
 }
 
 export async function recallDocument(ctx: PluginContext): Promise<LastDocument | null> {
-  const target = filePath();
-  if (!target) return null;
+  const cwd = craftWorkspace();
+  if (!cwd) return null;
   try {
-    const read = await ctx.fs.readFile(target);
-    const parsed = JSON.parse(read.content) as Partial<LastDocument>;
+    const raw = await ctx.storage.readFile(LAST_DOCUMENT, "utf8");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<LastDocument>;
     if (typeof parsed.path !== "string" || !parsed.path) return null;
+    // Another project's document is not this panel's to reopen.
+    if (typeof parsed.cwd === "string" && parsed.cwd !== cwd) return null;
     if (typeof parsed.at === "number" && Date.now() - parsed.at > STALE_MS) return null;
     return {
       path: parsed.path,
       name: typeof parsed.name === "string" ? parsed.name : parsed.path.split("/").pop() || APP.name,
       mime: typeof parsed.mime === "string" ? parsed.mime : "",
       at: typeof parsed.at === "number" ? parsed.at : 0,
+      cwd: typeof parsed.cwd === "string" ? parsed.cwd : cwd,
     };
   } catch {
     // Missing, unreadable or written by an older build: nothing to restore.
