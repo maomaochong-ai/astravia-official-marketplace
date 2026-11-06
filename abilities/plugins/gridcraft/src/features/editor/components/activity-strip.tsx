@@ -19,11 +19,20 @@ import type { EditorStrings } from "../strings.ts";
  * ADR: docs/adr/<slug>/craft-0018-the-header-became-a-corner.md
  */
 const HOLD_MS = 6000;
-const ROWS = 3;
+/**
+ * A notice is an instruction, not an event, so it is allowed to linger longer than a
+ * step report — but not forever. It used to never expire, which left one strip of text
+ * permanently on top of the canvas it was describing.
+ */
+const NOTICE_MS = 20000;
+const ROWS = 2;
 // An intent is cleared by `tool-call-end`. If that event never arrives (the turn was
 // aborted mid-stream), the hint must not sit there claiming work is queued.
 const INTENT_TTL_MS = 120_000;
 
+function holdFor(note: CraftNote | null): number {
+	return note?.kind === "notice" ? NOTICE_MS : HOLD_MS;
+}
 const TONE: Record<string, string> = {
 	notice: "text-amber-300",
 	step: "text-sky-300",
@@ -52,7 +61,7 @@ export function ActivityStrip({
 	// permanent strip on a canvas the user is trying to look at.
 	useEffect(() => {
 		if (!last) return;
-		const wait = Math.max(0, last.at + HOLD_MS - Date.now()) + 20;
+		const wait = Math.max(0, last.at + holdFor(last) - Date.now()) + 20;
 		const timer = setTimeout(() => setNow(Date.now()), wait);
 		return () => clearTimeout(timer);
 	}, [last]);
@@ -66,12 +75,9 @@ export function ActivityStrip({
 		return () => clearTimeout(timer);
 	}, [intent]);
 
-	// A notice is an instruction ("use File › Open; your selection is waiting"), not a
-	// transient event, so it stays until the page does something else.
-	const pinned = last?.kind === "notice";
 	const queued = intent !== null && intent.at + INTENT_TTL_MS > now;
 	const visible =
-		progress !== null || queued || (last !== null && (pinned || last.at + HOLD_MS > now));
+		progress !== null || queued || (last !== null && last.at + holdFor(last) > now);
 	if (!visible) return null;
 
 	const pending = progress === null && queued;

@@ -10,7 +10,7 @@ description: "Draw vector artwork in VectorCraft inside Astravia: paths, bezier 
 
 所以**这个能力的上限就是 VectorCraft 本身**。插件只负责把动作送进去、把画面读回来；做成什么样，仍然由你和用户共同决定。
 
-## 五个工具
+## 六个工具
 
 名字都带 `vectorcraft_` 前缀，全部打到正在运行的那个页面上，所以**标签页必须先开着**。工具少是有意的：一次批量胜过十次往返。
 
@@ -20,6 +20,7 @@ description: "Draw vector artwork in VectorCraft inside Astravia: paths, bezier 
 | 只想看状态，不打开任何东西 | `vectorcraft_editor_status` | 同上，或 `{open:false}` |
 | 一次做完一串指针与键盘动作 | `vectorcraft_act` | `{ok, steps[], elapsedMs, before, after, change, shot, previewed}` |
 | 读画布：文字地图 + 平均色 | `vectorcraft_probe` | `{cells, cols, rows, mean, meanRgb, contrast, shot, previewed}` |
+| 等画面稳定（滤镜、导出、重排这些不会立刻画完） | `vectorcraft_wait` | `{settled, elapsedMs, looks, change, probe, shot, previewed}` |
 | 把文件真正打开（暂存 + Ctrl+O + 等载入） | `vectorcraft_open_document` | `{opened, probe, change}` |
 
 `vectorcraft_act` 的 `steps` 是一个数组，`op` 取 `click` / `move` / `drag` / `scroll` / `type` / `key` / `wait` /
@@ -39,6 +40,19 @@ description: "Draw vector artwork in VectorCraft inside Astravia: paths, bezier 
 
 它不替代眼睛：文字的排布细节、细小控件的位置、字体与字距都看不出来。要精确到像素的判断，让用户看屏幕，
 或者 `vectorcraft_probe` 时把 `region` 收窄到那一块、把 `columns` / `rows` 调大到 64 × 36 再读。
+
+## 等它画完
+
+`vectorcraft_act` 在最后一步发出去时就返回了，页面还在继续画：滤镜在算、预览在渲染、页面在重排。这时候直接 `probe`
+读到的是半成品，容易当成结果，也容易在同一个位置上再点一次。
+
+`vectorcraft_wait` 补的就是这一段：每 250 ms 读一次文字地图，`cells` 与 `mean` 连续 600 ms 不变就算落定，
+回 `{settled, elapsedMs, looks, change}`。它**不动画面**——不发点击、不发按键。
+
+- `settled: true` 才继续判断。`settled: false` 是超时（默认 20 s），说明画面一直在动：把这一点如实
+  告诉用户，不要同一个形状试第三次。
+- `change.changed` 才是"这一批到底有没有做事"的证据，比 `act` 的 `ok` 可靠。
+- 一次导出、一次大滤镜、一次整页重排，都可以先 `_wait`，再决定是交付还是继续改。
 
 ## 两双眼睛
 

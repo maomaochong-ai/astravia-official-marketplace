@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useActivityTab, useTranslation, type PluginContext } from "@astravia-org/plugin-sdk";
 import { AutomationOverlay } from "./automation-overlay";
 import { BoardmixSurface } from "./boardmix-surface";
 import { useBoardmixEntry } from "../hooks/use-boardmix-entry";
+import { usePromptAttachment } from "../hooks/use-prompt-attachment";
 import { setBoardmixTab, type BoardmixTabHandle } from "../services/tab-registry";
 import { setBoardmixWorkspace } from "../services/workspace-cwd";
 
@@ -16,13 +17,30 @@ export interface BoardmixWorkspaceProps {
  */
 export function BoardmixWorkspace({ ctx }: BoardmixWorkspaceProps) {
 	const { t } = useTranslation();
-	const { cwd } = useActivityTab();
+	const { cwd, active } = useActivityTab();
 	// 截图要落在项目里，而工具侧拿不到 cwd：由面板把当前 scope 交过去。
 	useEffect(() => {
 		setBoardmixWorkspace(cwd);
 	}, [cwd]);
 	const entry = useBoardmixEntry(ctx);
 	const surfaceRef = useRef<BoardmixTabHandle | null>(null);
+
+	// 面板自己会跳转，工具侧看不到它去了哪里；落一次记一次，胶囊里写的就是这个地址。
+	const [landedUrl, setLandedUrl] = useState<string | null>(null);
+	const onLanded = useCallback(
+		(url: string, landedAt: string) => {
+			setLandedUrl(url);
+			entry.persistLanded(url, landedAt);
+		},
+		[entry],
+	);
+
+	usePromptAttachment(ctx, {
+		active: active === true,
+		ready: entry.ready,
+		landedUrl: landedUrl ?? entry.ladder[0]?.url ?? null,
+		label: t("tab.title"),
+	});
 
 	useEffect(() => {
 		if (!entry.ready) return;
@@ -48,7 +66,7 @@ export function BoardmixWorkspace({ ctx }: BoardmixWorkspaceProps) {
 					surfaceRef.current = element;
 				}}
 				ladder={entry.ladder}
-				onLanded={entry.persistLanded}
+				onLanded={onLanded}
 				openExternal={entry.openExternal}
 				translate={t}
 			/>

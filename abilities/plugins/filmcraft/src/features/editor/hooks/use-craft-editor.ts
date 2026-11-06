@@ -37,13 +37,6 @@ import { useContainerFullscreen } from "./use-container-fullscreen.ts";
 export type EditorPhase = "starting" | "ready" | "failed";
 
 /**
- * How long a mounted-but-never-shown tab waits before loading an engine anyway. It
- * exists only for hosts that do not report tab visibility at all; on a host that does,
- * the tab wakes on its first `active` and this timer is cleared long before it fires.
- */
-const WAKE_FALLBACK_MS = 20000;
-
-/**
  * What the boot cover needs, all of it observed rather than estimated: when this frame's
  * document was handed to the iframe, the last line upstream painted into its own
  * `*_loading` element, and whether the bridge has already reported the boot as slow.
@@ -135,18 +128,17 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   // A tab the host keeps mounted but has never shown does not get an engine. Fifteen
   // of these apps selected at launch would otherwise compile fifteen 13–32 MB wasm
   // builds in the same renderer, which is the stall the operating system sees as a
-  // frozen window. The tab wakes on the first `active` the host reports; a host that
-  // predates that context never reports it, so a long fallback wakes the tab anyway
-  // instead of leaving a blank frame that only a reload could explain.
+  // frozen window.
+  //
+  // There used to be a twenty-second fallback here that woke the tab even when the host
+  // never reported `active`, on the theory that an old host might not report it at all.
+  // Every path that legitimately needs the editor goes through `openActivityTab`, which
+  // activates the tab, so the fallback only ever fired for tabs nobody was looking at:
+  // fifteen engines compiling behind a conversation that never asked for one. Removed.
   const [awake, setAwake] = useState(tab.active === true);
   useEffect(() => {
     if (awake) return;
-    if (tab.active) {
-      setAwake(true);
-      return;
-    }
-    const timer = setTimeout(() => setAwake(true), WAKE_FALLBACK_MS);
-    return () => clearTimeout(timer);
+    if (tab.active) setAwake(true);
   }, [awake, tab.active]);
 
   const frameRef = useRef<HTMLIFrameElement | null>(null);
@@ -504,17 +496,24 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
 
   // ------------------------------------------------- what the model should know
 
-  // The state of this tab is attached to every prompt the user sends while it is
-  // mounted: which document is in the frame, whether the engine came up on the GPU,
-  // and the last few things the page did. It is `sticky` because a canvas app stays
-  // the subject of the conversation until it is closed — a one-shot attachment would
-  // make the agent forget the artwork between two messages.
+  // The state of this editor rides along with the prompt **only while this tab is the
+  // one the user has selected** — the host draws the chip under the composer for as
+  // long as it is set, and a chip naming the editor while the user is talking about
+  // something else is furniture, not context. Selecting the tab is the moment the
+  // conversation starts being about this canvas; leaving it is the moment it stops.
+  //
+  // It is `sticky` for the stretch it is attached: a canvas app stays the subject of
+  // the conversation until the user looks away, and a one-shot attachment would make
+  // the agent forget the artwork between two messages.
   //
   // This is structured `context`, not `instructions`: the host renders the payload as
   // data (`<plugin_prompt_contexts>`) and the model is told to treat it as state, so a
   // file name can never read as an order.
   useEffect(() => {
-    if (!awake) return;
+    if (!awake || tab.active !== true) {
+      ctx.ui.setPromptAttachment(null);
+      return;
+    }
     ctx.ui.setPromptAttachment({
       id: `${APP.id}:editor`,
       label: APP.name,
@@ -536,7 +535,7 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
         },
       }),
     });
-  }, [awake, binding, phase, backend, notes, ctx]);
+  }, [awake, tab.active, binding, phase, backend, notes, ctx]);
 
   // A closed tab must not leave a chip in the input bar pointing at nothing.
   useEffect(() => () => ctx.ui.setPromptAttachment(null), [ctx]);

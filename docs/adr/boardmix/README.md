@@ -12,6 +12,7 @@
 | [0005](0005-the-skill-index-is-its-description.md) | 技能的索引面是 description，正文按需加载；五份技能骨架统一，细节下沉 references，另加一份人格 |
 | [0006](0006-automation-runs-before-the-answer.md) | 自动化是一次「运行」：提问时 hook 先行执行，状态落存储，面板覆盖层与对话同步显示 |
 | [0007](0007-the-panel-becomes-readable.md) | 面板变成可读可点：`executeJavaScript` / `capturePage` / `sendInputEvent` 三件原生能力，缺一件就整体拒绝；画布仍是像素 |
+| [0008](0008-the-chip-only-shows-while-you-look.md) | 面板不再自动上栏（`initiallyVisible: false`，工具仍能唤出），输入框下面的胶囊只在面板被选中时挂上，离开即清 |
 
 ## 一句话版本
 
@@ -22,6 +23,7 @@
 - 四个工具不够用，七个也还是不够：**工具只到「到达」，干活靠五份技能**。
 - 五份技能怎么被选中：`description` 是唯一路由面，正文按需加载，细节在各自的 `references/`。
 - 自动化不靠模型自觉：用户在提问里提到 `boardmix` / 白板，面板在回答之前就已经走到位了。
+- 面板不占惯常位置：不上标签栏，进面板的「+」列表；工具调用会把它打开并选中。输入框下面的胶囊只在面板被选中时挂上（ADR 0008）。
 - 免费账号 3 个文件 / 单文件 150 图元 / 导出带水印——限额要在动手前说，别在结算页才说。
 
 ## 两种载体

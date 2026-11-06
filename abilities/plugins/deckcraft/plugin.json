@@ -2,7 +2,7 @@
   "id": "deckcraft",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",

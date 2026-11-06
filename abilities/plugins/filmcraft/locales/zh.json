@@ -6,5 +6,6 @@
   "tool.status": "编辑器状态",
   "tool.act": "操作编辑器",
   "tool.probe": "看画布",
+  "tool.wait": "等画面稳定",
   "tool.document": "打开文件"
 }

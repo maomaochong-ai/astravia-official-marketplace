@@ -39,7 +39,18 @@ export default definePlugin({
       order: APP.tabOrder,
       // fail-closed in the host: an empty or missing list hides the tab everywhere.
       scope_use: ["conversation", "project"],
-      retention: "pinned",
+      // Not on the bar in a conversation where nobody has asked for this editor yet. A
+      // tab that shows up in every conversation by default puts fifteen editors in the
+      // strip, and each one that gets shown compiles a 13–32 MB wasm build. It stays in
+      // the panel's own "+" list, `openActivityTab` attaches it when a tool needs it, and
+      // once the user adds it the host records that per workspace — so it comes back in
+      // the conversations that used it and nowhere else.
+      initiallyVisible: false,
+      // `warm`, not `pinned`: the host keeps the active tab plus a couple of recently
+      // visited ones and drops the rest. Pinned meant every editor a user had ever opened
+      // stayed in memory for the life of the window, still holding its wasm instance —
+      // which is what made the fourth or fifth canvas fail to allocate one.
+      retention: "warm",
       component: function CraftActivityTab(): JSX.Element {
         return <CraftTab ctx={ctx} />;
       },

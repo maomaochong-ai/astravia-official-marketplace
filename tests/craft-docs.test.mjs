@@ -38,6 +38,7 @@ const FAMILY_DOCS = [
 	"craft-0017-the-selection-is-offered-through-the-apps-own-open.md",
 	"craft-0018-the-header-became-a-corner.md",
 	"craft-0019-the-agent-looks-at-the-picture.md",
+	"craft-0020-the-editor-no-longer-occupies-everything.md",
 	"craft-CONTEXT.md",
 ];
 

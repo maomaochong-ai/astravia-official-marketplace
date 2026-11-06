@@ -17,16 +17,18 @@ import type { CraftNote, LinkMessage } from "../../domain/link-protocol.ts";
 import { previewCanvasShot, saveCanvasShot } from "../editor/services/canvas-shot.ts";
 
 /**
- * The natural-language surface: five tools, one of which (`act`) carries the whole
+ * The natural-language surface: six tools, one of which (`act`) carries the whole
  * gesture vocabulary. The Agent drives the same page the tab shows, through the
  * bridge, and never reports a state it did not read back from the frame.
  *
- * Why five and not eleven: every craft plugin installed at once shares one flat tool
+ * Why six and not eleven: every craft plugin installed at once shares one flat tool
  * namespace, and the model's prompt pays for each name. Eleven tools per app across
  * fifteen apps is a menu nobody reads — `click`, `type` and `press_key` became the
  * `click` / `type` / `key` steps of one batch, and the batch is also what makes the
  * driving visible: it runs inside the page, paced by frames, with the shell narrating
- * each step, instead of one synchronous jump per round trip.
+ * each step, instead of one synchronous jump per round trip. `wait` is the one addition
+ * after that: a batch returns as soon as its last step is dispatched, so the missing
+ * verb was never another gesture but "give it a moment, then look again".
  *
  * How the Agent is expected to work: `act` → read the returned text map and colour →
  * `act` again. A plugin tool result reaches the model as text only, so pixels are
@@ -376,6 +378,114 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
         });
         if (!saved) return text({ ok: false, probe, error: "save-cancelled" });
         return text({ ok: true, probe, shot: shot?.path ?? null, previewed, path: saved, name: basename(saved) });
+      },
+    }),
+  );
+
+
+  // --------------------------------------------------------------------- settling
+
+  // `act` returns when the last step has been dispatched, and a canvas app keeps
+  // working after that: a filter recomputes, a slider re-renders, a wasm frame lands
+  // two hundred milliseconds late. Without a way to wait, the model's next move was to
+  // look immediately and find the picture half-drawn — then either describe that as the
+  // result or click again on top of it. This waits for the map to stop changing and
+  // says how long that took. It changes nothing in the page.
+
+  const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+  disposables.push(
+    ctx.agent.registerTool({
+      id: `${id}_wait`,
+      label: "%tool.wait%",
+      description:
+        `Wait until the ${APP.name} canvas stops changing, then report what it settled on. ` +
+        `Call it after \`${id}_act\` when that batch started something that takes time — apply ` +
+        `a filter, render a preview, re-lay a page — so the next look is at the finished ` +
+        `picture rather than a half-drawn one. ` +
+        `\`quiet_ms\` is how long the cell map must stay identical to count as settled (default ` +
+        `600 ms), \`probe_interval_ms\` is how often it looks (default 250 ms) and ` +
+        `\`timeout_ms\` bounds the wait (default 20000 ms). ` +
+        `A timeout is not an error: the reply carries \`settled: false\` and the last map, so a ` +
+        `canvas that animates forever is reported as still moving instead of being retried. ` +
+        `The reply carries \`change\`: how far the canvas travelled between the first and the ` +
+        `last look — the honest answer to "did that batch do anything?" when the batch itself ` +
+        `reported no error. ` +
+        `It only reads: no clicks, no keys, no text.`,
+      parameters: {
+        type: "object",
+        properties: {
+          quiet_ms: {
+            type: "number",
+            description: "How long the map must stay identical to count as settled. Defaults to 600.",
+          },
+          probe_interval_ms: { type: "number", description: "How often to look. Defaults to 250." },
+          timeout_ms: { type: "number", description: "Give up waiting after this long. Defaults to 20000." },
+          probe: { type: "boolean", description: "Include the final text map. Defaults to true." },
+          shot: { type: "boolean", description: "Capture the canvas once it settles. Defaults to false." },
+          preview: {
+            type: "boolean",
+            description: "Open that capture in Astravia's own previewer. Defaults to true.",
+          },
+        },
+        additionalProperties: false,
+      },
+      scope_use: [...SCOPE],
+      timeoutMs: 60000,
+      async handler(context) {
+        const input = (context.trigger.input ?? {}) as {
+          quiet_ms?: number;
+          probe_interval_ms?: number;
+          timeout_ms?: number;
+          probe?: boolean;
+          shot?: boolean;
+          preview?: boolean;
+        };
+        if (!craftFrame()) return text({ ok: false, error: "editor-not-open" });
+        const quietMs = Math.min(5000, Math.max(200, Math.round(input.quiet_ms ?? 600)));
+        const intervalMs = Math.min(2000, Math.max(100, Math.round(input.probe_interval_ms ?? 250)));
+        const timeoutMs = Math.min(55000, Math.max(1000, Math.round(input.timeout_ms ?? 20000)));
+
+        const started = Date.now();
+        const first = await readCanvas();
+        if (!first) return text({ ok: false, error: "probe-failed" });
+        let previous = first;
+        let last = first;
+        let stableSince = Date.now();
+        let settled = false;
+        let looks = 1;
+
+        while (Date.now() - started < timeoutMs) {
+          await sleep(intervalMs);
+          const current = await readCanvas();
+          if (!current) return text({ ok: false, error: "probe-failed", elapsedMs: Date.now() - started });
+          looks += 1;
+          last = current;
+          // Two signals, either one enough: the letter map catches a small control that
+          // moved without changing the average, the mean catches a full-screen fade.
+          const moved = current.cells !== previous.cells || current.mean !== previous.mean;
+          if (moved) stableSince = Date.now();
+          previous = current;
+          if (Date.now() - stableSince >= quietMs) {
+            settled = true;
+            break;
+          }
+        }
+
+        const elapsedMs = Date.now() - started;
+        const shot = settled && input.shot ? await saveCanvasShot(ctx, { tag: "wait" }) : null;
+        const previewed = shot ? (input.preview === false ? false : previewCanvasShot(ctx, shot)) : false;
+        return text({
+          ok: true,
+          settled,
+          elapsedMs,
+          looks,
+          quietMs,
+          change: describeDelta(first, last),
+          probe: input.probe === false ? null : last,
+          shot: shot?.path ?? null,
+          previewed,
+        });
       },
     }),
   );

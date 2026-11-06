@@ -17,7 +17,10 @@ export default definePlugin({
 			label: "%tab.title%",
 			component: () => createElement(BoardmixWorkspace, { ctx }),
 			scope_use: ["conversation", "project"],
-			initiallyVisible: true,
+			// 不再自动上栏：这条会话没用过白板时，标签栏里不该先摆一个位置。工具调用走
+			// `openActivityTab`，会把它 attach 上栏并选中；用户自己点「+」加一次，宿主按
+			// 工作区记住这次可见性。
+			initiallyVisible: false,
 			retention: "warm",
 		});
 
