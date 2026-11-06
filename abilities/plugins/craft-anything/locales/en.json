@@ -6,5 +6,6 @@
   "tool.status": "Editor status",
   "tool.act": "Drive the editor",
   "tool.probe": "Look at the canvas",
+  "tool.wait": "Wait for it to settle",
   "tool.document": "Open a document"
 }
