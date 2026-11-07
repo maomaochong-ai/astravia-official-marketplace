@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "读仓库，而不是猜仓库",
+      "description": "Zread 依据 GitHub 仓库自己的文档、目录结构和源码文件回答。需要 GLM Coding Plan 的 Z.ai API Key。"
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "brand_name": "Astravia",
+        "user_prompt": "用 Zread 找一下 maomaochong-ai/astravia-official-marketplace 里日志是在哪实现的，我需要读哪几个文件。",
+        "assistant_reply": "我先查这个仓库的文档，看一遍目录结构，再打开真正定义日志的那几个文件。"
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "可以让 Astravia 做什么",
+      "items": [
+        {
+          "title": "搜仓库文档",
+          "description": "问这个项目做什么、怎么跑起来、核心模块有哪些，或者最近提交与 Issue 里改了什么。",
+          "icon": "solar:magnifer-bold"
+        },
+        {
+          "title": "先看目录结构",
+          "description": "先要整个仓库或某个子目录的结构，再决定哪个文件值得打开。",
+          "icon": "solar:list-check-bold"
+        },
+        {
+          "title": "完整打开一个文件",
+          "description": "读取单个文件的全文，用来核对实现、跟进重构或做代码审查。",
+          "icon": "solar:document-text-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "开始使用",
+      "items": [
+        {
+          "title": "从 GLM Coding Plan 拿到 Key",
+          "description": "Zread 目前只对 Coding Plan 订阅用户开放，并且按请求计费。在 Z.ai 控制台创建 Key，并核对你的额度。"
+        },
+        {
+          "title": "在 Astravia 中安装此能力",
+          "description": "在提示时只输入 Key 本身，连接配置会补上 Bearer 前缀。提问时用 owner/name 指明仓库。"
+        },
+        {
+          "title": "问一个点名仓库的问题",
+          "description": "例如：在 owner/repo 里找出处理 X 的模块，并给出实现它的文件。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "title": "托管服务，按请求计量",
+      "content": "Zread 是托管服务。工具输入（包括仓库名、路径、搜索词）会通过 HTTPS 发往 api.z.ai。用量按请求计入你的 Coding Plan，与本条目无关。没有有效 Key 时连接会认证失败。"
+    },
+    {
+      "type": "markdown",
+      "content": "三个工具分别是 `search_doc`、`get_repo_structure`、`read_file`。仓库需为服务可访问的公开仓库，本连接不覆盖私有仓库。不要把 API Key 粘贴到聊天提示词或共享日志里。"
+    },
+    {
+      "type": "markdown",
+      "content": "Zread 由智谱（Z.ai）提供。本市场条目由 Astravia 维护。"
+    }
+  ]
+}

@@ -1189,6 +1189,45 @@
       }
     },
     {
+      "type": "mcp",
+      "slug": "zread",
+      "name": "Zread",
+      "description": "Ask about any public GitHub repository and get answers grounded in its own docs, structure and source files.",
+      "version": "1.0.0",
+      "configVersion": 1,
+      "author": "Astravia / Z.ai",
+      "category": "Development",
+      "categoryI18n": {
+        "zh": "开发",
+        "en": "Development"
+      },
+      "tags": [
+        "zread",
+        "github",
+        "code-search",
+        "repository-docs",
+        "remote-mcp"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "Zread 仓库阅读",
+            "description": "就任意公开 GitHub 仓库提问，答案取自该仓库自己的文档、目录结构与源码文件。",
+            "tags": [
+              "Zread",
+              "GitHub",
+              "代码检索",
+              "仓库文档",
+              "远端 MCP"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/mcp/zread"
+      }
+    },
+    {
       "type": "plugin",
       "slug": "photocraft",
       "name": "Photocraft",
