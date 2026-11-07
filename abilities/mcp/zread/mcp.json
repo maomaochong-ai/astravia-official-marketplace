@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "slug": "zread",
+  "version": "1.0.0",
+  "server": {
+    "type": "http",
+    "url": "https://api.z.ai/api/mcp/zread/mcp"
+  },
+  "parameters": [
+    {
+      "key": "Authorization",
+      "label": "Z.ai API Key (GLM Coding Plan)",
+      "required": true,
+      "secret": true,
+      "placeholder": "Paste your API key",
+      "helpUrl": "https://z.ai/manage-apikey/apikey-list",
+      "valueTemplate": "Bearer {value}"
+    }
+  ],
+  "browserAuth": false
+}

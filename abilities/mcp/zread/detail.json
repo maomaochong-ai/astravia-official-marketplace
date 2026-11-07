@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "Read a repository instead of guessing about it",
+      "description": "Zread answers from a GitHub repository's own documentation, structure and source files. It needs a Z.ai API key from a GLM Coding Plan."
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "brand_name": "Astravia",
+        "user_prompt": "Use Zread to find where logging is implemented in maomaochong-ai/astravia-official-marketplace, and list the files I should read.",
+        "assistant_reply": "I'll search the repository's documentation, look at the directory structure, then open the files that actually define logging."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What you can ask Astravia to do",
+      "items": [
+        {
+          "title": "Search a repository's docs",
+          "description": "Ask what a project does, how to run it, what the core modules are, or what changed in recent commits and issues.",
+          "icon": "solar:magnifer-bold"
+        },
+        {
+          "title": "See the layout first",
+          "description": "Ask for the structure of the repository or one subdirectory before deciding which file is worth opening.",
+          "icon": "solar:list-check-bold"
+        },
+        {
+          "title": "Open one file in full",
+          "description": "Read a single file's whole content to check an implementation, follow a refactor, or review a change.",
+          "icon": "solar:document-text-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "Get started",
+      "items": [
+        {
+          "title": "Get a key from a GLM Coding Plan",
+          "description": "Zread is open to Coding Plan subscribers only and is billed per request. Create the key in the Z.ai console and check your quota there."
+        },
+        {
+          "title": "Install this Ability in Astravia",
+          "description": "Enter the key itself when prompted; the connection adds the Bearer prefix. Name the repository as owner/name in your prompt."
+        },
+        {
+          "title": "Ask a question that names the repository",
+          "description": "For example: find the module that handles X in owner/repo and show the file that implements it."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "title": "Hosted service, metered per request",
+      "content": "Zread is a hosted service. Tool inputs, including repository names, paths and search terms, are sent to api.z.ai over HTTPS. Usage is billed by request against your Coding Plan, not by this listing. Without a valid key the connection fails to authenticate."
+    },
+    {
+      "type": "markdown",
+      "content": "The three tools are `search_doc`, `get_repo_structure` and `read_file`. The repository must be reachable by the service; private repositories are not covered by this connection. Never paste an API key into a chat prompt or a shared log."
+    },
+    {
+      "type": "markdown",
+      "content": "Zread is provided by Z.ai (Zhipu AI). The Astravia marketplace listing is maintained by Astravia."
+    }
+  ]
+}
