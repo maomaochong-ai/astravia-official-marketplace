@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { basename, join, resolve, sep } from 'node:path';
 import test from 'node:test';
 import { execFileSync } from 'node:child_process';
-import { applyVersionBump, missingPackagedResources, planVersionBumps, prepareMarketplace, prunePluginReleases, reviewedSourceCommitMessage, reviewedSourceSha, runtimeSourcesChanged } from '../scripts/static-marketplace.mjs';
+import { applyVersionBump, assertDetailMeta, missingPackagedResources, planVersionBumps, prepareMarketplace, prunePluginReleases, reviewedSourceCommitMessage, reviewedSourceSha, runtimeSourcesChanged, sourceCatalog } from '../scripts/static-marketplace.mjs';
 import { publishMarketplace } from '../scripts/publish-marketplace.mjs';
 import { publicationSettings } from '../scripts/marketplace.mjs';
 
@@ -367,4 +367,32 @@ test('packaged resource check reports manifest files the archive left out', () =
     { field: 'styles', path: 'dist', kind: 'file' },
   ];
   assert.deepEqual(missingPackagedResources(names, resources).map(x => x.path), ['icon.png', './agent/skills/missing/', 'dist']);
+});
+
+// Desktop admits four meta keys and nothing else: one stray key rejects the whole catalogue,
+// which surfaces to users as `sync-failed` over the cached copy. Catch it at source-check time.
+test('a detail meta key outside the host enum fails the source check', (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'marketplace-meta-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const directory = join(root, 'abilities/skills/demo');
+  mkdirSync(join(root, '.astravia'), { recursive: true });
+  mkdirSync(directory, { recursive: true });
+  writeFileSync(join(directory, 'SKILL.md'), '---\nname: demo\ndescription: Demo package\nversion: 1.0.0\n---\n\nBody.\n');
+  writeFileSync(join(root, '.astravia/marketplace.source.json'), JSON.stringify({
+    schemaVersion: 3,
+    name: 'fixture',
+    displayName: 'Fixture',
+    repository: 'https://github.com/example/fixture',
+    minAppVersion: '0.5.59',
+    abilities: [{ type: 'skill', slug: 'demo', name: 'Demo', description: 'Demo package', version: '1.0.0', source: { path: 'abilities/skills/demo' } }],
+  }));
+  const writeDetail = meta => writeFileSync(join(directory, 'ability.json'), JSON.stringify({ schemaVersion: 1, type: 'skill', slug: 'demo', version: '1.0.0', detail: { format: 'blocks', path: 'detail.json', meta } }));
+
+  writeDetail([{ key: 'upstreamRevision', value: 'abc123' }]);
+  assert.throws(() => sourceCatalog(root), /Unknown detail meta key "upstreamRevision" in demo/);
+
+  writeDetail([{ label: 'Upstream revision', value: 'abc123' }]);
+  assert.equal(sourceCatalog(root).abilities[0].slug, 'demo');
+
+  assert.throws(() => assertDetailMeta('demo', { i18n: { zh: { meta: [{ key: 'docs', value: '' }] } } }), /Detail meta without a value: demo/);
 });

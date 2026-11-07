@@ -63,7 +63,22 @@ export function prunePluginReleases(catalog) {
   return catalog;
 }
 
-// Desktop rejects a package whose plugin.json names a file the archive does not contain.
+// Desktop only admits four meta keys; anything else has to travel as a `label`. One stray key
+// fails the whole marketplace parse and turns the source into `sync-failed`, so the mistake is
+// cheaper to catch here than in a release that quietly stops syncing.
+const detailMetaKeys = new Set(['homepage', 'repository', 'docs', 'license']);
+
+export function assertDetailMeta(slug, detail) {
+  if (!detail || typeof detail !== 'object') return;
+  const layers = [detail, ...Object.values(detail.i18n && typeof detail.i18n === 'object' ? detail.i18n : {})];
+  for (const layer of layers) {
+    if (!layer || !Array.isArray(layer.meta)) continue;
+    for (const item of layer.meta) {
+      if (!item || typeof item.value !== 'string' || !item.value) throw new Error(`Detail meta without a value: ${slug}`);
+      if (item.key !== undefined && !detailMetaKeys.has(item.key)) throw new Error(`Unknown detail meta key "${item.key}" in ${slug}; use a label for a custom title`);
+    }
+  }
+}
 // Resources come from the plugin SDK's own listing so the check follows the host contract.
 export function missingPackagedResources(names, resources) {
   const packaged = new Set(names);
@@ -85,6 +100,8 @@ export function sourceCatalog(root) {
     const directory = inside(root, entry.source?.path);
     const identity = entry.version ? entry : readJson(join(directory, 'ability.json'));
     if (!identity.version || identity.slug !== entry.slug || identity.type !== entry.type) throw new Error(`Identity mismatch: ${entry.slug}`);
+    assertDetailMeta(entry.slug, entry.detail);
+    if (!identity.version || identity.slug !== entry.slug || identity.type !== entry.type) throw new Error(`Identity mismatch: ${entry.slug}`);
     const previous = seen.get(entry.slug);
     if (previous && (previous.type !== entry.type || previous.source.path !== entry.source.path || previous.minAppVersion !== entry.minAppVersion)) throw new Error(`Conflicting identity: ${entry.slug}`);
     seen.set(entry.slug, entry);
@@ -92,6 +109,7 @@ export function sourceCatalog(root) {
     if (existsSync(presentationPath)) {
       const presentation = readJson(presentationPath);
       if (presentation.type !== entry.type || presentation.slug !== entry.slug || presentation.version !== identity.version) throw new Error(`Presentation identity mismatch: ${entry.slug}`);
+      assertDetailMeta(entry.slug, presentation.detail);
     }
     if (entry.type === 'plugin') {
       const descriptor = readJson(join(directory, 'plugin.json'));
