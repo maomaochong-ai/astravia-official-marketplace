@@ -5,7 +5,7 @@
       "type": "hero",
       "eyebrow": "MATT POCOCK SKILLS IN ASTRAVIA",
       "title": "真实工程流程，一个可组合的包",
-      "description": "自 mattpocock/skills 汇聚的 38 个技能模块——Matt Pocock 每天用来做真实工程（而不是凭感觉编码）的工作流。模块名称、文件布局与内容与上游仓库逐字对齐。",
+      "description": "自 mattpocock/skills 汇聚的 39 个技能模块——Matt Pocock 每天用来做真实工程（而不是凭感觉编码）的工作流。模块名称、文件布局与内容与上游仓库逐字对齐。",
       "badges": ["TDD", "代码评审", "缺陷诊断", "规格与工单", "规划", "写作"]
     },
     {
@@ -75,7 +75,7 @@
       "type": "callout",
       "tone": "info",
       "title": "忠实还原上游",
-      "content": "全部 38 个模块与 mattpocock/skills（MIT，revision 4ae2317）逐字节一致——包括附属文档、脚本与 agent 定义。上游标记为用户手动调用（user-invoked）的模块（grill-me、to-spec、retro 等）会在你点名时触发。署名信息见 NOTICE.md。"
+      "content": "全部 39 个模块与 mattpocock/skills（MIT，revision 4ae2317）逐字节一致——包括附属文档、脚本与 agent 定义。上游标记为用户手动调用（user-invoked）的模块（grill-me、to-spec、retro 等）会在你点名时触发。署名信息见 NOTICE.md。"
     },
     {
       "type": "markdown",
