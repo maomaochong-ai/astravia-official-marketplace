@@ -10,5 +10,8 @@
     "Add Astravia-required version frontmatter to the package-level SKILL.md (bumped per release); module files are untouched.",
     "Add bilingual Astravia catalog metadata, product details, the AI Hero mark as the catalog icon (upstream ships no standalone logo asset), and the repository MIT license copy."
   ],
-  "registrationSurface": "The 27 modules declared in upstream .claude-plugin/plugin.json (engineering + productivity) are registered as host commands, plus this package's router. references/misc, references/in-progress and references/deprecated ship as files but are listed in .ignore so the command list matches upstream's own manifest."
+  "registrationSurface": "All 39 modules under references/ register as host commands, plus this package's router — 40 entries in the host skill panel. This is deliberately wider than upstream: .claude-plugin/plugin.json declares only the 27 engineering and productivity modules, while references/in-progress (8) and references/misc (4) are kept upstream as files without being declared. They are registered here anyway so no shipped module is unreachable; modules carrying disable-model-invocation: true still stay user-invoked, matching upstream's own gating.",
+  "localEdits": [
+    "references/in-progress/software-factory/SKILL.md: quote the frontmatter description value. It contains a colon, so unquoted YAML parses as a nested mapping and the host drops the module with a diagnostic instead of registering it."
+  ]
 }
