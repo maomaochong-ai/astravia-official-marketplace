@@ -3,7 +3,7 @@
   "blocks": [
     {
       "type": "hero",
-      "eyebrow": "MATT POCOCK SKILLS IN ASTRAVIA",
+      "eyebrow": "MATT POCOCK · 39 COMPOSABLE MODULES",
       "title": "Real engineering loops, one composable package",
       "description": "39 skill modules consolidated from mattpocock/skills — the workflows Matt Pocock uses every day to do real engineering, not vibe coding. Module names, file layout and content mirror the upstream repository exactly.",
       "badges": ["TDD", "Code Review", "Diagnosis", "Specs & Tickets", "Planning", "Writing"]
@@ -16,6 +16,40 @@
         "user_prompt": "We just merged a risky branch. Review it since main, then turn what we discussed into tickets for the tracker.",
         "assistant_reply": "I'll run code-review since main along the Standards and Spec axes in parallel sub-agents, then push the follow-up work into tracer-bullet tickets with blocking edges via to-tickets. If anything is ambiguous, I'll grill you before writing the tickets."
       }
+    },
+    {
+      "type": "steps",
+      "title": "How to use it (start here)",
+      "items": [
+        {
+          "title": "1. Run the one-time setup first",
+          "description": "In your project, run `/setup-matt-pocock-skills`. It inspects the repo, then configures the issue tracker, the five triage-role labels and where GLOSSARY.md and docs/adr/ live. Do this once; skip it and to-spec, to-tickets, triage and wayfinder have nowhere to write."
+        },
+        {
+          "title": "2. Load a module either way",
+          "description": "Type a slash command such as `/tdd` or `/code-review`, or click the skill icon next to the composer and pick one by name. Both routes are equivalent: the module name is the command."
+        },
+        {
+          "title": "3. Sharpen the idea before building",
+          "description": "With a repo at hand use `/grill-with-docs` — an interview that writes ADRs and glossary entries as it goes. Without a repo use `/grill-me`. If a question needs running code, `/handoff` into a fresh session, run `/prototype`, then `/handoff` the answer back."
+        },
+        {
+          "title": "4. Turn it into a spec and tickets",
+          "description": "For work bigger than one session: `/to-spec` synthesises the conversation into a spec on your tracker, `/to-tickets` splits it into tracer-bullet tickets with blocking edges. Work that fits one session skips straight to `/implement`."
+        },
+        {
+          "title": "5. Implement, review, close out",
+          "description": "Coding is driven by `/tdd`, one red-green slice at a time. Work tickets one by one with `/implement` (`/clear` between them), or orchestrate the whole spec with `/implement-spec`. Finish with `/code-review` — a two-axis review from a fixed point — then `/pr` for the PR body."
+        },
+        {
+          "title": "6. Cross sessions and long hauls",
+          "description": "When context runs out, `/handoff` compacts the conversation. When the work outgrows one session, `/wayfinder` lays it out as a map of decision tickets to resolve one at a time. For a long-running goal, `/chief-of-staff` coordinates subagents."
+        }
+      ]
+    },
+    {
+      "type": "markdown",
+      "content": "## Pick your entry point\n\nIf you are not sure where to begin, find your situation in this table:\n\n| Your situation | Start with |\n| --- | --- |\n| Just installed it | `/setup-matt-pocock-skills` (once) |\n| I have an idea and want to think it through | `/grill-with-docs` |\n| This bug is hard to pin down / got slow | `/diagnosing-bugs` |\n| I need an ADR or shared terminology | `/domain-modeling` |\n| Discussion is done, now split the work | `/to-spec` → `/to-tickets` → `/implement` |\n| I just want tests for one behaviour | `/tdd` |\n| Review a branch or PR | `/code-review` |\n| The work is bigger than one session | `/wayfinder` |\n| Redesign a module's interface | `/codebase-design` or `/improve-codebase-architecture` |\n| Hand off to the next session or agent | `/handoff` |\n| No idea which module to use | `/ask-matt` (the router) |\n\n> Modules marked `disable-model-invocation` (`ask-matt`, `setup-matt-pocock-skills`, `grill-with-docs`, `wizard` and others) only fire when you call them by name — they will not interrupt on their own."
     },
     {
       "type": "feature-grid",
@@ -50,24 +84,6 @@
           "title": "Writing for humans and agents",
           "description": "writing-for-agents sharpens AGENTS.md and skill files; the writing-fragments / writing-shape / writing-beats trio takes raw material to a finished article.",
           "icon": "solar:pen-new-square-bold"
-        }
-      ]
-    },
-    {
-      "type": "steps",
-      "title": "Get started",
-      "items": [
-        {
-          "title": "Ask for a workflow by name",
-          "description": "Say \"review since main\", \"grill me on this design\", \"write this up as tickets\" or \"set up pre-commit hooks\" — the agent loads the matching module from the catalog."
-        },
-        {
-          "title": "Run the one-time setup",
-          "description": "For tracker-based skills (to-spec, to-tickets, triage, wayfinder), run setup-matt-pocock-skills once to configure the issue tracker, triage labels and domain doc layout."
-        },
-        {
-          "title": "Compose the loops",
-          "description": "Modules are designed to chain: research → to-spec → to-tickets → implement-spec → code-review → pr. The agent follows each module's own preconditions."
         }
       ]
     },
