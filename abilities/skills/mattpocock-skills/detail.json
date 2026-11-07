@@ -13,8 +13,8 @@
       "showcase": {
         "template": "chat-thread",
         "brand_name": "Astravia",
-        "user_prompt": "We just merged a risky branch. Review it since main, then turn what we discussed into tickets for the tracker.",
-        "assistant_reply": "I'll run code-review since main along the Standards and Spec axes in parallel sub-agents, then push the follow-up work into tracer-bullet tickets with blocking edges via to-tickets. If anything is ambiguous, I'll grill you before writing the tickets."
+        "user_prompt": "Review the branch we just merged since main, then cut the leftovers into tickets.",
+        "assistant_reply": "I'll review it along the Standards and Spec axes, then file tracer-bullet tickets from what we find."
       }
     },
     {

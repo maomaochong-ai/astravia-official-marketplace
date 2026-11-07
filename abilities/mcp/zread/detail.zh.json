@@ -11,8 +11,8 @@
       "showcase": {
         "template": "chat-thread",
         "brand_name": "Astravia",
-        "user_prompt": "用 Zread 找一下 maomaochong-ai/astravia-official-marketplace 里日志是在哪实现的，我需要读哪几个文件。",
-        "assistant_reply": "我先查这个仓库的文档，看一遍目录结构，再打开真正定义日志的那几个文件。"
+        "user_prompt": "maomaochong-ai/astravia-official-marketplace 的日志是在哪实现的？",
+        "assistant_reply": "先读它的文档，再打开真正定义日志的那几个文件。"
       }
     },
     {
