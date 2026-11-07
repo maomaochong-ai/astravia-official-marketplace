@@ -1,7 +1,7 @@
 ---
 name: mattpocock-skills
 description: Matt Pocock's composable engineering workflow skills, consolidated from github.com/mattpocock/skills. Covers test-driven development, code review, bug diagnosis, domain modeling, specs and tickets, issue triage, PR writing, prototyping, research, retrospectives, grilling/planning interviews, conversation handoffs, teaching, writing for agents, git guardrails, pre-commit setup and more. Use for any real-engineering workflow task, or when the user asks for one of the named skills (tdd, code-review, to-spec, to-tickets, triage, grill-me, handoff, etc.).
-version: 1.0.5
+version: 1.0.6
 references:
   - engineering
   - productivity

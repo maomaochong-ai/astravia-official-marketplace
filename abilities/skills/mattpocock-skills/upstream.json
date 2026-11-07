@@ -8,6 +8,7 @@
     "Consolidate all upstream skill categories (engineering, productivity, misc, in-progress, deprecated) into one Astravia skill package under references/, preserving every file byte-identically, including scripts and agents/openai.yaml definitions.",
     "Add a package-level SKILL.md router that catalogs all modules and routes to their original per-module SKILL.md files.",
     "Add Astravia-required version frontmatter to the package-level SKILL.md (bumped per release); module files are untouched.",
-    "Add bilingual Astravia catalog metadata, product details, a Solar set icon (upstream ships no standalone logo asset), and the repository MIT license copy."
-  ]
+    "Add bilingual Astravia catalog metadata, product details, the AI Hero mark as the catalog icon (upstream ships no standalone logo asset), and the repository MIT license copy."
+  ],
+  "registrationSurface": "The 27 modules declared in upstream .claude-plugin/plugin.json (engineering + productivity) are registered as host commands, plus this package's router. references/misc, references/in-progress and references/deprecated ship as files but are listed in .ignore so the command list matches upstream's own manifest."
 }
