@@ -27,7 +27,7 @@
         },
         {
           "title": "2. Load a module either way",
-          "description": "Type a slash command such as `/tdd` or `/code-review`, or click the skill icon next to the composer and pick one by name. Both routes are equivalent: the module name is the command. The twenty-seven engineering and productivity modules are registered as commands, exactly the set upstream declares; misc, in-progress and deprecated ship as files and are read by path."
+          "description": "Type a slash command such as `/tdd` or `/code-review`, or click the skill icon next to the composer and pick one by name. Both routes are equivalent: the module name is the command. All thirty-nine modules are registered as commands — engineering, productivity, in-progress and misc alike — so nothing in the catalog has to be read by hand."
         },
         {
           "title": "3. Sharpen the idea before building",

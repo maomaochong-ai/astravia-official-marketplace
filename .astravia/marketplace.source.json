@@ -1916,7 +1916,7 @@
       "slug": "mattpocock-skills",
       "name": "Matt Pocock Engineering Workflows",
       "description": "Run real-engineering loops with Matt Pocock's composable skill modules: TDD, code review, bug diagnosis, specs and tickets, triage, PRs, prototyping, research, grilling interviews, handoffs and more — 39 modules in one package.",
-      "version": "1.0.6",
+      "version": "1.0.7",
       "configVersion": 1,
       "license": "MIT",
       "author": "Matt Pocock",

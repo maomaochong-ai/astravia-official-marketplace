@@ -1,8 +1,0 @@
-# Modules that ship as files but must not register as commands, so the panel matches the
-# 27 skills upstream's own .claude-plugin/plugin.json declares. references/misc/ holds
-# third-party utilities upstream keeps on disk and out of its manifest; in-progress/ is
-# not promoted yet and deprecated/ has no modules left. Files stay in the package either
-# way — read them by path.
-references/misc/
-references/in-progress/
-references/deprecated/
