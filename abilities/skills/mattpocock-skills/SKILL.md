@@ -1,7 +1,7 @@
 ---
 name: mattpocock-skills
 description: Matt Pocock's composable engineering workflow skills, consolidated from github.com/mattpocock/skills. Covers test-driven development, code review, bug diagnosis, domain modeling, specs and tickets, issue triage, PR writing, prototyping, research, retrospectives, grilling/planning interviews, conversation handoffs, teaching, writing for agents, git guardrails, pre-commit setup and more. Use for any real-engineering workflow task, or when the user asks for one of the named skills (tdd, code-review, to-spec, to-tickets, triage, grill-me, handoff, etc.).
-version: 1.0.3
+version: 1.0.4
 references:
   - engineering
   - productivity
@@ -23,7 +23,9 @@ This is a consolidated package of Matt Pocock's agent skills ("Skills For Real E
 
 ## Activation in the host
 
-Every module below is a real `SKILL.md` with its upstream frontmatter (`name`, `description`). The host discovers them by scanning the installed package, so each module shows up as its own entry in the skill panel and answers to its upstream name as a slash command (`/tdd`, `/code-review`, `/to-spec`, `/grill-me`, …). This package's own entry (`/mattpocock-skills`) is the router you are reading; when a conversation arrives through the package entry instead of a module command, follow the catalog and load the module file directly.
+Every module under `references/engineering/`, `references/productivity/` and `references/misc/` is a real `SKILL.md` with its upstream frontmatter, and the host registers each one as its own skill, so it answers to its upstream name (`tdd`, `code-review`, `to-spec`, `grill-me`, …). This package's own entry is the router you are reading: when a conversation arrives through the package entry instead of a module, follow the catalog and load the module file directly.
+
+`references/in-progress/` and `references/deprecated/` ship as files but are deliberately **not** registered — `.ignore` keeps them out of discovery until they are promoted upstream. If the user asks for one by name (`chief-of-staff`, `claude-handoff`, `loop-me`, `software-factory`, `writing-beats`, …), read its `SKILL.md` from the path in the catalog instead of expecting it in the skill list.
 
 ## Module catalog
 
