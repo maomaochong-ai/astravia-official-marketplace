@@ -3,7 +3,7 @@
   "name": "%name%",
   "description": "%description%",
   "icon": "assets/icon.png",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -16,6 +16,7 @@
   "permissions": [
     "ui.slot.activity-tab",
     "ui.slot.tool-call",
+    "ui.slot.input-action",
     "storage.read",
     "storage.write",
     "shell.openExternal",

@@ -27,24 +27,32 @@ export function usePromptAttachment(ctx: PluginContext, input: BoardmixAttachmen
 	const { active, ready, landedUrl, label } = input;
 
 	useEffect(() => {
-		if (!active) {
-			ctx.ui.setPromptAttachment(null);
-			return;
+		// 这条能力受 `ui.slot.input-action` 门禁：宿主没给这个权限时 `setPromptAttachment`
+		// 会直接 throw，而 effect 里抛出的错会被活动面板的错误边界接住——用户看到的是整块
+		// 面板「渲染失败」，而不是少了一个胶囊。缺权限就静默退化成「不挂附件」。
+		if (!ctx.permissions.has("ui.slot.input-action")) return;
+		try {
+			if (!active) {
+				ctx.ui.setPromptAttachment(null);
+				return;
+			}
+			ctx.ui.setPromptAttachment({
+				id: "boardmix:panel",
+				label,
+				lifecycle: "sticky",
+				context: definePluginPromptContext({
+					schema: "astravia.boardmix.panel-state",
+					version: 1,
+					payload: {
+						panel: "boardmix",
+						phase: ready ? "ready" : "loading",
+						landedUrl,
+						canRead: false,
+					},
+				}),
+			});
+		} catch {
+			// 宿主版本比声明新/旧都可能让形状对不上；气泡功能得失不该影响能不能看白板。
 		}
-		ctx.ui.setPromptAttachment({
-			id: "boardmix:panel",
-			label,
-			lifecycle: "sticky",
-			context: definePluginPromptContext({
-				schema: "astravia.boardmix.panel-state",
-				version: 1,
-				payload: {
-					panel: "boardmix",
-					phase: ready ? "ready" : "loading",
-					landedUrl,
-					canRead: false,
-				},
-			}),
-		});
 	}, [active, ready, landedUrl, label, ctx]);
 }
