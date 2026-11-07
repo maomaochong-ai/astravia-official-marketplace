@@ -17,7 +17,7 @@
     "path": "detail.json",
     "meta": [
       { "key": "repository", "value": "https://github.com/mattpocock/skills" },
-      { "key": "upstreamRevision", "value": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d" },
+      { "label": "Upstream revision", "value": "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d" },
       { "key": "license", "value": "MIT" }
     ],
     "i18n": {
