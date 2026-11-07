@@ -1,6 +1,6 @@
 ---
 name: kali-linux
-version: 0.1.2
+version: 0.1.3
 description: >-
   Use when the user wants Kali Linux tooling running on their own machine — port and service scans, vulnerability analysis, web and API testing, exploitation, password auditing, wireless assessment, cloud-native and container security, RFID/NFC, VoIP/ICS, reverse engineering, forensics triage, post-exploitation, or source-code and dependency audit — or asks to "use Kali" locally. Provisions a per-OS Kali runtime on demand (Windows: the kali-linux WSL2 distribution; macOS and Linux: the official kalilinux/kali-rolling container) and drives it through scripts/kali.sh, or scripts/kali.ps1 on Windows. Ships 16 scenario playbooks and 270 tool references for phased, evidence-first engagements. The driver provisions and executes but does not classify targets or filter commands: scope and destructive-operation decisions belong to the conversation with the user, and every command is written to the audit log. `host` reads the host's own activity without going through the container.
 metadata:
