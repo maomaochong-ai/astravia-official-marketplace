@@ -13,8 +13,8 @@
       "showcase": {
         "template": "chat-thread",
         "brand_name": "Astravia",
-        "user_prompt": "我们刚合入一个风险较高的分支。请对比 main 做评审，然后把刚才讨论的内容转成工单。",
-        "assistant_reply": "我会用 code-review 以 main 为基准点，沿 Standards 和 Spec 两条线并行子代理评审；随后用 to-tickets 把后续工作拆成带阻塞关系的 tracer-bullet 工单。有歧义的地方，我会先拷问你确认，再落工单。"
+        "user_prompt": "评审刚合入的那个分支（对比 main），再把剩下的活拆成工单。",
+        "assistant_reply": "我会沿 Standards 和 Spec 两条线评审，再把发现的活拆成 tracer-bullet 工单。"
       }
     },
     {

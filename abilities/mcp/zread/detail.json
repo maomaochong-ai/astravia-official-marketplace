@@ -11,8 +11,8 @@
       "showcase": {
         "template": "chat-thread",
         "brand_name": "Astravia",
-        "user_prompt": "Use Zread to find where logging is implemented in maomaochong-ai/astravia-official-marketplace, and list the files I should read.",
-        "assistant_reply": "I'll search the repository's documentation, look at the directory structure, then open the files that actually define logging."
+        "user_prompt": "Where is logging implemented in maomaochong-ai/astravia-official-marketplace?",
+        "assistant_reply": "I'll read its docs first, then the files that actually define logging."
       }
     },
     {
