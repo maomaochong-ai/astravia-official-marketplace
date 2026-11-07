@@ -27,7 +27,7 @@
         },
         {
           "title": "2. 两种方式调起模块",
-          "description": "对话框输入斜杠命令（如 `/tdd`、`/code-review`），或点对话框第一个技能图标，在面板里按名字选。两种方式等价；模块名就是命令名。"
+          "description": "对话框输入斜杠命令（如 `/tdd`、`/code-review`），或点对话框第一个技能图标，在面板里按名字选。两种方式等价；模块名就是命令名。注册为命令的是 engineering 与 productivity 这 27 个模块，与上游声明完全一致；misc、in-progress 与 deprecated 随包发布，按目录路径读取。"
         },
         {
           "title": "3. 先把想法拷问清楚",
