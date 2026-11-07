@@ -5,7 +5,7 @@
       "type": "hero",
       "eyebrow": "MATT POCOCK SKILLS IN ASTRAVIA",
       "title": "Real engineering loops, one composable package",
-      "description": "38 skill modules consolidated from mattpocock/skills — the workflows Matt Pocock uses every day to do real engineering, not vibe coding. Module names, file layout and content mirror the upstream repository exactly.",
+      "description": "39 skill modules consolidated from mattpocock/skills — the workflows Matt Pocock uses every day to do real engineering, not vibe coding. Module names, file layout and content mirror the upstream repository exactly.",
       "badges": ["TDD", "Code Review", "Diagnosis", "Specs & Tickets", "Planning", "Writing"]
     },
     {
@@ -75,7 +75,7 @@
       "type": "callout",
       "tone": "info",
       "title": "Faithful to upstream",
-      "content": "All 38 modules are byte-identical to mattpocock/skills (MIT, revision 4ae2317) — including supporting docs, scripts and agent definitions. Modules marked as user-invoked upstream (grill-me, to-spec, retro and others) trigger when you ask for them by name. See NOTICE.md for attribution."
+      "content": "All 39 modules are byte-identical to mattpocock/skills (MIT, revision 4ae2317) — including supporting docs, scripts and agent definitions. Modules marked as user-invoked upstream (grill-me, to-spec, retro and others) trigger when you ask for them by name. See NOTICE.md for attribution."
     },
     {
       "type": "markdown",

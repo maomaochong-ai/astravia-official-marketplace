@@ -7,7 +7,7 @@
   "adaptations": [
     "Consolidate all upstream skill categories (engineering, productivity, misc, in-progress, deprecated) into one Astravia skill package under references/, preserving every file byte-identically, including scripts and agents/openai.yaml definitions.",
     "Add a package-level SKILL.md router that catalogs all modules and routes to their original per-module SKILL.md files.",
-    "Add Astravia-required version 1.0.0 frontmatter to the package-level SKILL.md; module files are untouched.",
+    "Add Astravia-required version frontmatter to the package-level SKILL.md (bumped per release); module files are untouched.",
     "Add bilingual Astravia catalog metadata, product details, a Solar set icon (upstream ships no standalone logo asset), and the repository MIT license copy."
   ]
 }
