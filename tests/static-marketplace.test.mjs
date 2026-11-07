@@ -396,3 +396,24 @@ test('a detail meta key outside the host enum fails the source check', (t) => {
 
   assert.throws(() => assertDetailMeta('demo', { i18n: { zh: { meta: [{ key: 'docs', value: '' }] } } }), /Detail meta without a value: demo/);
 });
+
+// 展示层修正不能因为版本没抬就被已发布字节顶回去，而 SKILL.md 这种运行内容必须冻在发布时的样子。
+test('a presentation fix ships without a version bump while the skill instructions stay frozen', async (t) => {
+  const f = fixture(t);
+  const guide = value => ({ schemaVersion: 1, type: 'skill', slug: 'guide', version: '1.0.0', detail: { format: 'blocks', path: 'detail.json', meta: [{ key: 'docs', value }] } });
+  f.put('abilities/skills/guide/ability.json', guide('https://example.com/first'));
+  f.put('abilities/skills/guide/detail.json', { schemaVersion: 1, blocks: [{ type: 'markdown', content: 'first' }] });
+  const first = await f.run('first-skill');
+
+  f.put('abilities/skills/guide/ability.json', guide('https://example.com/second'));
+  f.put('abilities/skills/guide/detail.json', { schemaVersion: 1, blocks: [{ type: 'markdown', content: 'second' }] });
+  f.put('abilities/skills/guide/SKILL.md', '---\nname: guide\ndescription: Guide\nversion: 1.0.0\n---\nUnpublished instructions.');
+
+  const second = await f.run('second-skill', first.site);
+  assert.equal(second.changed, true);
+  assert.equal(JSON.parse(readFileSync(join(second.site, 'abilities/skills/guide/ability.json'))).detail.meta[0].value, 'https://example.com/second');
+  assert.equal(JSON.parse(readFileSync(join(second.site, 'abilities/skills/guide/detail.json'))).blocks[0].content, 'second');
+  const instructions = readFileSync(join(second.site, 'abilities/skills/guide/SKILL.md'), 'utf8');
+  assert.match(instructions, /Use the guide\./);
+  assert.doesNotMatch(instructions, /Unpublished instructions/);
+});

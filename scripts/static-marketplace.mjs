@@ -145,6 +145,9 @@ function copyPackage(from, to, presentationOnly) {
   const include = path => {
     const parts = path.split('/');
     if (parts.some(x => excluded.has(x) || x.startsWith('.env'))) return false;
+    // 展示层可以脱离版本号更新，但技能指令与连接配置是用户实际执行的内容：
+    // 版本号没动，它们就必须保持发布时的那一份。
+    if (presentationOnly && (path === 'SKILL.md' || path === 'mcp.json')) return false;
     return !presentationOnly || [...resources].some(item => item === path || item.startsWith(`${path}/`)) || parts[0] === 'assets' || parts[0] === 'locales' || parts.length === 1 && (/^detail.*\.json$/.test(path) || /\.md$/.test(path) || /^LICENSE/.test(path));
   };
   for (const path of files(from, include)) {
@@ -353,7 +356,12 @@ export async function prepareMarketplace({ root, output, previous, baseline, sou
       const oldVersion = oldEntry?.version ?? (oldSource && existsSync(join(oldSource, 'ability.json')) ? readJson(join(oldSource, 'ability.json')).version : undefined);
       // Non-plugin runtime content is already installable; preserve its published bytes until a version bump.
       const reuse = oldSource && existsSync(oldSource) && oldVersion === identity.version;
-      copyPackage(reuse ? oldSource : source, target, false);
+      // 已发布字节先落位，再从源码覆盖展示层：版本号没抬时 SKILL.md / mcp.json 保持发布时那一份，
+      // 而 ability.json、detail、README、assets 的修正在下一次发布就能到达客户端。
+      if (reuse) {
+        copyPackage(oldSource, target, false);
+        copyPackage(source, target, true);
+      } else copyPackage(source, target, false);
       if (reuse && entry.type === 'bundle') {
         const authored = value => JSON.stringify(value, (key, item) => ['releases', 'minAppVersion'].includes(key) ? undefined : item);
         if (authored(entry.config) !== authored(oldEntry.config)) throw new Error(`Bundle configuration changed: ${entry.slug}; publish a new version`);
