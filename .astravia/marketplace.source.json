@@ -1193,7 +1193,7 @@
       "slug": "zread",
       "name": "Zread",
       "description": "Ask about any public GitHub repository and get answers grounded in its own docs, structure and source files.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "configVersion": 1,
       "author": "Astravia / Z.ai",
       "category": "Development",
