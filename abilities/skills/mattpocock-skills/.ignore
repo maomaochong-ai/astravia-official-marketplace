@@ -1,0 +1,4 @@
+# Draft modules upstream has not promoted. They still ship as files so the router can read them,
+# but registering them would put half-finished commands in the skill panel.
+references/in-progress/
+references/deprecated/
