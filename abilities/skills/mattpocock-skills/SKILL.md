@@ -1,7 +1,7 @@
 ---
 name: mattpocock-skills
 description: Matt Pocock's composable engineering workflow skills, consolidated from github.com/mattpocock/skills. Covers test-driven development, code review, bug diagnosis, domain modeling, specs and tickets, issue triage, PR writing, prototyping, research, retrospectives, grilling/planning interviews, conversation handoffs, teaching, writing for agents, git guardrails, pre-commit setup and more. Use for any real-engineering workflow task, or when the user asks for one of the named skills (tdd, code-review, to-spec, to-tickets, triage, grill-me, handoff, etc.).
-version: 1.0.4
+version: 1.0.5
 references:
   - engineering
   - productivity
@@ -23,9 +23,9 @@ This is a consolidated package of Matt Pocock's agent skills ("Skills For Real E
 
 ## Activation in the host
 
-Every module under `references/engineering/`, `references/productivity/` and `references/misc/` is a real `SKILL.md` with its upstream frontmatter, and the host registers each one as its own skill, so it answers to its upstream name (`tdd`, `code-review`, `to-spec`, `grill-me`, …). This package's own entry is the router you are reading: when a conversation arrives through the package entry instead of a module, follow the catalog and load the module file directly.
+Twenty-seven modules — `references/engineering/` (20) and `references/productivity/` (7) — are each a real `SKILL.md` with its upstream frontmatter, and the host registers every one of them as its own skill, so each answers to its upstream name: `/tdd`, `/code-review`, `/to-spec`, `/grill-me`, …, or by picking it out of the skill panel. That is exactly the set `.claude-plugin/plugin.json` declares upstream, so the command list here matches what an upstream install gives you. This package's own entry is the router you are reading: when a conversation arrives through the package entry instead of a module, follow the catalog and load the module file directly.
 
-`references/in-progress/` and `references/deprecated/` ship as files but are deliberately **not** registered — `.ignore` keeps them out of discovery until they are promoted upstream. If the user asks for one by name (`chief-of-staff`, `claude-handoff`, `loop-me`, `software-factory`, `writing-beats`, …), read its `SKILL.md` from the path in the catalog instead of expecting it in the skill list.
+`references/misc/`, `references/in-progress/` and `references/deprecated/` ship as files but are deliberately **not** registered — `.ignore` keeps them out of discovery, because upstream keeps them out of its manifest too. If the user asks for one by name (`chief-of-staff`, `setup-pre-commit`, `writing-shape`, …), read its `SKILL.md` from the path in the catalog instead of expecting it in the skill list.
 
 ## Module catalog
 
@@ -72,7 +72,7 @@ Conversation-shaping helpers.
 
 ### Misc (`references/misc/`)
 
-Standalone utilities.
+Third-party utilities upstream keeps in the repo but does not declare in its plugin manifest: available by path, not registered as commands.
 
 | Module | Purpose |
 |--------|---------|
@@ -83,7 +83,7 @@ Standalone utilities.
 
 ### In progress (`references/in-progress/`)
 
-Shipped but still evolving upstream; treat as slightly rougher than the categories above.
+Shipped but still evolving upstream, and likewise absent from its manifest; treat as slightly rougher than the categories above.
 
 | Module | Purpose |
 |--------|---------|
