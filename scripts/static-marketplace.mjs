@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 export const readJson = path => JSON.parse(readFileSync(path, 'utf8'));
 export const writeJson = (path, value) => { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`); };
+/** 分发索引是机器读的：同一份内容用紧凑写法，能少传三分之一以上的字节。 */
+export const writeCompactJson = (path, value) => { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, `${JSON.stringify(value)}\n`); };
 export const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const slugPattern = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const versionPattern = /^\d+\.\d+\.\d+$/;
@@ -37,6 +39,28 @@ export function files(root, include = () => true, prefix = '') {
 
 export function entries(catalog) {
   return catalog.abilities.flatMap(ability => [ability, ...(ability.type === 'bundle' ? ability.config.members.filter(x => x.source) : [])]);
+}
+
+/**
+ * 插件历史里只保留「每个兼容性签名最新的那一版」。
+ *
+ * 客户端安装时先按 `minAppVersion` 与 `pluginApiVersion` 过滤，再取最高版本
+ * （open-marketplace-service → selectMarketplacePluginReleases）。同一组签名下的旧版本
+ * 永远不会被选中，却会随每次发布累积进分发索引：`dbx-pro` 一家就带着 169 条历史，
+ * 清单从 58 KB 涨到 572 KB。而刷新和安装都要先下载清单——体积是直接的等待时间。
+ *
+ * 只删「任何宿主都选不到」的条目：每个签名组合仍保留最新一版，能装到的版本不变。
+ */
+export function prunePluginReleases(catalog) {
+  for (const entry of entries(catalog)) {
+    if (!Array.isArray(entry.releases) || entry.releases.length < 2) continue;
+    const newest = new Map();
+    for (const release of entry.releases) {
+      newest.set(`${release.minAppVersion}|${release.pluginApiVersion}`, release);
+    }
+    entry.releases = [...newest.values()].sort((a, b) => compareVersion(a.version, b.version));
+  }
+  return catalog;
 }
 
 // Desktop rejects a package whose plugin.json names a file the archive does not contain.
@@ -320,10 +344,12 @@ export async function prepareMarketplace({ root, output, previous, baseline, sou
   }
   // Bundle references may reuse the same plugin; all occurrences use the resolved immutable history.
   for (const entry of entries(catalog)) if (entry.type === 'plugin' && resolved.has(entry.slug)) entry.releases = resolved.get(entry.slug);
+  // 历史只留每个兼容性签名的最新一版：客户端永远只选得到这些，其余只是买不到的等待时间。
+  prunePluginReleases(catalog);
   const contentHash = treeDigest(site, catalog);
   const unchanged = previous && old && contentHash === treeDigest(previous, old);
   catalog.marketplaceVersion = unchanged ? old.marketplaceVersion : nextVersion(old?.marketplaceVersion, date);
-  writeJson(join(site, '.astravia/marketplace.json'), catalog);
+  writeCompactJson(join(site, '.astravia/marketplace.json'), catalog);
   writeFileSync(join(site, '.nojekyll'), '');
   const result = { site, artifacts, changed: !unchanged, sourceSha, previousVersion: old?.marketplaceVersion ?? null, packages };
   writeJson(join(output, 'publication.json'), result);

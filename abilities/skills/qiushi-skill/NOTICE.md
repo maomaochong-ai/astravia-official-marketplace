@@ -83,7 +83,7 @@
 包内 `assets/icon.png`、`assets/logo.png` 均来自上游项目标识 `assets/logo_main.png`：
 
 - 来源：https://github.com/HughYau/qiushi-skill/blob/5ace7173b2d71fa7848c56a29f74b39d611c6cb3/assets/logo_main.png
-- 改动：等比缩放并置于白底方形画布中央（`icon.png`），或仅转换文件格式（`logo.png`）。未裁切、未改色、未重绘。
+- 改动：等比缩放并置于白底方形画布中央（`icon.png`，256×256），或仅转换文件格式（`logo.png`，保持 3118×1376 像素尺寸不变，仅重排 PNG 压缩参数，像素完全一致）。未裁切、未改色、未重绘。
 - `assets/preview/qiushi.png`、`assets/preview/shishiqiushi.png` 为上游 `docs/assets/` 原文件，未改动。
 - `assets/preview/preview-hero.png` 是本仓库对宣传页首屏的实拍截图，用于市场详情页的预览入口；不是示意图，也没有重绘任何标识。
 - `assets/diagram/method-structure.svg` 与 `method-structure.zh.svg` 是本仓库按上游 README 的 Mermaid 结构图重绘的矢量图：五层方框、主题色取自同一份宣传页。Mermaid 源码保留在 README 的 `<details>` 里，图与源可以互相对照。

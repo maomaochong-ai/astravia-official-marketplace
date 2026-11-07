@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { basename, join, resolve, sep } from 'node:path';
 import test from 'node:test';
 import { execFileSync } from 'node:child_process';
-import { applyVersionBump, missingPackagedResources, planVersionBumps, prepareMarketplace, reviewedSourceCommitMessage, reviewedSourceSha, runtimeSourcesChanged } from '../scripts/static-marketplace.mjs';
+import { applyVersionBump, missingPackagedResources, planVersionBumps, prepareMarketplace, prunePluginReleases, reviewedSourceCommitMessage, reviewedSourceSha, runtimeSourcesChanged } from '../scripts/static-marketplace.mjs';
 import { publishMarketplace } from '../scripts/publish-marketplace.mjs';
 import { publicationSettings } from '../scripts/marketplace.mjs';
 
@@ -14,6 +14,77 @@ test('the published commit message round-trips its source sha', () => {
   assert.equal(reviewedSourceSha(message), 'a'.repeat(40));
   assert.equal(reviewedSourceSha('chore(marketplace): 发布 2026.10.27-2'), null);
 });
+
+// 客户端只会选「同一组 minAppVersion + pluginApiVersion 里最新的那版」，所以更旧的同签名条目
+// 永远装不到，却会跟着每次发布把清单撑大。不同签名的条必须都留着：那是旧宿主唯一的退路。
+test('pruning keeps exactly the newest release per compatibility signature', () => {
+  const release = (version, minAppVersion, pluginApiVersion) => ({ version, minAppVersion, pluginApiVersion, permissions: [], commands: [], artifact: { url: `https://github.com/test/market/plugin-${version}.astraviapkg`, sha256: 'a'.repeat(64) } });
+  const catalog = { abilities: [
+    { type: 'plugin', slug: 'demo', version: '2.0.0', releases: [
+      release('1.0.0', '0.5.59', '^2.0.0'),
+      release('1.5.0', '0.5.59', '^2.0.0'),
+      release('1.6.0', '0.5.59', '^2.4.0'),
+      release('2.0.0', '0.5.60', '^2.4.0'),
+    ] },
+    { type: 'skill', slug: 'guide', version: '1.0.0' },
+  ] };
+  prunePluginReleases(catalog);
+  assert.deepEqual(catalog.abilities[0].releases.map(x => [x.version, x.minAppVersion, x.pluginApiVersion]), [
+    ['1.5.0', '0.5.59', '^2.0.0'],
+    ['1.6.0', '0.5.59', '^2.4.0'],
+    ['2.0.0', '0.5.60', '^2.4.0'],
+  ]);
+  assert.equal(catalog.abilities[0].version, catalog.abilities[0].releases.at(-1).version);
+  assert.equal('releases' in catalog.abilities[1], false);
+});
+
+// 与宿主一致的最小版本语义：app 版本比大小，pluginApiVersion 是 ^x.y.z 区间。
+function compareVersion(left, right) {
+  const a = left.split('.').map(Number);
+  const b = right.split('.').map(Number);
+  for (let index = 0; index < 3; index += 1) {
+    if (a[index] !== b[index]) return a[index] > b[index] ? 1 : -1;
+  }
+  return 0;
+}
+
+function apiCompatible(hostApiVersion, range) {
+  const minimum = range.replace(/^\^/, '').split('.').map(Number);
+  const host = hostApiVersion.split('.').map(Number);
+  if (host[0] !== minimum[0]) return host[0] > minimum[0];
+  if (host[1] !== minimum[1]) return host[1] > minimum[1];
+  return host[2] >= minimum[2];
+}
+
+// 宿主按「app 版本 >= minAppVersion」与「宿主 API 满足 ^pluginApiVersion」过滤，再取最高版本。
+// 同一组签名里的所有版本要么全兼容要么全不兼容，所以只留每组最新的一版不会改变任何宿主选到的版本。
+test('pruning never changes the release a host would pick', () => {
+  const release = (version, minAppVersion, pluginApiVersion) => ({ version, minAppVersion, pluginApiVersion });
+  const releases = [
+    release('1.0.0', '0.5.59', '^2.0.0'),
+    release('1.4.0', '0.5.59', '^2.0.0'),
+    release('1.6.0', '0.5.60', '^2.0.0'),
+    release('1.8.0', '0.5.59', '^2.4.0'),
+    release('2.0.0', '0.5.61', '^2.4.0'),
+  ];
+  const pick = (list, appVersion, hostApiVersion) => {
+    const compatible = list
+      .filter(x => compareVersion(appVersion, x.minAppVersion) >= 0 && apiCompatible(hostApiVersion, x.pluginApiVersion))
+      .sort((left, right) => compareVersion(right.version, left.version));
+    return compatible[0]?.version ?? null;
+  };
+  const catalog = { abilities: [{ type: 'plugin', slug: 'demo', version: '2.0.0', releases: releases.map(x => ({ ...x })) }] };
+  const before = catalog.abilities[0].releases;
+  prunePluginReleases(catalog);
+  const after = catalog.abilities[0].releases;
+  for (const appVersion of ['0.5.59', '0.5.60', '0.5.61', '0.5.62', '0.6.0', '1.0.0']) {
+    for (const hostApiVersion of ['2.0.0', '2.3.9', '2.4.0', '3.0.0']) {
+      assert.equal(pick(after, appVersion, hostApiVersion), pick(before, appVersion, hostApiVersion),
+        `app ${appVersion} / api ${hostApiVersion}`);
+    }
+  }
+});
+
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'vetta-static-'));
@@ -55,7 +126,7 @@ test('publication settings accept only immutable App candidate commits', (t) => 
   assert.throws(() => publicationSettings(f.root), /full commit/);
 });
 
-test('publish, browse distribution, edit source, publish next version and retain compatible history', async (t) => {
+test('publish, browse distribution, edit source, publish next version and keep the newest release per compatibility signature', async (t) => {
   const f = fixture(t);
   const first = await f.run('first');
   assert.equal(first.packages.length, 1);
@@ -84,7 +155,8 @@ test('publish, browse distribution, edit source, publish next version and retain
   f.put('abilities/plugins/demo/ability.json', { schemaVersion: 1, type: 'plugin', slug: 'demo', version: '1.1.0' });
   const next = await f.run('next', first.site);
   const updated = JSON.parse(readFileSync(join(next.site, '.astravia/marketplace.json')));
-  assert.deepEqual(updated.abilities[0].releases.map(x => x.version), ['1.0.0', '1.1.0']);
+  // 1.0.0 与 1.1.0 的 minAppVersion / pluginApiVersion 相同：客户端只会选到 1.1.0，索引只留它。
+  assert.deepEqual(updated.abilities[0].releases.map(x => x.version), ['1.1.0']);
   assert.equal(next.packages[0].tag, 'plugin-demo');
   assert.ok(updated.abilities[0].releases.every(x => x.artifact.url.includes('/releases/download/plugin-demo/')));
   assert.notEqual(updated.marketplaceVersion, manifest.marketplaceVersion);
@@ -277,7 +349,7 @@ for (const isPrivate of [false, true]) test(`interrupted ${isPrivate ? 'private'
   await publishMarketplace(nextOptions);
   assert.deepEqual(release.assets.map(asset => asset.name), ['demo-1.0.0.astraviapkg', 'demo-1.1.0.astraviapkg']);
   const nextManifest = JSON.parse(git('show', `${visible}:.astravia/marketplace.json`));
-  assert.equal(nextManifest.abilities[0].releases.length, 2);
+  assert.equal(nextManifest.abilities[0].releases.length, 1);
   assert.ok(nextManifest.abilities[0].releases.every(item => isPrivate ? item.artifact.url.startsWith('https://api.github.com/') : item.artifact.url.includes('/releases/download/plugin-demo/')));
   uploaded.set('demo-1.1.0.astraviapkg', Buffer.from('replaced package')); visible = undefined;
   await assert.rejects(publishMarketplace({ ...nextOptions, readRemote: name => name === 'gh-pages' ? firstVisible : sha }), /Published bytes differ/);

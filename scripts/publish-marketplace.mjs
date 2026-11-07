@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { digest, files, inside, readJson, reviewedSourceCommitMessage, writeJson } from './static-marketplace.mjs';
+import { digest, files, inside, readJson, reviewedSourceCommitMessage, writeCompactJson } from './static-marketplace.mjs';
 import { publicationSettings } from './marketplace.mjs';
 
 export function assertExistingRelease(item, bytes) {
@@ -87,7 +87,7 @@ export async function publishMarketplace({ root, directory, gh = (...args) => ex
         record.artifact.url = asset.url;
       }
     }
-    writeJson(catalogPath, catalog);
+    writeCompactJson(catalogPath, catalog);
   }
   // Check the public/authenticated download paths before making the index discoverable.
   await verify(directory, true);
