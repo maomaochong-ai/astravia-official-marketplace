@@ -1,0 +1,34 @@
+{
+	"id": "magpie",
+	"name": "%plugin.name%",
+	"icon": "assets/icon.png",
+	"version": "0.1.0",
+	"defaultLocale": "zh",
+	"pluginApiVersion": "^2.0.0",
+	"entry": "dist/mf-manifest.json",
+	"moduleFederation": {
+		"remoteName": "magpieGateway",
+		"expose": "./plugin"
+	},
+	"styles": [
+		"dist/style.css"
+	],
+	"permissions": [
+		"ui.slot.workspace-view",
+		"models.manage",
+		"network.fetch",
+		"storage.read",
+		"storage.write",
+		"shell.openExternal",
+		"agent.tools.register",
+		"agent.toolHandler.execute"
+	],
+	"network": {
+		"allowedHosts": [
+			"127.0.0.1",
+			"localhost"
+		]
+	},
+	"description": "%plugin.description%",
+	"author": "Astravia Community"
+}

@@ -1,0 +1,72 @@
+{
+	"schemaVersion": 1,
+	"blocks": [
+		{
+			"type": "hero",
+			"eyebrow": "模型",
+			"title": "已经付过钱的模型，一个网关统一调用",
+			"description": "magpie 在本机跑一个网关，把你配好的提供方（订阅、API Key、本地运行时）统一到一个地址后面。这个插件把那个网关接进 Astravia，模型就和内置模型并排出现在同一份列表里。",
+			"badges": [
+				"仅本机",
+				"跑在你这台机器上"
+			]
+		},
+		{
+			"type": "showcase",
+			"showcase": {
+				"template": "chat-thread",
+				"user_prompt": "magpie 里现在有哪些模型？这份合同帮我挑一个上下文最长的。",
+				"assistant_reply": "你的网关回了 14 个模型、来自 3 个提供方。上下文最长的是 claude-sonnet-4，200K，还支持图片输入。它已经在模型列表里，名字是 Magpie — claude-sonnet-4。"
+			}
+		},
+		{
+			"type": "feature-grid",
+			"title": "它给你什么",
+			"items": [
+				{
+					"title": "真实目录，不是估的",
+					"description": "面板直接读网关的 /v1/models，所以看到的就是 magpie 此刻能提供的——提供方、上下文窗口、是否吃图、是否支持推理都写在行里。",
+					"icon": "solar:list-check-bold"
+				},
+				{
+					"title": "一次点击进模型选择器",
+					"description": "点「发布模型到 Astravia」才会写入，写成 OpenAI 兼容的提供方；旁边那个按钮负责把它摘掉。不点就不写。",
+					"icon": "solar:routing-2-bold"
+				},
+				{
+					"title": "Agent 能自己查网关",
+					"description": "两个只读工具 magpie_status 与 magpie_models：模型可以现场确认网关在不在、有哪些模型，而不是凭记忆回答。",
+					"icon": "solar:magnifer-bold"
+				},
+				{
+					"title": "密钥留在 magpie 里",
+					"description": "提供方凭据在本机 magpie 自己的配置里。插件既不展示也不保存它们。",
+					"icon": "solar:lock-keyhole-minimalistic-bold"
+				}
+			]
+		},
+		{
+			"type": "steps",
+			"title": "开始使用",
+			"items": [
+				{
+					"title": "没装 magpie 的话先装它",
+					"description": "从 usemagpie.ai 下载，或运行 `curl -fsSL https://usemagpie.ai/install.sh | sh`。先在 magpie 里加好至少一个提供方——模型是从那里来的。"
+				},
+				{
+					"title": "把网关跑起来",
+					"description": "打开 magpie App，或在终端运行 `magpie serve`。默认监听 127.0.0.1:3425；如果你改过 MAGPIE_ADDR，就把地址填进面板的连接设置。"
+				},
+				{
+					"title": "打开「Magpie 网关」，点发布",
+					"description": "面板会先确认版本再列出目录。发布后模型进入你的模型选择器，紧邻的按钮可以随时移除。"
+				}
+			]
+		},
+		{
+			"type": "callout",
+			"tone": "info",
+			"content": "这个插件是连接器，不是运行时：它不安装、不启动、也不停止 magpie，magpie 没在跑的时候它连不上网关。面板会把这种情况明确写出来，而不是静默失败。"
+		}
+	]
+}
