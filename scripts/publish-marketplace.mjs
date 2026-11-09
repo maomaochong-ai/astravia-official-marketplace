@@ -118,5 +118,16 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
       candidateAppCommits: settings.candidateAppCommits,
     })
     : verifyCandidate(dir, tooling),
-  }).catch(error => { console.error(error.message); process.exitCode = 1; });
+  }).catch(error => {
+    const message = String(error?.stack ?? error?.message ?? error);
+    console.error(message);
+    // A failed publication used to end as "Process completed with exit code 1", which is
+    // all a maintainer sees without repo-admin log access. An error annotation is where the
+    // reason becomes visible.
+    if (process.env.GITHUB_ACTIONS) {
+      const escaped = message.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+      console.log(`::error::${escaped.slice(0, 6000)}`);
+    }
+    process.exitCode = 1;
+  });
 }
