@@ -18,10 +18,11 @@ async function enterDestination(
 	ctx: PluginContext,
 	key: DestinationKey,
 	next: string,
+	cwd?: string,
 ): Promise<string> {
 	const target = resolveEntryTarget({ kind: "destination", key });
 	if (!target.ok) return rejection(target.reason, "This destination is not configured; report it as a plugin bug.");
-	const handle = await ensureTab(ctx);
+	const handle = await ensureTab(ctx, cwd);
 	if (!handle) {
 		return JSON.stringify({
 			ok: false,
@@ -32,7 +33,13 @@ async function enterDestination(
 		});
 	}
 	const snapshot = await handle.navigate(target.url);
-	return envelope(snapshot, { needsUserAction: true, next });
+	const landed = snapshot.open && !snapshot.failure;
+	return envelope(snapshot, {
+		needsUserAction: true,
+		next: landed
+			? next
+			: "The page did not load, so the panel is still where it was. Read the failure text, ask the user to press Retry in the panel, and do not claim the panel moved.",
+	});
 }
 
 /**
@@ -51,11 +58,12 @@ export function registerDestinationTools(ctx: PluginContext): Disposable[] {
 			parameters: { type: "object", properties: {}, additionalProperties: false },
 			scope_use: TOOL_SCOPE,
 			timeoutMs: 30_000,
-			handler: async () =>
+			handler: async ({ session }) =>
 				enterDestination(
 					ctx,
 					"create",
 					"Ask the user to pick the board type and press create. If the type is a diagram, you can write the Mermaid source while they paste it in.",
+					session.cwd,
 				),
 		}),
 		ctx.agent.registerTool<{ kind: AiKind }>({
@@ -79,7 +87,7 @@ export function registerDestinationTools(ctx: PluginContext): Disposable[] {
 			},
 			scope_use: TOOL_SCOPE,
 			timeoutMs: 30_000,
-			handler: async ({ trigger }) => {
+			handler: async ({ trigger, session }) => {
 				const kind = trigger.input?.kind;
 				if (!kind || !(kind in AI_SOURCES)) {
 					return JSON.stringify({
@@ -93,6 +101,7 @@ export function registerDestinationTools(ctx: PluginContext): Disposable[] {
 					ctx,
 					AI_SOURCES[kind],
 					"Give the user a prompt they can paste (topic, audience, structure, length), then let them press generate. Do not claim the artifact exists.",
+					session.cwd,
 				);
 			},
 		}),

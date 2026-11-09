@@ -82,7 +82,7 @@ export function SampleDropzone({ report, busy, fromAgent, onClear, onReanalyse, 
 
 	const arch = factValue(report, ["Architecture", "Main binary architecture"]);
 	return (
-		<div className="rounded-lg border border-line bg-surface-2 px-4 py-3.5">
+		<div className="rounded-lg border border-line-subtle bg-surface-2 px-4 py-3.5">
 			<div className="flex items-start gap-3">
 				<div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-surface-4 text-text-2">
 					<Icon name="boxes" className="size-5" />

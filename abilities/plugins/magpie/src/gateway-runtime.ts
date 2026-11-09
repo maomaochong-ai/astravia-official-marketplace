@@ -124,13 +124,38 @@ export function installScript(asset: ReleaseAsset): string {
 		`echo "downloading ${asset.key} ${asset.version} (${asset.size} bytes)"`,
 		`want="${asset.size}"`,
 		'have=0',
-		'if [ -f "$part" ]; then have="$(wc -c < "$part" | tr -d \' \')"; fi',
+		`if [ -f "$part" ]; then have="$(wc -c < "$part" | tr -d ' ')"; fi`,
 		// 长度已经对上就直接校验，不再发请求；否则整包重下。
-		// 不续传：实测 usemagpie.ai/files 不处理 Range 请求（curl 报 56），
-		// 残片一旦存在，`-C -` 会每次以同样错误失败；整包 70 MB 实测 73 秒，重下更稳。
+		// 不续传：实测文件主机不处理 Range 请求（curl 报 56），残片一旦存在，
+		// `-C -` 会每次以同样的错误失败；整包 70 MB 重下比赌服务端更稳。
 		'if [ "$have" != "$want" ]; then',
-		`  curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 20 -o "$part" ${url}`,
-		"fi",
+		// curl 的进度条只画在终端里，插件这边没有终端 —— 70 MB 看起来就是卡住。
+		// 所以下载在前台跑，旁边挂一个每秒数一次落盘字节的观察者，把
+		// `progress <已下> <总长>` 写进 spawn 的环形缓冲，面板据此画进度。
+		'  stop="$HOME/.cache/magpie/.watch.$$"',
+		'  rm -f "$stop"',
+		'  ( while [ ! -e "$stop" ]; do',
+		'      sleep 1',
+		`      s="$(wc -c < "$part" 2>/dev/null | tr -d ' ')"`,
+		'      [ -n "$s" ] || s=0',
+		'      echo "progress $s $want"',
+		'    done ) &',
+		'  watch=$!',
+		'  echo "progress 0 $want"',
+		'  rc=0',
+		`  curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 20 -o "$part" ${url} || rc=$?`,
+		// 观察者靠这个标记收尾；`wait` 把它收回来，免得留下一个空转的子 shell
+		'  touch "$stop"',
+		'  wait "$watch" 2>/dev/null || true',
+		'  rm -f "$stop"',
+		'  if [ "$rc" != 0 ]; then',
+		'    echo "download failed (exit $rc)"',
+		'    rm -f "$part"',
+		'    exit 5',
+		'  fi',
+		'  echo "progress $want $want"',
+		'fi',
+		'echo "verifying"',
 		'if command -v shasum >/dev/null 2>&1; then',
 		'  got="$(shasum -a 256 "$part" | cut -d" " -f1)"',
 		"elif command -v sha256sum >/dev/null 2>&1; then",
@@ -238,13 +263,53 @@ export function classifyCommandError(error: unknown): CommandDenial {
 	return "failed";
 }
 
+/** `progress <已下> <总长>` 是安装脚本给面板看的进度行，不算「一条输出」。 */
+const PROGRESS_LINE = /^progress \d+ \d+$/;
+
 /** 从 spawn 的环形缓冲里取最后一行有用的输出，给面板当「最近一条」。 */
 export function lastLine(output: string, limit = 240): string | undefined {
 	const lines = output
 		.split(/\r?\n|\r/)
 		.map((line) => line.trim())
-		.filter(Boolean);
+		.filter((line) => Boolean(line) && !PROGRESS_LINE.test(line));
 	const last = lines[lines.length - 1];
 	if (!last) return undefined;
 	return last.length > limit ? `${last.slice(0, limit)}…` : last;
 }
+/** 安装脚本自己报的进度：环形缓冲里取最后一次 `progress`，再看它在哪一步。 */
+export interface InstallProgress {
+	downloaded?: number;
+	total?: number;
+	/** 下载完了，正在核对 sha256。 */
+	verifying: boolean;
+	/** 已经装到 `~/.local/bin/magpie`。 */
+	installed: boolean;
+}
+
+export function parseInstallProgress(output: string): InstallProgress {
+	let downloaded: number | undefined;
+	let total: number | undefined;
+	let verifying = false;
+	let installed = false;
+	for (const raw of output.split(/\r?\n|\r/)) {
+		const line = raw.trim();
+		const match = /^progress (\d+) (\d+)$/.exec(line);
+		if (match) {
+			downloaded = Number(match[1]);
+			total = Number(match[2]);
+			continue;
+		}
+		if (line === "verifying") {
+			verifying = true;
+			continue;
+		}
+		// 已经装好时脚本只打一行「already installed」，那也是「装好了」
+		if (/^(?:already )?installed\b/.test(line)) {
+			installed = true;
+			verifying = false;
+		}
+	}
+	if (total !== undefined && !(total > 0)) total = undefined;
+	return { downloaded, total, verifying: verifying && !installed, installed };
+}
+

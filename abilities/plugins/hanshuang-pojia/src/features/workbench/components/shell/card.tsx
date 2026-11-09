@@ -9,10 +9,10 @@ export interface CardProps {
 	children: ReactNode;
 }
 
-/** 面板里所有内容块的外框：一条细边 + 一句标题，不叠加阴影。 */
+/** 面板里所有内容块的外框：靠底色分层，只留一层几乎看不见的描边；不再叠加阴影。 */
 export function Card({ title, actions, className, bodyClassName, children }: CardProps) {
 	return (
-		<section className={`min-w-0 rounded-lg border border-line bg-surface-2 ${className ?? ""}`}>
+		<section className={`min-w-0 rounded-xl bg-surface-2 ring-1 ring-line-subtle ${className ?? ""}`}>
 			{title ? (
 				<header className="flex items-center gap-2 border-b border-line-subtle px-3.5 py-2.5">
 					<h2 className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text">{title}</h2>

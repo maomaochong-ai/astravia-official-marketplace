@@ -6,6 +6,7 @@ import {
 	lastLine,
 	parseHostTarget,
 	parseProbe,
+	parseInstallProgress,
 	pickReleaseAsset,
 	probeScript,
 	RELEASE_FEED_URL,
@@ -38,6 +39,12 @@ export interface RuntimeState {
 	messageKey?: string;
 	/** 最近一行输出或错误原文（截断）。 */
 	detail?: string;
+	/** 下载进度（字节）；只在下载/校验阶段有值。 */
+	progress?: { downloaded: number; total: number };
+	/** 安装子步骤：`verifying` = 字节已下完，正在核对 sha256。 */
+	installStep?: "downloading" | "verifying";
+	/** 当前阶段开始时刻（毫秒）：面板据此走秒、估算剩余。 */
+	phaseStartedAt?: number;
 	/** 清单里当前发布版本，用于「装的是不是最新」。 */
 	releaseVersion?: string;
 	/** 用户希望它运行（落盘），下次加载时据此自动拉起。 */
@@ -114,20 +121,29 @@ export class RuntimeManager {
 	}
 
 	/** 只看二进制在不在：`sh` 被禁时把原因说清楚，不假装「没装」。 */
-	async probeBinary(): Promise<boolean> {
-		this.set({ phase: this.state.phase === "running" ? "running" : "checking", messageKey: undefined });
+	async probeBinary(options: { keepPhase?: boolean } = {}): Promise<boolean> {
+		// keepPhase：安装流程内部的那一探只想知道「在不在」，
+		// 不能把相位从「正在下载」打回「还没有 magpie」——面板就凭它显示进度。
+		const keepPhase = options.keepPhase === true;
+		const idlePhase = (fallback: RuntimePhase): RuntimePhase =>
+			this.state.phase === "running" ? "running" : fallback;
+		if (!keepPhase) this.set({ phase: idlePhase("checking"), messageKey: undefined });
 		try {
 			const result = await this.deps.command.run("sh", ["-c", probeScript()], { timeoutMs: PROBE_BUDGET_MS });
 			const probe = parseProbe(result.stdout, result.exitCode);
 			if (!probe.installed) {
-				this.set({ phase: this.state.phase === "running" ? "running" : "absent", binPath: undefined, version: undefined });
+				this.set(
+					keepPhase
+						? { binPath: undefined, version: undefined }
+						: { phase: idlePhase("absent"), binPath: undefined, version: undefined },
+				);
 				return false;
 			}
-			this.set({
-				phase: this.state.phase === "running" ? "running" : "stopped",
-				binPath: probe.path,
-				version: probe.version,
-			});
+			this.set(
+				keepPhase
+					? { binPath: probe.path, version: probe.version }
+					: { phase: idlePhase("stopped"), binPath: probe.path, version: probe.version },
+			);
 			return true;
 		} catch (error) {
 			const denial = classifyCommandError(error);
@@ -196,30 +212,50 @@ export class RuntimeManager {
 	async install(): Promise<boolean> {
 		if (this.operationInFlight || this.disposed) return false;
 		this.operationInFlight = true;
-		this.set({ phase: "downloading", messageKey: undefined, detail: undefined });
+		this.set({
+			phase: "downloading",
+			messageKey: undefined,
+			detail: undefined,
+			progress: undefined,
+			installStep: "downloading",
+			phaseStartedAt: Date.now(),
+		});
 		try {
-			if (await this.probeBinary()) return true;
+			// 不改相位：这一探只是「要不要装」，不该把面板从「正在下载」打回「还没有 magpie」
+			if (await this.probeBinary({ keepPhase: true })) {
+				this.set({ phase: "stopped", progress: undefined, installStep: undefined });
+				return true;
+			}
 			const asset = await this.resolveAsset();
 			if (!asset) return false;
 			const handle = await this.deps.command.spawn("sh", ["-c", installScript(asset)]);
-			const outcome = await this.waitForExit(handle, INSTALL_BUDGET_MS);
+			const outcome = await this.waitForExit(handle, INSTALL_BUDGET_MS, (output) => this.reportInstall(output));
 			if (outcome.exitCode !== 0) {
 				this.set({
 					phase: "failed",
 					messageKey: "runtime.installFailed",
 					detail: lastLine(outcome.output) ?? (outcome.exitCode === null ? "timeout" : `exit ${outcome.exitCode}`),
+					progress: undefined,
+					installStep: undefined,
 				});
 				return false;
 			}
-			const installed = await this.probeBinary();
-			if (installed) this.set({ releaseVersion: asset.version });
-			return installed;
+			const installed = await this.probeBinary({ keepPhase: true });
+			this.set({ progress: undefined, installStep: undefined });
+			if (!installed) {
+				this.set({ phase: "failed", messageKey: "runtime.installFailed" });
+				return false;
+			}
+			this.set({ phase: "stopped", releaseVersion: asset.version });
+			return true;
 		} catch (error) {
 			const denial = classifyCommandError(error);
 			this.set({
 				phase: "failed",
 				messageKey: denial === "denied" ? "runtime.denied" : "runtime.installFailed",
 				detail: lastLine(error instanceof Error ? error.message : String(error)),
+				progress: undefined,
+				installStep: undefined,
 			});
 			return false;
 		} finally {
@@ -233,7 +269,7 @@ export class RuntimeManager {
 		if (this.handle) return true;
 		this.operationInFlight = true;
 		this.stoppedByUser = false;
-		this.set({ phase: "starting", messageKey: undefined, detail: undefined });
+		this.set({ phase: "starting", messageKey: undefined, detail: undefined, phaseStartedAt: Date.now() });
 		try {
 			const address = loopbackAddress(this.deps.endpoint());
 			// 用探针读到的路径：用户在 ~/bin 里已有的那份也能启，不必只认插件安装位
@@ -272,7 +308,15 @@ export class RuntimeManager {
 		const handle = this.handle;
 		this.handle = null;
 		this.stoppedByUser = true;
-		this.set({ phase: "stopped", pid: undefined, desiredRunning: false, messageKey: undefined, detail: undefined });
+		this.set({
+			phase: "stopped",
+			pid: undefined,
+			desiredRunning: false,
+			messageKey: undefined,
+			detail: undefined,
+			progress: undefined,
+			installStep: undefined,
+		});
 		await this.persist();
 		if (handle) await handle.stop().catch(() => undefined);
 	}
@@ -301,6 +345,7 @@ export class RuntimeManager {
 	private async waitForExit(
 		handle: PluginCommandSpawnHandle,
 		budgetMs: number,
+		onTick?: (output: string) => void,
 	): Promise<{ exitCode: number | null; output: string }> {
 		const deadline = Date.now() + budgetMs;
 		let output = "";
@@ -308,14 +353,33 @@ export class RuntimeManager {
 			const status = await handle.status().catch(() => null);
 			if (status) {
 				output = status.recentOutput || output;
+				// lastLine 已经滤掉 `progress …`，这里只剩「真正的一句话」
 				const line = lastLine(output);
 				if (line) this.set({ detail: line });
+				if (onTick) onTick(output);
 				if (!status.running) return { exitCode: status.exit?.exitCode ?? null, output };
 			}
 			await sleep(POLL_INTERVAL_MS);
 		}
 		await handle.stop().catch(() => undefined);
 		return { exitCode: null, output };
+	}
+
+	/**
+	 * 把安装脚本自己报的字节数搬进状态：没有这一条，一次 70 MB 的下载在面板上
+	 * 就是一行不动的日志。只有数字真的变了才通知 UI，避免每秒空转重渲染。
+	 */
+	private reportInstall(output: string): void {
+		const parsed = parseInstallProgress(output);
+		const patch: Partial<RuntimeState> = {};
+		if (parsed.downloaded !== undefined && parsed.total !== undefined) {
+			const current = this.state.progress;
+			const changed = !current || current.downloaded !== parsed.downloaded || current.total !== parsed.total;
+			if (changed) patch.progress = { downloaded: parsed.downloaded, total: parsed.total };
+		}
+		const step = parsed.verifying ? "verifying" : "downloading";
+		if (this.state.installStep !== step) patch.installStep = step;
+		if (Object.keys(patch).length > 0) this.set(patch);
 	}
 
 	/** 启动后等网关自答；超时不算失败（服务可能只是慢），由探针给最终结论。 */

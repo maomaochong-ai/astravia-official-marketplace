@@ -59,7 +59,7 @@ export function ComparePage({ model }: PageProps) {
 						<select
 							value={model.compareA ?? ""}
 							onChange={event => model.setCompare("a", event.target.value || null)}
-							className="w-full rounded border border-line bg-surface px-2 py-1 text-[11.5px] text-text outline-none focus:border-line-strong"
+							className="w-full rounded border border-line-subtle bg-surface px-2 py-1 text-[11.5px] text-text outline-none focus:border-line-strong"
 						>
 							<option value="">{t("compare.placeholder")}</option>
 							{available.map(entry => (
@@ -74,7 +74,7 @@ export function ComparePage({ model }: PageProps) {
 						<select
 							value={model.compareB ?? ""}
 							onChange={event => model.setCompare("b", event.target.value || null)}
-							className="w-full rounded border border-line bg-surface px-2 py-1 text-[11.5px] text-text outline-none focus:border-line-strong"
+							className="w-full rounded border border-line-subtle bg-surface px-2 py-1 text-[11.5px] text-text outline-none focus:border-line-strong"
 						>
 							<option value="">{t("compare.placeholder")}</option>
 							{available.map(entry => (

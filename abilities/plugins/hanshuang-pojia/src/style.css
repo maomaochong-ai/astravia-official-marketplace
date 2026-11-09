@@ -53,29 +53,19 @@
 	--fb-text-2: color-mix(in oklab, var(--foreground) 72%, transparent);
 	--fb-text-3: color-mix(in oklab, var(--foreground) 52%, transparent);
 	--fb-text-4: color-mix(in oklab, var(--foreground) 38%, transparent);
-	--fb-line: var(--border);
-	--fb-line-strong: color-mix(in oklab, var(--foreground) 18%, transparent);
+	/* 宿主的 --border 偏实，全部降成「几乎看不见」的一层；真正的分层交给底色 */
+	--fb-line: color-mix(in oklab, var(--foreground) 11%, transparent);
+	--fb-line-strong: color-mix(in oklab, var(--foreground) 14%, transparent);
 	--fb-line-subtle: color-mix(in oklab, var(--foreground) 7%, transparent);
-	--fb-risk-high: #ff6764;
-	--fb-risk-high-deep: #e02e2a;
-	--fb-risk-medium: #ff8549;
-	--fb-risk-medium-deep: #e25507;
-	--fb-risk-low: #40c977;
-	--fb-risk-low-deep: #00a240;
-	--fb-purple: #c27aff;
-
-	font-variant-numeric: tabular-nums;
-}
-
-/* 浅色主题下这三支颜色是为深色背景选的，换成同色相更深的一档保证可读。 */
-[data-mode="light"] .fb-root {
-	--fb-risk-high: #d32b28;
-	--fb-risk-high-deep: #a81d1b;
-	--fb-risk-medium: #bf4a00;
-	--fb-risk-medium-deep: #9a3a00;
-	--fb-risk-low: #0b7a37;
-	--fb-risk-low-deep: #075f2a;
-	--fb-purple: #7b3ec4;
+	/* 风险色跟着 color-scheme 走：宿主在 [data-mode] 根上声明的 color-scheme 会继承到这里，
+	   而 `[data-mode="light"] .fb-root` 这种写法在 @scope 里永远选不中，所以用 light-dark()。 */
+	--fb-risk-high: light-dark(#d32b28, #ff6764);
+	--fb-risk-high-deep: light-dark(#a81d1b, #e02e2a);
+	--fb-risk-medium: light-dark(#bf4a00, #ff8549);
+	--fb-risk-medium-deep: light-dark(#9a3a00, #e25507);
+	--fb-risk-low: light-dark(#0b7a37, #40c977);
+	--fb-risk-low-deep: light-dark(#075f2a, #00a240);
+	--fb-purple: light-dark(#7b3ec4, #c27aff);
 }
 
 /* 面板里横向滚动的表格与纵向滚动的正文都用细滚动条，避免抢视觉重量。 */

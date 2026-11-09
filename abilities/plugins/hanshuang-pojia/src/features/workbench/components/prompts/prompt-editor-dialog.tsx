@@ -51,7 +51,7 @@ export function PromptEditorDialog({ open, editing, onClose, onSubmit }: PromptE
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
 			<div
-				className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-lg border border-line bg-surface-2"
+				className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-lg border border-line-subtle bg-surface-2"
 				onClick={e => e.stopPropagation()}
 			>
 				<div className="flex items-center justify-between border-b border-line-subtle px-4 py-3">
@@ -71,7 +71,7 @@ export function PromptEditorDialog({ open, editing, onClose, onSubmit }: PromptE
 							value={form.name}
 							onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
 							placeholder={t("prompt.editor.namePlaceholder")}
-							className="w-full rounded-md border border-line bg-surface px-3 py-1.5 text-[12.5px] text-text outline-none focus:border-purple"
+							className="w-full rounded-md border border-line-subtle bg-surface px-3 py-1.5 text-[12.5px] text-text outline-none focus:border-purple"
 						/>
 					</div>
 
@@ -82,7 +82,7 @@ export function PromptEditorDialog({ open, editing, onClose, onSubmit }: PromptE
 							value={form.description}
 							onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
 							placeholder={t("prompt.editor.descriptionPlaceholder")}
-							className="w-full rounded-md border border-line bg-surface px-3 py-1.5 text-[12.5px] text-text outline-none focus:border-purple"
+							className="w-full rounded-md border border-line-subtle bg-surface px-3 py-1.5 text-[12.5px] text-text outline-none focus:border-purple"
 						/>
 					</div>
 
@@ -110,7 +110,7 @@ export function PromptEditorDialog({ open, editing, onClose, onSubmit }: PromptE
 							onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
 							placeholder={t("prompt.editor.contentPlaceholder")}
 							rows={12}
-							className="w-full resize-y rounded-md border border-line bg-surface px-3 py-2 font-mono text-[11.5px] leading-relaxed text-text outline-none focus:border-purple"
+							className="w-full resize-y rounded-md border border-line-subtle bg-surface px-3 py-2 font-mono text-[11.5px] leading-relaxed text-text outline-none focus:border-purple"
 						/>
 					</div>
 				</div>

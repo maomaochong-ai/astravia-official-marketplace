@@ -26,6 +26,8 @@ interface Harness {
 	failSpawn: (message: string | null) => void;
 	/** 让 run 本身抛错，模拟系统上根本没有 sh（Windows）。 */
 	failRun: (message: string | null) => void;
+	/** 让下一次安装的 status() 依次报这几帧输出，最后一帧视为结束。 */
+	progressFrames: (frames: string[]) => void;
 }
 
 function harness(): Harness {
@@ -34,6 +36,8 @@ function harness(): Harness {
 	let spawnError: string | null = null;
 	let runError: string | null = null;
 	let stops = 0;
+	let frames: string[] = [];
+	let frameIndex = 0;
 	const states: RuntimeState[] = [];
 	const scripts: Harness["scripts"] = [];
 	const files = new Map<string, string>();
@@ -65,18 +69,28 @@ function harness(): Harness {
 			}
 			// 安装脚本：走到这里就说明真的「装上了」
 			installed = spawnExit === 0;
+			const scripted = frames.length > 0;
 			return {
 				spawnId: "inst",
 				pid: 4343,
 				stop: async () => {
 					stops += 1;
 				},
-				status: async () => ({
-					running: false,
-					pid: 4343,
-					exit: { exitCode: spawnExit },
-					recentOutput: spawnExit === 0 ? "installed /Users/me/.local/bin/magpie" : "checksum mismatch: got deadbeef",
-				}),
+				status: async () => {
+					if (!scripted) {
+						return {
+							running: false,
+							pid: 4343,
+							exit: { exitCode: spawnExit },
+							recentOutput: spawnExit === 0 ? "installed /Users/me/.local/bin/magpie" : "checksum mismatch: got deadbeef",
+						};
+					}
+					// 一帧一帧地喂：模拟观察者每秒往输出里写一行 `progress`
+					const recentOutput = frames[Math.min(frameIndex, frames.length - 1)];
+					const done = frameIndex >= frames.length - 1;
+					frameIndex += 1;
+					return { running: !done, pid: 4343, exit: done ? { exitCode: spawnExit } : undefined, recentOutput };
+				},
 				onExit: () => ({ dispose() {} }),
 			};
 		},
@@ -120,6 +134,10 @@ function harness(): Harness {
 		failRun: (message) => {
 			runError = message;
 		},
+		progressFrames: (value) => {
+			frames = value;
+			frameIndex = 0;
+		},
 	};
 }
 
@@ -159,6 +177,26 @@ describe("RuntimeManager.install", () => {
 			messageKey: "runtime.installFailed",
 			detail: "checksum mismatch: got deadbeef",
 		});
+	});
+
+	it("moves the byte counter while the download runs, without leaving the downloading phase", async () => {
+		const h = harness();
+		h.progressFrames([
+			"downloading magpie-cli-darwin-arm64 0.1.3336 (69149314 bytes)\nprogress 0 69149314",
+			"progress 20971520 69149314",
+			"progress 69149314 69149314\nverifying",
+		]);
+		expect(await h.manager.install()).toBe(true);
+		// states 是每次 set 的整份快照，同一帧会跟着 detail 更新重复出现，所以按值去重
+		const counts = h.states
+			.filter((state) => state.progress !== undefined)
+			.map((state) => state.progress?.downloaded)
+			.filter((value, index, all) => index === 0 || all[index - 1] !== value);
+		expect(counts).toEqual([0, 20971520, 69149314]);
+		// 这一探只问「在不在」，不能把面板从「正在下载」打回「还没有 magpie」
+		expect(h.states.some((state) => state.phase === "checking" || state.phase === "absent")).toBe(false);
+		// 收尾：进度与子步骤都要清掉，否则面板会一直挂着一条 100% 的进度条
+		expect(h.manager.getState()).toMatchObject({ phase: "stopped", progress: undefined, installStep: undefined });
 	});
 
 	it("maps a refused command to the one thing the user can fix", async () => {

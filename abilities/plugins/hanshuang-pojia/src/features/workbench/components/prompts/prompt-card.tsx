@@ -30,7 +30,7 @@ export function PromptCard({ prompt, onActivate, onDeactivate, onEdit, onDelete,
 	return (
 		<article
 			className={`rounded-lg border p-3.5 transition-colors ${
-				prompt.active ? "border-purple/50 bg-purple/5" : "border-line bg-surface-2 hover:border-line-subtle"
+				prompt.active ? "border-purple/50 bg-purple/5" : "border-line-subtle bg-surface-2 hover:border-line-subtle"
 			}`}
 		>
 			<div className="flex items-start justify-between gap-2">

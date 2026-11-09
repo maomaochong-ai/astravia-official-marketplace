@@ -37,6 +37,8 @@ export interface BoardmixSnapshot {
 	phase: BoardmixPhase;
 	seedLevel: number;
 	landedAt: string | null;
+	/** 这次加载真的失败时，访客进程报的原因（`ERR_NAME_NOT_RESOLVED` 之类）；正常时没有。 */
+	failure?: string;
 }
 
 export const CLOSED_SNAPSHOT: BoardmixSnapshot = {

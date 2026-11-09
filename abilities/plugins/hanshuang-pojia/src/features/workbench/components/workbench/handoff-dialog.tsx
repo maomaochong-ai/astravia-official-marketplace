@@ -33,7 +33,7 @@ export function HandoffDialog({ open, target, busy, onClose, onSend }: HandoffDi
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
 			<div
-				className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-lg border border-line bg-surface-2"
+				className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-lg border border-line-subtle bg-surface-2"
 				onClick={event => event.stopPropagation()}
 				data-testid="handoff-dialog"
 			>
@@ -63,7 +63,7 @@ export function HandoffDialog({ open, target, busy, onClose, onSend }: HandoffDi
 						onChange={event => setPrompt(event.target.value)}
 						rows={12}
 						aria-label={t("handoff.promptLabel")}
-						className="w-full resize-y rounded-md border border-line bg-surface px-3 py-2 text-[12px] leading-relaxed text-text outline-none focus:border-purple"
+						className="w-full resize-y rounded-md border border-line-subtle bg-surface px-3 py-2 text-[12px] leading-relaxed text-text outline-none focus:border-purple"
 					/>
 					<p className="text-[10.5px] leading-relaxed text-text-4">{t("handoff.note")}</p>
 				</div>

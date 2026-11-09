@@ -104,7 +104,7 @@ export function PromptsPage({ model }: PageProps) {
 							type="button"
 							onClick={() => importRef.current?.click()}
 							title={t("prompt.import.hint")}
-							className="flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+							className="flex items-center gap-1 rounded-md border border-line-subtle px-2.5 py-1.5 text-[11.5px] font-medium text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
 						>
 							<Icon name="file" className="size-3.5" />
 							{t("prompt.import.button")}
@@ -147,7 +147,7 @@ export function PromptsPage({ model }: PageProps) {
 								value={query}
 								onChange={e => setQuery(e.target.value)}
 								placeholder={t("prompt.searchPlaceholder")}
-								className="w-full rounded-md border border-line bg-surface px-3 py-1.5 text-[12px] text-text outline-none focus:border-purple"
+								className="w-full rounded-md border border-line-subtle bg-surface px-3 py-1.5 text-[12px] text-text outline-none focus:border-purple"
 							/>
 						</div>
 

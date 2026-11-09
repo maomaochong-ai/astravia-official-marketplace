@@ -22,6 +22,9 @@ import { LoadFailureNotice } from "./load-failure-notice";
 import { LoginRequiredNotice } from "./login-required-notice";
 
 const NAVIGATE_TIMEOUT_MS = 12_000;
+/** 首次没落地就再叫一次：访客进程刚起、DNS 抖一下都可能在首帧丢掉 did-navigate。 */
+const NAVIGATE_ATTEMPTS = 2;
+const NAVIGATE_RETRY_DELAY_MS = 400;
 /** 断网恢复后自动重试一次；不叠加退避，只确保「网络回来了」不需要人再点一次。 */
 const ONLINE_RETRY_DELAY_MS = 1_500;
 
@@ -38,6 +41,8 @@ export interface BoardmixSurfaceProps {
 interface WebviewLoadFailure extends Event {
 	isMainFrame?: boolean;
 	errorCode?: number;
+	errorDescription?: string;
+	validatedURL?: string;
 }
 
 interface WebviewNavigate extends Event {
@@ -52,6 +57,13 @@ function currentUrlOf(element: HTMLWebViewElement | null): string {
 		// 访客进程还没起来时 getURL 会抛，按「还不知道」处理。
 		return "";
 	}
+}
+
+/** 把 did-fail-load 的两个字段压成一行：人看得懂，工具能原样带回去。 */
+function describeLoadFailure(failure: WebviewLoadFailure): string {
+	const code = typeof failure.errorCode === "number" ? failure.errorCode : null;
+	const text = failure.errorDescription?.trim() || "load failed";
+	return code === null ? text : `${text} (${code})`;
 }
 
 /**
@@ -80,14 +92,17 @@ export const BoardmixSurface = forwardRef<BoardmixTabHandle, BoardmixSurfaceProp
 		const [phase, setPhase] = useState<BoardmixPhase>("unknown");
 		// 机器离线时不是「插件坏了」，但也不能留白屏：状态行要写出是可恢复的。
 		const [offline, setOffline] = useState(() => typeof navigator !== "undefined" && navigator.onLine === false);
+		// 访客进程自己报的死因（did-fail-load 的 errorCode/描述），用来把「页面没加载出来」说清楚。
+		const failureRef = useRef<string | null>(null);
 
 		const snapshot = useCallback((): BoardmixSnapshot => {
 			const element = webviewRef.current;
 			const url = urlRef.current || currentUrlOf(element);
+			const failure = failureRef.current ?? undefined;
 			if (!url) {
-				return { ...CLOSED_SNAPSHOT, open: element !== null, seedLevel: levelRef.current };
+				return { ...CLOSED_SNAPSHOT, open: element !== null, seedLevel: levelRef.current, failure };
 			}
-			return snapshotOf(url, levelRef.current, landedAtRef.current);
+			return { ...snapshotOf(url, levelRef.current, landedAtRef.current), failure };
 		}, []);
 
 		const settlePending = useCallback(
@@ -129,20 +144,26 @@ export const BoardmixSurface = forwardRef<BoardmixTabHandle, BoardmixSurfaceProp
 		useImperativeHandle(
 			ref,
 			(): BoardmixTabHandle => ({
-				navigate: url =>
-					new Promise<BoardmixSnapshot>(resolve => {
-						const element = webviewRef.current;
-						if (!element) {
-							resolve(CLOSED_SNAPSHOT);
-							return;
-						}
-						settlePending(snapshot());
-						pendingRef.current = resolve;
-						timerRef.current = window.setTimeout(() => settlePending(snapshot()), NAVIGATE_TIMEOUT_MS);
-						levelRef.current = 1;
-						setPhase("unknown");
-						loadUrl(url);
-					}),
+				navigate: async url => {
+					if (!webviewRef.current) return CLOSED_SNAPSHOT;
+					let landed = CLOSED_SNAPSHOT;
+					for (let attempt = 1; attempt <= NAVIGATE_ATTEMPTS; attempt += 1) {
+						failureRef.current = null;
+						landed = await new Promise<BoardmixSnapshot>(resolve => {
+							settlePending(snapshot());
+							pendingRef.current = resolve;
+							timerRef.current = window.setTimeout(() => settlePending(snapshot()), NAVIGATE_TIMEOUT_MS);
+							levelRef.current = 1;
+							setPhase("unknown");
+							loadUrl(url);
+						});
+						// 落地了且访客没报错就是成功；否则只剩最后一发才把失败原因交回去。
+						if (landed.open && !landed.failure) return landed;
+						if (attempt === NAVIGATE_ATTEMPTS) return landed;
+						await new Promise(done => window.setTimeout(done, NAVIGATE_RETRY_DELAY_MS));
+					}
+					return landed;
+				},
 				snapshot,
 				openInBrowser: openCurrentInBrowser,
 				async read(code) {
@@ -206,6 +227,15 @@ export const BoardmixSurface = forwardRef<BoardmixTabHandle, BoardmixSurfaceProp
 			const onFailLoad = (event: Event) => {
 				const failure = event as WebviewLoadFailure;
 				if (!isFatalLoadFailure({ isMainFrame: failure.isMainFrame, errorCode: failure.errorCode })) {
+					return;
+				}
+				// 记下死因：工具与面板都要能把「页面没加载出来」说成一个具体原因。
+				failureRef.current = describeLoadFailure(failure);
+				// 有导航在等结果时，不能悄悄换成下一级种子：那样报回来的地址
+				// 不是调用方要的那一个，而工具会把它当成「到了」。失败就是失败。
+				if (pendingRef.current) {
+					setStatus("failed");
+					settlePending(snapshot());
 					return;
 				}
 				const fallback = nextSeed(ladderRef.current, levelRef.current);

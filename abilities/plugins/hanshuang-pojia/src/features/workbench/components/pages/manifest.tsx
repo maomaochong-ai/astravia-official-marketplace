@@ -68,7 +68,7 @@ export function ManifestPage({ model }: PageProps) {
 						<button
 							type="button"
 							onClick={() => model.exportReport("markdown")}
-							className="rounded border border-line px-2 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+							className="rounded border border-line-subtle px-2 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
 						>
 							{t("manifest.export")}
 						</button>

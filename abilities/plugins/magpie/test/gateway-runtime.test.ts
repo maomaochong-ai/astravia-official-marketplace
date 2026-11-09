@@ -5,6 +5,7 @@ import {
 	installScript,
 	lastLine,
 	parseHostTarget,
+	parseInstallProgress,
 	parseProbe,
 	pickReleaseAsset,
 	probeScript,
@@ -125,12 +126,7 @@ describe("install script", () => {
 		expect(script).toContain(`want="${asset.size}"`);
 		expect(script.indexOf('have="$(wc -c')).toBeLessThan(script.indexOf("curl"));
 		// 坏包必须删掉，不然下次会把脏数据当成品
-		expect(script.indexOf("checksum mismatch")).toBeLessThan(script.indexOf('rm -f "$part"'));
-		// 长度对上就不发请求：否则会对已下完的文件发越界 Range
-		expect(script).toContain(`want="${asset.size}"`);
-		expect(script.indexOf('have="$(wc -c')).toBeLessThan(script.indexOf("curl"));
-		// 坏包必须删掉，不然下次会从错的位置继续
-		expect(script.indexOf("checksum mismatch")).toBeLessThan(script.indexOf('rm -f "$part"'));
+		expect(script).toMatch(/checksum mismatch[\s\S]{0,400}rm -f "\$part"/);
 	});
 
 	it("installs into the same directory as the official installer", () => {
@@ -174,6 +170,26 @@ describe("probe script", () => {
 	});
 });
 
+describe("install progress", () => {
+	it("reports how many bytes have landed, once a second, while curl still runs", () => {
+		const asset = pickReleaseAsset(FEED, { os: "darwin", arch: "arm64" }) as ReleaseAsset;
+		const script = installScript(asset);
+		// curl 的进度条只在终端里画；插件这边只能自己数文件长度，才能给面板一个百分比
+		expect(script).toContain('echo "progress $s $want"');
+		expect(script).toContain('echo "progress 0 $want"');
+		expect(script).toContain('echo "progress $want $want"');
+		// 观察者靠标记文件收尾：不用 `kill -0`，以免子进程已死但尚未被回收时空转
+		expect(script).toContain('stop="$HOME/.cache/magpie/.watch.$$"');
+		expect(script).not.toContain("kill -0");
+		expect(script).toContain('wait "$watch"');
+		// 下载失败要把残片删掉，并且报出 curl 的退出码
+		expect(script).toContain('|| rc=$?');
+		expect(script).toContain('exit 5');
+		// 校验开始前先告诉面板：字节数已经到齐，接下来是 sha256
+		expect(script).toContain('echo "verifying"');
+	});
+});
+
 describe("parseProbe", () => {
 	it("reads the path and the self-reported version", () => {
 		expect(parseProbe("path=/tmp/magpie\nmagpie 0.1.3336\n", 0)).toEqual({
@@ -201,10 +217,45 @@ describe("command failures", () => {
 	});
 });
 
+describe("parseInstallProgress", () => {
+	it("keeps the last byte count the installer printed", () => {
+		expect(parseInstallProgress("progress 0 700\nprogress 10 700\nprogress 350 700")).toEqual({
+			downloaded: 350,
+			total: 700,
+			verifying: false,
+			installed: false,
+		});
+	});
+
+	it("says verifying once the bytes are in, and drops it once the binary is installed", () => {
+		expect(parseInstallProgress("progress 700 700\nverifying")).toMatchObject({ verifying: true, installed: false });
+		expect(parseInstallProgress("progress 700 700\nverifying\ninstalled /Users/me/.local/bin/magpie")).toMatchObject({
+			verifying: false,
+			installed: true,
+		});
+	});
+
+	it("does not invent a total when the line is not a progress line", () => {
+		// 已装时脚本只打一行「already installed」，它同样是「装好了」这个结论
+		expect(parseInstallProgress("already installed: /Users/me/.local/bin/magpie")).toEqual({
+			downloaded: undefined,
+			total: undefined,
+			verifying: false,
+			installed: true,
+		});
+		expect(parseInstallProgress("progress 10 0").total).toBeUndefined();
+	});
+});
+
 describe("lastLine", () => {
 	it("takes the last non-empty line and truncates it", () => {
 		expect(lastLine("a\n\nb\r\n")).toBe("b");
 		expect(lastLine("")).toBeUndefined();
 		expect(lastLine("x".repeat(400))).toHaveLength(241);
+	});
+
+	it("skips progress lines so the panel keeps showing the real message", () => {
+		expect(lastLine("downloading x 1 (700 bytes)\nprogress 350 700")).toBe("downloading x 1 (700 bytes)");
+		expect(lastLine("progress 1 700\nprogress 350 700")).toBeUndefined();
 	});
 });

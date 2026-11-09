@@ -31,7 +31,7 @@ export function BackupRestoreDialog({ open, backups, onClose, onRestore, onDelet
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
 			<div
-				className="flex max-h-[70vh] w-full max-w-xl flex-col rounded-lg border border-line bg-surface-2"
+				className="flex max-h-[70vh] w-full max-w-xl flex-col rounded-lg border border-line-subtle bg-surface-2"
 				onClick={e => e.stopPropagation()}
 			>
 				<div className="flex items-center justify-between border-b border-line-subtle px-4 py-3">

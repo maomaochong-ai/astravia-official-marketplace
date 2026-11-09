@@ -173,6 +173,61 @@ describe("BoardmixSurface", () => {
 		view.unmount();
 	});
 
+	it("asks a second time when the first load fails, instead of reporting an untouched panel", async () => {
+		const { guest, ref, view } = mountSurface();
+		act(() => fire(guest, "dom-ready"));
+
+		let pending: Promise<unknown> | undefined;
+		act(() => {
+			pending = ref.current?.navigate("https://boardmix.cn/app/create");
+		});
+		act(() =>
+			fire(guest, "did-fail-load", {
+				isMainFrame: true,
+				errorCode: -105,
+				errorDescription: "ERR_NAME_NOT_RESOLVED",
+			}),
+		);
+
+		await act(async () => {
+			await new Promise(done => setTimeout(done, 500));
+		});
+		expect(guest.loads.filter(load => load === "https://boardmix.cn/app/create")).toHaveLength(2);
+
+		act(() => fire(guest, "did-navigate", { url: "https://boardmix.cn/app/create" }));
+		const landed = (await pending) as { open: boolean; failure?: string };
+		expect(landed.open).toBe(true);
+		expect(landed.failure).toBeUndefined();
+		view.unmount();
+	});
+
+	it("reports the guest's own failure text when both attempts fail", async () => {
+		const { guest, ref, view } = mountSurface();
+		act(() => fire(guest, "dom-ready"));
+
+		let pending: Promise<unknown> | undefined;
+		act(() => {
+			pending = ref.current?.navigate("https://boardmix.cn/app/create");
+		});
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			act(() =>
+				fire(guest, "did-fail-load", {
+					isMainFrame: true,
+					errorCode: -105,
+					errorDescription: "ERR_NAME_NOT_RESOLVED",
+				}),
+			);
+			await act(async () => {
+				await new Promise(done => setTimeout(done, 500));
+			});
+		}
+
+		await expect(pending).resolves.toMatchObject({
+			failure: "ERR_NAME_NOT_RESOLVED (-105)",
+		});
+		view.unmount();
+	});
+
 	it("hands the current address to the browser", async () => {
 		const { guest, openExternal, ref, view } = mountSurface();
 		act(() => fire(guest, "dom-ready"));

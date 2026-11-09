@@ -80,7 +80,7 @@ export function DisasmPage({ model }: PageProps) {
 								value={query}
 								onChange={event => setQuery(event.target.value)}
 								placeholder={t("disasm.functions.filter")}
-								className="w-full rounded border border-line bg-surface px-2 py-1 font-mono text-[11.5px] text-text outline-none placeholder:font-sans placeholder:text-text-4 focus:border-line-strong"
+								className="w-full rounded border border-line-subtle bg-surface px-2 py-1 font-mono text-[11.5px] text-text outline-none placeholder:font-sans placeholder:text-text-4 focus:border-line-strong"
 							/>
 						</div>
 						<div className="fb-scroll max-h-[168px] overflow-y-auto">
@@ -101,7 +101,7 @@ export function DisasmPage({ model }: PageProps) {
 										>
 											<span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-text">{item.name ?? t("disasm.functions.unnamed")}</span>
 											<span className="shrink-0 font-mono text-[10.5px] text-text-4">{hex(item.offset)}</span>
-											<span className="shrink-0 rounded border border-line px-1 text-[9.5px] uppercase tracking-wide text-text-4">{t(`disasm.source.${item.source}`)}</span>
+											<span className="shrink-0 rounded border border-line-subtle px-1 text-[9.5px] uppercase tracking-wide text-text-4">{t(`disasm.source.${item.source}`)}</span>
 										</button>
 									);
 								})
@@ -118,7 +118,7 @@ export function DisasmPage({ model }: PageProps) {
 									type="button"
 									onClick={disasm.copy}
 									disabled={!result}
-									className="inline-flex items-center gap-1 rounded border border-line px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover disabled:opacity-50"
+									className="inline-flex items-center gap-1 rounded border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover disabled:opacity-50"
 								>
 									<Icon name="copy" className="size-3" />
 									<span className="sr-only">{t("panel.action.copy")}</span>

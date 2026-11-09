@@ -119,10 +119,11 @@ export async function runAutomation(ctx: PluginContext, request: AutomationReque
 
 	await tick("navigate", "running");
 	const snapshot = await handle.navigate(target.url);
-	if (!snapshot.open) {
+	if (!snapshot.open || snapshot.failure) {
 		const offline = offlineNow();
 		const reason = offline ? "network" : "page-not-loaded";
-		await tick("navigate", "failed", reason);
+		// 死因写在步骤里：note 仍用短键给 stopHint 分流，detail 留给人和模型看。
+		await tick("navigate", "failed", offline ? "offline" : (snapshot.failure ?? "no-load-event-in-time"));
 		run = finishRun(run, "failed", reason, at());
 		await persistAutomationRun(ctx, run);
 		return run;

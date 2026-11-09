@@ -59,7 +59,7 @@ export function PrecedentReader({ precedent, onOpenStudy, onScaffold, busy }: Pr
 						type="button"
 						onClick={() => onOpenStudy(id)}
 						title={id}
-						className="inline-flex min-w-0 items-center gap-1 rounded border border-line px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+						className="inline-flex min-w-0 items-center gap-1 rounded border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
 					>
 						<Icon name="book" className="size-3 shrink-0" />
 						<span className="truncate">{t("cases.precedent.study")}</span>

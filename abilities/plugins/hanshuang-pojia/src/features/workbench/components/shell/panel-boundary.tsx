@@ -13,7 +13,7 @@ function BoundaryFallback({ message }: { message: string }): ReactElement {
 	const { t } = useTranslation();
 	return (
 		<div className="fb-root flex min-h-0 flex-1 items-center justify-center bg-background p-6 text-foreground">
-			<div className="w-full max-w-lg rounded-xl border border-line bg-surface p-5">
+			<div className="w-full max-w-lg rounded-xl border border-line-subtle bg-surface p-5">
 				<p className="text-sm font-semibold">{t("panel.crash.title")}</p>
 				<p className="mt-2 text-xs leading-relaxed text-text-3">{t("panel.crash.body")}</p>
 				<pre className="fb-scroll mt-3 max-h-40 overflow-auto rounded-lg bg-surface-3 p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-risk-high">

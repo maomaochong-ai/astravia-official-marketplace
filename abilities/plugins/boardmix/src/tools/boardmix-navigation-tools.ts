@@ -18,11 +18,21 @@ const TOOL_SCOPE = ["conversation", "project"] as const;
 export const NO_TAB_NEXT =
 	"Call boardmix_open first: the whiteboard lives in its activity tab, and these tools only act on that tab.";
 
+/**
+ * 统一的返回信封。`ok` 必须是「真的到了且没报错」：访客进程报过 did-fail-load
+ * 时，即使 urlRef 里还留着上一个地址也不算成功。
+ */
 export function envelope(
 	snapshot: BoardmixSnapshot,
 	extra: Record<string, unknown> = {},
 ): string {
-	return JSON.stringify({ ok: snapshot.open, ...snapshot, ...extra });
+	const landed = snapshot.open && !snapshot.failure;
+	return JSON.stringify({
+		...snapshot,
+		ok: landed,
+		...(landed ? {} : { reason: snapshot.failure ? "page-not-loaded" : "tab-not-ready" }),
+		...extra,
+	});
 }
 
 export function rejection(
@@ -43,10 +53,13 @@ export function rejection(
 }
 
 /** 先开标签页，再等句柄挂上；超时返回 null，由调用方转成一句可执行的话。 */
-export async function ensureTab(ctx: PluginContext): Promise<BoardmixTabHandle | null> {
+export async function ensureTab(ctx: PluginContext, cwd?: string): Promise<BoardmixTabHandle | null> {
 	const existing = boardmixTab();
 	if (existing) return existing;
-	ctx.ui.openActivityTab(ACTIVITY_TAB_ID, { width: "max" });
+	// cwd 必须显式传：工具跑在会话上下文里，宿主当前显示的未必是同一个会话。
+	const target = cwd ? { cwd } : undefined;
+	ctx.ui.openActivityTab(ACTIVITY_TAB_ID, { width: "max", ...target });
+	ctx.ui.setActivityTabVisible(ACTIVITY_TAB_ID, true, target);
 	return waitForBoardmixTab();
 }
 
@@ -66,8 +79,8 @@ export function registerNavigationTools(ctx: PluginContext): Disposable[] {
 			parameters: { type: "object", properties: {}, additionalProperties: false },
 			scope_use: TOOL_SCOPE,
 			timeoutMs: 30_000,
-			handler: async () => {
-				const handle = await ensureTab(ctx);
+			handler: async ({ session }) => {
+				const handle = await ensureTab(ctx, session.cwd);
 				if (!handle) {
 					return JSON.stringify({
 						ok: false,
@@ -78,7 +91,10 @@ export function registerNavigationTools(ctx: PluginContext): Disposable[] {
 				}
 				const snapshot = await handle.navigate(DESTINATIONS.workspace);
 				return envelope(snapshot, {
-					next: "Tell the user where it landed. Repeat their own words for the task; do not describe what is on the canvas.",
+					next:
+						snapshot.open && !snapshot.failure
+							? "Tell the user where it landed. Repeat their own words for the task; do not describe what is on the canvas."
+							: "The panel did not load its page, so it still shows what it did before. Read the failure text, ask the user to press Retry in the panel, and do not claim the panel moved.",
 				});
 			},
 		}),
@@ -105,7 +121,7 @@ export function registerNavigationTools(ctx: PluginContext): Disposable[] {
 			},
 			scope_use: TOOL_SCOPE,
 			timeoutMs: 30_000,
-			handler: async ({ trigger }) => {
+			handler: async ({ trigger, session }) => {
 				const target = resolveEntryTarget({
 					kind: "url",
 					url: String(trigger.input?.url ?? ""),
@@ -116,7 +132,7 @@ export function registerNavigationTools(ctx: PluginContext): Disposable[] {
 						"Only https://boardmix.cn addresses can be opened. Ask the user for the whiteboard link instead of guessing one.",
 					);
 				}
-				const handle = await ensureTab(ctx);
+				const handle = await ensureTab(ctx, session.cwd);
 				if (!handle) {
 					return JSON.stringify({
 						ok: false,
@@ -127,8 +143,11 @@ export function registerNavigationTools(ctx: PluginContext): Disposable[] {
 					});
 				}
 				const snapshot = await handle.navigate(target.url);
+				const landed = snapshot.open && !snapshot.failure;
 				return envelope(snapshot, {
-					next: "Report the landed address and phase. If phase is login, the user has to sign in themselves.",
+					next: landed
+						? "Report the landed address and phase. If phase is login, the user has to sign in themselves."
+						: "This address did not load, so the panel is still where it was. Read the failure text, ask the user to press Retry in the panel, and do not claim the panel moved.",
 				});
 			},
 		}),

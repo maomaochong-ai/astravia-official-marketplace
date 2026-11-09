@@ -15,6 +15,7 @@
 | [0008](0008-the-chip-only-shows-while-you-look.md) | 面板不再自动上栏（`initiallyVisible: false`，工具仍能唤出），输入框下面的胶囊只在面板被选中时挂上，离开即清 |
 | [0009](0009-the-panel-is-called-not-remembered.md) | 面板靠「叫」不靠「记」：句柄随挂载注册，`openActivityTab` + `setActivityTabVisible` 双调、带会话 cwd、三轮 4 秒；失败分 `tab-never-mounted` / `page-not-loaded` / `network`，离线不再白屏 |
 | [0010](0010-a-missing-permission-takes-the-whole-panel-down.md) | 权限是运行期契约：漏声明 `ui.slot.input-action` 让 `setPromptAttachment` 在 effect 里抛错，整块面板被错误边界换成「渲染失败」；改为声明 + `has()` 守卫 + 权限映射测试 |
+| [0011](0011-a-page-that-did-not-load-is-not-a-landing.md) | 「没落地」不是「落地了」：`did-fail-load` 的 `errorCode`/描述进快照，`navigate()` 静默重试一次，`ok` 只在真的到了才为真；导航中的失败不再偷偷换种子 |
 
 ## 一句话版本
 

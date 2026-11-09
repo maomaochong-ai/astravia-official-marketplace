@@ -61,7 +61,7 @@ export function CasesPage({ model }: PageProps) {
 						<button
 							type="button"
 							onClick={cases.refresh}
-							className="flex items-center gap-1 rounded border border-line px-2 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+							className="flex items-center gap-1 rounded border border-line-subtle px-2 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
 						>
 							<Icon name="refresh" className="size-3" />
 							{t("cases.refresh")}
@@ -99,7 +99,7 @@ export function CasesPage({ model }: PageProps) {
 					onChange={event => setQuery(event.target.value)}
 					placeholder={t("cases.search.placeholder")}
 					aria-label={t("cases.search.placeholder")}
-					className="w-full rounded border border-line bg-surface px-2 py-1 text-[11.5px] text-text outline-none placeholder:text-text-4 focus:border-line-strong"
+					className="w-full rounded border border-line-subtle bg-surface px-2 py-1 text-[11.5px] text-text outline-none placeholder:text-text-4 focus:border-line-strong"
 				/>
 
 				{cases.truncated > 0 ? (
@@ -205,7 +205,7 @@ export function CasesPage({ model }: PageProps) {
 								<button
 									type="button"
 									onClick={() => setListOpen(true)}
-									className={`inline-flex items-center gap-1 rounded border border-line px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text ${showList ? "hidden" : ""}`}
+									className={`inline-flex items-center gap-1 rounded border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text ${showList ? "hidden" : ""}`}
 								>
 									<Icon name="chevron" className="size-3 rotate-180" />
 									<span>{t("cases.reader.back")}</span>
@@ -237,7 +237,7 @@ export function CasesPage({ model }: PageProps) {
 										<button
 											type="button"
 											onClick={() => model.go("docs")}
-											className="inline-flex items-center gap-1 rounded border border-line px-2 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+											className="inline-flex items-center gap-1 rounded border border-line-subtle px-2 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
 										>
 											<Icon name="book" className="size-3" />
 											{t("cases.reader.browse")}

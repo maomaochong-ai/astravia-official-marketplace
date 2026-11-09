@@ -1,113 +1,113 @@
 {
-	"schemaVersion": 1,
-	"blocks": [
-		{
-			"type": "hero",
-			"eyebrow": "Static-first triage, on-demand depth",
-			"title": "Know what a package does before you install it",
-			"description": "Drop an APK, IPA, DEX, shared library, executable or archive into the workspace and get a readable verdict: what it is, what it asks for, what it hides, and how much it deserves your trust.",
-			"badges": [
-				"APK · IPA · ELF · PE · Mach-O",
-				"Offline",
-				"Never executes the sample"
-			]
-		},
-		{
-			"type": "feature-grid",
-			"items": [
-				{
-					"title": "Format-aware facts",
-					"description": "One pass recognises Android packages and bundles, iOS apps, ELF, PE, Mach-O, raw DEX and plain archives, then reports architecture, entry point, size, entropy and SHA-256."
-				},
-				{
-					"title": "Manifest and permission review",
-					"description": "Reads the binary AndroidManifest inside the APK: package identity, SDK range, debuggable and backup flags, exported components and every requested permission."
-				},
-				{
-					"title": "Native hardening checks",
-					"description": "Flags writable+executable segments, executable stacks, missing PIE or NX, packer signatures and stripped tooling — the differences that decide how hard a library is to attack."
-				},
-				{
-					"title": "Evidence, not guesses",
-					"description": "Runtime-loading, shell execution, reflection, weak crypto and credential-shaped strings are reported with the exact strings and offsets that triggered them."
-				},
-				{
-					"title": "One score you can defend",
-					"description": "Each rule carries a severity and a weight, so the 0-100 risk score and A-E grade can be traced back to named rule ids instead of a black box."
-				},
-				{
-					"title": "Reports that leave the app",
-					"description": "Copy the markdown, or save markdown or JSON through the system dialog to attach to a review, a ticket or an internal security note."
-				}
-			]
-		},
-		{
-			"type": "showcase",
-			"showcase": {
-				"template": "chat-thread",
-				"user_prompt": "Why does this APK score 62?",
-				"assistant_reply": "Three exported components with no permission guard, a DexClassLoader that unpacks the real code at runtime, and SMS / location / contacts permissions."
-			}
-		},
-		{
-			"type": "markdown",
-			"content": "**Why 62 (grade D)**\n\n- `apk.exported-component` · High — 3 activities and services are exported with no permission guard.\n- `apk.dynamic-loading` · High — `DexClassLoader` appears in the DEX, so the real logic is unpacked at runtime.\n- `apk.dangerous-permission` · Medium — requests `READ_SMS`, `ACCESS_FINE_LOCATION` and `READ_CONTACTS`.\n\nThe package also has no v2/v3 signature, only the legacy `META-INF` one. Re-download it from the official channel; if you must keep analysing it, dump the runtime-loaded dex first and review that code instead."
-		},
-		{
-			"type": "steps",
-			"items": [
-				{
-					"title": "Open the Hanshuang Pojia tab",
-					"description": "In a project conversation, add the panel from the activity tab bar. It lists the packages and binaries already in the workspace folder."
-				},
-				{
-					"title": "Pick any sample, from anywhere",
-					"description": "Drop a file on the panel or click Open local file — it does not have to live inside the project. The bytes are copied into .hanshuang/samples in the workspace first, then analysed locally; anything above 32 MiB is refused before the copy. Nothing is uploaded and nothing is executed."
-				},
-				{
-					"title": "Read the report",
-					"description": "Risk score, the findings that drove it, manifest facts and per-section details. Switch between Summary and Full, then copy or save the report."
-				}
-			]
-		},
-		{
-			"type": "callout",
-			"tone": "info",
-			"content": "The activity-bar tab is now a fourteen-page workbench: Workbench, Guide, Documents, Samples, Findings, Strings, Disassembly, Manifest, Entropy, Signature, Compare, Self check, Reports and Settings. Every page reads the same report, so a sample you analyse once stays inspectable from every angle — including a report-to-report diff of two builds. Two pages stand on their own: Disassembly walks the sample's own executable sections, ranks candidate functions and renders one at a time as a control-flow listing in summary, branches-only or full density, cut at a character budget; Documents renders the 340 bundled field write-ups, manuals, tool docs and case studies the plugin ships byte for byte, with in-memory title search and on-demand full-text search, each body loaded as its own build chunk. Purple buttons send an English prompt to the conversation, and a report produced by the agent in chat appears back in the panel with a \"from chat\" marker. Settings can switch analysis mode, disable individual rules and change scan resolution; storage is optional and the panel degrades to session-only memory when the host has not granted it."
-		},
-		{
-			"type": "callout",
-			"tone": "info",
-			"content": "Code-level questions go through the agent: `list_code_symbols` reads ELF, PE and Mach-O symbol and export tables, `disassemble_range` sweeps an AArch64 or x86 byte range, `search_dex_symbols` finds classes, methods and strings in a DEX or APK, and `diff_binaries` shows what changed between two builds. Every listing is a linear sweep with file offsets - never decompiled source, and never a claim about what runs."
-		},
-		{
-			"type": "callout",
-			"tone": "info",
-			"content": "If radare2, jadx or apktool are already on this machine, the agent can borrow them instead of approximating: `probe_environment` reports which of the fourteen declared executables (r2 / rabin2 / radiff2 / rasm2 / rahash2 / rax2 / jadx / apktool / java / adb / apksigner / zipalign / frida / frida-ps) actually answer and with which version; `install_toolchain` turns the gaps into the exact install command for this platform, filtered to the goal at hand — apk, native, firmware, dynamic or full — and the plugin never runs it, you do; `run_radare` covers headers, full string scans, the analysed function list, disassembly, pseudo-C, cross references, assemble/disassemble and binary diff; `decompile_android` turns an APK into Java sources or smali next to it and then searches that tree without loading whole files. Nothing is downloaded or installed, every call is a single executable with an argument vector, and the command channel is read-only - writes, shells, the debugger and project commands are refused. When a binary is missing the answer says which one and how to install it; when the host refuses the channel it says that instead of pretending the engine answered. The write-up lands where the case lives: `init_task` lays out `samples/`, `exports/` and `reports/`, and `write_assessment_report` typesets the four-section assessment into `reports/`, leaving a section you did not supply explicitly unsupplied instead of inventing a conclusion for it."
-		},
-		{
-			"type": "callout",
-			"tone": "info",
-			"content": "The bundled agent document carries the workbench kit 2.0 protocol as its fifth part: lab mode entered with `lab：` and left with `退出实验`, the deployment and verification board driven by `setup/verify.ps1 -Detailed`, knowledge-base-first recon, and the `seep` (23 MCP tools) / `ida` (~243) matrix with its Radare2 fallback table. Since 2.1 the kit's skill library ships with it - 165 files, 2.4 MB, byte-identical to the upstream tree, routed by path from the protocol. It is payload and documentation, not a dependency: the panel and the local radare2 / jadx tools work without the kit, and nothing here is installed behind your back."
-		},
-		{
-			"type": "callout",
-			"tone": "warning",
-			"content": "This is static-first triage, not proof of safety. Android signature digests are read as structured fields — run `apksigner verify --print-certs` in your shell when the verdict matters; packed or encrypted code is flagged by `native.packed` and unpacking is the documented next step (`agent/skills/apkseep/references/advanced-unpacking.md`), not a dead end; behaviour that only shows up at runtime stays invisible to a static pass, so reach for a Frida run when the listing runs out. Treat a low score as \"nothing obvious\", not as an approval. Two hard limits come from the host, not the plugin: the engine only reads files the host is willing to open, and at most 32 MiB per file. Samples from anywhere else are still fine — the panel copies the bytes into .hanshuang/samples inside the workspace first, so the original stays untouched and its own location never becomes a limit."
-		},
-		{
-			"type": "callout",
-			"tone": "info",
-			"content": "Install this from the marketplace rather than from a downloaded package. The host records where an ability came from, and it never overwrites one source with another: if you already installed a build by hand, adding the newer one stops at \"the same ability id is already installed from another source\". Remove the hand-installed copy under My Abilities first, then install here — from then on upgrades follow the marketplace by themselves."
-		},
-		{
-			"type": "links",
-			"items": [
-				{
-					"label": "Source and issue tracker",
-					"href": "https://github.com/maomaochong-ai/astravia-official-marketplace"
-				}
-			]
-		}
-	]
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "Static-first triage, on-demand depth",
+      "title": "Know what a package does before you install it",
+      "description": "Drop an APK, IPA, DEX, shared library, executable or archive into the workspace and get a readable verdict: what it is, what it asks for, what it hides, and how much it deserves your trust.",
+      "badges": [
+        "APK · IPA · ELF · PE · Mach-O",
+        "Offline",
+        "Never executes the sample"
+      ]
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        {
+          "title": "Format-aware facts",
+          "description": "One pass recognises Android packages and bundles, iOS apps, ELF, PE, Mach-O, raw DEX and plain archives, then reports architecture, entry point, size, entropy and SHA-256."
+        },
+        {
+          "title": "Manifest and permission review",
+          "description": "Reads the binary AndroidManifest inside the APK: package identity, SDK range, debuggable and backup flags, exported components and every requested permission."
+        },
+        {
+          "title": "Native hardening checks",
+          "description": "Flags writable+executable segments, executable stacks, missing PIE or NX, packer signatures and stripped tooling — the differences that decide how hard a library is to attack."
+        },
+        {
+          "title": "Evidence, not guesses",
+          "description": "Runtime-loading, shell execution, reflection, weak crypto and credential-shaped strings are reported with the exact strings and offsets that triggered them."
+        },
+        {
+          "title": "One score you can defend",
+          "description": "Each rule carries a severity and a weight, so the 0-100 risk score and A-E grade can be traced back to named rule ids instead of a black box."
+        },
+        {
+          "title": "Reports that leave the app",
+          "description": "Copy the markdown, or save markdown or JSON through the system dialog to attach to a review, a ticket or an internal security note."
+        }
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "user_prompt": "Why does this APK score 62?",
+        "assistant_reply": "Three exported components with no guard, and the real logic only runs at runtime."
+      }
+    },
+    {
+      "type": "markdown",
+      "content": "**Why 62 (grade D)**\n\n- `apk.exported-component` · High — 3 activities and services are exported with no permission guard.\n- `apk.dynamic-loading` · High — `DexClassLoader` appears in the DEX, so the real logic is unpacked at runtime.\n- `apk.dangerous-permission` · Medium — requests `READ_SMS`, `ACCESS_FINE_LOCATION` and `READ_CONTACTS`.\n\nThe package also has no v2/v3 signature, only the legacy `META-INF` one. Re-download it from the official channel; if you must keep analysing it, dump the runtime-loaded dex first and review that code instead."
+    },
+    {
+      "type": "steps",
+      "items": [
+        {
+          "title": "Open the Hanshuang Pojia tab",
+          "description": "In a project conversation, add the panel from the activity tab bar. It lists the packages and binaries already in the workspace folder."
+        },
+        {
+          "title": "Pick any sample, from anywhere",
+          "description": "Drop a file on the panel or click Open local file — it does not have to live inside the project. The bytes are copied into .hanshuang/samples in the workspace first, then analysed locally; anything above 32 MiB is refused before the copy. Nothing is uploaded and nothing is executed."
+        },
+        {
+          "title": "Read the report",
+          "description": "Risk score, the findings that drove it, manifest facts and per-section details. Switch between Summary and Full, then copy or save the report."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "The activity-bar tab is now a fourteen-page workbench: Workbench, Guide, Documents, Samples, Findings, Strings, Disassembly, Manifest, Entropy, Signature, Compare, Self check, Reports and Settings. Every page reads the same report, so a sample you analyse once stays inspectable from every angle — including a report-to-report diff of two builds. Two pages stand on their own: Disassembly walks the sample's own executable sections, ranks candidate functions and renders one at a time as a control-flow listing in summary, branches-only or full density, cut at a character budget; Documents renders the 340 bundled field write-ups, manuals, tool docs and case studies the plugin ships byte for byte, with in-memory title search and on-demand full-text search, each body loaded as its own build chunk. Purple buttons send an English prompt to the conversation, and a report produced by the agent in chat appears back in the panel with a \"from chat\" marker. Settings can switch analysis mode, disable individual rules and change scan resolution; storage is optional and the panel degrades to session-only memory when the host has not granted it."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Code-level questions go through the agent: `list_code_symbols` reads ELF, PE and Mach-O symbol and export tables, `disassemble_range` sweeps an AArch64 or x86 byte range, `search_dex_symbols` finds classes, methods and strings in a DEX or APK, and `diff_binaries` shows what changed between two builds. Every listing is a linear sweep with file offsets - never decompiled source, and never a claim about what runs."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "If radare2, jadx or apktool are already on this machine, the agent can borrow them instead of approximating: `probe_environment` reports which of the fourteen declared executables (r2 / rabin2 / radiff2 / rasm2 / rahash2 / rax2 / jadx / apktool / java / adb / apksigner / zipalign / frida / frida-ps) actually answer and with which version; `install_toolchain` turns the gaps into the exact install command for this platform, filtered to the goal at hand — apk, native, firmware, dynamic or full — and the plugin never runs it, you do; `run_radare` covers headers, full string scans, the analysed function list, disassembly, pseudo-C, cross references, assemble/disassemble and binary diff; `decompile_android` turns an APK into Java sources or smali next to it and then searches that tree without loading whole files. Nothing is downloaded or installed, every call is a single executable with an argument vector, and the command channel is read-only - writes, shells, the debugger and project commands are refused. When a binary is missing the answer says which one and how to install it; when the host refuses the channel it says that instead of pretending the engine answered. The write-up lands where the case lives: `init_task` lays out `samples/`, `exports/` and `reports/`, and `write_assessment_report` typesets the four-section assessment into `reports/`, leaving a section you did not supply explicitly unsupplied instead of inventing a conclusion for it."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "The bundled agent document carries the workbench kit 2.0 protocol as its fifth part: lab mode entered with `lab：` and left with `退出实验`, the deployment and verification board driven by `setup/verify.ps1 -Detailed`, knowledge-base-first recon, and the `seep` (23 MCP tools) / `ida` (~243) matrix with its Radare2 fallback table. Since 2.1 the kit's skill library ships with it - 165 files, 2.4 MB, byte-identical to the upstream tree, routed by path from the protocol. It is payload and documentation, not a dependency: the panel and the local radare2 / jadx tools work without the kit, and nothing here is installed behind your back."
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "content": "This is static-first triage, not proof of safety. Android signature digests are read as structured fields — run `apksigner verify --print-certs` in your shell when the verdict matters; packed or encrypted code is flagged by `native.packed` and unpacking is the documented next step (`agent/skills/apkseep/references/advanced-unpacking.md`), not a dead end; behaviour that only shows up at runtime stays invisible to a static pass, so reach for a Frida run when the listing runs out. Treat a low score as \"nothing obvious\", not as an approval. Two hard limits come from the host, not the plugin: the engine only reads files the host is willing to open, and at most 32 MiB per file. Samples from anywhere else are still fine — the panel copies the bytes into .hanshuang/samples inside the workspace first, so the original stays untouched and its own location never becomes a limit."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Install this from the marketplace rather than from a downloaded package. The host records where an ability came from, and it never overwrites one source with another: if you already installed a build by hand, adding the newer one stops at \"the same ability id is already installed from another source\". Remove the hand-installed copy under My Abilities first, then install here — from then on upgrades follow the marketplace by themselves."
+    },
+    {
+      "type": "links",
+      "items": [
+        {
+          "label": "Source and issue tracker",
+          "href": "https://github.com/maomaochong-ai/astravia-official-marketplace"
+        }
+      ]
+    }
+  ]
 }

@@ -59,7 +59,7 @@ export function ReportsPage({ model }: PageProps) {
 							type="button"
 							onClick={() => model.copyReport("markdown")}
 							disabled={!model.report}
-							className="flex items-center gap-1 rounded border border-line px-2 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-40"
+							className="flex items-center gap-1 rounded border border-line-subtle px-2 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-40"
 						>
 							<Icon name="copy" className="size-3" />
 							{t("reports.copy")}
@@ -68,7 +68,7 @@ export function ReportsPage({ model }: PageProps) {
 							type="button"
 							onClick={() => model.exportReport("markdown")}
 							disabled={!model.report}
-							className="flex items-center gap-1 rounded border border-line px-2 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-40"
+							className="flex items-center gap-1 rounded border border-line-subtle px-2 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-40"
 						>
 							<Icon name="save" className="size-3" />
 							{t("reports.export")}
@@ -122,14 +122,14 @@ export function ReportsPage({ model }: PageProps) {
 							<button
 								type="button"
 								onClick={() => model.exportReport("json")}
-								className="rounded border border-line px-2 py-1 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+								className="rounded border border-line-subtle px-2 py-1 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
 							>
 								{t("reports.exportJson")}
 							</button>
 							<button
 								type="button"
 								onClick={() => model.exportReport("markdown")}
-								className="rounded border border-line px-2 py-1 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+								className="rounded border border-line-subtle px-2 py-1 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
 							>
 								{t("reports.exportMarkdown")}
 							</button>

@@ -21,7 +21,12 @@ function stopHint(note: string | null): string {
 		case "network":
 			return "The machine is offline or a VPN dropped the connection. Say that plainly and do not retry in a loop — the panel reloads itself when the network returns.";
 		case "page-not-loaded":
-			return "The panel was open but its page did not answer in time. Ask the user to press Retry in the panel, then run this again.";
+			return (
+				"The panel is open but its page never finished loading, so it stayed on whatever it showed before. " +
+				"Read the failure text in the step trail (ERR_NAME_NOT_RESOLVED means DNS or a proxy, ERR_ABORTED a cancelled load). " +
+				"Ask the user to check the panel's own notice and press Retry there; if it still will not load, offer boardmix_open_in_browser. " +
+				"Do not claim the panel moved."
+			);
 		default:
 			return "Say which step stopped and what the user can do about it.";
 	}

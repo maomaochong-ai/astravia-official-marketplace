@@ -64,7 +64,7 @@ export function DocsPage({ model }: PageProps) {
 								value={docs.query}
 								onChange={event => docs.setQuery(event.target.value)}
 								placeholder={t("docs.search.placeholder")}
-								className="w-full rounded border border-line bg-surface px-2 py-1 text-[11.5px] text-text outline-none placeholder:text-text-4 focus:border-line-strong"
+								className="w-full rounded border border-line-subtle bg-surface px-2 py-1 text-[11.5px] text-text outline-none placeholder:text-text-4 focus:border-line-strong"
 							/>
 							<div className="flex items-center justify-between gap-2">
 								<FilterChips items={MODES.map(mode => ({ id: mode, label: t(`docs.search.${mode}`) }))} value={docs.mode} onChange={mode => docs.setMode(mode)} />
@@ -141,7 +141,7 @@ export function DocsPage({ model }: PageProps) {
 									<button
 										type="button"
 										onClick={docs.showList}
-										className={`inline-flex items-center gap-1 rounded border border-line px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text ${showList ? "hidden" : ""}`}
+										className={`inline-flex items-center gap-1 rounded border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text ${showList ? "hidden" : ""}`}
 									>
 										<Icon name="chevron" className="size-3 rotate-180" />
 										<span>{t("docs.reader.back")}</span>
@@ -150,7 +150,7 @@ export function DocsPage({ model }: PageProps) {
 									<button
 										type="button"
 										onClick={docs.copyPath}
-										className="inline-flex items-center gap-1 rounded border border-line px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover"
+										className="inline-flex items-center gap-1 rounded border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover"
 									>
 										<Icon name="copy" className="size-3" />
 										<span className="sr-only">{t("panel.action.copy")}</span>

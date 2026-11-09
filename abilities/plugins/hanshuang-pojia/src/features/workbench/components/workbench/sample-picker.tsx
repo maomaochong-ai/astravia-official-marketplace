@@ -45,7 +45,7 @@ export function SamplePicker({ cwd, files, loading, busy, selectedPath, onRefres
 					type="button"
 					onClick={() => fileRef.current?.click()}
 					title={t("panel.upload.hint")}
-					className="flex items-center gap-1.5 rounded border border-line px-2 py-1 text-[10.5px] font-medium text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+					className="flex items-center gap-1.5 rounded border border-line-subtle px-2 py-1 text-[10.5px] font-medium text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
 				>
 					<Icon name="folder" className="size-3.5 text-text-3" />
 					{t("panel.upload.button")}
@@ -68,7 +68,7 @@ export function SamplePicker({ cwd, files, loading, busy, selectedPath, onRefres
 			</div>
 			<div className="flex items-center gap-1 px-3 pb-2">
 				<form
-					className="flex min-w-0 flex-1 items-center gap-1 rounded-md border border-line bg-surface px-2 py-1"
+					className="flex min-w-0 flex-1 items-center gap-1 rounded-md border border-line-subtle bg-surface px-2 py-1"
 					onSubmit={event => {
 						event.preventDefault();
 						submit();
@@ -95,7 +95,7 @@ export function SamplePicker({ cwd, files, loading, busy, selectedPath, onRefres
 					type="button"
 					onClick={submit}
 					disabled={busy || path.trim().length === 0}
-					className="rounded border border-line px-1.5 py-1 text-[10.5px] font-medium text-text-2 transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-40"
+					className="rounded border border-line-subtle px-1.5 py-1 text-[10.5px] font-medium text-text-2 transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-40"
 				>
 					{t("panel.path.analyse")}
 				</button>

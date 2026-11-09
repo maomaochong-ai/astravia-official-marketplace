@@ -119,3 +119,66 @@ lands, and what keeps it honest.
   exits with `bind: address already in use` and takes the gateway down with it, so a user who already
   runs `magpie web` would lose the gateway. The page needs its own child process and its own key — a
   later change, not this one.
+
+## The download counts itself out loud
+
+- **Status:** Accepted
+- **Date:** 2026-11-09
+- **Context:** `magpie` 0.1.1 → 0.1.2
+
+The first version looked like it did nothing. A press wrote one line —
+`downloading magpie-cli-darwin-arm64 0.1.3403 (7022450 bytes)` — and then the panel sat there for ten
+to fifteen minutes on a 70 MB stream over a slow link. Worse, the state machine fought itself:
+`install()` set `downloading`, then called the same probe the panel calls on open, and the probe
+unconditionally overwrote the phase with `checking` or `absent`, so the one label that proved
+something was happening got wiped within a tick (Observed in the source, 2026-11-09).
+
+### The script reports, the panel listens
+
+`curl`'s own progress meter is useless here: it is drawn on a TTY, and a spawned command has none,
+so `--progress-bar` writes nothing into the ring buffer. Instead the install script starts a
+background observer before the transfer and stops it afterwards:
+
+```sh
+( while [ -d "$stop" ]; do
+    have=$(wc -c < "$part" 2>/dev/null || echo 0)
+    echo "progress $have $want"
+    sleep 1
+  done ) &
+watch=$!
+# …foreground curl, then:
+rm -rf "$stop"; wait "$watch"
+```
+
+`$HOME/.cache/magpie/.watch.$$` is the sentinel directory: creating it starts the loop, deleting it
+ends it. The obvious alternative — `while kill -0 $watch` — was rejected after it looped forever in a
+test harness: a child that has already exited but not been reaped still answers `kill -0`, so the
+poll never sees it die. `wait "$watch"` reaps it, the sentinel says when to stop. `$$` is written as
+literal text into the script and expanded by the shell at run time, so two presses cannot share a
+sentinel.
+
+### What the panel does with the lines
+
+The spawned command's ring buffer is polled every 1.2 s. `parseInstallProgress()` keeps the **last**
+progress line (`/^progress \d+ \d+$/`) and ignores everything else; `lastLine()` filters those lines
+out so the human-readable tail stays readable. `RuntimeState` grew `progress`, `installStep` and
+`phaseStartedAt`, and `probeBinary` grew `{ keepPhase }` so the probe an install performs in its own
+scope can no longer erase `downloading`. Reports are de-duplicated on the pair
+(`progress.downloaded`, `installStep`) — the state object is re-set on every change, and an
+unchanged percentage must not repaint.
+
+The card renders a real percentage, `30.2 MB / 70.2 MB`, elapsed seconds and, once there is enough
+history, speed and a remaining estimate; `verifying` and `starting` show a pulsing bar with no
+number, because there is nothing honest to count. The tick also fires while `status().running` is
+still true on its last iteration — placing it after the `!running` early-return silently dropped the
+final frame.
+
+### What this does not do
+
+- **It does not make the download faster.** The feed hands out a GitHub asset, and that CDN
+  redirects; the file is 70 MB and the link is what it is.
+- **It does not resume.** No `Range`, per the decision above — a dropped transfer restarts and the
+  percentage drops back to zero. That is reported, not hidden.
+- **It does not verify the card in a real window.** The parser and the state machine are covered by
+  tests (script text assertions plus a frame-driven harness); a person pressing the button inside a
+  released 0.5.89 window is still the only way to confirm the pixels.

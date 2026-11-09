@@ -66,7 +66,7 @@ export function SettingsPage({ model }: PageProps) {
 					<button
 						type="button"
 						onClick={reset}
-						className="rounded border border-line px-2 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+						className="rounded border border-line-subtle px-2 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
 					>
 						{t("settings.reset")}
 					</button>
@@ -97,7 +97,7 @@ export function SettingsPage({ model }: PageProps) {
 									onClick={() => updateSettings({ mode })}
 									aria-pressed={active}
 									className={`min-w-0 flex-1 rounded-md border px-3 py-2 text-left transition-colors ${
-										active ? "border-line-strong bg-surface-4" : "border-line bg-surface hover:bg-surface-hover"
+										active ? "border-line-strong bg-surface-4" : "border-line-subtle bg-surface hover:bg-surface-hover"
 									}`}
 								>
 									<div className="flex items-center gap-1.5">

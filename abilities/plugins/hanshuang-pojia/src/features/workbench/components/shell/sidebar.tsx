@@ -37,7 +37,7 @@ const DOT_TONE: Record<"live" | "alert", string> = {
 export function Sidebar({ page, onNavigate, lab, status }: SidebarProps) {
 	const { t } = useTranslation();
 	return (
-		<aside className="flex w-12 shrink-0 flex-col border-r border-line bg-surface-2 @min-[720px]:w-56">
+		<aside className="flex w-12 shrink-0 flex-col border-r border-line-subtle bg-surface-2 @min-[720px]:w-56">
 			<div className="flex items-center gap-2.5 px-2 pb-2 pt-3 @min-[720px]:px-4 @min-[720px]:pb-3 @min-[720px]:pt-4">
 				<div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-surface-4 text-text-2">
 					<Icon name="shield" className="size-4" />

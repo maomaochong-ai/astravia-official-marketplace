@@ -28,7 +28,7 @@ export function NumberField({ label, value, min, max, step = 1, hint, onChange }
 					if (!Number.isFinite(next)) return;
 					onChange(Math.min(max, Math.max(min, Math.round(next))));
 				}}
-				className="w-16 shrink-0 rounded border border-line bg-surface px-1.5 py-1 text-right font-mono text-[11.5px] text-text outline-none focus:border-line-strong"
+				className="w-16 shrink-0 rounded border border-line-subtle bg-surface px-1.5 py-1 text-right font-mono text-[11.5px] text-text outline-none focus:border-line-strong"
 			/>
 		</label>
 	);

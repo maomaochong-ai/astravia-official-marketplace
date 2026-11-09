@@ -39,7 +39,7 @@ export function InjectBlockCard({ library, notify }: InjectBlockCardProps) {
 					<span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-[10.5px] text-text-2">~/.astravia/agent/{ASTRAVIA_AGENTS_FILE}</span>
 					<span className="text-text-4">·</span>
 					<span>{active ? t("prompt.inject.sourceActive", { name: active.name }) : t("prompt.inject.sourceDefault")}</span>
-					<button type="button" onClick={copy} className="ml-auto rounded-md border border-line px-2 py-1 text-[11px] text-text-2 hover:bg-surface-hover hover:text-text">
+					<button type="button" onClick={copy} className="ml-auto rounded-md border border-line-subtle px-2 py-1 text-[11px] text-text-2 hover:bg-surface-hover hover:text-text">
 						{t("prompt.inject.copy")}
 					</button>
 				</div>
