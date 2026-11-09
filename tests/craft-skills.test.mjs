@@ -6,8 +6,9 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 
-const ROOT = "D:/open-source-projects/astravia-official-marketplace/abilities/plugins";
+const ROOT = fileURLToPath(new URL("../abilities/plugins/", import.meta.url));
 const APPS = [
   "designcraft", "effectcraft", "filmcraft", "lightcraft", "pdfcraft", "vectorcraft", "photocraft",
   "cadcraft", "deckcraft", "figcraft", "gridcraft", "wordcraft", "texturecraft", "materialcraft",
