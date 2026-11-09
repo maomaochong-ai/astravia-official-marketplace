@@ -124,8 +124,11 @@ export function registerRecipeTool(ctx: PluginContext): Disposable {
       for (const [index, step] of recipe.steps.entries()) {
         // A recipe step is either a chord or a menu route; the union is narrowed here so the
         // service never receives a `menu` it cannot walk.
-        const shortcut = "shortcut" in step ? step.shortcut : undefined;
-        const path = "menu" in step ? [...step.menu] : undefined;
+        // Narrow by hand: `in` on an optional property still leaves `undefined` in the type,
+        // and a readonly array is not iterable for the compiler unless it knows it is one.
+        const shortcut = "shortcut" in step && typeof step.shortcut === "string" ? step.shortcut : undefined;
+        const path =
+          "menu" in step && Array.isArray(step.menu) && step.menu.length > 0 ? [...step.menu] : undefined;
         const what = shortcut ?? (path ?? []).join(" › ");
         const result = await invokeMenu({ shortcut, path, settleMs: input.settle_ms });
         const entry: RecipeStepResult = { index: index + 1, what, ok: result.invoked };
