@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "Study the checkout screen in @assets/checkout.png with Craft Anything, then rebuild it in our own styles.",
-        "assistant_reply": "The screen's states were mapped first — empty, filled, error — then the rebuild ran stage by stage. Every stage has a capture, so you can stop it at any point."
+        "user_prompt": "Rebuild this checkout screen from @assets/checkout.png in our style.",
+        "assistant_reply": "Mapped the three states first, then rebuilt it stage by stage."
       }
     },
     {

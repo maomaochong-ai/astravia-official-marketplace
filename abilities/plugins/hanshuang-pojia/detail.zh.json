@@ -1,113 +1,113 @@
 {
-	"schemaVersion": 1,
-	"blocks": [
-		{
-			"type": "hero",
-			"eyebrow": "静态优先、按需深入",
-			"title": "装之前先知道这个包在做什么",
-			"description": "把 APK、IPA、DEX、动态库、可执行文件或压缩包放进工作区，得到一份能读的结论：它是什么、要什么权限、藏了什么、值不值得信任。",
-			"badges": [
-				"APK · IPA · ELF · PE · Mach-O",
-				"全程离线",
-				"从不运行样本"
-			]
-		},
-		{
-			"type": "feature-grid",
-			"items": [
-				{
-					"title": "按格式给事实",
-					"description": "一次扫描识别安卓安装包与 Bundle、iOS 应用、ELF、PE、Mach-O、裸 DEX 和普通压缩包，并给出架构、入口点、体积、熵与 SHA-256。"
-				},
-				{
-					"title": "清单与权限审查",
-					"description": "直接读 APK 内的二进制 AndroidManifest：包身份、SDK 区间、可调试与备份开关、对外导出的组件，以及申请的全部权限。"
-				},
-				{
-					"title": "原生加固检查",
-					"description": "标出可写且可执行段、可执行栈、缺失 PIE 或 NX、加壳特征与被剥符号——这些差异决定一个库有多难被攻击。"
-				},
-				{
-					"title": "给证据，不给猜测",
-					"description": "动态加载、shell 执行、反射、弱加密与凭据形态字符串，都会附上触发它的确切字符串与偏移。"
-				},
-				{
-					"title": "一个说得清的分数",
-					"description": "每条规则都有严重度与权重，0-100 风险分和 A-E 等级可以追回到具体的规则 id，而不是黑箱。"
-				},
-				{
-					"title": "报告能带出去",
-					"description": "复制 markdown，或通过系统保存对话框存成 markdown / JSON，直接贴进评审、工单或内部安全记录。"
-				}
-			]
-		},
-		{
-			"type": "showcase",
-			"showcase": {
-				"template": "chat-thread",
-				"user_prompt": "这个 APK 为什么风险分 62？",
-				"assistant_reply": "三个组件对外导出且没有权限保护，DEX 里出现 DexClassLoader，说明真实逻辑在运行期才解出，另外还申请了短信、定位和联系人权限。"
-			}
-		},
-		{
-			"type": "markdown",
-			"content": "**62 分（D 级）是怎么来的**\n\n- `apk.exported-component` · 高 — 3 个 Activity/Service 对外导出且没有权限保护\n- `apk.dynamic-loading` · 高 — DEX 中出现 `DexClassLoader`，真实逻辑在运行期解出\n- `apk.dangerous-permission` · 中 — 申请了 `READ_SMS`、`ACCESS_FINE_LOCATION` 和 `READ_CONTACTS`\n\n另外没有任何 v2/v3 签名，只有旧的 `META-INF` 签名。建议从官方渠道重新下载；如果必须继续分析，先 dump 运行期解出的 dex 再看代码。"
-		},
-		{
-			"type": "steps",
-			"items": [
-				{
-					"title": "打开「寒霜破甲」标签卡",
-					"description": "在项目对话的活动面板里添加这个标签卡，它会列出工作区目录中已有的安装包与二进制文件。"
-				},
-				{
-					"title": "样本放在哪都行",
-					"description": "把文件拖进面板，或点「打开本机文件」——它不必在项目目录里。字节会先复制到工作区的 .hanshuang/samples，再本地分析；超过 32 MiB 的会在复制前被拒。文件不会被上传，也不会被执行。"
-				},
-				{
-					"title": "读报告",
-					"description": "风险分、推高分数的那几条结论、清单事实和分节细节。可在「摘要 / 完整」之间切换，然后复制或保存报告。"
-				}
-			]
-		},
-		{
-			"type": "callout",
-			"tone": "info",
-			"content": "活动栏标签卡现在是一个十四页的工作台：工作台、使用指南、文档、样本、发现、字符串、反汇编、清单、熵分布、签名、对比、自检、报告、设置。所有页面读的都是同一份报告，所以样本分析一次就能从各个角度反复看，包括两份构建之间的报告差分。有两页不读报告：反汇编页直接走样本自己的可执行节区，给候选函数排序，逐个展成带控制流的清单，分摘要 / 仅分支 / 全部三档并按字符预算截断；文档页渲染随插件逐字节发布的 340 篇文档：知识库文章、手册、工具文档与战例原文，标题检索在内存里即时完成、全文检索按需触发，每篇正文都是独立的构建 chunk。紫色按钮会把一条英文指令发给对话，Agent 在对话里产出的报告会带「来自对话」标记回到面板。设置页可以切换分析模式、停用单条规则、调整扫描精度；存储是可选能力，宿主没授权时面板自动退化为仅本次会话的内存。"
-		},
-		{
-			"type": "callout",
-			"tone": "info",
-			"content": "代码层面的问题交给对话里的 Agent：`list_code_symbols` 读 ELF、PE、Mach-O 的符号表与导出表，`disassemble_range` 对 AArch64 / x86 区间做线性扫描，`search_dex_symbols` 在 DEX 或 APK 里检索类、方法与字符串，`diff_binaries` 给出两个版本之间到底改了哪些字节。清单是带文件偏移的线性扫描结果——不是反编译源码，也不代表运行期行为。"
-		},
-		{
-			"type": "callout",
-			"tone": "info",
-			"content": "如果你机器上已经装了 radare2、jadx 或 apktool，Agent 可以直接借用，而不是靠近似推断：`probe_environment` 报告 r2、rabin2、radiff2、rasm2、rahash2、rax2、jadx、apktool、java、adb、apksigner、zipalign、frida、frida-ps 这十四个已声明的可执行文件里哪些真的能跑、版本是多少；`install_toolchain` 把缺口换算成本平台的准确安装命令，并按目标（apk / native / firmware / dynamic / full）筛掉用不上的工具——插件不执行它，执行的是你；`run_radare` 覆盖头信息、全量字符串、分析后的函数表、反汇编、伪 C、交叉引用、汇编/反汇编以及二进制差分；`decompile_android` 把 APK 解成 Java 源码或 smali 放在旁边，再在整棵目录上检索而不必整文件读入。不会下载或安装任何东西，每次调用都是单个可执行文件加参数数组，命令通道只读——写入、shell、调试器、工程命令一律拒绝。缺哪个二进制就报哪个以及怎么装；通道被宿主拒绝时也如实说，不会假装引擎答过了。报告落在案件目录里：`init_task` 铺好 `samples/`、`exports/`、`reports/`，`write_assessment_report` 把四段式评估写进 `reports/`；你没提供的段落就明确写成「未提供」，而不是替你编一个结论。"
-		},
-		{
-			"type": "callout",
-			"tone": "info",
-			"content": "随包智能体文档从 2.0 起多了一层工作台工具包协议：用 `lab：` 进入实验模式、用 `退出实验` 退出，按 `setup/verify.ps1 -Detailed` 的四栏看板判定部署，先查知识库再动手，以及 `seep`（23 个 MCP 工具）/ `ida`（~243）矩阵与 IDA 缺失时的 Radare2 降级表。2.1 起工具包的技能库也随包发出——165 个文件、2.4 MB，与上游逐字节一致，按协议里的路径路由。它是「带着的资料」，不是依赖：不装工具包，面板与本机 radare2 / jadx 工具照样能用，也不会在背后装任何东西。"
-		},
-		{
-			"type": "callout",
-			"tone": "warning",
-			"content": "这是静态优先的体检，不是安全证明。安卓签名把方案与摘要当结构化字段读出来——要定论就在你自己的终端跑 `apksigner verify --print-certs` 比对；加壳或加密的代码由 `native.packed` 标出来，脱壳是有文档的下一步（`agent/skills/apkseep/references/advanced-unpacking.md`），不是死路；只有运行期才暴露的行为静态看不到，清单走到头时该上 Frida。低分只代表「没有明显问题」，不等于批准安装。另有两条硬限制来自宿主而不是插件：引擎只读宿主肯打开的文件，且单个文件不超过 32 MiB。放到别处的样本照样能查——面板先把字节复制进工作区的 .hanshuang/samples，原文件不动，它原先在哪也不再是限制。"
-		},
-		{
-			"type": "callout",
-			"tone": "info",
-			"content": "请从市场安装，不要装下载下来的包。宿主会记下能力来自哪里，而且不会用一个来源覆盖另一个来源：如果你之前手动装过一版，再添加新版就会停在「同一能力标识已由其它来源安装」上。先去「我的能力」里卸掉手动装的那份，再回这里安装——此后升级会跟着市场走。"
-		},
-		{
-			"type": "links",
-			"items": [
-				{
-					"label": "源码与问题反馈",
-					"href": "https://github.com/maomaochong-ai/astravia-official-marketplace"
-				}
-			]
-		}
-	]
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "静态优先、按需深入",
+      "title": "装之前先知道这个包在做什么",
+      "description": "把 APK、IPA、DEX、动态库、可执行文件或压缩包放进工作区，得到一份能读的结论：它是什么、要什么权限、藏了什么、值不值得信任。",
+      "badges": [
+        "APK · IPA · ELF · PE · Mach-O",
+        "全程离线",
+        "从不运行样本"
+      ]
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        {
+          "title": "按格式给事实",
+          "description": "一次扫描识别安卓安装包与 Bundle、iOS 应用、ELF、PE、Mach-O、裸 DEX 和普通压缩包，并给出架构、入口点、体积、熵与 SHA-256。"
+        },
+        {
+          "title": "清单与权限审查",
+          "description": "直接读 APK 内的二进制 AndroidManifest：包身份、SDK 区间、可调试与备份开关、对外导出的组件，以及申请的全部权限。"
+        },
+        {
+          "title": "原生加固检查",
+          "description": "标出可写且可执行段、可执行栈、缺失 PIE 或 NX、加壳特征与被剥符号——这些差异决定一个库有多难被攻击。"
+        },
+        {
+          "title": "给证据，不给猜测",
+          "description": "动态加载、shell 执行、反射、弱加密与凭据形态字符串，都会附上触发它的确切字符串与偏移。"
+        },
+        {
+          "title": "一个说得清的分数",
+          "description": "每条规则都有严重度与权重，0-100 风险分和 A-E 等级可以追回到具体的规则 id，而不是黑箱。"
+        },
+        {
+          "title": "报告能带出去",
+          "description": "复制 markdown，或通过系统保存对话框存成 markdown / JSON，直接贴进评审、工单或内部安全记录。"
+        }
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "user_prompt": "这个 APK 为什么风险 62？",
+        "assistant_reply": "三个组件对外导出且没有权限保护，真实逻辑要等运行期才解出来。"
+      }
+    },
+    {
+      "type": "markdown",
+      "content": "**62 分（D 级）是怎么来的**\n\n- `apk.exported-component` · 高 — 3 个 Activity/Service 对外导出且没有权限保护\n- `apk.dynamic-loading` · 高 — DEX 中出现 `DexClassLoader`，真实逻辑在运行期解出\n- `apk.dangerous-permission` · 中 — 申请了 `READ_SMS`、`ACCESS_FINE_LOCATION` 和 `READ_CONTACTS`\n\n另外没有任何 v2/v3 签名，只有旧的 `META-INF` 签名。建议从官方渠道重新下载；如果必须继续分析，先 dump 运行期解出的 dex 再看代码。"
+    },
+    {
+      "type": "steps",
+      "items": [
+        {
+          "title": "打开「寒霜破甲」标签卡",
+          "description": "在项目对话的活动面板里添加这个标签卡，它会列出工作区目录中已有的安装包与二进制文件。"
+        },
+        {
+          "title": "样本放在哪都行",
+          "description": "把文件拖进面板，或点「打开本机文件」——它不必在项目目录里。字节会先复制到工作区的 .hanshuang/samples，再本地分析；超过 32 MiB 的会在复制前被拒。文件不会被上传，也不会被执行。"
+        },
+        {
+          "title": "读报告",
+          "description": "风险分、推高分数的那几条结论、清单事实和分节细节。可在「摘要 / 完整」之间切换，然后复制或保存报告。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "活动栏标签卡现在是一个十四页的工作台：工作台、使用指南、文档、样本、发现、字符串、反汇编、清单、熵分布、签名、对比、自检、报告、设置。所有页面读的都是同一份报告，所以样本分析一次就能从各个角度反复看，包括两份构建之间的报告差分。有两页不读报告：反汇编页直接走样本自己的可执行节区，给候选函数排序，逐个展成带控制流的清单，分摘要 / 仅分支 / 全部三档并按字符预算截断；文档页渲染随插件逐字节发布的 340 篇文档：知识库文章、手册、工具文档与战例原文，标题检索在内存里即时完成、全文检索按需触发，每篇正文都是独立的构建 chunk。紫色按钮会把一条英文指令发给对话，Agent 在对话里产出的报告会带「来自对话」标记回到面板。设置页可以切换分析模式、停用单条规则、调整扫描精度；存储是可选能力，宿主没授权时面板自动退化为仅本次会话的内存。"
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "代码层面的问题交给对话里的 Agent：`list_code_symbols` 读 ELF、PE、Mach-O 的符号表与导出表，`disassemble_range` 对 AArch64 / x86 区间做线性扫描，`search_dex_symbols` 在 DEX 或 APK 里检索类、方法与字符串，`diff_binaries` 给出两个版本之间到底改了哪些字节。清单是带文件偏移的线性扫描结果——不是反编译源码，也不代表运行期行为。"
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "如果你机器上已经装了 radare2、jadx 或 apktool，Agent 可以直接借用，而不是靠近似推断：`probe_environment` 报告 r2、rabin2、radiff2、rasm2、rahash2、rax2、jadx、apktool、java、adb、apksigner、zipalign、frida、frida-ps 这十四个已声明的可执行文件里哪些真的能跑、版本是多少；`install_toolchain` 把缺口换算成本平台的准确安装命令，并按目标（apk / native / firmware / dynamic / full）筛掉用不上的工具——插件不执行它，执行的是你；`run_radare` 覆盖头信息、全量字符串、分析后的函数表、反汇编、伪 C、交叉引用、汇编/反汇编以及二进制差分；`decompile_android` 把 APK 解成 Java 源码或 smali 放在旁边，再在整棵目录上检索而不必整文件读入。不会下载或安装任何东西，每次调用都是单个可执行文件加参数数组，命令通道只读——写入、shell、调试器、工程命令一律拒绝。缺哪个二进制就报哪个以及怎么装；通道被宿主拒绝时也如实说，不会假装引擎答过了。报告落在案件目录里：`init_task` 铺好 `samples/`、`exports/`、`reports/`，`write_assessment_report` 把四段式评估写进 `reports/`；你没提供的段落就明确写成「未提供」，而不是替你编一个结论。"
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "随包智能体文档从 2.0 起多了一层工作台工具包协议：用 `lab：` 进入实验模式、用 `退出实验` 退出，按 `setup/verify.ps1 -Detailed` 的四栏看板判定部署，先查知识库再动手，以及 `seep`（23 个 MCP 工具）/ `ida`（~243）矩阵与 IDA 缺失时的 Radare2 降级表。2.1 起工具包的技能库也随包发出——165 个文件、2.4 MB，与上游逐字节一致，按协议里的路径路由。它是「带着的资料」，不是依赖：不装工具包，面板与本机 radare2 / jadx 工具照样能用，也不会在背后装任何东西。"
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "content": "这是静态优先的体检，不是安全证明。安卓签名把方案与摘要当结构化字段读出来——要定论就在你自己的终端跑 `apksigner verify --print-certs` 比对；加壳或加密的代码由 `native.packed` 标出来，脱壳是有文档的下一步（`agent/skills/apkseep/references/advanced-unpacking.md`），不是死路；只有运行期才暴露的行为静态看不到，清单走到头时该上 Frida。低分只代表「没有明显问题」，不等于批准安装。另有两条硬限制来自宿主而不是插件：引擎只读宿主肯打开的文件，且单个文件不超过 32 MiB。放到别处的样本照样能查——面板先把字节复制进工作区的 .hanshuang/samples，原文件不动，它原先在哪也不再是限制。"
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "请从市场安装，不要装下载下来的包。宿主会记下能力来自哪里，而且不会用一个来源覆盖另一个来源：如果你之前手动装过一版，再添加新版就会停在「同一能力标识已由其它来源安装」上。先去「我的能力」里卸掉手动装的那份，再回这里安装——此后升级会跟着市场走。"
+    },
+    {
+      "type": "links",
+      "items": [
+        {
+          "label": "源码与问题反馈",
+          "href": "https://github.com/maomaochong-ai/astravia-official-marketplace"
+        }
+      ]
+    }
+  ]
 }
