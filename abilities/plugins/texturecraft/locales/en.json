@@ -8,5 +8,6 @@
   "tool.probe": "Look at the canvas",
   "tool.wait": "Wait for it to settle",
   "tool.menu": "Run a command by name",
+  "tool.recipe": "Run a named chore",
   "tool.document": "Open a document"
 }

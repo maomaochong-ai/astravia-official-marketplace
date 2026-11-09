@@ -8,5 +8,6 @@
   "tool.probe": "看画布",
   "tool.wait": "等画面稳定",
   "tool.menu": "按名字执行功能",
+  "tool.recipe": "执行成套动作",
   "tool.document": "打开文件"
 }
