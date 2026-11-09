@@ -4,6 +4,22 @@ import { invokeMenu } from "../features/editor/services/menu.ts";
 import { describeDelta, readCanvas } from "../features/editor/services/open-document.ts";
 import { appendJournal } from "../features/editor/services/run-journal.ts";
 import { craftFrame } from "../features/editor/session-registry.ts";
+/**
+ * What a recipe is, stated here so the tool compiles the same way in a plugin with eight
+ * recipes and in one with none. `app.config.ts` stays data; this is its shape.
+ */
+interface RecipeStep {
+  shortcut?: string;
+  menu?: readonly string[];
+}
+
+interface Recipe {
+  id: string;
+  label: string;
+  when: string;
+  steps: readonly RecipeStep[];
+}
+
 /** One line per step, in the order they ran. */
 interface RecipeStepResult {
   index: number;
@@ -31,7 +47,10 @@ import { text } from "./shared/reply.ts";
  */
 export function registerRecipeTool(ctx: PluginContext): Disposable {
   const id = APP.id;
-  const recipes = APP.recipes ?? [];
+  // Typed here, not inferred from `APP.recipes`: an app with no recipes declares
+  // `recipes: []`, whose element type is `never`, and every field access on it would be an
+  // error in that plugin only. Same code, same types, all fifteen.
+  const recipes: readonly Recipe[] = APP.recipes ?? [];
   const catalogue = recipes.map((recipe) => `${recipe.id}（${recipe.label}）`).join("、");
 
   return ctx.agent.registerTool({
