@@ -1,72 +1,77 @@
 {
-	"schemaVersion": 1,
-	"blocks": [
-		{
-			"type": "hero",
-			"eyebrow": "Models",
-			"title": "One gateway for every model you already pay for",
-			"description": "Magpie runs one local gateway in front of every provider you have configured — subscription, API key or local runtime. This plugin connects that gateway to Astravia so its models appear next to the built-in ones.",
-			"badges": [
-				"Local only",
-				"Runs on your machine"
-			]
-		},
-		{
-			"type": "showcase",
-			"showcase": {
-				"template": "chat-thread",
-				"user_prompt": "Which models does magpie have right now? Pick the longest-context one for this contract.",
-				"assistant_reply": "Your gateway answers with 14 models across 3 providers. The largest context is claude-sonnet-4 at 200K tokens, and it takes images as well. It is already in your model list as Magpie — claude-sonnet-4."
-			}
-		},
-		{
-			"type": "feature-grid",
-			"title": "What it gives you",
-			"items": [
-				{
-					"title": "Your real catalog, not a guess",
-					"description": "The panel reads /v1/models from the gateway, so what you see is what magpie can serve right now — with provider, context window, image input and reasoning support.",
-					"icon": "solar:list-check-bold"
-				},
-				{
-					"title": "One click into the model picker",
-					"description": "Publishing writes the catalog into Astravia's own model registry as an OpenAI-compatible provider. Nothing is written until you press the button, and removing it is one press too.",
-					"icon": "solar:routing-2-bold"
-				},
-				{
-					"title": "Agent tools that read the gateway",
-					"description": "Two read-only tools, magpie_status and magpie_models, let the assistant check whether the gateway is up and which models exist instead of answering from memory.",
-					"icon": "solar:magnifer-bold"
-				},
-				{
-					"title": "Keys stay in magpie",
-					"description": "Your provider credentials live in magpie's own configuration on this computer. The plugin never shows them and never stores them.",
-					"icon": "solar:lock-keyhole-minimalistic-bold"
-				}
-			]
-		},
-		{
-			"type": "steps",
-			"title": "Get started",
-			"items": [
-				{
-					"title": "Install magpie if it is not installed yet",
-					"description": "Download it from usemagpie.ai, or run `curl -fsSL https://usemagpie.ai/install.sh | sh`. Add at least one provider inside magpie first — that is where the models come from."
-				},
-				{
-					"title": "Start the gateway",
-					"description": "Launch the magpie app, or run `magpie serve`. It listens on 127.0.0.1:3425 by default; if you changed MAGPIE_ADDR, put the address into the panel's connection field instead."
-				},
-				{
-					"title": "Open Magpie Gateway and press Publish",
-					"description": "The panel confirms the version and shows the catalog. Publishing adds the models to your model picker; the button right next to it removes them again."
-				}
-			]
-		},
-		{
-			"type": "callout",
-			"tone": "info",
-			"content": "This plugin is a connector, not a runtime: it does not install, start or stop magpie, and it cannot reach the gateway when magpie is not running. The panel says so explicitly instead of failing silently."
-		}
-	]
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "Models",
+      "title": "One gateway for every model you already pay for",
+      "description": "Magpie runs one local gateway in front of every provider you have configured — subscription, API key or local runtime. This plugin connects that gateway to Astravia so its models appear next to the built-in ones.",
+      "badges": [
+        "Local only",
+        "Runs on your machine"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "user_prompt": "Which models does magpie have right now? Pick the longest-context one for this contract.",
+        "assistant_reply": "Your gateway answers with 14 models across 3 providers. The largest context is claude-sonnet-4 at 200K tokens, and it takes images as well. It is already in your model list as Magpie — claude-sonnet-4."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What it gives you",
+      "items": [
+        {
+          "title": "Your real catalog, not a guess",
+          "description": "The panel reads /v1/models from the gateway, so what you see is what magpie can serve right now — with provider, context window, image input and reasoning support.",
+          "icon": "solar:list-check-bold"
+        },
+        {
+          "title": "One click into the model picker",
+          "description": "Publishing writes the catalog into Astravia's own model registry as an OpenAI-compatible provider. Nothing is written until you press the button, and removing it is one press too.",
+          "icon": "solar:routing-2-bold"
+        },
+        {
+          "title": "Agent tools that read the gateway",
+          "description": "Two read-only tools, magpie_status and magpie_models, let the assistant check whether the gateway is up and which models exist instead of answering from memory.",
+          "icon": "solar:magnifer-bold"
+        },
+        {
+          "title": "Keys stay in magpie",
+          "description": "Your provider credentials live in magpie's own configuration on this computer. The plugin never shows them and never stores them.",
+          "icon": "solar:lock-keyhole-minimalistic-bold"
+        },
+        {
+          "title": "It installs magpie for you",
+          "description": "No terminal and no manual download: the panel reads the official release feed, verifies the published SHA-256, installs `~/.local/bin/magpie` and starts the gateway as a child process of the plugin. If your system has no `sh`, or you decline the permission, it says so and offers the official installer instead.",
+          "icon": "solar:download-square-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "Get started",
+      "items": [
+        {
+          "title": "Open Magpie Gateway and press Install and start",
+          "description": "If magpie is not on this computer yet, the panel fetches the official build (about 70 MB), checks the checksum published in the release feed, installs it as `~/.local/bin/magpie` and starts the gateway. Nothing to type, no sudo. If magpie is already somewhere on your PATH, it starts that copy instead of downloading. Astravia asks you once to allow the `sh` command for this plugin."
+        },
+        {
+          "title": "Add at least one provider in magpie",
+          "description": "The gateway only serves what magpie itself has configured. Use the panel's Open magpie button for that page — that is where the models come from."
+        },
+        {
+          "title": "Press Publish models to Astravia",
+          "description": "The panel confirms the version and shows the catalog. Publishing adds those models to your model picker; the button next to it removes them again."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "The gateway this plugin starts is a child process: it stops when Astravia quits, and it leaves no service behind. For a gateway that survives a reboot, install magpie's own service once with `magpie daemon install`. Without a gateway the panel cannot read a catalog — it says which of refused, timed out, not magpie and HTTP error happened."
+    }
+  ]
 }
