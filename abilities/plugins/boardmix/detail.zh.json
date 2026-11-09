@@ -16,8 +16,8 @@
       "type": "showcase",
       "showcase": {
         "template": "chat-thread",
-        "user_prompt": "打开 Boardmix，带我去 AI 流程图那个入口，我想画一版注册流程。",
-        "assistant_reply": "已打开 Boardmix 面板并切到 AI 流程图入口。还没登录的话在那里登录一下；画布由你来操作，我按你说的跟着一起推。"
+        "user_prompt": "带我去 Boardmix 的 AI 流程图入口。",
+        "assistant_reply": "入口已打开，登录后画布由你来操作。"
       }
     },
     {

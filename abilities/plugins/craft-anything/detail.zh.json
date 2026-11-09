@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "参照 @素材/结账页.png，按我们的风格重做这个页面。",
-        "assistant_reply": "先摸清空、已填、报错三种状态，再逐阶段重做，每一步都留了截图。"
+        "user_prompt": "按我们的风格重做这个页面。",
+        "assistant_reply": "先摸清三种状态，再逐阶段重做，每步留了截图。"
       }
     },
     {

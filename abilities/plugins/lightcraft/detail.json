@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "In LightCraft, flag the 12 sharpest frames in @assets/shoot/ and give them the same white balance.",
-        "assistant_reply": "12 frames flagged as picks and one white balance applied to all of them. The rejects stay in the catalog, so nothing was deleted to get there."
+        "user_prompt": "Flag the 12 sharpest as picks.",
+        "assistant_reply": "12 flagged, one white balance. Nothing was deleted."
       }
     },
     {

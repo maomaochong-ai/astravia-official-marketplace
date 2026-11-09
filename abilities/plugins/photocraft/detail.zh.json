@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "在 Photocraft 里打开 @素材/封面.png，加一层曲线把高光压下来，再另存一份 1600 px 的 JPEG 到旁边。",
-        "assistant_reply": "封面已打开，曲线层已加上，高光端压了下来。1600 px 的 JPEG 已经存回原文件旁边；白点还要再低一点就说一声。"
+        "user_prompt": "压高光，另存一版 1600 px。",
+        "assistant_reply": "曲线层加好，高光压下来，1600 px 的 JPEG 存在旁边。"
       }
     },
     {

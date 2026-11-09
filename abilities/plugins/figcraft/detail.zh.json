@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "在 FigCraft 里把 @素材/app.fig 的定价卡片改成自动布局，按钮文案用价格变量驱动。",
-        "assistant_reply": "卡片已经切成自动布局，按钮文案现在读价格变量。另外三个实例一起跟着变了；这张界面截了图，间距可以核一下。"
+        "user_prompt": "定价卡片改成自动布局。",
+        "assistant_reply": "卡片已自动布局，另外三个实例一起跟着变了。"
       }
     },
     {

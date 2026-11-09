@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "In FigCraft, convert the pricing card in @assets/app.fig to auto layout and let the price variable set the button label.",
-        "assistant_reply": "Card is on auto layout and the button reads from the price variable now. The other three instances picked it up; captured the screen so the spacing can be checked."
+        "user_prompt": "Auto layout the pricing card.",
+        "assistant_reply": "Card on auto layout; three other instances picked it up."
       }
     },
     {

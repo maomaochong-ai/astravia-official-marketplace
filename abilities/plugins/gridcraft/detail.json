@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "Open @assets/budget.xlsx in GridCraft and put a total under column C that leaves hidden rows out.",
-        "assistant_reply": "Total sits under C using SUBTOTAL(109, …), so filtered and hidden rows stay out of it. Saved back to budget.xlsx."
+        "user_prompt": "Total under C, minus hidden rows.",
+        "assistant_reply": "SUBTOTAL(109) keeps filtered and hidden rows out. Saved back."
       }
     },
     {

@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "在 FilmCraft 里把 @素材/预告片.mp4 剪到 20 秒，再把开场镜头的调色往暖里推。",
-        "assistant_reply": "时间线上剪到 20 秒，开场镜头的调色往暖推了。还没有渲染；工程已经保存，下一刀从这里接着剪。"
+        "user_prompt": "剪到 20 秒，开场调暖。",
+        "assistant_reply": "时间线剪到 20 秒，开场调暖，工程已存，还没渲染。"
       }
     },
     {

@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "在 GridCraft 里打开 @素材/预算.xlsx，在 C 列下面加一行合计，隐藏的行不算进去。",
-        "assistant_reply": "合计加在 C 列下面，用的是 SUBTOTAL(109, …)，筛选和隐藏的行都不计。已存回 预算.xlsx。"
+        "user_prompt": "C 列加合计，隐藏的行不算。",
+        "assistant_reply": "用了 SUBTOTAL(109)，筛选和隐藏行都不计，已存回。"
       }
     },
     {

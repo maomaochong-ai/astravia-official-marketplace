@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "In TextureCraft, paint wear along the edges of @assets/helmet.fbx and bake the roughness channel out.",
-        "assistant_reply": "Edge wear painted across the UV seams and roughness baked to a 2K map beside the mesh. Base colour is untouched, so the bake can be redone."
+        "user_prompt": "Paint edge wear, bake roughness.",
+        "assistant_reply": "Wear painted across UV seams; 2K roughness baked beside it."
       }
     },
     {

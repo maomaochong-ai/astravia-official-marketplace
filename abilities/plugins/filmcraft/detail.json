@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "In FilmCraft, cut @assets/teaser.mp4 down to 20 seconds and warm the grade on the opening shot.",
-        "assistant_reply": "Trimmed to 20 s on the timeline and warmed the first shot's grade. Nothing has been rendered; the project is saved so the next cut can start from here."
+        "user_prompt": "Trim to 20 s, warm the opening.",
+        "assistant_reply": "Trimmed to 20 s, first shot warmed. Saved, not rendered."
       }
     },
     {

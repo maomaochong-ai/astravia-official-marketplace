@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "在 CADCraft 里打开 @素材/plan.dxf，把内墙线整体向内偏移 100 mm。",
-        "assistant_reply": "图纸已打开。内墙那一组线跑了 OFFSET 100，拐角已经修剪；还没有保存，磁盘上的文件没动。"
+        "user_prompt": "内墙线整体内偏 100 mm。",
+        "assistant_reply": "内墙那组线跑了 OFFSET 100，拐角修剪完，还没保存。"
       }
     },
     {

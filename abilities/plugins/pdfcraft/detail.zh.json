@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "docs",
-        "user_prompt": "在 PDFCraft 里删掉 @素材/合同.pdf 的空白页，再按每个章节标题拆开。",
-        "assistant_reply": "删掉 4 张空白页，再按 5 个章节标题拆开——6 个 PDF，都写在原文件旁边。原文件在你确认覆盖前不会被动。"
+        "user_prompt": "删空白页，再按章节标题拆开。",
+        "assistant_reply": "删掉 4 张空白页，按 5 个标题拆成 6 份，原文件没动。"
       }
     },
     {

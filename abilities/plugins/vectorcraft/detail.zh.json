@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "在 VectorCraft 里把 @素材/logo.svg 的字标转成曲线，原件留在旁边。",
-        "assistant_reply": "用可编辑文字转出了一份曲线的副本，存成 logo-outlined.svg，原件没动。画布截了图，曲线的走势可以按实际大小核。"
+        "user_prompt": "把字标转成曲线。",
+        "assistant_reply": "用可编辑文字导出了 logo-outlined.svg，原件没动。"
       }
     },
     {

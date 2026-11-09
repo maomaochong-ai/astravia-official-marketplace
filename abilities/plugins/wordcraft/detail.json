@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "In WordCraft, turn track changes on in @assets/contract.docx and accept only the date corrections.",
-        "assistant_reply": "Tracking is on and the date corrections are accepted; every other mark is still pending your review. Captured the page so you can see what is left."
+        "user_prompt": "Accept only the date edits.",
+        "assistant_reply": "Tracking on. Date edits accepted; the rest wait for you."
       }
     },
     {

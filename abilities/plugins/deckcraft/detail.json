@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "In DeckCraft, put the dark theme on @assets/q3-review.pptx and add the revenue chart to slide 4.",
-        "assistant_reply": "Dark theme applied across the deck and the revenue chart now sits on slide 4, built from the numbers already in the file. Captured that slide so you can check the sizing."
+        "user_prompt": "Dark theme and a chart on slide 4.",
+        "assistant_reply": "Theme applied; chart on slide 4 reads the file's numbers."
       }
     },
     {

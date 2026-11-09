@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "In MaterialCraft, drive the roughness of @assets/steel.mat from a noise node so the highlights break up.",
-        "assistant_reply": "Noise is wired into roughness and its scale dropped until the highlight broke up in the preview. The graph is saved as steel-v2."
+        "user_prompt": "Drive roughness from a noise node.",
+        "assistant_reply": "Noise drives roughness so highlights break up. Saved steel-v2."
       }
     },
     {

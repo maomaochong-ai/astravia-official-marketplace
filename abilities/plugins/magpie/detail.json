@@ -15,8 +15,8 @@
       "type": "showcase",
       "showcase": {
         "template": "chat-thread",
-        "user_prompt": "Which models does magpie have right now? Pick the longest-context one for this contract.",
-        "assistant_reply": "Your gateway answers with 14 models across 3 providers. The largest context is claude-sonnet-4 at 200K tokens, and it takes images as well. It is already in your model list as Magpie — claude-sonnet-4."
+        "user_prompt": "Pick the longest-context model here.",
+        "assistant_reply": "14 models. Longest: claude-sonnet-4."
       }
     },
     {

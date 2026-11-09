@@ -46,7 +46,7 @@
       "showcase": {
         "template": "chat-thread",
         "user_prompt": "这个 APK 为什么风险 62？",
-        "assistant_reply": "三个组件对外导出且没有权限保护，真实逻辑要等运行期才解出来。"
+        "assistant_reply": "三个组件对外导出，没有权限保护。"
       }
     },
     {

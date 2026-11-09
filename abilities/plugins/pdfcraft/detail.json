@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "docs",
-        "user_prompt": "In PDFCraft, drop the blank pages from @assets/contract.pdf and split it at every section heading.",
-        "assistant_reply": "Four blank pages removed, then the file split at the five section headings — six PDFs, written next to the original. The source file is untouched until you save over it."
+        "user_prompt": "Drop blank pages, split by heading.",
+        "assistant_reply": "4 blank pages gone; six PDFs beside it. Source untouched."
       }
     },
     {
