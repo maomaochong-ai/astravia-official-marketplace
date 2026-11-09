@@ -10,9 +10,10 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
-const ADR_ROOT = new URL("../docs/adr/", import.meta.url).pathname;
+const ADR_ROOT = fileURLToPath(new URL("../docs/adr/", import.meta.url));
 const APPS = ["designcraft", "effectcraft", "filmcraft", "lightcraft", "pdfcraft", "vectorcraft", "photocraft",
 	"cadcraft", "deckcraft", "figcraft", "gridcraft", "wordcraft", "texturecraft", "materialcraft", "craft-anything"];
 const REFERENCE = "designcraft";
@@ -42,6 +43,12 @@ const FAMILY_DOCS = [
 	"craft-0021-the-canvas-is-clicked-not-covered.md",
 	"craft-0022-a-document-outlives-its-tab.md",
 	"craft-0023-memory-is-private-and-the-pointer-is-visible.md",
+	"craft-0024-the-agent-stays-in-the-frame.md",
+	"craft-0025-settled-means-quiet-not-identical.md",
+	"craft-0026-act-says-what-it-expects.md",
+	"craft-0027-precision-starts-from-recorded-failures.md",
+	"craft-0028-a-skill-ships-what-it-can-act-on.md",
+	"craft-0029-address-the-function-not-the-pixel.md",
 	"craft-CONTEXT.md",
 ];
 

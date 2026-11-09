@@ -20,4 +20,4 @@ Malformed-input tests, property tests, and `cargo-fuzz` targets cover the main p
 
 ## Remaining hardening
 
-Priorities include broader PSB and embedded-object fuzz corpora, measuring aggregate allocations and parse time, ensuring every nested length is budgeted, and retaining minimized crashing inputs as regression fixtures. See [Fuzzing and regression testing](../security/fuzzing.md).
+Priorities include broader PSB and embedded-object fuzz corpora, measuring aggregate allocations and parse time, ensuring every nested length is budgeted, and retaining minimized crashing inputs as regression fixtures. See [Fuzzing and regression testing](https://github.com/storytold/photocraft/blob/main/book/src/security/fuzzing.md).

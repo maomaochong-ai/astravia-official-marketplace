@@ -2,7 +2,7 @@
 
 FilmCraft's graphics work like Premiere's Essential Graphics: a **graphic clip** on a video track
 holds **text** and **shape** layers. Text is set by the text engine in `crates/text`
-([README](../crates/text/README.md)): bundled OFL fonts plus system fonts, OpenType shaping with
+([README](https://github.com/storytold/filmcraft/blob/main/crates/text/README.md)): bundled OFL fonts plus system fonts, OpenType shaping with
 kerning and ligatures, bidi, line breaking, all drawn as vectors in linear light.
 
 ## Model

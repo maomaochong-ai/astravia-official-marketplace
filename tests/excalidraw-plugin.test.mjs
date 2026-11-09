@@ -21,8 +21,9 @@ import { createRequire } from "node:module";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 
-const ROOT = new URL("../", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const APP = join(ROOT, "abilities/plugins/excalidraw");
 
 function readJson(relative) {

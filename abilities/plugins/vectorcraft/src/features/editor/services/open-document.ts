@@ -27,6 +27,7 @@
  */
 import type { CraftProbe } from "../../../domain/link-protocol.ts";
 import { askCraftFrame } from "../session-registry.ts";
+import { CHANGE_DISTANCE, CHANGE_DRIFT, cellDrift, meanDistance } from "./expectation.ts";
 
 export interface OpenRequest {
   bytes: ArrayBuffer;
@@ -54,7 +55,10 @@ export interface OpenResult {
 export interface CanvasDelta {
   changed: boolean;
   distance: number;
-  /** Share of cells that changed letter since the previous probe of the same region. */
+  /**
+   * Share of cells that changed letter between the two readings (0–1); the bridge's own
+   * `drift` only when the maps are not both available.
+   */
   cellsMoved: number | null;
   /** Hex strings as the probe reports them (`#rrggbb`); `distance` carries the numbers. */
   meanBefore: string;
@@ -98,8 +102,10 @@ export function describeDelta(
   if (!before || !after) return null;
   const [r0, g0, b0] = before.meanRgb;
   const [r1, g1, b1] = after.meanRgb;
-  const distance = Math.round(Math.hypot(r1 - r0, g1 - g0, b1 - b0));
-  const moved = typeof after.drift === "number" ? after.drift : null;
+  const distance = meanDistance(before.meanRgb, after.meanRgb);
+  // Both maps are in hand, so the drift is measured here rather than read from the
+  // bridge's cache: a `wait` loop compares two looks that may not be its last two.
+  const moved = cellDrift(before, after);
   return {
     meanBefore: before.mean,
     meanAfter: after.mean,
@@ -108,7 +114,7 @@ export function describeDelta(
     cellsMoved: moved,
     // Either signal is enough: a small swatch moves cells without moving the mean,
     // and a full-screen fade moves the mean with an almost identical letter map.
-    changed: distance > 6 || (moved !== null && moved > 0.02),
+    changed: distance > CHANGE_DISTANCE || moved > CHANGE_DRIFT,
   };
 }
 

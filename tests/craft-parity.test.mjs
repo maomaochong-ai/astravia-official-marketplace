@@ -12,8 +12,9 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 
-const ROOT = new URL("../abilities/plugins/", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("../abilities/plugins/", import.meta.url));
 const APPS = ["effectcraft", "filmcraft", "lightcraft", "pdfcraft", "vectorcraft", "photocraft",
 	"cadcraft", "deckcraft", "figcraft", "gridcraft", "wordcraft", "texturecraft", "materialcraft", "craft-anything"];
 const REFERENCE = "designcraft";

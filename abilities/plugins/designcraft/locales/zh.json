@@ -7,5 +7,6 @@
   "tool.act": "操作编辑器",
   "tool.probe": "看画布",
   "tool.wait": "等画面稳定",
+  "tool.menu": "按名字执行功能",
   "tool.document": "打开文件"
 }

@@ -7,9 +7,9 @@ the AI models named in `Co-Authored-By` trailers.
 
 - Two files, both **compiled into the binary** by the UI crate's `build.rs` (nothing is read from
   disk or the network at run time; the web build has them too):
-  - [`contributors/contributors.json`](../contributors/contributors.json): commit stats per GitHub
+  - [`contributors/contributors.json`](https://github.com/storytold/filmcraft/blob/main/contributors/contributors.json): commit stats per GitHub
     username. Never hand-edit.
-  - [`contributors/people.toml`](../contributors/people.toml): the names people chose for
+  - [`contributors/people.toml`](https://github.com/storytold/filmcraft/blob/main/contributors/people.toml): the names people chose for
     themselves. **Each contributor adds only their own entry**, in their own PR.
 - Each contributor gets one line: GitHub username (always), display name (opt-in, or their synced
   GitHub profile name), real name (only if they told us), merged PRs, commits, lines added, lines

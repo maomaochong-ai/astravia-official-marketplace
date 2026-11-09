@@ -17,9 +17,10 @@ import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
-const ROOT = new URL("../abilities/plugins/", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("../abilities/plugins/", import.meta.url));
 const APPS = [
 	"designcraft",
 	"effectcraft",

@@ -40,7 +40,7 @@ untouched and the status line says so; choosing `keep.vtt` itself in the save pa
 before replacing it, replaces it. Given a `path` (agents, the CLI), `captions.export` takes the
 format from `format` or from the file extension.
 
-Details of each format and the SCC encoder are in [`crates/captions/README.md`](../crates/captions/README.md).
+Details of each format and the SCC encoder are in [`crates/captions/README.md`](https://github.com/storytold/filmcraft/blob/main/crates/captions/README.md).
 
 ## Editing
 

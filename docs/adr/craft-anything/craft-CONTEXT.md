@@ -10,7 +10,7 @@ Astravia 宿主（Electron 主进程 + 渲染进程）
 │  ├─ craft-tab.tsx           活动标签的面板外壳
 │  ├─ use-craft-editor.ts     状态机：starting → ready → …，暂停闸门也在这里接线
 │  ├─ site-document.ts        读包内 web/index.html，注入 base / URL / 种子 / bridge
-│  └─ craft-tools.ts          五个 Agent 工具，全部转向同一个 frame
+│  └─ craft-tools.ts          六个 Agent 工具，全部转向同一个 frame
 │
 ├─ 活动标签
 │  └─ <iframe srcdoc="…">
@@ -40,6 +40,14 @@ Astravia 宿主（Electron 主进程 + 渲染进程）
 - **pause gate**：`craft:pause` / `craft:resume`。暂停之后 bridge 拒绝再向页面申请动画帧，
   于是应用自己的绘制循环停住，而 iframe 文档还活着。
 - **staged**：`open_workspace_file` 做完的状态——字节已经进了页面，但用户还没在应用里按"打开"。
+- **settle / 落定**：`_wait` 的判据——画面在容差内连续 `quiet_ms` 没有变化。它说的是"我没看见变化"，
+  不是"什么都没发生"（0025）。
+- **change**：一次动作前后两次 `probe` 的差（`distance` / `cellsMoved`）。回答"发生过什么"，
+  不回答"做对没有"（0009）。
+- **assert**：`expect` 的判定结果。回答"我期望的事有没有发生"（0026）。与 settle、change 三者不可互替。
+- **anchor / 锚点**：按文本框或图标框定位，而不是按坐标。本轮不实现，只在样本足够时才做（0027）。
+- **run journal / 轨迹**：`.craft/<APP.id>/runs/*.jsonl`，每次 `act` / `probe` 一行，
+  用来攒失败样本（0027）。
 
 ## 谁负责什么
 

@@ -14,9 +14,10 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
-const ROOT = new URL("../abilities/plugins/", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("../abilities/plugins/", import.meta.url));
 const APPS = ["effectcraft", "filmcraft", "lightcraft", "pdfcraft", "vectorcraft", "photocraft",
 	"cadcraft", "deckcraft", "figcraft", "gridcraft", "wordcraft", "texturecraft", "materialcraft", "craft-anything"];
 const REFERENCE = "designcraft";

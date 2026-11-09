@@ -10,6 +10,9 @@ You import photos, sort them with ratings, flags and albums, and edit them witho
 
 ## Start here
 
+- [Getting started](getting-started/index.md)
+- [Guides](guides/index.md)
+- [Troubleshooting](troubleshooting/index.md)
 - [Install LightCraft](getting-started/install.md)
 - [Import photos](guides/import-photos.md)
 - [Rate, flag and label photos](guides/cull-photos.md)

@@ -930,10 +930,16 @@
     var drift = null;
     if (typeof previous === "string" && previous.length === map.length) {
       var moved = 0;
+      var cells = 0;
       for (var i = 0; i < map.length; i += 1) {
+        // Newlines separate rows; they are not cells, so they are neither compared nor
+        // counted. The host computes the same share over the same letters, and a
+        // denominator that included 17 row breaks would make the two disagree.
+        if (map.charAt(i) === "\n") continue;
+        cells += 1;
         if (previous.charAt(i) !== map.charAt(i)) moved += 1;
       }
-      drift = Math.round((moved / map.length) * 1000) / 1000;
+      drift = cells === 0 ? null : Math.round((moved / cells) * 1000) / 1000;
     }
     lastMaps[key] = map;
     return {
