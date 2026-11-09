@@ -28,6 +28,13 @@ export function GatewayView({ controller }: GatewayViewProps) {
 	}, [controller]);
 
 	const settings = controller.getSettings();
+	// 离线时要给安装/启动的入口；正在装或正在启时，即使网关还没答也要把进度留在屏幕上。
+	const runtime = state.runtime;
+	const showRuntimeCard =
+		state.phase !== "online" ||
+		runtime.phase === "downloading" ||
+		runtime.phase === "starting" ||
+		runtime.phase === "failed";
 
 	return (
 		<div className="flex h-full flex-col overflow-auto">
@@ -46,7 +53,14 @@ export function GatewayView({ controller }: GatewayViewProps) {
 					onOpenConsole={() => void controller.openConsole()}
 				/>
 
-				{state.phase === "offline" ? <GatewaySetupCard endpoint={state.endpoint} /> : null}
+				{showRuntimeCard ? (
+					<GatewaySetupCard
+						state={state}
+						onInstallAndStart={() => void controller.installAndStart()}
+						onStart={() => void controller.startRuntime()}
+						onStop={() => void controller.stopRuntime()}
+					/>
+				) : null}
 
 				<GatewayConnectionForm
 					baseUrl={settings.baseUrl}

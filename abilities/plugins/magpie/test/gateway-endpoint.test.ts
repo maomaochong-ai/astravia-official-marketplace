@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
 	consoleUrl,
 	DEFAULT_GATEWAY_URL,
+	helloUrl,
+	identityUrl,
 	normalizeApiKey,
 	normalizeBaseUrl,
 	normalizeSettings,
@@ -59,6 +61,8 @@ describe("normalizeSettings", () => {
 describe("url helpers", () => {
 	it("builds the probe and catalog urls", () => {
 		expect(versionUrl("http://127.0.0.1:3425")).toBe("http://127.0.0.1:3425/api/version");
+		expect(identityUrl("http://127.0.0.1:3425")).toBe("http://127.0.0.1:3425/v1/magpie/concurrency");
+		expect(helloUrl("http://127.0.0.1:3425")).toBe("http://127.0.0.1:3425/api/hello");
 		expect(providerBaseUrl("http://127.0.0.1:3425")).toBe("http://127.0.0.1:3425/v1");
 	});
 

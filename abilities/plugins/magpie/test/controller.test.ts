@@ -9,6 +9,9 @@ function fakeContext(handler: Handler) {
 	const writes: Array<Record<string, PluginModelProviderConfig>> = [];
 	const files = new Map<string, string>();
 	const opened: string[] = [];
+	const commands: Array<{ file: string; args?: string[]; env?: Record<string, string> }> = [];
+	/** 本机是否已经装了 magpie：probe 脚本据此退出 0 或 127。 */
+	let binaryInstalled = false;
 
 	const ctx = {
 		network: {
@@ -38,6 +41,19 @@ function fakeContext(handler: Handler) {
 				return { revision: "1" };
 			},
 		},
+		// 宿主的命令通道：只接两类调用，其余直接报错，免得测试默默跑歪
+		command: {
+			run: async (file: string, args?: string[], options?: { env?: Record<string, string> }) => {
+				commands.push({ file, args, env: options?.env });
+				const script = args?.[1] ?? "";
+				if (script.includes("uname")) return { stdout: "Darwin\narm64\n", stderr: "", exitCode: 0 };
+				if (!binaryInstalled) return { stdout: "", stderr: "not found", exitCode: 127 };
+				return { stdout: "path=/tmp/magpie\nmagpie 0.1.3336\n", stderr: "", exitCode: 0 };
+			},
+			spawn: async () => {
+				throw new Error("these tests do not spawn processes");
+			},
+		},
 		ui: {
 			setWorkspaceViewBadge: () => ({ dispose() {} }),
 			openExternal: async (url: string) => {
@@ -48,7 +64,17 @@ function fakeContext(handler: Handler) {
 		i18n: { t: (key: string) => key, locale: "en", onChange: () => ({ dispose() {} }) },
 	} as unknown as PluginContext;
 
-	return { ctx, writes, files, opened, peer: () => owned };
+	return {
+		ctx,
+		writes,
+		files,
+		opened,
+		commands,
+		peer: () => owned,
+		markInstalled: (value: boolean) => {
+			binaryInstalled = value;
+		},
+	};
 }
 
 const ONLINE_MODELS = {
@@ -59,9 +85,16 @@ const ONLINE_MODELS = {
 	],
 };
 
-function serve(overrides: Partial<Record<"version" | "models", { status: number; body: unknown } | Error>> = {}): Handler {
+function serve(
+	overrides: Partial<Record<"version" | "hello" | "models" | "identity", { status: number; body: unknown } | Error>> = {},
+): Handler {
 	return (url) => {
-		if (url.endsWith("/api/version")) return overrides.version ?? { status: 200, body: { version: "0.1.47" } };
+		// /api/hello 是 magpie 自报身份的接口：名字 + 自己的版本
+		if (url.endsWith("/api/hello")) return overrides.hello ?? { status: 200, body: { name: "magpie", version: "0.1.47" } };
+		// /api/version 是 Ollama 兼容形状，写死一个 Ollama 版本号
+		if (url.endsWith("/api/version")) return overrides.version ?? { status: 200, body: { version: "0.12.6" } };
+		// /v1/magpie/* 是 magpie 独有的路由，200 就代表「它是 magpie」
+		if (url.endsWith("/v1/magpie/concurrency")) return overrides.identity ?? { status: 200, body: { object: "concurrency", data: [] } };
 		if (url.endsWith("/v1/models")) return overrides.models ?? { status: 200, body: ONLINE_MODELS };
 		throw new Error(`unexpected url ${url}`);
 	};
@@ -89,6 +122,43 @@ describe("GatewayController.refresh", () => {
 		const notMagpie = new GatewayController(wrong.ctx);
 		await notMagpie.refresh();
 		expect(notMagpie.getState()).toMatchObject({ phase: "offline", failure: "not-magpie", messageKey: "error.notMagpie" });
+	});
+
+	it("does not mistake another Ollama-compatible service for magpie", async () => {
+		// 真 Ollama 答 /api/version 的 JSON 与 magpie 一模一样（都是 { version }），
+		// 也没有 /api/hello 与 /v1/magpie/*：两档身份探针都必须答 404。
+		const ollama = fakeContext(
+			serve({
+				version: { status: 200, body: { version: "0.12.6" } },
+				hello: { status: 404, body: null },
+				identity: { status: 404, body: null },
+			}),
+		);
+		const controller = new GatewayController(ollama.ctx);
+		await controller.refresh();
+		expect(controller.getState()).toMatchObject({ phase: "offline", failure: "not-magpie", messageKey: "error.notMagpie" });
+	});
+
+	it("believes a service that names itself in /api/hello", async () => {
+		const stranger = fakeContext(serve({ hello: { status: 200, body: { name: "something-else", version: "9.9" } } }));
+		const controller = new GatewayController(stranger.ctx);
+		await controller.refresh();
+		expect(controller.getState()).toMatchObject({ phase: "offline", failure: "not-magpie" });
+	});
+
+	it("falls back to the magpie-only route on a build without /api/hello", async () => {
+		const older = fakeContext(serve({ hello: { status: 404, body: null }, identity: { status: 200, body: { object: "concurrency" } } }));
+		const controller = new GatewayController(older.ctx);
+		await controller.refresh();
+		// 没有自报版本时退回 /api/version 的值
+		expect(controller.getState()).toMatchObject({ phase: "online", version: "0.12.6" });
+	});
+
+	it("reports a refused key instead of calling it another service", async () => {
+		const shared = fakeContext(serve({ hello: { status: 403, body: null } }));
+		const controller = new GatewayController(shared.ctx);
+		await controller.refresh();
+		expect(controller.getState()).toMatchObject({ phase: "offline", failure: "unauthorized", messageKey: "error.unauthorized" });
 	});
 
 	it("reports a timeout as its own reason", async () => {

@@ -72,9 +72,23 @@ export async function saveSettings(storage: PluginStorageApi, settings: MagpieSe
 	await writeJsonFile(storage, SETTINGS_PATH, normalizeSettings(settings));
 }
 
-/** 存活探针：magpie 用 Ollama 的形状回答 /api/version，正好用来判「这是不是 magpie」。 */
+/** 存活探针：magpie 用 Ollama 的形状回答 /api/version —— 只证明「有 HTTP 服务」。 */
 export function versionUrl(baseUrl: string): string {
 	return `${baseUrl}/api/version`;
+}
+
+/**
+ * 身份探针：`/v1/magpie/*` 是 magpie 独有的路由，别的 Ollama 兼容服务在这条路径上
+ * 只会给 404/405。只有它能回答「这是不是 magpie」——/api/version 回答不了（见
+ * gateway-client 里 probeGateway 的说明）。
+ */
+export function identityUrl(baseUrl: string): string {
+	return `${baseUrl}/v1/magpie/concurrency`;
+}
+
+/** magpie 给客户端做自报身份的接口：`{ "name": "magpie", "version": … }`（上游 gateway.go:960）。 */
+export function helloUrl(baseUrl: string): string {
+	return `${baseUrl}/api/hello`;
 }
 
 /** 模型目录：OpenAI 形状的 /v1/models（默认只列 chat 模型）。 */

@@ -12,6 +12,7 @@ import {
 import { FAILURE_KEYS, loadModels, probeGateway, type GatewayFailure } from "./gateway-client";
 import { summarizeCatalog, toModelDefinitions, type CatalogSummary, type MagpieModelRow } from "./model-catalog";
 import { PROVIDER_DISPLAY_NAME, PROVIDER_ID, VIEW_ID } from "./plugin-ids";
+import { RuntimeManager, type RuntimeState } from "./runtime-manager";
 
 /**
  * 相位：
@@ -34,6 +35,8 @@ export interface MagpieState {
 	/** 已经写进宿主模型注册表的模型数；undefined = 没发布过（本次会话）。 */
 	publishedCount?: number;
 	publishedAt?: number;
+	/** 本机 magpie 二进制的安装/运行状态（面板上的「安装并启动」）。 */
+	runtime: RuntimeState;
 	busy: boolean;
 }
 
@@ -42,11 +45,13 @@ export type MagpieStateListener = (state: MagpieState) => void;
 const EMPTY_SUMMARY: CatalogSummary = { total: 0, providers: [], imageCount: 0, reasoningCount: 0 };
 
 /**
- * 这个控制器只做三件事：探网关、读目录、把目录按用户点击写进宿主模型注册表。
- * 它不启动、不停止、不安装 magpie —— 上游是用户已经装好的外部程序。
+ * 这个控制器做四件事：探网关、读目录、把目录按用户点击写进宿主模型注册表，
+ * 以及托管本机 magpie 二进制的安装与启动（runtime）。
+ * 它不替用户改 PATH、不装开机服务、不动系统目录 —— 见 runtime-manager 的头注释。
  */
 export class GatewayController {
 	private readonly ctx: PluginContext;
+	private readonly runtime: RuntimeManager;
 	private readonly listeners = new Set<MagpieStateListener>();
 	private settings: MagpieSettings = { ...DEFAULT_SETTINGS };
 	private state: MagpieState = {
@@ -54,6 +59,7 @@ export class GatewayController {
 		endpoint: DEFAULT_SETTINGS.baseUrl,
 		rows: [],
 		summary: EMPTY_SUMMARY,
+		runtime: { phase: "unknown", desiredRunning: false },
 		busy: false,
 	};
 	private operationInFlight = false;
@@ -61,6 +67,13 @@ export class GatewayController {
 
 	constructor(ctx: PluginContext) {
 		this.ctx = ctx;
+		this.runtime = new RuntimeManager({
+			command: ctx.command,
+			network: ctx.network,
+			storage: ctx.storage,
+			endpoint: () => this.settings.baseUrl,
+			onChanged: (runtime) => this.setState({ runtime }),
+		});
 	}
 
 	getState(): MagpieState {
@@ -101,12 +114,15 @@ export class GatewayController {
 		}
 	}
 
-	/** activate 时调用：读设置、立刻探一次。 */
+	/** activate 时调用：读设置、看二进制在不在、立刻探一次；用户上次让它跑就拉起来。 */
 	async hydrate(): Promise<void> {
 		if (this.disposed) return;
 		this.settings = await loadSettings(this.ctx.storage).catch(() => ({ ...DEFAULT_SETTINGS }));
 		this.setState({ endpoint: this.settings.baseUrl });
+		await this.runtime.hydrate();
 		await this.refresh();
+		await this.runtime.autostartIfWanted(this.state.phase === "offline");
+		if (this.state.phase === "offline" && this.runtime.getState().phase === "running") await this.refresh();
 	}
 
 	/** 探网关 + 读目录。任何一步失败都只把原因写进 state，不抛给调用方。 */
@@ -237,6 +253,36 @@ export class GatewayController {
 		}
 	}
 
+	/** 面板上的「安装并启动」：下官方二进制（校验 sha256）→ 装到 ~/.local/bin → 起 magpie serve。 */
+	async installAndStart(): Promise<void> {
+		if (this.disposed) return;
+		const started = await this.runtime.installAndStart();
+		if (!started) return;
+		await this.runtime.waitForGateway(() => this.gatewayReachable());
+		await this.refresh();
+	}
+
+	/** 「启动」：二进制已装好时直接起网关。 */
+	async startRuntime(): Promise<void> {
+		if (this.disposed) return;
+		const started = await this.runtime.start();
+		if (!started) return;
+		await this.runtime.waitForGateway(() => this.gatewayReachable());
+		await this.refresh();
+	}
+
+	/** 「停止」：停掉插件拉起的那个网关子进程。 */
+	async stopRuntime(): Promise<void> {
+		await this.runtime.stop();
+		await this.refresh();
+	}
+
+	/** 给「启动后等网关自答」用的轻探针：只问活，不读目录。 */
+	async gatewayReachable(): Promise<boolean> {
+		const probe = await probeGateway(this.ctx.network, this.settings).catch(() => null);
+		return Boolean(probe?.ok);
+	}
+
 	/** 打开 magpie 自己的页面（登录提供方、加 key、看用量都在那边）。 */
 	async openConsole(): Promise<void> {
 		await this.ctx.ui.openExternal(consoleUrl(this.settings.baseUrl));
@@ -257,5 +303,6 @@ export class GatewayController {
 	async dispose(): Promise<void> {
 		this.disposed = true;
 		this.listeners.clear();
+		await this.runtime.dispose();
 	}
 }

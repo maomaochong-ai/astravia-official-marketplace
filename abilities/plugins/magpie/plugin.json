@@ -2,7 +2,7 @@
 	"id": "magpie",
 	"name": "%plugin.name%",
 	"icon": "assets/icon.png",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
@@ -21,12 +21,18 @@
 		"storage.write",
 		"shell.openExternal",
 		"agent.tools.register",
-		"agent.toolHandler.execute"
+		"agent.toolHandler.execute",
+		"agent.command.run",
+		"agent.command.spawn"
+	],
+	"commands": [
+		"sh"
 	],
 	"network": {
 		"allowedHosts": [
 			"127.0.0.1",
-			"localhost"
+			"localhost",
+			"usemagpie.ai"
 		]
 	},
 	"description": "%plugin.description%",
