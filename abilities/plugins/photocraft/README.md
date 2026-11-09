@@ -4,17 +4,17 @@ Edit images with layers, masks, type and real PSD files inside Astravia — the 
 
 插件把上游 Photocraft 的 web 应用放进活动面板的一个 iframe 里跑：同一份 wasm、同一份 JavaScript，
 没有分支、没有重新编译，也没有我们另写的编辑器界面。站点就是上游为这一版发出来的
-`photocraft-web-0.19.0.zip`，打包前下载、校验 sha256 后原样装进包里——我们不重新编译它，也不改它一个字节。
+`photocraft-web-0.22.0.zip`，打包前下载、校验 sha256 后原样装进包里——我们不重新编译它，也不改它一个字节。
 
 ## 上游钉在哪个 commit
 
 | | |
 | --- | --- |
 | 上游仓库 | https://github.com/storytold/photocraft |
-| 制品 | `photocraft-web-0.19.0.zip` |
-| sha256 | `74047f06da706c5b7c9dee77e05379a0928c52b5a7ea1e821e55c69851b0bd01` |
-| commit | `b957878f3f4d80426cc4bf8d1db8774b57cc8af0` |
-| 上游版本 | `0.19.0` |
+| 制品 | `photocraft-web-0.22.0.zip` |
+| sha256 | `597c4ffc54eca20d944a292b54ef7b6a3a1fd20725c42396eee00adebef3ebd9` |
+| commit | `5000240c6e5dc30a024d20f97a620c78eca10d1e` |
+| 上游版本 | `0.22.0` |
 | 站点 | 打包时下载，`web/` 不进 git |
 
 `payload/manifest.json` 钉住上游的版本、commit、包名与摘要：打包前按 pin 下载那份 zip，下载内容的
