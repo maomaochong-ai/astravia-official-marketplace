@@ -1,9 +1,9 @@
-# 命令表（texturecraft）
+# 命令索引（texturecraft）
 
-这张表由同目录的 `upstream.md` 生成——每一条都是上游版本里真实存在的功能，没有一条是凭记忆写的。
-两列直接就是参数：`快捷键` 填进 `texturecraft_menu` 的 `shortcut`，`path` 填进 `path`（照抄，含省略号）。
+这张表是这个插件自己的命令索引：每一条都是编辑器里真实存在的功能，`path` 一列直接就是
+`texturecraft_menu` 的参数，`快捷键` 一列填进它的 `shortcut`。
 
-先查这张表，再决定要不要碰坐标。表里没有的功能，说明这一版上游没有。
+先查表决定「用哪个功能」，再决定要不要碰坐标。表里没有的，多半是这一版没有，也可能是它只在面板上——以界面为准。
 
 ## File
 
@@ -23,7 +23,6 @@
 | Export Textures... | Ctrl+Shift+E | `["File","Export Textures..."]` | `ui.export` |
 | Export Mesh... | — | `["File","Export Mesh..."]` | `file.exportMesh` |
 | Quit | Ctrl+Q | `["File","Quit"]` | `ui.quit` |
-
 ## Edit
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -33,7 +32,6 @@
 | Project Configuration... | — | `["Edit","Project Configuration..."]` | `ui.projectConfig` |
 | Reimport mesh | Ctrl+Shift+R | `["Edit","Reimport mesh"]` | `file.reimportMesh` |
 | Settings... | — | `["Edit","Settings..."]` | `ui.settings` |
-
 ## Window
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -41,13 +39,11 @@
 | Load UI Layout | — | `["Window","Load UI Layout"]` | `ui.layout.load` |
 | Hide UI | Tab | `["Window","Hide UI"]` | `ui.hideUi` |
 | Reset UI | — | `["Window","Reset UI"]` | `ui.resetUi` |
-
 ## Window › Save UI Layout
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | Save current layout... | — | `["Window","Save UI Layout","Save current layout..."]` | `ui.layout.save` |
-
 ## Window › Views
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -61,7 +57,6 @@
 | Shader Settings | — | `["Window","Views","Shader Settings"]` | `ui.view.shader` |
 | Texture Set List | — | `["Window","Views","Texture Set List"]` | `ui.view.textureSetList` |
 | Texture Set Settings | — | `["Window","Views","Texture Set Settings"]` | `ui.view.textureSetSettings` |
-
 ## Help
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -72,7 +67,6 @@
 | ArtCraft website... | — | `["Help","ArtCraft website..."]` | `ui.help.website` |
 | Report a bug... | — | `["Help","Report a bug..."]` | `ui.help.bug` |
 | About TextureCraft... | — | `["Help","About TextureCraft..."]` | `ui.about` |
-
 ## Mode
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -80,7 +74,6 @@
 | Bake Mesh Maps | F8 | `["Mode","Bake Mesh Maps"]` | `ui.mode.bake` |
 | Painting | F9 | `["Mode","Painting"]` | `ui.mode.paint` |
 | Rendering (path traced) | F10 | `["Mode","Rendering (path traced)"]` | `ui.mode.render` |
-
 ## Viewport
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -98,4 +91,3 @@
 | Enable quick mask | Y | `["Viewport","Enable quick mask"]` | `viewport.quickMask` |
 | Edit quick mask | U | `["Viewport","Edit quick mask"]` | `viewport.quickMask.edit` |
 | Invert quick mask | Ctrl+Shift+I | `["Viewport","Invert quick mask"]` | `viewport.quickMask.invert` |
-

@@ -1,9 +1,9 @@
-# 命令表（deckcraft）
+# 命令索引（deckcraft）
 
-这张表由同目录的 `upstream.md` 生成——每一条都是上游版本里真实存在的功能，没有一条是凭记忆写的。
-两列直接就是参数：`快捷键` 填进 `deckcraft_menu` 的 `shortcut`，`path` 填进 `path`（照抄，含省略号）。
+这张表是这个插件自己的命令索引：每一条都是编辑器里真实存在的功能，`path` 一列直接就是
+`deckcraft_menu` 的参数，`快捷键` 一列填进它的 `shortcut`。
 
-先查这张表，再决定要不要碰坐标。表里没有的功能，说明这一版上游没有。
+先查表决定「用哪个功能」，再决定要不要碰坐标。表里没有的，多半是这一版没有，也可能是它只在面板上——以界面为准。
 
 ## File
 
@@ -12,7 +12,6 @@
 | New Presentation | — | `["File","New Presentation"]` | `file.new` |
 | Save | — | `["File","Save"]` | `file.save` |
 | Properties | — | `["File","Properties"]` | `file.properties` |
-
 ## Edit
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -25,7 +24,6 @@
 | Paste and Match Formatting | — | `["Edit","Paste and Match Formatting"]` | `edit.pasteText` |
 | Select All | — | `["Edit","Select All"]` | `edit.selectAll` |
 | Duplicate | — | `["Edit","Duplicate"]` | `edit.duplicate` |
-
 ## View
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -47,7 +45,6 @@
 | Zoom Out | — | `["View","Zoom Out"]` | `view.zoomOut` |
 | Fit to Window | — | `["View","Fit to Window"]` | `view.fit` |
 | New Window | — | `["View","New Window"]` | `view.newWindow` |
-
 ## Insert
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -56,14 +53,21 @@
 | audio | — | `["Insert","audio"]` | `insert.audio` |
 | video | — | `["Insert","video"]` | `insert.video` |
 | Text Box | — | `["Insert","Text Box"]` | `insert.textBox` |
+## （名称在导出时残缺，只能用快捷键或 id 定位）
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | WordArt | — | — | `insert.wordArt` |
+## Insert
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | Date and Time | — | `["Insert","Date and Time"]` | `insert.dateTime` |
 | Slide Number | — | `["Insert","Slide Number"]` | `insert.slideNumber` |
 | Table… | — | `["Insert","Table…"]` | `insert.table` |
 | Chart | — | `["Insert","Chart"]` | `insert.chart` |
 | Photo Album… | — | `["Insert","Photo Album…"]` | `insert.photoAlbum` |
 | Edit Photo Album… | — | `["Insert","Edit Photo Album…"]` | `insert.photoAlbumEdit` |
-
 ## Format
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -80,7 +84,6 @@
 | Align Right | — | `["Format","Align Right"]` | `format.alignRight` |
 | Justify | — | `["Format","Justify"]` | `format.justify` |
 | Right-to-Left Text Direction | — | `["Format","Right-to-Left Text Direction"]` | `format.rtl` |
-
 ## Application
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -99,7 +102,6 @@
 | About DeckCraft | — | `["Application","About DeckCraft"]` | `app.about` |
 | Check for Updates… | — | `["Application","Check for Updates…"]` | `app.checkUpdates` |
 | Command Palette | — | `["Application","Command Palette"]` | `app.palette` |
-
 ## Arrange
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -115,13 +117,11 @@
 | Rotate Right 90° | — | `["Arrange","Rotate Right 90°"]` | `arrange.rotateRight` |
 | Flip Horizontal | — | `["Arrange","Flip Horizontal"]` | `arrange.flipHorizontal` |
 | Flip Vertical | — | `["Arrange","Flip Vertical"]` | `arrange.flipVertical` |
-
 ## Review
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | open | — | `["Review","open"]` | `review.compare` |
-
 ## Shapes
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -129,7 +129,6 @@
 | Close Path | — | `["Shapes","Close Path"]` | `shape.closePath` |
 | Open Path | — | `["Shapes","Open Path"]` | `shape.openPath` |
 | Size and Position… | — | `["Shapes","Size and Position…"]` | `shape.sizePosition` |
-
 ## Slides
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -138,4 +137,3 @@
 | New Slide | — | `["Slides","New Slide"]` | `slide.new` |
 | Duplicate Slide | — | `["Slides","Duplicate Slide"]` | `slide.duplicate` |
 | Hide Slide | — | `["Slides","Hide Slide"]` | `slide.hide` |
-

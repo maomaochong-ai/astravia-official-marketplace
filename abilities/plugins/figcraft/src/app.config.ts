@@ -26,4 +26,10 @@ export const APP = {
   seedKey: "",
   seedValue: "",
   upstream: "https://github.com/storytold/figcraft",
+  /**
+   * The named sequences the `figcraft_recipe` tool executes: one id per thing a person asks
+   * for, expressed only in commands this editor exposes (a shortcut, or a menu path whose
+   * label the command index actually carries). Nothing here guesses a coordinate.
+   */
+  recipes: [],
 } as const;

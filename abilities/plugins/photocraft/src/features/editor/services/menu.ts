@@ -21,7 +21,7 @@ import type { CanvasDelta } from "./open-document.ts";
 
 export interface MenuRequest {
   /** Path through the menu tree, e.g. `["File", "Export", "Save for Web"]` or `"File > Export"`. */
-  path?: string[] | string;
+  path?: readonly string[] | string;
   /** A chord the app documents, e.g. `ctrl+shift+s`. Tried before the path. */
   shortcut?: string;
   /** How long to let the app draw before measuring. Defaults to 260 ms. */
@@ -55,9 +55,9 @@ export function mnemonicOf(segment: string): string | null {
 }
 
 /** `"File > Export > Save for Web"` and `["File","Export","Save for Web"]` mean the same. */
-export function normalizePath(path: string[] | string | undefined): string[] {
+export function normalizePath(path: readonly string[] | string | undefined): string[] {
   if (!path) return [];
-  const parts = Array.isArray(path) ? path : path.split(">");
+  const parts = typeof path === "string" ? path.split(">") : [...path];
   return parts.map((part) => part.trim()).filter(Boolean);
 }
 

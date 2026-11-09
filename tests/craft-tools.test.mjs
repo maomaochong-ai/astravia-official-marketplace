@@ -37,7 +37,7 @@ function toolSources(app) {
 
 test("one tool per file, and the registry names them all", () => {
   const problems = [];
-  const EXPECTED = ["act.ts", "editor-status.ts", "menu.ts", "open-document.ts", "open-editor.ts", "probe.ts", "wait.ts"];
+  const EXPECTED = ["act.ts", "editor-status.ts", "menu.ts", "open-document.ts", "open-editor.ts", "probe.ts", "recipe.ts", "wait.ts"];
   for (const app of APPS) {
     const dir = join(ROOT, app, "src/tools");
     if (existsSync(join(dir, "craft-tools.ts"))) problems.push(`${app}: the single-file surface is back`);
@@ -164,9 +164,9 @@ test("every call leaves a trail, one file per day, seven days kept", () => {
       problems.push(`${app}: the journal is not project-local under .craft/<app>/runs`);
     }
     if (!/export const JOURNAL_KEEP = 7;/.test(journal)) problems.push(`${app}: the journal keeps the wrong number of days`);
-    // act, probe, wait and menu each record a line.
-    if ((tools.match(/appendJournal\(ctx, \{/g) ?? []).length !== 4) {
-      problems.push(`${app}: act, probe, wait and menu must each record a line`);
+    // act, probe, wait, menu and recipe each record a line: five tools, five trails.
+    if ((tools.match(/appendJournal\(ctx, \{/g) ?? []).length !== 5) {
+      problems.push(`${app}: act, probe, wait, menu and recipe must each record a line`);
     }
   }
   assert.deepEqual(problems, []);

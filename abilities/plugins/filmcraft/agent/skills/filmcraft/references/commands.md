@@ -1,9 +1,9 @@
-# 命令表（filmcraft）
+# 命令索引（filmcraft）
 
-这张表由同目录的 `upstream.md` 生成——每一条都是上游版本里真实存在的功能，没有一条是凭记忆写的。
-两列直接就是参数：`快捷键` 填进 `filmcraft_menu` 的 `shortcut`，`path` 填进 `path`（照抄，含省略号）。
+这张表是这个插件自己的命令索引：每一条都是编辑器里真实存在的功能，`path` 一列直接就是
+`filmcraft_menu` 的参数，`快捷键` 一列填进它的 `shortcut`。
 
-先查这张表，再决定要不要碰坐标。表里没有的功能，说明这一版上游没有。
+先查表决定「用哪个功能」，再决定要不要碰坐标。表里没有的，多半是这一版没有，也可能是它只在面板上——以界面为准。
 
 ## File
 
@@ -17,13 +17,11 @@
 | Universal Counting Leader… | — | `["File","Universal Counting Leader…"]` | `file.newCountingLeader` |
 | Transparent Video… | — | `["File","Transparent Video…"]` | `file.newTransparentVideo` |
 | Demo Footage | — | `["File","Demo Footage"]` | `file.importDemoFootage` |
-
 ## File › Export
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | Export | Cmd+M | `["File","Export","Export"]` | `mode.export` |
-
 ## Edit
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -37,7 +35,6 @@
 | Ripple Delete | — | `["Edit","Ripple Delete"]` | `edit.rippleDelete` |
 | Edit Original | — | `["Edit","Edit Original"]` | `edit.editOriginal` |
 | Label | — | `["Edit","Label"]` | `edit.label` |
-
 ## Edit › Language
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -59,7 +56,6 @@
 | 日本語 | — | `["Edit","Language","日本語"]` | `app.language.japanese` |
 | 简体中文 | — | `["Edit","Language","简体中文"]` | `app.language.chinese` |
 | 한국어 | — | `["Edit","Language","한국어"]` | `app.language.korean` |
-
 ## Edit › Preferences
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -80,7 +76,6 @@
 | Plugins… | — | `["Edit","Preferences","Plugins…"]` | `app.settings.plugins` |
 | Timeline… | — | `["Edit","Preferences","Timeline…"]` | `app.settings.timeline` |
 | Trim… | — | `["Edit","Preferences","Trim…"]` | `app.settings.trim` |
-
 ## View
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -98,7 +93,6 @@
 | Snap in Program Monitor | — | `["View","Snap in Program Monitor"]` | `view.snapInProgramMonitor` |
 | Dynamic Audio Waveforms | — | `["View","Dynamic Audio Waveforms"]` | `view.dynamicAudioWaveforms` |
 | Multi-Camera View | Shift+0 | `["View","Multi-Camera View"]` | `multicam.toggleView` |
-
 ## View › Appearance
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -107,7 +101,6 @@
 | Dark | — | `["View","Appearance","Dark"]` | `view.theme.medium` |
 | Light | — | `["View","Appearance","Light"]` | `view.theme.light` |
 | Next Appearance Mode | — | `["View","Appearance","Next Appearance Mode"]` | `view.appearanceMode.next` |
-
 ## View › Display Mode
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -121,7 +114,6 @@
 | Audio Waveform | — | `["View","Display Mode","Audio Waveform"]` | `view.display.audioWaveform` |
 | Comparison View | — | `["View","Display Mode","Comparison View"]` | `view.display.comparison` |
 | Video and Audio Waveform Split | — | `["View","Display Mode","Video and Audio Waveform Split"]` | `view.display.videoAndWaveform` |
-
 ## View › Guide Templates
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -129,7 +121,6 @@
 | Safe Margins | — | `["View","Guide Templates","Safe Margins"]` | `view.safeMargins` |
 | Save Guides as Template… | — | `["View","Guide Templates","Save Guides as Template…"]` | `view.guideTemplates.save` |
 | Manage Guides… | — | `["View","Guide Templates","Manage Guides…"]` | `view.guideTemplates.manage` |
-
 ## View › Magnification
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -145,7 +136,6 @@
 | 400% | — | `["View","Magnification","400%"]` | `view.magnification.400` |
 | 800% | — | `["View","Magnification","800%"]` | `view.magnification.800` |
 | 1600% | — | `["View","Magnification","1600%"]` | `view.magnification.1600` |
-
 ## View › Paused Resolution
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -155,7 +145,6 @@
 | 1/4 | — | `["View","Paused Resolution","1/4"]` | `view.pausedRes.quarter` |
 | 1/8 | — | `["View","Paused Resolution","1/8"]` | `view.pausedRes.eighth` |
 | 1/16 | — | `["View","Paused Resolution","1/16"]` | `view.pausedRes.sixteenth` |
-
 ## View › Playback Resolution
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -165,7 +154,6 @@
 | 1/4 | — | `["View","Playback Resolution","1/4"]` | `view.playbackRes.quarter` |
 | 1/8 | — | `["View","Playback Resolution","1/8"]` | `view.playbackRes.eighth` |
 | 1/16 | — | `["View","Playback Resolution","1/16"]` | `view.playbackRes.sixteenth` |
-
 ## Timeline
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -174,13 +162,11 @@
 | trim | — | `["Timeline","trim"]` | `timeline.trim` |
 | range-marker-timeline | — | `["Timeline","range-marker-timeline"]` | `timeline.marker` |
 | timeline | — | `["Timeline","timeline"]` | `timeline.markerMenu.properties` |
-
 ## Window
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | New Project Panel | — | `["Window","New Project Panel"]` | `projectPanel.newPanel` |
-
 ## Window › Workspaces
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -199,14 +185,21 @@
 | Edit Workspaces… | — | `["Window","Workspaces","Edit Workspaces…"]` | `window.workspace.edit` |
 | Learning | Alt+Shift+7 | `["Window","Workspaces","Learning"]` | `window.workspace.learning` |
 | Review | Alt+Shift+8 | `["Window","Workspaces","Review"]` | `window.workspace.review` |
-
 ## Help
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | Join the ArtCraft Discord… | — | `["Help","Join the ArtCraft Discord…"]` | `help.discord` |
 | ArtCraft Website | — | `["Help","ArtCraft Website"]` | `help.website` |
+## （名称在导出时残缺，只能用快捷键或 id 定位）
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | FilmCraft on getartcraft.com | — | — | `help.appPage` |
+## Help
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | FilmCraft on GitHub | — | `["Help","FilmCraft on GitHub"]` | `help.github` |
 | Report an Issue… | — | `["Help","Report an Issue…"]` | `help.reportIssue` |
 | Reveal Log Files… | — | `["Help","Reveal Log Files…"]` | `help.revealLogFiles` |
@@ -214,12 +207,15 @@
 | Check for Updates… | — | `["Help","Check for Updates…"]` | `app.checkForUpdates` |
 | About FilmCraft | — | `["Help","About FilmCraft"]` | `app.about` |
 | FilmCraft Help… | F1 | `["Help","FilmCraft Help…"]` | `help.filmcraftHelp` |
-
-## Clipping
+## （名称在导出时残缺，只能用快捷键或 id 定位）
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | clip.mov | — | — | `clip.mov` |
+## Clipping
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | Replace With Clip From Source Monitor | — | `["Clipping","Replace With Clip From Source Monitor"]` | `clip.replaceFromSource` |
 | Enable | — | `["Clipping","Enable"]` | `clip.enable` |
 | Link | — | `["Clipping","Link"]` | `clip.link` |
@@ -239,10 +235,8 @@
 | Fit to frame | — | `["Clipping","Fit to frame"]` | `clip.fitToFrame` |
 | Fill frame | — | `["Clipping","Fill frame"]` | `clip.fillFrame` |
 | Reveal in Project | — | `["Clipping","Reveal in Project"]` | `clip.revealInProject` |
-
-## Other commands
+## （名称在导出时残缺，只能用快捷键或 id 定位）
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | LumetriScopes | — | — | `scopes.wrench` |
-

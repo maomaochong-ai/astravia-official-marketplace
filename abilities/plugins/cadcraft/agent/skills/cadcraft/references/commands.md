@@ -1,9 +1,9 @@
-# 命令表（cadcraft）
+# 命令索引（cadcraft）
 
-这张表由同目录的 `upstream.md` 生成——每一条都是上游版本里真实存在的功能，没有一条是凭记忆写的。
-两列直接就是参数：`快捷键` 填进 `cadcraft_menu` 的 `shortcut`，`path` 填进 `path`（照抄，含省略号）。
+这张表是这个插件自己的命令索引：每一条都是编辑器里真实存在的功能，`path` 一列直接就是
+`cadcraft_menu` 的参数，`快捷键` 一列填进它的 `shortcut`。
 
-先查这张表，再决定要不要碰坐标。表里没有的功能，说明这一版上游没有。
+先查表决定「用哪个功能」，再决定要不要碰坐标。表里没有的，多半是这一版没有，也可能是它只在面板上——以界面为准。
 
 ## View
 
@@ -12,13 +12,11 @@
 | Named Views... | — | `["View","Named Views..."]` | `view` |
 | Set View | — | `["View","Set View"]` | `view.set` |
 | Get View | — | `["View","Get View"]` | `view.get` |
-
 ## Insert
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | Block... | — | `["Insert","Block..."]` | `insert` |
-
 ## Layer
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -28,19 +26,16 @@
 | Set Layer Properties | — | `["Layer","Set Layer Properties"]` | `layer.set` |
 | Make Current | — | `["Layer","Make Current"]` | `layer.current` |
 | Delete Layer | — | `["Layer","Delete Layer"]` | `layer.delete` |
-
 ## Select
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | Select | — | `["Select","Select"]` | `select` |
-
 ## Text
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | Single Line Text | — | `["Text","Single Line Text"]` | `text` |
-
 ## Table
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -57,44 +52,37 @@
 | Delete Column | — | `["Table","Delete Column"]` | `table.deletecol` |
 | Merge Cells | — | `["Table","Merge Cells"]` | `table.merge` |
 | Unmerge Cells | — | `["Table","Unmerge Cells"]` | `table.unmerge` |
-
 ## Image
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | Raster Images | — | `["Image","Raster Images"]` | `image` |
-
 ## Color
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | Color... | — | `["Color","Color..."]` | `color` |
-
 ## Document
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | Switch Drawing | — | `["Document","Switch Drawing"]` | `document.switch` |
 | Drawing as bytes | — | `["Document","Drawing as bytes"]` | `document.bytes` |
-
 ## Drawing
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | Inspect Drawing | — | `["Drawing","Inspect Drawing"]` | `drawing.inspect` |
-
 ## Export
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | Export... | — | `["Export","Export..."]` | `export` |
-
 ## Import
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | Import... | — | `["Import","Import..."]` | `import` |
-
 ## Interface
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -104,7 +92,6 @@
 | Use System Setting | — | `["Interface","Use System Setting"]` | `ui.animations.system` |
 | On | — | `["Interface","On"]` | `ui.animations.on` |
 | Off | — | `["Interface","Off"]` | `ui.animations.off` |
-
 ## Other commands
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -197,7 +184,15 @@
 | Purge | — | `["Other commands","Purge"]` | `purge` |
 | List Blocks | — | `["Other commands","List Blocks"]` | `blocks.list` |
 | Geometric Constraint | — | `["Other commands","Geometric Constraint"]` | `geomconstraint` |
+## （名称在导出时残缺，只能用快捷键或 id 定位）
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | AutoConstrain | — | — | `autoconstrain` |
+## Other commands
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | Constraint Bars | — | `["Other commands","Constraint Bars"]` | `constraintbar` |
 | Show All Constraint Bars | — | `["Other commands","Show All Constraint Bars"]` | `constraintbar.showall` |
 | Hide All Constraint Bars | — | `["Other commands","Hide All Constraint Bars"]` | `constraintbar.hideall` |
@@ -244,4 +239,3 @@
 | Center, Diameter | — | `["Other commands","Center, Diameter"]` | `circle.cd` |
 | 2 Points | — | `["Other commands","2 Points"]` | `circle.2p` |
 | 3 Points | — | `["Other commands","3 Points"]` | `circle.3p` |
-

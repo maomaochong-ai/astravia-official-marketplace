@@ -1,94 +1,76 @@
-# 命令表（pdfcraft）
+# 命令索引（pdfcraft）
 
-这张表由同目录的 `upstream.md` 生成——每一条都是上游版本里真实存在的功能，没有一条是凭记忆写的。
-两列直接就是参数：`快捷键` 填进 `pdfcraft_menu` 的 `shortcut`，`path` 填进 `path`（照抄，含省略号）。
+这张表是这个插件自己的命令索引：每一条都是编辑器里真实存在的功能，`path` 一列直接就是
+`pdfcraft_menu` 的参数，`快捷键` 一列填进它的 `shortcut`。
 
-先查这张表，再决定要不要碰坐标。表里没有的功能，说明这一版上游没有。
+先查表决定「用哪个功能」，再决定要不要碰坐标。表里没有的，多半是这一版没有，也可能是它只在面板上——以界面为准。
 
-## File
-
-| 功能 | 快捷键 | `_menu` path | 命令 id |
-| --- | --- | --- | --- |
-| — | — | `["File","—"]` | `create.blank` |
-| — | — | `["File","—"]` | `file.open` |
-| — | — | `["File","—"]` | `file.open_recent` |
-| — | — | `["File","—"]` | `file.pin_folder` |
-| — | — | `["File","—"]` | `page.combine` |
-| — | — | `["File","—"]` | `file.save` |
-| — | — | `["File","—"]` | `file.save_as` |
-| — | — | `["File","—"]` | `file.revert` |
-| — | — | `["File","—"]` | `file.close` |
-| — | — | `["File","—"]` | `file.close_all` |
-| — | — | `["File","—"]` | `optimize.reduce` |
-| — | — | `["File","—"]` | `optimize.advanced` |
-| — | — | `["File","—"]` | `file.properties` |
-| — | — | `["File","—"]` | `file.word_count` |
-| — | — | `["File","—"]` | `print.dialog` |
-
-## Edit
+## （名称在导出时残缺，只能用快捷键或 id 定位）
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
-| — | — | `["Edit","—"]` | `edit.undo` |
-| — | — | `["Edit","—"]` | `edit.redo` |
-| — | — | `["Edit","—"]` | `edit.copy` |
-| — | — | `["Edit","—"]` | `edit.find` |
-| — | — | `["Edit","—"]` | `edit.advanced_search` |
-| — | — | `["Edit","—"]` | `edit.column_select` |
-| — | — | `["Edit","—"]` | `edit.snapshot` |
-| — | — | `["Edit","—"]` | `edit.attach` |
-| — | — | `["Edit","—"]` | `form.clear` |
-| — | — | `["Edit","—"]` | `app.preferences` |
-
+| — | — | — | `create.blank` |
+| — | — | — | `file.open` |
+| — | — | — | `file.open_recent` |
+| — | — | — | `file.pin_folder` |
+| — | — | — | `page.combine` |
+| — | — | — | `file.save` |
+| — | — | — | `file.save_as` |
+| — | — | — | `file.revert` |
+| — | — | — | `file.close` |
+| — | — | — | `file.close_all` |
+| — | — | — | `optimize.reduce` |
+| — | — | — | `optimize.advanced` |
+| — | — | — | `file.properties` |
+| — | — | — | `file.word_count` |
+| — | — | — | `print.dialog` |
+| — | — | — | `edit.undo` |
+| — | — | — | `edit.redo` |
+| — | — | — | `edit.copy` |
+| — | — | — | `edit.find` |
+| — | — | — | `edit.advanced_search` |
+| — | — | — | `edit.column_select` |
+| — | — | — | `edit.snapshot` |
+| — | — | — | `edit.attach` |
+| — | — | — | `form.clear` |
+| — | — | — | `app.preferences` |
 ## View
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | palette | — | `["View","palette"]` | `view.read_mode` |
-
-## Window
-
-| 功能 | 快捷键 | `_menu` path | 命令 id |
-| --- | --- | --- | --- |
-| — | — | `["Window","—"]` | `view.next_tab` |
-| — | — | `["Window","—"]` | `view.previous_tab` |
-
-## Pages
+## （名称在导出时残缺，只能用快捷键或 id 定位）
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
-| — | — | `["Pages","—"]` | `page.organize` |
-| — | — | `["Pages","—"]` | `page.insert_blank` |
-| — | — | `["Pages","—"]` | `page.insert` |
-| — | — | `["Pages","—"]` | `page.replace` |
-| — | — | `["Pages","—"]` | `page.extract` |
-| — | — | `["Pages","—"]` | `page.split` |
-| — | — | `["Pages","—"]` | `page.duplicate` |
-| — | — | `["Pages","—"]` | `page.delete` |
-| — | — | `["Pages","—"]` | `page.rotate` |
-| — | — | `["Pages","—"]` | `page.rotate_ccw` |
-| — | — | `["Pages","—"]` | `page.rotate_dialog` |
-| — | — | `["Pages","—"]` | `page.reverse` |
-| — | — | `["Pages","—"]` | `page.crop` |
-| — | — | `["Pages","—"]` | `page.boxes` |
-| — | — | `["Pages","—"]` | `page.number` |
-| — | — | `["Pages","—"]` | `page.properties` |
-| — | — | `["Pages","—"]` | `bookmark.add` |
-| — | — | `["Pages","—"]` | `bookmark.from_structure` |
-| — | — | `["Pages","—"]` | `bookmark.from_text_styles` |
-
-## Sign
-
-| 功能 | 快捷键 | `_menu` path | 命令 id |
-| --- | --- | --- | --- |
-| — | — | `["Sign","—"]` | `sign.fill.signature.change` |
-| — | — | `["Sign","—"]` | `sign.fill.initials.change` |
-| — | — | `["Sign","—"]` | `sign.fill.signature.remove` |
-| — | — | `["Sign","—"]` | `sign.fill.initials.remove` |
-| — | — | `["Sign","—"]` | `sign.digital` |
-| — | — | `["Sign","—"]` | `sign.certify` |
-| — | — | `["Sign","—"]` | `sign.certify_invisible` |
-| — | — | `["Sign","—"]` | `form.add.signature` |
-| — | — | `["Sign","—"]` | `sign.validate` |
-| — | — | `["Sign","—"]` | `sign.panel` |
-
+| — | — | — | `view.next_tab` |
+| — | — | — | `view.previous_tab` |
+| — | — | — | `page.organize` |
+| — | — | — | `page.insert_blank` |
+| — | — | — | `page.insert` |
+| — | — | — | `page.replace` |
+| — | — | — | `page.extract` |
+| — | — | — | `page.split` |
+| — | — | — | `page.duplicate` |
+| — | — | — | `page.delete` |
+| — | — | — | `page.rotate` |
+| — | — | — | `page.rotate_ccw` |
+| — | — | — | `page.rotate_dialog` |
+| — | — | — | `page.reverse` |
+| — | — | — | `page.crop` |
+| — | — | — | `page.boxes` |
+| — | — | — | `page.number` |
+| — | — | — | `page.properties` |
+| — | — | — | `bookmark.add` |
+| — | — | — | `bookmark.from_structure` |
+| — | — | — | `bookmark.from_text_styles` |
+| — | — | — | `sign.fill.signature.change` |
+| — | — | — | `sign.fill.initials.change` |
+| — | — | — | `sign.fill.signature.remove` |
+| — | — | — | `sign.fill.initials.remove` |
+| — | — | — | `sign.digital` |
+| — | — | — | `sign.certify` |
+| — | — | — | `sign.certify_invisible` |
+| — | — | — | `form.add.signature` |
+| — | — | — | `sign.validate` |
+| — | — | — | `sign.panel` |

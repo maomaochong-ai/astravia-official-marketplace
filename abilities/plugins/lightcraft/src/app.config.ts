@@ -28,4 +28,15 @@ export const APP = {
   seedKey: "",
   seedValue: "",
   upstream: "https://github.com/storytold/lightcraft",
+  /**
+   * The named sequences the `lightcraft_recipe` tool executes: one id per thing a person asks
+   * for, expressed only in commands this editor exposes (a shortcut, or a menu path whose
+   * label the command index actually carries). Nothing here guesses a coordinate.
+   */
+  recipes: [
+    { id: "zoom-in", label: "放大", when: "要看细节", steps: [{ menu: ["View","Zoom In"] }] },
+    { id: "zoom-out", label: "缩小", when: "要看整幅", steps: [{ menu: ["View","Zoom Out"] }] },
+    { id: "zoom-fit", label: "适合窗口", when: "视野乱了，坐标不再可信", steps: [{ menu: ["View","Fit"] }] },
+    { id: "zoom100", label: "按 100% 显示", when: "要判断真实像素", steps: [{ menu: ["View","100%"] }] },
+  ],
 } as const;

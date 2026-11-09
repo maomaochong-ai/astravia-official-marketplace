@@ -1,9 +1,9 @@
-# 命令表（wordcraft）
+# 命令索引（wordcraft）
 
-这张表由同目录的 `upstream.md` 生成——每一条都是上游版本里真实存在的功能，没有一条是凭记忆写的。
-两列直接就是参数：`快捷键` 填进 `wordcraft_menu` 的 `shortcut`，`path` 填进 `path`（照抄，含省略号）。
+这张表是这个插件自己的命令索引：每一条都是编辑器里真实存在的功能，`path` 一列直接就是
+`wordcraft_menu` 的参数，`快捷键` 一列填进它的 `shortcut`。
 
-先查这张表，再决定要不要碰坐标。表里没有的功能，说明这一版上游没有。
+先查表决定「用哪个功能」，再决定要不要碰坐标。表里没有的，多半是这一版没有，也可能是它只在面板上——以界面为准。
 
 ## File
 
@@ -35,11 +35,18 @@
 | Recover Unsaved Documents | — | `["File","Recover Unsaved Documents"]` | `file.recover` |
 | New from Template | — | `["File","New from Template"]` | `file.newFromTemplate` |
 | Save as Template | — | `["File","Save as Template"]` | `file.saveTemplate` |
+## （名称在导出时残缺，只能用快捷键或 id 定位）
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | AutoSave | — | — | `file.autosave` |
+## File
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | Check Compatibility | — | `["File","Check Compatibility"]` | `file.compatibility` |
 | Share | — | `["File","Share"]` | `file.share` |
 | Personal Templates | — | `["File","Personal Templates"]` | `file.listTemplates` |
-
 ## Edit
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -75,7 +82,6 @@
 | Paste Formatting | Mod+Shift+V | `["Edit","Paste Formatting"]` | `edit.pasteFormat` |
 | Paste Special | Mod+Alt+V | `["Edit","Paste Special"]` | `edit.pasteSpecial` |
 | Repeat | F4 | `["Edit","Repeat"]` | `edit.repeat` |
-
 ## View
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -122,7 +128,6 @@
 | View State | — | `["View","View State"]` | `view.state` |
 | Numerals | — | `["View","Numerals"]` | `view.numeral` |
 | Arrange All | — | `["View","Arrange All"]` | `view.arrangeAll` |
-
 ## Insert
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -163,15 +168,34 @@
 | Drop Cap | — | `["Insert","Drop Cap"]` | `insert.dropCap` |
 | Horizontal Line | — | `["Insert","Horizontal Line"]` | `insert.horizontalLine` |
 | Text from File | — | `["Insert","Text from File"]` | `insert.textFromFile` |
+## （名称在导出时残缺，只能用快捷键或 id 定位）
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | SmartArt | — | — | `insert.smartArt` |
+## Insert
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | Quick Parts | — | `["Insert","Quick Parts"]` | `insert.quickParts` |
+## （名称在导出时残缺，只能用快捷键或 id 定位）
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | AutoText | — | — | `insert.autoText` |
+## Insert
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | Document Property | — | `["Insert","Document Property"]` | `insert.docProperty` |
 | Signature Line | — | `["Insert","Signature Line"]` | `insert.signatureLine` |
 | Object | — | `["Insert","Object"]` | `insert.object` |
 | Spreadsheet Table | — | `["Insert","Spreadsheet Table"]` | `insert.spreadsheet` |
-| WordArt | — | — | `insert.wordArt` |
+## （名称在导出时残缺，只能用快捷键或 id 定位）
 
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
+| WordArt | — | — | `insert.wordArt` |
 ## Select
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -190,7 +214,6 @@
 | Select Objects | — | `["Select","Select Objects"]` | `select.objects` |
 | Select Text with Similar Formatting | — | `["Select","Select Text with Similar Formatting"]` | `select.similar` |
 | Extend Selection | F8 | `["Select","Extend Selection"]` | `select.extend` |
-
 ## Text
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -204,4 +227,3 @@
 | Tab | Tab | `["Text","Tab"]` | `text.tab` |
 | Shift+Tab | Shift+Tab | `["Text","Shift+Tab"]` | `text.backTab` |
 | Tab Character | — | `["Text","Tab Character"]` | `text.insertTab` |
-

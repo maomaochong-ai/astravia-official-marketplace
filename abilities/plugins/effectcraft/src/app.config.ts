@@ -26,4 +26,13 @@ export const APP = {
   seedKey: "",
   seedValue: "",
   upstream: "https://github.com/storytold/effectcraft",
+  /**
+   * The named sequences the `effectcraft_recipe` tool executes: one id per thing a person asks
+   * for, expressed only in commands this editor exposes (a shortcut, or a menu path whose
+   * label the command index actually carries). Nothing here guesses a coordinate.
+   */
+  recipes: [
+    { id: "undo", label: "撤销一步", when: "刚做错了一步", steps: [{ menu: ["Edit","undo"] }] },
+    { id: "redo", label: "重做", when: "撤错了，要恢复", steps: [{ menu: ["Edit","redo"] }] },
+  ],
 } as const;

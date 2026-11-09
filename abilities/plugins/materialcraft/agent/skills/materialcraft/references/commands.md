@@ -1,9 +1,9 @@
-# 命令表（materialcraft）
+# 命令索引（materialcraft）
 
-这张表由同目录的 `upstream.md` 生成——每一条都是上游版本里真实存在的功能，没有一条是凭记忆写的。
-两列直接就是参数：`快捷键` 填进 `materialcraft_menu` 的 `shortcut`，`path` 填进 `path`（照抄，含省略号）。
+这张表是这个插件自己的命令索引：每一条都是编辑器里真实存在的功能，`path` 一列直接就是
+`materialcraft_menu` 的参数，`快捷键` 一列填进它的 `shortcut`。
 
-先查这张表，再决定要不要碰坐标。表里没有的功能，说明这一版上游没有。
+先查表决定「用哪个功能」，再决定要不要碰坐标。表里没有的，多半是这一版没有，也可能是它只在面板上——以界面为准。
 
 ## File
 
@@ -19,7 +19,6 @@
 | Send to TextureCraft | — | `["File","Send to TextureCraft"]` | `file.sendToTextureCraft` |
 | Reload resources | — | `["File","Reload resources"]` | `ui.reloadResources` |
 | Exit | Ctrl+Q | `["File","Exit"]` | `ui.quit` |
-
 ## File › New
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -27,7 +26,6 @@
 | Graph... | Ctrl+N | `["File","New","Graph..."]` | `ui.newGraph` |
 | Function graph | — | `["File","New","Function graph"]` | `ui.newFunctionGraph` |
 | Empty package | — | `["File","New","Empty package"]` | `file.newPackage` |
-
 ## Edit
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -42,7 +40,6 @@
 | Delete and relink | Backspace | `["Edit","Delete and relink"]` | `edit.deleteRelink` |
 | Select all | Ctrl+A | `["Edit","Select all"]` | `edit.selectAll` |
 | Preferences... | — | `["Edit","Preferences..."]` | `ui.preferences` |
-
 ## Tools
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -50,7 +47,6 @@
 | Compute graph | F5 | `["Tools","Compute graph"]` | `graph.cook` |
 | Clear cache | — | `["Tools","Clear cache"]` | `ui.clearCache` |
 | Create graph from selection | — | `["Tools","Create graph from selection"]` | `graph.createFromSelection` |
-
 ## Tools › Preview size
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -60,7 +56,6 @@
 | 1024 px | — | `["Tools","Preview size","1024 px"]` | `ui.preview.1024` |
 | 2048 px | — | `["Tools","Preview size","2048 px"]` | `ui.preview.2048` |
 | Full size | — | `["Tools","Preview size","Full size"]` | `ui.preview.0` |
-
 ## Help
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -72,7 +67,6 @@
 | ArtCraft website... | — | `["Help","ArtCraft website..."]` | `ui.help.website` |
 | Report a bug... | — | `["Help","Report a bug..."]` | `ui.help.bug` |
 | About MaterialCraft... | — | `["Help","About MaterialCraft..."]` | `ui.about` |
-
 ## Windows
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -86,4 +80,3 @@
 | Library | — | `["Windows","Library"]` | `ui.view.library` |
 | History | — | `["Windows","History"]` | `ui.view.history` |
 | Reset layout | — | `["Windows","Reset layout"]` | `ui.resetLayout` |
-

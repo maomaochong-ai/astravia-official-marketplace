@@ -1,9 +1,9 @@
-# 命令表（photocraft）
+# 命令索引（photocraft）
 
-这张表由同目录的 `upstream.md` 生成——每一条都是上游版本里真实存在的功能，没有一条是凭记忆写的。
-两列直接就是参数：`快捷键` 填进 `photocraft_menu` 的 `shortcut`，`path` 填进 `path`（照抄，含省略号）。
+这张表是这个插件自己的命令索引：每一条都是编辑器里真实存在的功能，`path` 一列直接就是
+`photocraft_menu` 的参数，`快捷键` 一列填进它的 `shortcut`。
 
-先查这张表，再决定要不要碰坐标。表里没有的功能，说明这一版上游没有。
+先查表决定「用哪个功能」，再决定要不要碰坐标。表里没有的，多半是这一版没有，也可能是它只在面板上——以界面为准。
 
 ## File
 
@@ -27,7 +27,6 @@
 | Print… | Cmd+P | `["File","Print…"]` | `file.print` |
 | Print One Copy | Cmd+Alt+Shift+P | `["File","Print One Copy"]` | `file.printOneCopy` |
 | Exit | Cmd+Q | `["File","Exit"]` | `file.exit` |
-
 ## File › Automate
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -41,7 +40,6 @@
 | Lens Correction… | — | `["File","Automate","Lens Correction…"]` | `file.automate.lensCorrection` |
 | Merge to HDR Pro… | — | `["File","Automate","Merge to HDR Pro…"]` | `file.automate.mergeToHdrPro` |
 | Photomerge… | — | `["File","Automate","Photomerge…"]` | `file.automate.photomerge` |
-
 ## File › Export
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -58,13 +56,11 @@
 | Data Sets as Files… | — | `["File","Export","Data Sets as Files…"]` | `file.export.dataSetsAsFiles` |
 | Paths to Illustrator… | — | `["File","Export","Paths to Illustrator…"]` | `file.export.pathsToIllustrator` |
 | Render Video… | — | `["File","Export","Render Video…"]` | `file.export.renderVideo` |
-
 ## File › Generate
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | Image Assets | — | `["File","Generate","Image Assets"]` | `file.generate.imageAssets` |
-
 ## File › Import
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -73,7 +69,6 @@
 | Video Frames to Layers… | — | `["File","Import","Video Frames to Layers…"]` | `file.import.videoFramesToLayers` |
 | Notes… | — | `["File","Import","Notes…"]` | `file.import.notes` |
 | WIA Support… | — | `["File","Import","WIA Support…"]` | `file.import.wiaSupport` |
-
 ## File › Scripts
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -86,7 +81,6 @@
 | Load Files into Stack… | — | `["File","Scripts","Load Files into Stack…"]` | `file.scripts.loadFilesIntoStack` |
 | Statistics… | — | `["File","Scripts","Statistics…"]` | `file.scripts.statistics` |
 | Browse… | — | `["File","Scripts","Browse…"]` | `file.scripts.browse` |
-
 ## Edit
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -100,8 +94,16 @@
 | Define Brush Preset… | — | `["Edit","Define Brush Preset…"]` | `edit.defineBrushPreset` |
 | Define Custom Shape… | — | `["Edit","Define Custom Shape…"]` | `edit.defineCustomShape` |
 | Find and Replace Text… | — | `["Edit","Find and Replace Text…"]` | `edit.findAndReplaceText` |
+## （名称在导出时残缺，只能用快捷键或 id 定位）
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | edit.undo | — | — | `edit.redo` |
 | edit.redo | — | — | `edit.undo` |
+## Edit
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | Keyboard Shortcuts… | Cmd+Alt+Shift+K | `["Edit","Keyboard Shortcuts…"]` | `edit.keyboardShortcuts` |
 | Menus… | Cmd+Alt+Shift+M | `["Edit","Menus…"]` | `edit.menus` |
 | Toolbar… | — | `["Edit","Toolbar…"]` | `edit.toolbar` |
@@ -133,7 +135,6 @@
 | Auto-Align Layers… | — | `["Edit","Auto-Align Layers…"]` | `edit.autoAlignLayers` |
 | Auto-Blend Layers… | — | `["Edit","Auto-Blend Layers…"]` | `edit.autoBlendLayers` |
 | Define Pattern… | — | `["Edit","Define Pattern…"]` | `edit.definePattern` |
-
 ## Edit › Paste Special
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -141,7 +142,6 @@
 | Paste in Place | Cmd+Shift+V | `["Edit","Paste Special","Paste in Place"]` | `edit.pasteSpecial.pasteInPlace` |
 | Paste Into | Cmd+Alt+Shift+V | `["Edit","Paste Special","Paste Into"]` | `edit.pasteSpecial.pasteInto` |
 | Paste Outside | — | `["Edit","Paste Special","Paste Outside"]` | `edit.pasteSpecial.pasteOutside` |
-
 ## Edit › Preferences
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -164,7 +164,6 @@
 | Type… | — | `["Edit","Preferences","Type…"]` | `edit.preferences.type` |
 | Enhanced Controls… | — | `["Edit","Preferences","Enhanced Controls…"]` | `edit.preferences.enhancedControls` |
 | Raw Defaults… | — | `["Edit","Preferences","Raw Defaults…"]` | `edit.preferences.rawDefaults` |
-
 ## Edit › Presets
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -172,7 +171,6 @@
 | Preset Manager… | — | `["Edit","Presets","Preset Manager…"]` | `edit.presets.presetManager` |
 | Export/Import Presets… | — | `["Edit","Presets","Export/Import Presets…"]` | `edit.presets.exportImportPresets` |
 | Migrate Presets | — | `["Edit","Presets","Migrate Presets"]` | `edit.presets.migratePresets` |
-
 ## Edit › Purge
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -182,7 +180,6 @@
 | Histories | — | `["Edit","Purge","Histories"]` | `edit.purge.histories` |
 | Video Cache | — | `["Edit","Purge","Video Cache"]` | `edit.purge.videoCache` |
 | All | — | `["Edit","Purge","All"]` | `edit.purge.all` |
-
 ## Edit › Transform
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -192,8 +189,7 @@
 | Split Warp Vertically | — | `["Edit","Transform","Split Warp Vertically"]` | `edit.transform.splitWarpVertically` |
 | Split Warp Crosswise | — | `["Edit","Transform","Split Warp Crosswise"]` | `edit.transform.splitWarpCrosswise` |
 | Remove Warp Split | — | `["Edit","Transform","Remove Warp Split"]` | `edit.transform.removeWarpSplit` |
-
-## View
+## （名称在导出时残缺，只能用快捷键或 id 定位）
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
@@ -201,6 +197,10 @@
 | ActP | — | — | `view.actualPixels` |
 | ZmIn | — | — | `view.zoomIn` |
 | ZmOt | — | — | `view.zoomOut` |
+## View
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | Proof Colors | — | `["View","Proof Colors"]` | `view.proofColors` |
 | Gamut Warning | — | `["View","Gamut Warning"]` | `view.gamutWarning` |
 | Lock Guides | — | `["View","Lock Guides"]` | `view.lockGuides` |
@@ -224,7 +224,6 @@
 | Clear Slices | — | `["View","Clear Slices"]` | `view.clearSlices` |
 | Pattern Preview | — | `["View","Pattern Preview"]` | `view.patternPreview` |
 | Pixel Art Preview | — | `["View","Pixel Art Preview"]` | `view.pixelArtPreview` |
-
 ## View › Pixel Aspect Ratio
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -238,7 +237,6 @@
 | D1/DV PAL Widescreen (1.46) | — | `["View","Pixel Aspect Ratio","D1/DV PAL Widescreen (1.46)"]` | `view.pixelAspectRatio.d1DvPalWidescreen` |
 | DVCPRO HD 1080/HDV 1080 (1.5) | — | `["View","Pixel Aspect Ratio","DVCPRO HD 1080/HDV 1080 (1.5)"]` | `view.pixelAspectRatio.dvcproHd1080` |
 | Anamorphic 2:1 (2) | — | `["View","Pixel Aspect Ratio","Anamorphic 2:1 (2)"]` | `view.pixelAspectRatio.anamorphic2To1` |
-
 ## View › Proof Setup
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -249,4 +247,3 @@
 | Working Magenta Plate | — | `["View","Proof Setup","Working Magenta Plate"]` | `view.proofSetup.workingMagentaPlate` |
 | Working Yellow Plate | — | `["View","Proof Setup","Working Yellow Plate"]` | `view.proofSetup.workingYellowPlate` |
 | Working Black Plate | — | `["View","Proof Setup","Working Black Plate"]` | `view.proofSetup.workingBlackPlate` |
-

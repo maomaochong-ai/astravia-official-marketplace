@@ -1,16 +1,20 @@
-# 命令表（vectorcraft）
+# 命令索引（vectorcraft）
 
-这张表由同目录的 `upstream.md` 生成——每一条都是上游版本里真实存在的功能，没有一条是凭记忆写的。
-两列直接就是参数：`快捷键` 填进 `vectorcraft_menu` 的 `shortcut`，`path` 填进 `path`（照抄，含省略号）。
+这张表是这个插件自己的命令索引：每一条都是编辑器里真实存在的功能，`path` 一列直接就是
+`vectorcraft_menu` 的参数，`快捷键` 一列填进它的 `shortcut`。
 
-先查这张表，再决定要不要碰坐标。表里没有的功能，说明这一版上游没有。
+先查表决定「用哪个功能」，再决定要不要碰坐标。表里没有的，多半是这一版没有，也可能是它只在面板上——以界面为准。
 
-## File
+## （名称在导出时残缺，只能用快捷键或 id 定位）
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | object.convertDocumentColorMode | — | — | `file.documentColorMode` |
 | art.pdf | — | — | `file.saveAs` |
+## File
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | Export Selection… | — | `["File","Export Selection…"]` | `file.exportSelection` |
 | New… | — | `["File","New…"]` | `file.newDialog` |
 | New from Template… | — | `["File","New from Template…"]` | `file.newFromTemplate` |
@@ -30,7 +34,6 @@
 | Document Setup… | — | `["File","Document Setup…"]` | `file.documentSetup` |
 | File Info… | — | `["File","File Info…"]` | `file.info` |
 | Print… | — | `["File","Print…"]` | `file.print` |
-
 ## Edit
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -57,7 +60,6 @@
 | Assign Profile… | — | `["Edit","Assign Profile…"]` | `edit.assignProfile` |
 | Keyboard Shortcuts… | — | `["Edit","Keyboard Shortcuts…"]` | `edit.keyboardShortcuts` |
 | Preferences… | — | `["Edit","Preferences…"]` | `edit.preferences` |
-
 ## View
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -65,8 +67,16 @@
 | rulers | — | `["View","rulers"]` | `view.rulers` |
 | outline | — | `["View","outline"]` | `view.outline` |
 | grid | — | `["View","grid"]` | `view.grid` |
+## （名称在导出时残缺，只能用快捷键或 id 定位）
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | smartGuides | — | — | `view.smartGuides` |
 | boundingBox | — | — | `view.boundingBox` |
+## View
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | Zoom In | — | `["View","Zoom In"]` | `view.zoomIn` |
 | Zoom Out | — | `["View","Zoom Out"]` | `view.zoomOut` |
 | Fit Artboard in Window | — | `["View","Fit Artboard in Window"]` | `view.fitArtboard` |
@@ -104,7 +114,6 @@
 | New View… | — | `["View","New View…"]` | `view.saved.new` |
 | Edit Views… | — | `["View","Edit Views…"]` | `view.saved.edit` |
 | Rotate View | — | `["View","Rotate View"]` | `view.rotate` |
-
 ## Select
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -149,7 +158,6 @@
 | Save Selection… | — | `["Select","Save Selection…"]` | `select.save` |
 | Update Selection | — | `["Select","Update Selection"]` | `select.update` |
 | Edit Selection… | — | `["Select","Edit Selection…"]` | `select.editSaved` |
-
 ## Type
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -170,7 +178,6 @@
 | Show Hidden Characters | — | `["Type","Show Hidden Characters"]` | `type.hiddenCharacters` |
 | Horizontal | — | `["Type","Horizontal"]` | `type.orientation.horizontal` |
 | Vertical | — | `["Type","Vertical"]` | `type.orientation.vertical` |
-
 ## Text
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
@@ -181,13 +188,16 @@
 | Remove Threading | — | `["Text","Remove Threading"]` | `text.thread.remove` |
 | Fit Headline | — | `["Text","Fit Headline"]` | `text.fitHeadline` |
 | Insert Inline Symbol | — | `["Text","Insert Inline Symbol"]` | `text.insertInline` |
-
-## Object
+## （名称在导出时残缺，只能用快捷键或 id 定位）
 
 | 功能 | 快捷键 | `_menu` path | 命令 id |
 | --- | --- | --- | --- |
 | object.lock | — | — | `object.unlockAll` |
 | object.hide | — | — | `object.showAll` |
+## Object
+
+| 功能 | 快捷键 | `_menu` path | 命令 id |
+| --- | --- | --- | --- |
 | Cancel | — | `["Object","Cancel"]` | `object.pattern.cancel` |
 | Done | — | `["Object","Done"]` | `object.pattern.done` |
 | Save a Copy | — | `["Object","Save a Copy"]` | `object.pattern.saveCopy` |
@@ -209,4 +219,3 @@
 | Unselected Artwork | — | `["Object","Unselected Artwork"]` | `object.hide.unselected` |
 | Rasterize… | — | `["Object","Rasterize…"]` | `object.rasterize` |
 | Vector Halftone… | — | `["Object","Vector Halftone…"]` | `object.vectorHalftone` |
-

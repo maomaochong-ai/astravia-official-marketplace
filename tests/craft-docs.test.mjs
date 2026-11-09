@@ -49,6 +49,7 @@ const FAMILY_DOCS = [
 	"craft-0027-precision-starts-from-recorded-failures.md",
 	"craft-0028-a-skill-ships-what-it-can-act-on.md",
 	"craft-0029-address-the-function-not-the-pixel.md",
+	"craft-0030-a-recipe-is-the-unit-of-automation.md",
 	"craft-CONTEXT.md",
 ];
 
