@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "Open @assets/plan.dxf in CADCraft and offset all of the interior wall lines 100 mm inward.",
-        "assistant_reply": "Plan open. OFFSET 100 ran on the interior wall set and the corners are trimmed; the drawing is unsaved, so nothing has changed on disk yet."
+        "user_prompt": "Offset the interior walls 100 mm.",
+        "assistant_reply": "OFFSET 100 ran on the interior set, corners trimmed. Not saved."
       }
     },
     {

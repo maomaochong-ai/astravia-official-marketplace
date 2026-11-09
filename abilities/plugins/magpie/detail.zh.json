@@ -15,8 +15,8 @@
       "type": "showcase",
       "showcase": {
         "template": "chat-thread",
-        "user_prompt": "magpie 里现在有哪些模型？这份合同帮我挑一个上下文最长的。",
-        "assistant_reply": "你的网关回了 14 个模型、来自 3 个提供方。上下文最长的是 claude-sonnet-4，200K，还支持图片输入。它已经在模型列表里，名字是 Magpie — claude-sonnet-4。"
+        "user_prompt": "挑一个上下文最长的模型。",
+        "assistant_reply": "共 14 个模型，最长是 claude-sonnet-4。"
       }
     },
     {

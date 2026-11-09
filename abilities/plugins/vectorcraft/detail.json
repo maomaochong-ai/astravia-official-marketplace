@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "In VectorCraft, redraw the wordmark in @assets/logo.svg as outlines and keep the original beside it.",
-        "assistant_reply": "Outlined copy made from the live text and saved as logo-outlined.svg; the original is untouched. Captured the canvas so the curve can be checked at real size."
+        "user_prompt": "Outline the wordmark.",
+        "assistant_reply": "logo-outlined.svg written from the live text; original untouched."
       }
     },
     {

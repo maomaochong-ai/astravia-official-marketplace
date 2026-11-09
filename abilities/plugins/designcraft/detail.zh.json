@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "在 DesignCraft 里打开 @素材/画册.idml，把第 3 页溢出的正文接到第 4 页。",
-        "assistant_reply": "第 4 页已打开，文本框和第 3 页接上了，溢出的正文已经流进来。整个跨页截了图，导出前可以先看断在哪。"
+        "user_prompt": "把第 3 页溢出的正文接到第 4 页。",
+        "assistant_reply": "第 4 页已打开，文本框接上，溢出正文流进来了。"
       }
     },
     {

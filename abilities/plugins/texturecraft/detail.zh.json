@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "在 TextureCraft 里给 @素材/头盔.fbx 的边缘刷上磨损，再把粗糙度通道烘出来。",
-        "assistant_reply": "磨损已经刷过 UV 接缝，粗糙度烘成一张 2K 贴图放在模型旁边。底色没动，要重烘随时可以。"
+        "user_prompt": "边缘刷磨损，烘粗糙度。",
+        "assistant_reply": "磨损刷过 UV 接缝，粗糙度烘成 2K 贴图，底色没动。"
       }
     },
     {

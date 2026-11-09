@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "在 EffectCraft 里把 @素材/片头.aep 的 logo 用 12 帧淡入，然后渲一版预览。",
-        "assistant_reply": "第 0 帧和第 12 帧的透明度关键帧已经打好，预览渲染排进队列了。截图取的是第 6 帧，淡入到一半的位置。"
+        "user_prompt": "logo 用 12 帧淡入。",
+        "assistant_reply": "第 0 和第 12 帧打了关键帧，预览已排队，截的是第 6 帧。"
       }
     },
     {

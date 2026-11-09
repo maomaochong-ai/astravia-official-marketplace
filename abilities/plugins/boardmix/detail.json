@@ -16,8 +16,8 @@
       "type": "showcase",
       "showcase": {
         "template": "chat-thread",
-        "user_prompt": "Open Boardmix and take me to the AI flowchart page — I want to sketch a signup flow.",
-        "assistant_reply": "Opened the Boardmix panel and switched it to the AI flowchart entry. Sign in there if you have not yet; the canvas is yours to drive and I can follow along with what you tell me."
+        "user_prompt": "Take me to the Boardmix AI flowchart.",
+        "assistant_reply": "Open there. Sign in and take over."
       }
     },
     {

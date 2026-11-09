@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "In EffectCraft, fade the logo in @assets/ident.aep in over 12 frames and render a preview.",
-        "assistant_reply": "Opacity keys are in at frame 0 and frame 12, and a preview render is queued. The capture is the frame at 6, where the fade is halfway."
+        "user_prompt": "Fade the logo in 12 frames.",
+        "assistant_reply": "Keys at 0 and 12, preview render queued. Capture is frame 6."
       }
     },
     {

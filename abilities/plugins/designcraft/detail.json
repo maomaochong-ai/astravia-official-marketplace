@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "Open @assets/brochure.idml in DesignCraft and pull the overflow from page 3 into page 4.",
-        "assistant_reply": "Page 4 opened, the text frame threaded to page 3 and the overflow pulled in. Captured the spread so you can see the new break before exporting."
+        "user_prompt": "Thread page 3 overflow to page 4.",
+        "assistant_reply": "Page 4 opened, frames threaded, overflow pulled in."
       }
     },
     {

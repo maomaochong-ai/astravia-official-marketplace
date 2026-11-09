@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "在 MaterialCraft 里用噪波节点驱动 @素材/steel.mat 的粗糙度，让高光碎一点。",
-        "assistant_reply": "噪波接到粗糙度上了，缩放一路调低，直到预览里的高光碎开。图已另存为 steel-v2。"
+        "user_prompt": "用噪波驱动粗糙度。",
+        "assistant_reply": "噪波接到粗糙度，高光碎开了，另存为 steel-v2。"
       }
     },
     {

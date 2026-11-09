@@ -46,7 +46,7 @@
       "showcase": {
         "template": "chat-thread",
         "user_prompt": "Why does this APK score 62?",
-        "assistant_reply": "Three exported components with no guard, and the real logic only runs at runtime."
+        "assistant_reply": "Three exported components, no guard."
       }
     },
     {

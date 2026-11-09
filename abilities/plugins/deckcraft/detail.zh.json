@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "在 DeckCraft 里给 @素材/q3-review.pptx 套上深色主题，再把营收图表放到第 4 页。",
-        "assistant_reply": "深色主题已经铺满全篇，营收图表放到了第 4 页，数据直接取文件里现有的。第 4 页截了图，尺寸你可以过一眼。"
+        "user_prompt": "套深色主题，第 4 页加营收图表。",
+        "assistant_reply": "主题已铺满全篇，第 4 页图表用文件里现成的数据。"
       }
     },
     {

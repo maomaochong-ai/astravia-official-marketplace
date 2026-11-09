@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "在 WordCraft 里给 @素材/合同.docx 打开修订，只接受日期那几处改动。",
-        "assistant_reply": "修订已经打开，日期的几处改动接受了，其余标记还等你过。这页截了图，还剩哪些一眼能看见。"
+        "user_prompt": "只接受日期那几处修订。",
+        "assistant_reply": "修订已开，日期改动接受，其余还等你过。"
       }
     },
     {

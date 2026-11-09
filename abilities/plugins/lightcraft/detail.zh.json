@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "在 LightCraft 里从 @素材/拍摄/ 挑出最锐的 12 张标成保留，再给它们统一白平衡。",
-        "assistant_reply": "12 张标成了保留，白平衡一次套到全部。没选上的还留在目录里，没有为了挑选删过东西。"
+        "user_prompt": "挑出最锐的 12 张标成保留。",
+        "assistant_reply": "12 张已标记，白平衡一次套上，没有删任何一张。"
       }
     },
     {

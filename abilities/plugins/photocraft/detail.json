@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "In Photocraft, open @assets/cover.png, add a curves layer that pulls the highlights down, and export a 1600 px JPEG beside it.",
-        "assistant_reply": "Cover open, curves layer added with the highlight end pulled down. Exported cover-1600.jpg next to the original — say the word if the white point should go lower."
+        "user_prompt": "Pull highlights, export 1600 px.",
+        "assistant_reply": "Curves added, highlight end down. cover-1600.jpg beside it."
       }
     },
     {
