@@ -6,6 +6,33 @@ import { pathToFileURL } from 'node:url';
 import { digest, files, inside, readJson, reviewedSourceCommitMessage, writeCompactJson } from './static-marketplace.mjs';
 import { publicationSettings } from './marketplace.mjs';
 
+/**
+ * `fetch` with a short retry ladder.
+ *
+ * Promotion verifies every published artifact against a live API before the index becomes
+ * discoverable. A runner whose TLS connection drops once would otherwise fail the whole
+ * release after the packages are already uploaded — which is what happened here, four runs
+ * in a row, with only "fetch failed" to show for it.
+ *
+ * Only transport errors are retried. A 404 or a 403 is an answer, and retrying it would
+ * turn a real problem into a slow one.
+ */
+function retryingFetch(attempts = 4, delayMs = 500) {
+  return async (url, init) => {
+    let lastError;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        return await fetch(url, init);
+      } catch (error) {
+        lastError = error;
+        if (attempt === attempts) break;
+        await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
+      }
+    }
+    throw lastError;
+  };
+}
+
 export function assertExistingRelease(item, bytes) {
   if (digest(bytes) !== item.release.artifact.sha256) throw new Error(`Published bytes differ for ${item.slug}; use a new version`);
 }
@@ -116,6 +143,9 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
     ? verifyMarketplacePublication(readJson(join(dir, 'site/.astravia/marketplace.json')), {
       token: process.env.GITHUB_TOKEN,
       candidateAppCommits: settings.candidateAppCommits,
+      // The promotion gate makes a dozen api.github.com calls in a row; one reset must not
+      // cost the whole release after every package is already uploaded.
+      fetcher: retryingFetch(),
     })
     : verifyCandidate(dir, tooling),
   }).catch(error => {
