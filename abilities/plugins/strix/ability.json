@@ -1,18 +1,31 @@
 {
-	"schemaVersion": 1,
-	"type": "plugin",
-	"slug": "strix",
-	"version": "0.1.1",
-	"icon": "assets/icon.png",
-	"detail": {
-		"format": "blocks",
-		"path": "detail.json",
-		"fallback": "README.md",
-		"meta": [
-			{ "key": "repository", "value": "https://github.com/usestrix/strix" },
-			{ "key": "docs", "value": "https://docs.strix.ai" },
-			{ "key": "license", "value": "Apache-2.0" }
-		],
-		"i18n": { "zh": { "path": "detail.zh.json" } }
-	}
+  "schemaVersion": 1,
+  "type": "plugin",
+  "slug": "strix",
+  "version": "0.1.2",
+  "icon": "assets/icon.png",
+  "detail": {
+    "format": "blocks",
+    "path": "detail.json",
+    "fallback": "README.md",
+    "meta": [
+      {
+        "key": "repository",
+        "value": "https://github.com/usestrix/strix"
+      },
+      {
+        "key": "docs",
+        "value": "https://docs.strix.ai"
+      },
+      {
+        "key": "license",
+        "value": "Apache-2.0"
+      }
+    ],
+    "i18n": {
+      "zh": {
+        "path": "detail.zh.json"
+      }
+    }
+  }
 }
