@@ -59,16 +59,18 @@ describe("conversation surface", () => {
     expect(problems).toEqual([]);
   });
 
-  it("states the three routes and their tools in both the router and the persona", () => {
-    for (const [where, text] of [
-      ["router", read("agent/skills/boardmix/SKILL.md")],
-      ["persona", read("agent/agents/boardmix-guide.md")],
-    ] as const) {
-      for (const tool of ["boardmix_ai_prompt", "boardmix_diagram", "boardmix_act"]) {
-        expect(text, `${where} never mentions ${tool}`).toContain(tool);
-      }
+  it("states the three routes with their tools in the router, and attaches them to the composer", () => {
+    const router = read("agent/skills/boardmix/SKILL.md");
+    for (const tool of ["boardmix_ai_prompt", "boardmix_diagram", "boardmix_act"]) {
+      expect(router, `the router never mentions ${tool}`).toContain(tool);
     }
-    expect(read("agent/skills/boardmix/SKILL.md")).toMatch(/谁生成/);
+    expect(router).toMatch(/谁生成/);
+
+    // 没有 persona 之后，输入栏开关的 decoratePrompt 是唯一能“随这一轮”递给模型的说明。
+    const action = read("src/hooks/input-action.ts");
+    for (const tool of ["boardmix_ai_prompt", "boardmix_diagram", "boardmix_act"]) {
+      expect(action, `the input action never mentions ${tool}`).toContain(tool);
+    }
   });
 
   it("routes Mermaid import through the tool that does it, and does not call mindmap Mermaid", () => {

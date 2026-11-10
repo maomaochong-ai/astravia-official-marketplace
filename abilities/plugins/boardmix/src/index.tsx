@@ -1,6 +1,8 @@
 import { definePlugin } from "@astravia-org/plugin-sdk";
 import { createElement } from "react";
 import { BoardmixWorkspace, AutomationRunSlot } from "./features/boardmix-workspace";
+import { bindBoardmixAttachment } from "./features/boardmix-workspace/hooks/use-prompt-attachment";
+import { registerBoardmixInputAction } from "./hooks/input-action";
 import { registerPromptAutomation } from "./hooks/prompt-submit-automation";
 import { ACTIVITY_TAB_ID, TOOL_IDS } from "./plugin-ids";
 import { setRuntime } from "./runtime-contract";
@@ -10,6 +12,8 @@ import "./style.css";
 export default definePlugin({
 	activate(ctx) {
 		setRuntime(ctx);
+		// 输入框下面那条胶囊有两个来源（面板状态、输入栏开关），它们都写进这一个 store。
+		bindBoardmixAttachment(ctx);
 
 		// 面板内容：一个 webview，装 boardmix 自己的网页产品。
 		const tab = ctx.ui.registerActivityTab({
@@ -24,7 +28,10 @@ export default definePlugin({
 			retention: "warm",
 		});
 
-		// Agent 面：七个只改标签页状态的工具。没权限时返回空数组。
+		// 输入栏上的「白板」开关：打开就把面板带出来，并把这一轮挂上。
+		const inputAction = registerBoardmixInputAction(ctx);
+
+		// Agent 面：工具。没权限时返回空数组。
 		const tools = registerTools(ctx);
 
 		// 自动化在对话里显示成步骤时间线，而不是一段 JSON。
@@ -42,8 +49,9 @@ export default definePlugin({
 		return () => {
 			promptAutomation?.dispose();
 			toolCallSlot?.dispose();
-			setRuntime(null);
 			for (const tool of tools) tool.dispose();
+			inputAction?.dispose();
+			setRuntime(null);
 			tab.dispose();
 		};
 	},

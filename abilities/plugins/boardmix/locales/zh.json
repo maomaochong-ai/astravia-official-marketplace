@@ -2,6 +2,7 @@
   "name": "Boardmix 白板",
   "description": "侧边面板里打开真正的 Boardmix 白板：登录一次，不用离开对话就能继续手上的白板。",
   "tab.title": "Boardmix 白板",
+  "input.label": "白板",
   "panel.loading": "正在准备白板…",
   "panel.login.title": "登录 Boardmix",
   "panel.login.body": "这是 Boardmix 自己的登录页。在这里登录，登录态留在本面板；插件看不到你的账号密码。",
@@ -45,7 +46,5 @@
   "skill.boardmix-ai.name": "用博思 AI 生成",
   "skill.boardmix-ai.description": "把写清楚的 prompt 递进页内 AI 的输入框，用户要求时才代为发送；生成花用户积分，结果以截图核对。",
   "skill.boardmix-io.name": "导入与导出",
-  "skill.boardmix-io.description": "把 PPT、PDF 或 Mermaid 导进白板，或者导一版给客户：Mermaid 走 boardmix_diagram，水印与体积限制提前说明。",
-  "agent.boardmix-guide.name": "白板向导",
-  "agent.boardmix-guide.description": "替你操作 Boardmix 面板：打开对的页面、写好图或提示词，并告诉你只剩哪一步要点。"
+  "skill.boardmix-io.description": "把 PPT、PDF 或 Mermaid 导进白板，或者导一版给客户：Mermaid 走 boardmix_diagram，水印与体积限制提前说明。"
 }

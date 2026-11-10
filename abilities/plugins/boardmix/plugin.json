@@ -3,7 +3,7 @@
   "name": "%name%",
   "description": "%description%",
   "icon": "assets/icon.png",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -69,17 +69,6 @@
           "displayDescription": "%skill.boardmix-io.description%"
         }
       }
-    },
-    "agents": [
-      {
-        "id": "boardmix-guide",
-        "name": "%agent.boardmix-guide.name%",
-        "description": "%agent.boardmix-guide.description%",
-        "mentionHandle": "boardmix",
-        "avatar": "assets/icon.png",
-        "systemPromptPath": "agent/agents/boardmix-guide.md",
-        "abilities": "all"
-      }
-    ]
+    }
   }
 }

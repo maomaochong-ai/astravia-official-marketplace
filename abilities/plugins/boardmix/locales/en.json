@@ -2,6 +2,7 @@
   "name": "Boardmix Whiteboard",
   "description": "The real Boardmix whiteboard in a side panel: sign in once and work on your boards without leaving the conversation.",
   "tab.title": "Boardmix Whiteboard",
+  "input.label": "Whiteboard",
   "panel.loading": "Preparing the whiteboard…",
   "panel.login.title": "Sign in to Boardmix",
   "panel.login.body": "This is Boardmix's own login page. Sign in here and the session stays with this panel; the plugin never sees your credentials.",
@@ -45,7 +46,5 @@
   "skill.boardmix-ai.name": "Generate with Boardmix AI",
   "skill.boardmix-ai.description": "Deliver a written prompt into the in-page AI composer and send it only when asked; generations spend the user's points and are verified by screenshot.",
   "skill.boardmix-io.name": "Import and Export",
-  "skill.boardmix-io.description": "Bring PPT / PDF / Mermaid into a board or export one: Mermaid goes through boardmix_diagram, and the watermark and size limits are stated up front.",
-  "agent.boardmix-guide.name": "Whiteboard Guide",
-  "agent.boardmix-guide.description": "Works the Boardmix panel for you: opens the right screen, writes the diagram or the prompt, and tells you the one click left."
+  "skill.boardmix-io.description": "Bring PPT / PDF / Mermaid into a board or export one: Mermaid goes through boardmix_diagram, and the watermark and size limits are stated up front."
 }

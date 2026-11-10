@@ -27,8 +27,8 @@ src/
     components/automation-*.tsx    # overlay in the panel, slot in the conversation
   hooks/prompt-submit-automation.ts# UserPromptSubmit: act first, then tell the model
   tools/                           # ctx.agent.registerTool() only
+  hooks/input-action.ts            # 输入栏的「白板」开关（挂胶囊 + decoratePrompt）
 agent/skills/                      # five skills; references/ holds the on-demand detail
-agent/agents/boardmix-guide.md     # the persona whose systemPromptPath points here
 ```
 
 ## How the tab decides where to open
@@ -105,9 +105,11 @@ of done, and what not to say. Details that only matter mid-task (the envelope fi
 Mermaid recipes, a workshop timeline, prompt templates, the import/export matrix) sit in each
 skill's `references/` and are read only when that step is reached.
 
-`agent/agents/boardmix-guide.md` is the persona: it tells the model to work through the `boardmix`
-skill, which situations to watch for, and the shape of a closing message. It declares no `roles`,
-so it does not take a preset role slot in the host.
+There is no persona any more (ADR `bm-0004`): declaring `agent.agents[]` made the host create a
+library agent the user did not ask for. What that persona used to say now lives where it is actually
+read — the skills' `description` fields (that is what routes), the router's table, and the composer
+toggle's `decoratePrompt`, which contributes the three-route order to a turn only while the board is
+toggled on or the chip is hanging.
 
 ## Developing
 

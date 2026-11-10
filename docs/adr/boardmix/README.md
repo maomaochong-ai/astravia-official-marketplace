@@ -74,8 +74,9 @@
 | `boardmix-ai` | AI 生成 PPT / 流程图 / 文档；点数门槛；画布检索在页面内 | `prompt-recipes.md` |
 | `boardmix-io` | 导入 PPT/PDF ≤ 50 MB、Mermaid；导出档位与免费版水印 | `format-matrix.md` |
 
-另外一份人格 `agent/agents/boardmix-guide.md`（`agent.agents[]` 的 `systemPromptPath`）规定「通过
-技能工作」和收尾形状；不声明 `roles`，不占宿主预置角色槽位。
+`agent.agents[]` 与那份人格已经删了（[bm-0004](bm-0004-no-team-member-just-a-toggle.md)）：它会在宿主的
+智能体列表里生成一个用户不需要的成员，而它规定的东西已经由技能描述、技能的判据表与输入栏开关的
+`decoratePrompt` 分头担住。
 
 技能写判断，不写工具参数；产出物只四种：Mermaid、Markdown、纯文本大纲、表格（见 0004）。
 

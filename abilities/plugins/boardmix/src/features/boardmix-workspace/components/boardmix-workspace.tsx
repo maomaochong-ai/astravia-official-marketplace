@@ -35,7 +35,8 @@ export function BoardmixWorkspace({ ctx }: BoardmixWorkspaceProps) {
 		[entry],
 	);
 
-	usePromptAttachment(ctx, {
+	// 面板只上报自己的状态；“该不该挂胶囊”由 store 统一决定（输入栏开关也算一个来源）。
+	usePromptAttachment({
 		active: active === true,
 		ready: entry.ready,
 		landedUrl: landedUrl ?? entry.ladder[0]?.url ?? null,

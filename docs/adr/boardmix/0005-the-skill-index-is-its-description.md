@@ -1,6 +1,6 @@
 # 技能的索引面是 description，正文按需加载
 
-- 状态：已采纳（2026-11-05）
+- 状态：已采纳（2026-11-05）；其中 `agent.agents[]` 那一条已被 [bm-0004](bm-0004-no-team-member-just-a-toggle.md) 取代（2026-11-10），其余结论不变
 - 相关：[0003](0003-the-plugin-is-agent-operable.md)（工具与技能的接线）、[0004](0004-tools-reach-the-page-skills-carry-the-work.md)（五份技能的分工）
 - 影响面：`agent/skills/**`（五份 `SKILL.md` 全部重写 + 六个 `references/*.md` 新增）、`agent/agents/boardmix-guide.md`（新增）、`plugin.json`（`agent.skillPresentation.skills`、`agent.agents[]`）、`locales/{en,zh}.json`（12 个新键）
 
