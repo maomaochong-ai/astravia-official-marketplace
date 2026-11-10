@@ -28,6 +28,14 @@ agent/skills/                 9 upstream consumer skills, copied verbatim
 
 The split exists because the host only ships `host-node` and `managed-binary` runtimes. Packaging a Python interpreter into a per-platform binary would mean shipping and checksumming a ~100 MB artifact per OS; instead the Node service starts `python -m bridge` and relays JSON lines. Upstream changes therefore land in `service/bridge/scan.py`, never in the manifest or the UI.
 
+### How the service gets installed
+
+The host never unpacks a plugin's service itself: `PluginServiceRuntimeInstaller.resolve()` refuses to start a runtime that `install()` did not write, and `install()` accepts only a payload set matching `plugin.json#providers.services[].runtime.platforms[<tag>].artifacts` one-for-one with verified SHA-256. So `src/runtime.ts` reads the declared artifact list back out of the packaged `plugin.json`, fetches each file over `astravia-plugin://<id>/versions/<version>/…`, installs, then starts.
+
+That is why every shipped service file is declared, not just the entry: declaring only `service/main.mjs` would install a runtime whose Python half is missing. After touching anything under `service/`, re-stamp the digests:`npm run stamp-service`.
+
+The service answers `/api/health/ready` with 200 as soon as its HTTP server listens and reports the Python side in the body. The host treats a non-2xx health probe as a broken process and restarts it; a missing interpreter is something the panel explains and the user fixes, not a crash loop.
+
 ### Why scanning hangs off `run_strix_scan`
 
 Upstream has no server mode, no local HTTP API and no JSON event stream (`--json` exists only on `strix cloud`). Its library entry point takes an `event_sink`, which is the only supported way to observe a scan live. The bridge calls that entry point and projects events through upstream's own `TuiLiveView`, so the timeline shows what Strix believes happened rather than a second guess at the SDK objects.
@@ -56,7 +64,10 @@ Point the bridge at a specific interpreter with `STRIX_PYTHON` when the default 
 cd abilities/plugins/strix
 npm install
 npm run test
+npm run stamp-service  # rewrite the 7 service digests after editing service/
 npm run build
+npm run check:service  # host-node service: health, /mcp, /api/state
+npm run check:bridge   # Python bridge protocol over stdin/stdout
 ```
 
 Repository-level checks:
