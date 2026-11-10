@@ -45,6 +45,7 @@ STRIX_PYTHON=/path/to/python node scripts/check-service.mjs
 ## 改动时注意
 
 - 改了 `service/` 或 `src/` 就要抬版本，并同步 `plugin.json`、`ability.json`、`package.json`、锁文件、`.astravia/marketplace.source.json`。
-- 改了 `service/main.mjs` 要重算 sha256：`python scripts/fill-service-checksum.py`。
+- 改了 `service/` 下任何文件都要重算摘要：`npm run stamp-service`（宿主按 `plugin.json` 里声明的**全部**工件逐个校验 SHA-256，只声明入口会把 Python 半边漏装）。
+- 服务就绪语义：`/api/health/ready` 一旦监听就回 200，Python 是否可用放 body。非 2xx 会被宿主当成进程坏掉并重启。
 - `detail.json` 的 `showcase` 文案必须短：宿主用固定高度卡片 + `line-clamp-3` 渲染，长文案会挤出容器（`tests/excalidraw-plugin.test.mjs` 有回归断言）。
 - 图标是上游官方位图（`docs/logo/strix.png`），不要用相似的 Iconify 图形替代。

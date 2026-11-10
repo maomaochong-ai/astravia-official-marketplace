@@ -90,7 +90,12 @@ export function useScanConsole(client: BridgeClient, workspace?: string): ScanCo
 		}
 	}, [client, loadFindings, workspace]);
 
+	// Boot once per mount. `boot` refreshes state; the effect must not follow its identity,
+	// or a re-created client would restart the whole service handshake on every render.
+	const booted = useRef(false);
 	useEffect(() => {
+		if (booted.current) return;
+		booted.current = true;
 		void boot();
 	}, [boot]);
 

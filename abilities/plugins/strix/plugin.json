@@ -2,7 +2,7 @@
   "id": "strix",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -58,16 +58,46 @@
         "id": "strix-bridge",
         "runtime": {
           "kind": "host-node",
-          "version": "0.1.1",
+          "version": "0.1.3",
           "entry": "service/main.mjs",
           "platforms": {
             "win32-x64": {
               "executable": "service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "4c43e50eaa2a50a382d7dacba8fd213227a17874b7f21a93106e2a1ce3d5d609",
+                  "sha256": "5d6c00539a97cb86fa41fb101862d030aa436e35a88c140a8e6d7b471d5d478c",
                   "archive": "file",
                   "destination": "service/main.mjs"
+                },
+                {
+                  "sha256": "8dd6ec3a264d44de59b97d5bf386bd6cc09173af0473f55c79df0cb922b4ce71",
+                  "archive": "file",
+                  "destination": "service/bridge/__init__.py"
+                },
+                {
+                  "sha256": "2dc856a6d46b3295d6663781e4d52eb910526054c130b34e3577068a7a609226",
+                  "archive": "file",
+                  "destination": "service/bridge/__main__.py"
+                },
+                {
+                  "sha256": "605f2190ccdbdc786837c15bf03619017e1fd04161f4ccccf61ccf514c0b0c7a",
+                  "archive": "file",
+                  "destination": "service/bridge/artifacts.py"
+                },
+                {
+                  "sha256": "a4db3bd9dc42675b039439ed2ced516ad43e963aa7d1a49bb87dfb3e74912015",
+                  "archive": "file",
+                  "destination": "service/bridge/environment.py"
+                },
+                {
+                  "sha256": "6477e76865a51ae6f89585255dcaf0a6adc42f79de834747189aea06f70e1b87",
+                  "archive": "file",
+                  "destination": "service/bridge/protocol.py"
+                },
+                {
+                  "sha256": "98ea469418225e7448dce38f118fcc7d8aeeea4493a31a56f10fb6204e8f2d3a",
+                  "archive": "file",
+                  "destination": "service/bridge/scan.py"
                 }
               ]
             },
@@ -75,9 +105,39 @@
               "executable": "service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "4c43e50eaa2a50a382d7dacba8fd213227a17874b7f21a93106e2a1ce3d5d609",
+                  "sha256": "5d6c00539a97cb86fa41fb101862d030aa436e35a88c140a8e6d7b471d5d478c",
                   "archive": "file",
                   "destination": "service/main.mjs"
+                },
+                {
+                  "sha256": "8dd6ec3a264d44de59b97d5bf386bd6cc09173af0473f55c79df0cb922b4ce71",
+                  "archive": "file",
+                  "destination": "service/bridge/__init__.py"
+                },
+                {
+                  "sha256": "2dc856a6d46b3295d6663781e4d52eb910526054c130b34e3577068a7a609226",
+                  "archive": "file",
+                  "destination": "service/bridge/__main__.py"
+                },
+                {
+                  "sha256": "605f2190ccdbdc786837c15bf03619017e1fd04161f4ccccf61ccf514c0b0c7a",
+                  "archive": "file",
+                  "destination": "service/bridge/artifacts.py"
+                },
+                {
+                  "sha256": "a4db3bd9dc42675b039439ed2ced516ad43e963aa7d1a49bb87dfb3e74912015",
+                  "archive": "file",
+                  "destination": "service/bridge/environment.py"
+                },
+                {
+                  "sha256": "6477e76865a51ae6f89585255dcaf0a6adc42f79de834747189aea06f70e1b87",
+                  "archive": "file",
+                  "destination": "service/bridge/protocol.py"
+                },
+                {
+                  "sha256": "98ea469418225e7448dce38f118fcc7d8aeeea4493a31a56f10fb6204e8f2d3a",
+                  "archive": "file",
+                  "destination": "service/bridge/scan.py"
                 }
               ]
             },
@@ -85,9 +145,39 @@
               "executable": "service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "4c43e50eaa2a50a382d7dacba8fd213227a17874b7f21a93106e2a1ce3d5d609",
+                  "sha256": "5d6c00539a97cb86fa41fb101862d030aa436e35a88c140a8e6d7b471d5d478c",
                   "archive": "file",
                   "destination": "service/main.mjs"
+                },
+                {
+                  "sha256": "8dd6ec3a264d44de59b97d5bf386bd6cc09173af0473f55c79df0cb922b4ce71",
+                  "archive": "file",
+                  "destination": "service/bridge/__init__.py"
+                },
+                {
+                  "sha256": "2dc856a6d46b3295d6663781e4d52eb910526054c130b34e3577068a7a609226",
+                  "archive": "file",
+                  "destination": "service/bridge/__main__.py"
+                },
+                {
+                  "sha256": "605f2190ccdbdc786837c15bf03619017e1fd04161f4ccccf61ccf514c0b0c7a",
+                  "archive": "file",
+                  "destination": "service/bridge/artifacts.py"
+                },
+                {
+                  "sha256": "a4db3bd9dc42675b039439ed2ced516ad43e963aa7d1a49bb87dfb3e74912015",
+                  "archive": "file",
+                  "destination": "service/bridge/environment.py"
+                },
+                {
+                  "sha256": "6477e76865a51ae6f89585255dcaf0a6adc42f79de834747189aea06f70e1b87",
+                  "archive": "file",
+                  "destination": "service/bridge/protocol.py"
+                },
+                {
+                  "sha256": "98ea469418225e7448dce38f118fcc7d8aeeea4493a31a56f10fb6204e8f2d3a",
+                  "archive": "file",
+                  "destination": "service/bridge/scan.py"
                 }
               ]
             },
@@ -95,9 +185,39 @@
               "executable": "service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "4c43e50eaa2a50a382d7dacba8fd213227a17874b7f21a93106e2a1ce3d5d609",
+                  "sha256": "5d6c00539a97cb86fa41fb101862d030aa436e35a88c140a8e6d7b471d5d478c",
                   "archive": "file",
                   "destination": "service/main.mjs"
+                },
+                {
+                  "sha256": "8dd6ec3a264d44de59b97d5bf386bd6cc09173af0473f55c79df0cb922b4ce71",
+                  "archive": "file",
+                  "destination": "service/bridge/__init__.py"
+                },
+                {
+                  "sha256": "2dc856a6d46b3295d6663781e4d52eb910526054c130b34e3577068a7a609226",
+                  "archive": "file",
+                  "destination": "service/bridge/__main__.py"
+                },
+                {
+                  "sha256": "605f2190ccdbdc786837c15bf03619017e1fd04161f4ccccf61ccf514c0b0c7a",
+                  "archive": "file",
+                  "destination": "service/bridge/artifacts.py"
+                },
+                {
+                  "sha256": "a4db3bd9dc42675b039439ed2ced516ad43e963aa7d1a49bb87dfb3e74912015",
+                  "archive": "file",
+                  "destination": "service/bridge/environment.py"
+                },
+                {
+                  "sha256": "6477e76865a51ae6f89585255dcaf0a6adc42f79de834747189aea06f70e1b87",
+                  "archive": "file",
+                  "destination": "service/bridge/protocol.py"
+                },
+                {
+                  "sha256": "98ea469418225e7448dce38f118fcc7d8aeeea4493a31a56f10fb6204e8f2d3a",
+                  "archive": "file",
+                  "destination": "service/bridge/scan.py"
                 }
               ]
             },
@@ -105,9 +225,39 @@
               "executable": "service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "4c43e50eaa2a50a382d7dacba8fd213227a17874b7f21a93106e2a1ce3d5d609",
+                  "sha256": "5d6c00539a97cb86fa41fb101862d030aa436e35a88c140a8e6d7b471d5d478c",
                   "archive": "file",
                   "destination": "service/main.mjs"
+                },
+                {
+                  "sha256": "8dd6ec3a264d44de59b97d5bf386bd6cc09173af0473f55c79df0cb922b4ce71",
+                  "archive": "file",
+                  "destination": "service/bridge/__init__.py"
+                },
+                {
+                  "sha256": "2dc856a6d46b3295d6663781e4d52eb910526054c130b34e3577068a7a609226",
+                  "archive": "file",
+                  "destination": "service/bridge/__main__.py"
+                },
+                {
+                  "sha256": "605f2190ccdbdc786837c15bf03619017e1fd04161f4ccccf61ccf514c0b0c7a",
+                  "archive": "file",
+                  "destination": "service/bridge/artifacts.py"
+                },
+                {
+                  "sha256": "a4db3bd9dc42675b039439ed2ced516ad43e963aa7d1a49bb87dfb3e74912015",
+                  "archive": "file",
+                  "destination": "service/bridge/environment.py"
+                },
+                {
+                  "sha256": "6477e76865a51ae6f89585255dcaf0a6adc42f79de834747189aea06f70e1b87",
+                  "archive": "file",
+                  "destination": "service/bridge/protocol.py"
+                },
+                {
+                  "sha256": "98ea469418225e7448dce38f118fcc7d8aeeea4493a31a56f10fb6204e8f2d3a",
+                  "archive": "file",
+                  "destination": "service/bridge/scan.py"
                 }
               ]
             }

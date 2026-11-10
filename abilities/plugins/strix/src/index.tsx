@@ -16,6 +16,7 @@
 import "./style.css";
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { definePlugin } from "@astravia-org/plugin-sdk";
+import { useRef } from "react";
 import { createBridgeClient } from "./domain/bridge-client";
 import { StrixConsolePanel } from "./features/scan-console/components/strix-console-panel";
 import { useScanConsole } from "./features/scan-console/hooks/use-scan-console";
@@ -28,10 +29,12 @@ const ENTRY_SKILL = "penetration-testing-with-strix";
 
 function ConsoleTab({ ctx, runtime }: { ctx: PluginContext; runtime: ServiceRuntime }): React.ReactElement {
 	const t = (key: string) => ctx.i18n.t(key);
-	const client = createBridgeClient(() => runtime.ensureReady());
+	// One client per mounted tab. Rebuilding it during render would give the hook a new
+	// identity on every paint, and its effects would re-run the boot sequence forever.
+	const client = useRef(createBridgeClient(() => runtime.ensureReady())).current;
 	const workspace = (ctx as unknown as { workspace?: { path?: string } }).workspace?.path;
 	const model = useScanConsole(client, workspace);
-	return <StrixConsolePanel t={t} model={model} />;
+	return <StrixConsolePanel t={t} model={model} status={runtime.lastStatus()} />;
 }
 
 export default definePlugin({

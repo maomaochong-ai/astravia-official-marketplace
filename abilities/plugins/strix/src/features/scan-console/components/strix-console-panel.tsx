@@ -10,16 +10,20 @@ import { FindingList } from "../../findings/components/finding-list";
 import { LaunchForm } from "./launch-form";
 import { ScanTimeline } from "./scan-timeline";
 import type { ScanConsoleModel } from "../hooks/use-scan-console";
+import type { ServiceStatus } from "../../../runtime-contract";
 
 export interface StrixConsolePanelProps {
 	t: (key: string) => string;
 	model: ScanConsoleModel;
+	/** Managed-service status, so a stuck service explains itself instead of spinning. */
+	status?: ServiceStatus;
 }
 
 function ReadinessChecklist({ t, model }: { t: (key: string) => string; model: ScanConsoleModel }): React.ReactElement {
 	const probe = model.environment;
 	if (!probe) return <p className="astra-strix-empty">{t("boot.loading")}</p>;
 	const rows = [
+		{ ok: probe.python.found, key: "setup.python", detail: probe.python.executable },
 		{ ok: probe.engine.installed, key: "setup.engine", detail: probe.engine.version },
 		{ ok: probe.docker.ready, key: "setup.docker", detail: probe.docker.detail },
 		{ ok: probe.llm.configured, key: "setup.llm", detail: probe.llm.model },
@@ -36,31 +40,41 @@ function ReadinessChecklist({ t, model }: { t: (key: string) => string; model: S
 					</li>
 				))}
 			</ul>
+			{!probe.python.found ? <p className="astra-strix-hint">{t("setup.pythonHint")}</p> : null}
 			{!probe.engine.installed ? (
 				<p className="astra-strix-hint">
 					<code className="astra-strix-code">uv tool install strix-agent</code>
 				</p>
 			) : null}
-			{!probe.llm.configured ? (
-				<p className="astra-strix-hint">{t("setup.llmHint")}</p>
-			) : null}
+			{!probe.llm.configured ? <p className="astra-strix-hint">{t("setup.llmHint")}</p> : null}
 			{!probe.docker.ready ? <p className="astra-strix-hint">{t("setup.dockerHint")}</p> : null}
 		</div>
 	);
 }
 
-export function StrixConsolePanel({ t, model }: StrixConsolePanelProps): React.ReactElement {
+export function StrixConsolePanel({ t, model, status }: StrixConsolePanelProps): React.ReactElement {
 	const ready = model.phase === "ready";
 	const run = model.activeRun;
+	const stuck = model.phase === "error";
 
 	return (
 		<div className="astra-strix-panel">
 			<header className="astra-strix-header">
 				<h2 className="astra-strix-title">{t("panel.title")}</h2>
 				{model.scanning ? <span className="astra-strix-live">{t("panel.live")}</span> : null}
+				{status && status.phase !== "ready" ? (
+					<span className="astra-strix-live">
+						{t("panel.service")}: {status.phase}
+					</span>
+				) : null}
 			</header>
 
 			{model.error ? <p className="astra-strix-error">{model.error}</p> : null}
+			{stuck ? (
+				<button type="button" className="astra-strix-button" onClick={() => void model.boot()}>
+					{t("boot.retry")}
+				</button>
+			) : null}
 			{model.phase === "booting" ? <p className="astra-strix-empty">{t("boot.loading")}</p> : null}
 
 			{!ready && model.phase !== "booting" ? <ReadinessChecklist t={t} model={model} /> : null}

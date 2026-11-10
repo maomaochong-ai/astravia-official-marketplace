@@ -6,7 +6,7 @@
  * instead of throwing) and the payloads the bridge service returns.
  */
 
-export type ServicePhase = "idle" | "installing" | "starting" | "ready" | "stopping" | "error";
+export type ServicePhase = "idle" | "installing" | "starting" | "ready" | "stopping" | "error" | "failed" | "stopped";
 
 export interface ServiceStatus {
 	phase: ServicePhase;
@@ -19,17 +19,33 @@ export interface ServiceConnection {
 	baseUrl: string;
 }
 
+export interface ServicePlatform {
+	tag: string;
+}
+
+export interface ServiceRuntimeArtifact {
+	sha256: string;
+	archive: "file" | "zip" | "tar.gz";
+	destination: string;
+}
+
 export interface ServiceBridgeHost {
+	/** `win32-x64` style tag; selects which artifacts the host will accept. */
+	getPlatform(): Promise<ServicePlatform>;
 	getStatus(serviceId: string): Promise<ServiceStatus>;
 	connection(serviceId: string): Promise<ServiceConnection | undefined>;
 	start(serviceId: string): Promise<ServiceStatus>;
-	install(serviceId: string, files: readonly { destination: string; data: string }[]): Promise<ServiceStatus>;
 	stop(serviceId: string): Promise<ServiceStatus>;
+	/** Writes the plugin's own runtime bytes; the host refuses to start without this. */
+	install(
+		serviceId: string,
+		artifacts: readonly { destination: string; data: string }[],
+	): Promise<ServiceStatus>;
 	onStatusChange(listener: (status: ServiceStatus & { serviceId?: string }) => void): { dispose(): void };
 }
 
 export interface EnvironmentProbe {
-	python: { version: string; executable: string };
+	python: { version: string; executable: string; found: boolean };
 	engine: { installed: boolean; version: string };
 	docker: { ready: boolean; detail: string; image: string };
 	llm: { model: string; configured: boolean; keySource: string };
