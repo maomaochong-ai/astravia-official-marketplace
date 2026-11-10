@@ -2,7 +2,7 @@
   "id": "strix",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -58,7 +58,7 @@
         "id": "strix-bridge",
         "runtime": {
           "kind": "host-node",
-          "version": "0.1.4",
+          "version": "0.1.5",
           "entry": "service/main.mjs",
           "platforms": {
             "win32-x64": {
@@ -284,7 +284,106 @@
       "agent/skills"
     ],
     "skillPresentation": {
-      "defaultVisibility": "hidden"
+      "defaultVisibility": "hidden",
+      "surfaces": {
+        "abilityCatalog": "hidden",
+        "agentConfiguration": "hidden",
+        "commandPalette": "hidden",
+        "skillPicker": "hidden",
+        "pluginDetail": "hidden"
+      },
+      "skills": {
+        "api-security-testing": {
+          "defaultVisibility": "hidden",
+          "surfaces": {
+            "abilityCatalog": "hidden",
+            "agentConfiguration": "hidden",
+            "commandPalette": "hidden",
+            "skillPicker": "hidden",
+            "pluginDetail": "hidden"
+          }
+        },
+        "application-security-testing": {
+          "defaultVisibility": "hidden",
+          "surfaces": {
+            "abilityCatalog": "hidden",
+            "agentConfiguration": "hidden",
+            "commandPalette": "hidden",
+            "skillPicker": "hidden",
+            "pluginDetail": "hidden"
+          }
+        },
+        "ci-security-scanning-with-strix": {
+          "defaultVisibility": "hidden",
+          "surfaces": {
+            "abilityCatalog": "hidden",
+            "agentConfiguration": "hidden",
+            "commandPalette": "hidden",
+            "skillPicker": "hidden",
+            "pluginDetail": "hidden"
+          }
+        },
+        "find-security-vulnerabilities-in-code": {
+          "defaultVisibility": "hidden",
+          "surfaces": {
+            "abilityCatalog": "hidden",
+            "agentConfiguration": "hidden",
+            "commandPalette": "hidden",
+            "skillPicker": "hidden",
+            "pluginDetail": "hidden"
+          }
+        },
+        "fix-security-vulnerabilities-with-strix": {
+          "defaultVisibility": "hidden",
+          "surfaces": {
+            "abilityCatalog": "hidden",
+            "agentConfiguration": "hidden",
+            "commandPalette": "hidden",
+            "skillPicker": "hidden",
+            "pluginDetail": "hidden"
+          }
+        },
+        "managed-pentesting-with-strix": {
+          "defaultVisibility": "hidden",
+          "surfaces": {
+            "abilityCatalog": "hidden",
+            "agentConfiguration": "hidden",
+            "commandPalette": "hidden",
+            "skillPicker": "hidden",
+            "pluginDetail": "hidden"
+          }
+        },
+        "owasp-top-10-testing": {
+          "defaultVisibility": "hidden",
+          "surfaces": {
+            "abilityCatalog": "hidden",
+            "agentConfiguration": "hidden",
+            "commandPalette": "hidden",
+            "skillPicker": "hidden",
+            "pluginDetail": "hidden"
+          }
+        },
+        "penetration-testing-with-strix": {
+          "defaultVisibility": "hidden",
+          "surfaces": {
+            "abilityCatalog": "hidden",
+            "agentConfiguration": "hidden",
+            "commandPalette": "hidden",
+            "skillPicker": "hidden",
+            "pluginDetail": "hidden"
+          }
+        },
+        "web-app-penetration-testing": {
+          "defaultVisibility": "hidden",
+          "surfaces": {
+            "abilityCatalog": "hidden",
+            "agentConfiguration": "hidden",
+            "commandPalette": "hidden",
+            "skillPicker": "hidden",
+            "pluginDetail": "hidden"
+          }
+        }
+      }
     },
     "mcpServers": {
       "strix": {
