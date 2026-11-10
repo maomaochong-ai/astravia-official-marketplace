@@ -143,6 +143,32 @@ export async function runAutomation(ctx: PluginContext, request: AutomationReque
 	return run;
 }
 
+/**
+ * 页面已经停在哪个入口之后，模型下一步该走哪条路。
+ *
+ * 三条路分开写：AI 页要 prompt，创建页要用户点，其余是 DOM 操作。之前只有一句「你能读/点/拍」，
+ * 模型到了 AI 页仍然只会说「你自己点火生成」——而那正是插件能替它做的那一步。
+ */
+function nextMoveAfter(recipe: AutomationRun["recipe"]): string {
+	if (recipe === "ai-ppt" || recipe === "ai-flowchart" || recipe === "ai-chat") {
+		return (
+			"That is the in-page AI. Compose the prompt first (topic, audience, length), then deliver it with " +
+			"boardmix_ai_prompt: it writes the text into the AI composer and leaves send to the user unless they " +
+			"explicitly asked you to run it — a generation spends their points."
+		);
+	}
+	if (recipe === "create") {
+		return (
+			"The create entry is open and the next click is the user's. If the board is for a diagram, write the " +
+			"Mermaid now and offer boardmix_diagram once they have a board to land it on."
+		);
+	}
+	return (
+		"You can read it (boardmix_read), act on it (boardmix_act) and look at it (boardmix_shot); canvas " +
+		"shapes are pixels, so a screenshot is the only way to see them and must not be described as data you read."
+	);
+}
+
 /** 会话上下文里只放事实：面板此刻在哪、模型不该再重复做什么。 */
 export function describeRunForModel(run: AutomationRun): string {
 	const trail = run.steps.map(step => `${step.key}:${step.status}${step.detail ? `(${step.detail})` : ""}`).join(" -> ");
@@ -154,9 +180,8 @@ export function describeRunForModel(run: AutomationRun): string {
 		return [
 			`Boardmix automation already ran before this turn (recipe "${run.recipe}", steps ${trail}).`,
 			`The Boardmix panel is showing ${landing}.`,
-			"Do not call boardmix_open for the same screen. You can read it (boardmix_read), act on it " +
-			"(boardmix_act) and look at it (boardmix_shot); canvas shapes are pixels, so a screenshot is the only " +
-			"way to see them and must not be described as data you read.",
+			"Do not call boardmix_open for the same screen.",
+			nextMoveAfter(run.recipe),
 		].join(" ");
 	}
 

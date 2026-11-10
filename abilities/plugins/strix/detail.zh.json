@@ -1,0 +1,69 @@
+{
+	"schemaVersion": 1,
+	"blocks": [
+		{
+			"type": "hero",
+			"eyebrow": "安全测试",
+			"title": "在对话里跑一次真正的渗透测试",
+			"description": "Strix 会派出多个安全智能体，像攻击者一样探测你的代码、API 与运行中的应用，最后交出带验证过程与修复建议的可用漏洞。",
+			"badges": ["自主智能体", "验证过程", "SARIF 导出"]
+		},
+		{
+			"type": "showcase",
+			"showcase": {
+				"template": "chat-thread",
+				"canvas": "generic",
+				"brand_name": "Strix",
+				"user_prompt": "检查预发环境的鉴权绕过。",
+				"assistant_reply": "发现一个严重越权，已附修复方案。"
+			}
+		},
+		{
+			"type": "feature-grid",
+			"items": [
+				{
+					"title": "按攻击者流程推进",
+					"description": "侦察、利用、报告分派给不同专长的智能体，每一段都由负责该段的智能体判断。",
+					"icon": "solar:shield-keyhole-bold"
+				},
+				{
+					"title": "要证据，不要猜测",
+					"description": "每条结论都带请求、载荷或代码路径作为证据，同时给出反证与置信度。",
+					"icon": "solar:document-text-bold"
+				},
+				{
+					"title": "实时控制台",
+					"description": "扫描过程中可看到每个智能体的工具调用，结束后按严重程度阅读结果，无需离开应用。",
+					"icon": "solar:monitor-bold"
+				},
+				{
+					"title": "结果留在磁盘上",
+					"description": "每次扫描都写出标准 Strix 运行目录，报告、SARIF 与原始日志在本插件之外同样可用。",
+					"icon": "solar:folder-with-files-bold"
+				}
+			]
+		},
+		{
+			"type": "steps",
+			"items": [
+				{
+					"title": "先准备一次环境",
+					"description": "Strix 的沙箱需要 Docker，模型凭据由它自己持有。控制台会列出缺哪一项、该在哪里填。"
+				},
+				{
+					"title": "填写扫描目标",
+					"description": "从标签页菜单打开「Strix 扫描」，或点击「Strix 扫描」按钮，输入框会带上技能命令。"
+				},
+				{
+					"title": "阅读结论",
+					"description": "每条问题都有严重程度、CVSS、验证过程与修复建议；Markdown 报告与 SARIF 在运行目录里。"
+				}
+			]
+		},
+		{
+			"type": "callout",
+			"tone": "warning",
+			"content": "只扫描你有权测试的系统。Strix 会对目标发出真实的攻击流量。"
+		}
+	]
+}

@@ -37,7 +37,7 @@
   "run.step.settle": "Landing",
   "run.step.handoff": "Hand to you",
   "skill.boardmix.name": "Boardmix Whiteboard",
-  "skill.boardmix.description": "Open the panel, get signed in, and land on the right Boardmix screen — then hand the last click to you.",
+  "skill.boardmix.description": "Three routes: a sentence to the in-page AI, Mermaid to the product's own importer, real input on the page — each one confirmed with a screenshot.",
   "skill.boardmix-canvas.name": "Draw on the Canvas",
   "skill.boardmix-canvas.description": "Put structure on the canvas through the product's own Mermaid channel: stage the source with boardmix_diagram, paste it when asked, then prove it with a PNG. Only the six kinds it parses.",
   "skill.boardmix-collaboration.name": "Share and Collaborate",
@@ -45,7 +45,7 @@
   "skill.boardmix-ai.name": "Generate with Boardmix AI",
   "skill.boardmix-ai.description": "Deliver a written prompt into the in-page AI composer and send it only when asked; generations spend the user's points and are verified by screenshot.",
   "skill.boardmix-io.name": "Import and Export",
-  "skill.boardmix-io.description": "Bring PPT, PDF or Mermaid into a board, or export for a client — with the watermark and size limits said up front.",
+  "skill.boardmix-io.description": "Bring PPT / PDF / Mermaid into a board or export one: Mermaid goes through boardmix_diagram, and the watermark and size limits are stated up front.",
   "agent.boardmix-guide.name": "Whiteboard Guide",
   "agent.boardmix-guide.description": "Works the Boardmix panel for you: opens the right screen, writes the diagram or the prompt, and tells you the one click left."
 }

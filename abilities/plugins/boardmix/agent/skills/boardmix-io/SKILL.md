@@ -38,9 +38,9 @@ not offer SVG, Figma or editable Office files.
 | --- | --- |
 | PPT / PDF | ≤ 50 MB. Many pages means a slow import — do not reload mid-import |
 | Images | Large images slow the canvas; over 150 elements the free tier refuses more |
-| Mermaid (`.mmd`) | The host can import and convert to a flowchart — this is the official landing channel for agent output |
+| Mermaid (`.mmd`) | **交给 `boardmix_diagram`**：它把源落盘，再可选粘到画布由产品自己转换（流程图 / 时序图 / ER / 类图 / 饼图 / 象限图六种）。不要叫用户手拼 |
 | PureRef | Supported in recent versions, for reference boards |
-| Markdown / plain text | Paste into the canvas or a card; no import needed |
+| Markdown / plain text | 粘进画布或卡片，不需要导入——但**它不会变成图**，只是文本 |
 
 ## Two recurring questions
 

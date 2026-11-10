@@ -892,6 +892,47 @@
     },
     {
       "type": "plugin",
+      "slug": "strix",
+      "name": "Strix",
+      "description": "Run an autonomous penetration test from the conversation: Strix agents probe your code, APIs and running apps, then report exploitable findings with proof and fixes.",
+      "version": "0.1.0",
+      "configVersion": 1,
+      "license": "Apache-2.0",
+      "author": "usestrix",
+      "category": "Security",
+      "categoryI18n": {
+        "zh": "安全",
+        "en": "Security"
+      },
+      "tags": [
+        "security",
+        "penetration-testing",
+        "vulnerability",
+        "appsec",
+        "docker"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "Strix",
+            "description": "在对话里跑一次自主渗透测试：Strix 智能体探测代码、API 与运行中的应用，交出带验证过程与修复建议的可利用漏洞。",
+            "tags": [
+              "安全测试",
+              "渗透测试",
+              "漏洞扫描",
+              "应用安全",
+              "Docker"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/strix"
+      },
+      "minAppVersion": "0.5.60"
+    },
+    {
+      "type": "plugin",
       "slug": "video-downloader",
       "name": "Video Downloader",
       "description": "Paste a video link and download the highest quality locally — 1000+ sites supported, with progress, a queue and a shortcut to the finished file. The engine sets itself up, so there is nothing to install.",
@@ -1875,7 +1916,7 @@
       "slug": "boardmix",
       "name": "Boardmix Whiteboard",
       "description": "Boardmix's own whiteboard inside a side panel: sign in once and work on your boards without leaving the conversation, while the agent can open the panel and take you to the workspace, a new board or an AI entry.",
-      "version": "0.0.10",
+      "version": "0.0.11",
       "configVersion": 1,
       "license": "Proprietary",
       "author": "Astravia",

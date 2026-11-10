@@ -1,0 +1,158 @@
+{
+	"id": "strix",
+	"name": "%plugin.name%",
+	"icon": "assets/icon.png",
+	"version": "0.1.0",
+	"defaultLocale": "en",
+	"pluginApiVersion": "^2.4.0",
+	"entry": "dist/mf-manifest.json",
+	"moduleFederation": {
+		"remoteName": "strix",
+		"expose": "./plugin"
+	},
+	"styles": [
+		"dist/style.css"
+	],
+	"permissions": [
+		"ui.slot.activity-tab",
+		"ui.slot.input-action",
+		"agent.skills.control",
+		"agent.mcp.control",
+		"agent.command.run",
+		"agent.command.spawn",
+		"storage.read",
+		"storage.write",
+		"shell.openExternal"
+	],
+	"commands": [
+		"python",
+		"python3",
+		"uv",
+		"pipx",
+		"docker"
+	],
+	"providers": {
+		"cli": [
+			{
+				"id": "strix",
+				"command": "strix",
+				"probe": {
+					"args": [
+						"--version"
+					],
+					"timeoutMs": 60000
+				},
+				"install": {
+					"command": "uv",
+					"args": [
+						"tool",
+						"install",
+						"strix-agent"
+					],
+					"timeoutMs": 600000
+				}
+			}
+		],
+		"services": [
+			{
+				"id": "strix-bridge",
+				"runtime": {
+					"kind": "host-node",
+					"version": "0.1.0",
+					"entry": "service/main.mjs",
+					"platforms": {
+						"win32-x64": {
+							"executable": "service/main.mjs",
+							"artifacts": [
+								{
+									"sha256": "4c43e50eaa2a50a382d7dacba8fd213227a17874b7f21a93106e2a1ce3d5d609",
+									"archive": "file",
+									"destination": "service/main.mjs"
+								}
+							]
+						},
+						"darwin-x64": {
+							"executable": "service/main.mjs",
+							"artifacts": [
+								{
+									"sha256": "4c43e50eaa2a50a382d7dacba8fd213227a17874b7f21a93106e2a1ce3d5d609",
+									"archive": "file",
+									"destination": "service/main.mjs"
+								}
+							]
+						},
+						"darwin-arm64": {
+							"executable": "service/main.mjs",
+							"artifacts": [
+								{
+									"sha256": "4c43e50eaa2a50a382d7dacba8fd213227a17874b7f21a93106e2a1ce3d5d609",
+									"archive": "file",
+									"destination": "service/main.mjs"
+								}
+							]
+						},
+						"linux-x64": {
+							"executable": "service/main.mjs",
+							"artifacts": [
+								{
+									"sha256": "4c43e50eaa2a50a382d7dacba8fd213227a17874b7f21a93106e2a1ce3d5d609",
+									"archive": "file",
+									"destination": "service/main.mjs"
+								}
+							]
+						},
+						"linux-arm64": {
+							"executable": "service/main.mjs",
+							"artifacts": [
+								{
+									"sha256": "4c43e50eaa2a50a382d7dacba8fd213227a17874b7f21a93106e2a1ce3d5d609",
+									"archive": "file",
+									"destination": "service/main.mjs"
+								}
+							]
+						}
+					}
+				},
+				"process": {
+					"args": [],
+					"env": {
+						"ASTRAVIA_SERVICE_PORT": "${ASTRAVIA_SERVICE_PORT}",
+						"ASTRAVIA_SERVICE_DATA_DIR": "${ASTRAVIA_SERVICE_DATA_DIR}",
+						"ASTRAVIA_SERVICE_RUNTIME_DIR": "${ASTRAVIA_SERVICE_RUNTIME_DIR}",
+						"ASTRAVIA_SERVICE_CACHE_DIR": "${ASTRAVIA_SERVICE_CACHE_DIR}"
+					}
+				},
+				"health": {
+					"path": "/api/health/ready",
+					"timeoutMs": 120000
+				}
+			}
+		]
+	},
+	"agent": {
+		"skillPaths": [
+			"agent/skills"
+		],
+		"skillPresentation": {
+			"defaultVisibility": "visible",
+			"surfaces": {
+				"skillPicker": "visible",
+				"commandPalette": "visible",
+				"abilityCatalog": "visible",
+				"agentConfiguration": "visible",
+				"pluginDetail": "visible"
+			}
+		},
+		"mcpServers": {
+			"strix": {
+				"type": "service",
+				"serviceId": "strix-bridge",
+				"path": "/mcp",
+				"displayName": "Strix security testing",
+				"description": "Start, watch and report Strix security scans through the host agent."
+			}
+		}
+	},
+	"description": "%plugin.description%",
+	"author": "usestrix"
+}
