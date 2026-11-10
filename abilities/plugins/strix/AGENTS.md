@@ -37,10 +37,11 @@ STRIX_PYTHON=/path/to/python node scripts/check-service.mjs
 1. **库级集成，不是 CLI 包装。** 上游没有服务模式、没有本地 HTTP API、没有 JSON 事件流（`--json` 只存在于 `strix cloud`）。唯一能流式观察扫描的入口是 `run_strix_scan(event_sink=…)`，所以桥接进程直接调用它。
 2. **事件用上游自己的投影。** `event_sink` 给的是 OpenAI Agents SDK 对象；`service/bridge/scan.py` 用上游的 `TuiLiveView`（其 Go TUI 用的同一套解释器）投影后再序列化，避免我们自己维护一份平行解析。
 3. **host-node 壳 + Python 子进程。** 宿主只提供 `host-node` 与 `managed-binary`；把 Python 打成各平台二进制意味着每平台约百 MB 工件与校验维护。`service/main.mjs` 拉起 `python -m bridge` 并用 JSON 行通信，上游改动落在 `service/bridge/`。
-4. **面板默认不显示。** `registerActivityTab({ initiallyVisible: false })`：安装只增加一个菜单项，不在对话框下方常驻。三个入口（标签页菜单、`strix.activate` 输入框按钮、技能斜杠命令）汇到同一激活路径。
-5. **技能不全量注入。** 对外 9 个进 `agent.skillPaths`；内部 78 个（`strix/skills/<category>/<name>.md`）留在 strix 包内由它自己的 `load_skill` 加载——复制进宿主只会重复消耗提示词预算。
-6. **模型凭据由 strix 自己持有。** 不读宿主凭据：provider 命名体系不同，映射出来的「看起来配好了」会导致扫描 401。
-7. **不提交 `release/`。** 与 `docs/plugin-project-structure.md:52` 冲突时以 `.gitignore` + `scripts/stage-plugin-release.py` 为准。
+4. **面板默认不显示。** `registerActivityTab({ initiallyVisible: false })`：安装只增加一个菜单项，不在对话框下方常驻。两个入口（标签页菜单、`strix.activate` 输入框按钮）打开同一面板，激活靠 `decoratePrompt` 往下一条 prompt 注入插件指令，不再依赖技能名。
+5. **技能是插件内部实现，不是产品条目。** `skillPresentation.defaultVisibility: "hidden"`：对外 9 个技能仍随 `agent.skillPaths` 加载、Agent 可调用，但不会以单独条目出现在能力中心、智能体能力配置、命令菜单或 Skill 选择器——用户装的是 Strix，看到的是 Strix 的图标和描述。内部 78 个（`strix/skills/<category>/<name>.md`）留在 strix 包内由它自己的 `load_skill` 加载。
+6. **面板就是上游 TUI 的复刻。** 左侧带边框的对话轨迹（`▍ You:` / `→ Using tool` / `✓ Done`）+ 下方启动表单，右侧 stats / targets / agents / findings 四个圆角方框；配色照搬 `render/styles.go`（`#0a0a0a` 底、`#d4d4d4` 文字、`#22c55e` 强调），不用宿主主题变量，所以在浅色主题下也保持同一副面孔。
+7. **模型凭据由 strix 自己持有。** 不读宿主凭据：provider 命名体系不同，映射出来的「看起来配好了」会导致扫描 401。
+8. **不提交 `release/`。** 与 `docs/plugin-project-structure.md:52` 冲突时以 `.gitignore` + `scripts/stage-plugin-release.py` 为准。
 
 ## 改动时注意
 

@@ -2,7 +2,7 @@
   "id": "strix",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -58,7 +58,7 @@
         "id": "strix-bridge",
         "runtime": {
           "kind": "host-node",
-          "version": "0.1.3",
+          "version": "0.1.4",
           "entry": "service/main.mjs",
           "platforms": {
             "win32-x64": {
@@ -284,14 +284,7 @@
       "agent/skills"
     ],
     "skillPresentation": {
-      "defaultVisibility": "visible",
-      "surfaces": {
-        "skillPicker": "visible",
-        "commandPalette": "visible",
-        "abilityCatalog": "visible",
-        "agentConfiguration": "visible",
-        "pluginDetail": "visible"
-      }
+      "defaultVisibility": "hidden"
     },
     "mcpServers": {
       "strix": {

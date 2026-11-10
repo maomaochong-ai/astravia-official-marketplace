@@ -5,12 +5,15 @@
  *  1. `strix.console` activity tab - `initiallyVisible: false`, so installing the
  *     plugin does not add a panel under the conversation. It appears when the
  *     user opens it from the tab menu or triggers activation below.
- *  2. `strix.activate` input action - one click opens the tab and offers the
- *     Strix skill command, which is how the agent side gets invoked.
+ *  2. `strix.activate` input action - opens the tab and marks the next prompt as
+ *     a Strix request.
  *
- * The skills themselves (`agent/skills/*`) are declared in plugin.json, so they
- * already appear in the host's slash-command list and skill picker; this file
- * only wires the UI to them.
+ * The plugin's skills are declared with `defaultVisibility: "hidden"` in
+ * plugin.json. They are implementation detail: a user installs *Strix*, and the
+ * capability page, slash menu and skill picker must show Strix - icon and
+ * description - not nine separate entries that look like nine products. The
+ * agent still loads them through `agent.skillPaths`; activation therefore speaks
+ * to the agent through `decoratePrompt` instead of typing a skill command.
  */
 
 import "./style.css";
@@ -24,8 +27,6 @@ import { createServiceRuntime, type ServiceRuntime } from "./runtime";
 
 const TAB_ID = "strix.console";
 const ACTION_ID = "strix.activate";
-/** The primary skill; typing its slash command is the documented way in. */
-const ENTRY_SKILL = "penetration-testing-with-strix";
 
 function ConsoleTab({ ctx, runtime }: { ctx: PluginContext; runtime: ServiceRuntime }): React.ReactElement {
 	const t = (key: string) => ctx.i18n.t(key);
@@ -62,14 +63,11 @@ export default definePlugin({
 				}
 				ctx.ui.setActivityTabVisible(TAB_ID, true);
 				ctx.ui.openActivityTab(TAB_ID, { width: "max" });
-				// Fill the composer with the skill command instead of sending it:
-				// the user supplies the target, the agent then runs the workflow.
-				try {
-					ctx.conversation.insertText(`/${ENTRY_SKILL} `);
-				} catch (error) {
-					console.warn("[strix] cannot write to composer", error);
-				}
 			},
+			// The plugin's own instructions travel with the prompt, so the agent knows the
+			// console is open and what to do with a target - without the user having to
+			// remember a hidden skill name.
+			decoratePrompt: () => ({ instructions: [ctx.i18n.t("prompt.instructions")] }),
 		});
 
 		return {

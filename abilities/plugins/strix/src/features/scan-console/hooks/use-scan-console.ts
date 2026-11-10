@@ -7,6 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { TuiUiEvent } from "../components/trace-block";
 import type {
 	BridgeClient,
 	StartScanRequest,
@@ -21,6 +22,9 @@ import type {
 
 const TIMELINE_LIMIT = 400;
 
+/** The bridge forwards upstream's projected records verbatim; this is that shape. */
+type RankedEvent = TuiUiEvent & { id: string };
+
 export type ConsolePhase = "booting" | "ready" | "unready" | "error";
 
 export interface ScanConsoleModel {
@@ -30,7 +34,7 @@ export interface ScanConsoleModel {
 	runs: ScanRunSummary[];
 	activeRun?: ScanRunSummary;
 	findings: StrixFinding[];
-	timeline: ScanRecord[];
+	timeline: TuiUiEvent[];
 	scanning: boolean;
 	boot: () => Promise<void>;
 	start: (request: StartScanRequest) => Promise<void>;
@@ -49,7 +53,7 @@ export function useScanConsole(client: BridgeClient, workspace?: string): ScanCo
 	const [runs, setRuns] = useState<ScanRunSummary[]>([]);
 	const [selectedRun, setSelectedRun] = useState<string>();
 	const [findingsByRun, setFindingsByRun] = useState<Record<string, StrixFinding[]>>({});
-	const [timeline, setTimeline] = useState<ScanRecord[]>([]);
+	const [timeline, setTimeline] = useState<TuiUiEvent[]>([]);
 	const [scanning, setScanning] = useState(false);
 	const liveRun = useRef<string | undefined>(undefined);
 
@@ -111,9 +115,17 @@ export function useScanConsole(client: BridgeClient, workspace?: string): ScanCo
 						break;
 					}
 					case "scan_event": {
-						const record = (event as { record?: ScanRecord }).record;
+						const record = (event as { record?: RankedEvent }).record;
 						if (!record) break;
-						setTimeline((previous) => [...previous, record].slice(-TIMELINE_LIMIT));
+						// Upstream republishes an event as its content grows (version bumps); keep one
+						// row per event id so streaming text replaces itself instead of stacking.
+						setTimeline((previous) => {
+							const at = previous.findIndex((item) => item.id === record.id);
+							if (at < 0) return [...previous, record].slice(-TIMELINE_LIMIT);
+							const next = previous.slice();
+							next[at] = record;
+							return next;
+						});
 						break;
 					}
 					case "scan_finished":
