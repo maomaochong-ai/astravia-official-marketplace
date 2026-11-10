@@ -37,7 +37,7 @@
   "run.step.settle": "落点",
   "run.step.handoff": "交给你",
   "skill.boardmix.name": "Boardmix 白板",
-  "skill.boardmix.description": "打开面板、确认已登录、落到该去的那个页面，最后一步点给你。",
+  "skill.boardmix.description": "三路并用：一句话交给页内 AI，Mermaid 交给产品自己转换，页面用真实键鼠读和点——每一步都用截图核对。",
   "skill.boardmix-canvas.name": "在画布上画图",
   "skill.boardmix-canvas.description": "用产品自己的 Mermaid 通道往画布上放结构：先用 boardmix_diagram 把源文件落到项目里，需要时再粘上去、拍图核对。只认它解析的那六种图。",
   "skill.boardmix-collaboration.name": "协作与分享",
@@ -45,7 +45,7 @@
   "skill.boardmix-ai.name": "用博思 AI 生成",
   "skill.boardmix-ai.description": "把写清楚的 prompt 递进页内 AI 的输入框，用户要求时才代为发送；生成花用户积分，结果以截图核对。",
   "skill.boardmix-io.name": "导入与导出",
-  "skill.boardmix-io.description": "把 PPT、PDF 或 Mermaid 导进白板，或者导一版给客户——水印和体积限制提前说明白。",
+  "skill.boardmix-io.description": "把 PPT、PDF 或 Mermaid 导进白板，或者导一版给客户：Mermaid 走 boardmix_diagram，水印与体积限制提前说明。",
   "agent.boardmix-guide.name": "白板向导",
   "agent.boardmix-guide.description": "替你操作 Boardmix 面板：打开对的页面、写好图或提示词，并告诉你只剩哪一步要点。"
 }
