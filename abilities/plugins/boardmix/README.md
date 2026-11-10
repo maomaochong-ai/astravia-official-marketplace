@@ -62,13 +62,26 @@ tool cannot forget it.
 | `boardmix_tab_status` | Reads the snapshot; never opens the tab |
 | `boardmix_open_in_browser` | Hands the current address to the system browser |
 | `boardmix_automate` | Runs one recipe (focus / create / ai-ppt / ai-flowchart / ai-chat / open-url) as a sequence of steps and returns the run |
+| `boardmix_read` | Lists the controls on screen with the viewport point to click |
+| `boardmix_act` | Sends real clicks, keys and typing, and reports every step |
+| `boardmix_shot` | Captures the panel as a PNG — the only way to see the canvas |
+| `boardmix_diagram` | Stages Mermaid as a `.mmd` in the project and, with `apply`, pastes it so Boardmix's own importer draws it (ADR bm-0002) |
+| `boardmix_ai_prompt` | Puts a written prompt into the in-page AI composer, and sends it only when asked (ADR bm-0003) |
 
-Every tool returns the same envelope: `{ ok, open, url, origin, phase, seedLevel, landedAt, next }`,
-serialized as JSON. `next` is a sentence the model can act on, not a code. The tools are
-deliberately limited to *reaching* a place; reading the canvas, clicking inside boardmix, running
-a generation or exporting a file are not exposed, because no supported interface exists for them.
+The navigation tools return one envelope: `{ ok, open, url, origin, phase, seedLevel, landedAt, next }`,
+serialized as JSON; `next` is a sentence the model can act on, not a code. The page tools report what the
+DOM actually held (`items`, `shot`, `steps`); the two semantic tools report what the product did with the
+text they were given (`staged`, `applied`, `delivered`, `sent`).
+
+The canvas does have a full object-model API inside the shipped bundle (`createSticky`, `createMM`,
+`move`, `setTextContent`, …), but it is bound to an internal SDK bridge rather than to the page, so a
+cross-origin panel cannot call it. That is why there is no `boardmix_create_shape`: see
+`docs/adr/boardmix/bm-0001`. What *is* supported — and what the last two rows use — is handing the
+product text it already knows how to turn into shapes: Mermaid (`bm-0002`), and its own AI prompt box
+(`bm-0003`).
+
 `boardmix_new`, `boardmix_ai` and the handoff recipes of `boardmix_automate` say so with
-`needsUserAction: true`.
+`needsUserAction: true`; the semantic tools say it with `send: false` and an explicit points line.
 
 ## Automation runs before the answer
 

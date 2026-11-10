@@ -71,12 +71,17 @@ There is no published per-operation price table, so do not quote one. What you c
 When the user asks "how many points will this cost", the answer is "以页面提示为准" plus the monthly
 figure — never a fabricated per-item number.
 
-## Hand-off sentence
+## 交付句
 
-Close with something the user can act on immediately:
+prompt 现在是**递进去**的（`boardmix_ai_prompt`），不是让用户自己粘。所以结尾分两种：
 
-> 需求已经拆到可以直接粘的程度。点「生成」，余额和消耗页面会自己显示；出来之后要改结构就告诉我，
-> 我改提示词，你重新生成。
+递进去但没发送（默认）：
 
-That is the honest shape: you did the thinking, they press the button, and the next iteration is still
-yours.
+> prompt 已经放进输入框，没有替你按发送——一次生成花的是你账户的积分。看完没问题点「生成」，
+> 出来之后要改结构就告诉我，我改提示词，你再生成。
+
+用户明确要求我们发时：
+
+> 已经替你发了，花的是你账户的积分。生成完我拍张图确认落地结果。
+
+两种都是同一个形状：**思考是我们的，按钮和积分是他们的。**

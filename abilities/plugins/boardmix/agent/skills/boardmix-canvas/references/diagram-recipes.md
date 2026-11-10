@@ -1,82 +1,56 @@
-# Diagram recipes
+# Mermaid recipes
 
-Practical rules for the Mermaid you hand over. Nothing here needs the canvas to be visible.
+写出**产品真的会解析**的那六类：`flowchart`（含 `graph`）、`sequenceDiagram`、`erDiagram`、
+`classDiagram`、`pie`、`quadrantChart`。依据是产品自己的文案
+（`支持解析mermaid格式的流程图、时序图、ER图、类图、饼图和象限图。`，见 `.rea/boardmix-1.8.5`）。
 
-## Pick the right diagram type
+`mindmap` **不在**这张表里：Mermaid 是导入通道，思维导图是产品自己的创作工具，两者不是一回事。
+用户要思维导图，走「创作工具 → 思维导图」，或用页内 AI（`boardmix_ai_prompt`）描述结构。
 
-| The content is | Use | Why not the other one |
+## 选类型
+
+| 内容是 | 用 | 不要用 |
 | --- | --- | --- |
-| Steps with decisions and loops | `flowchart TD` | A mind map cannot express a branch condition |
-| Work crossing roles or systems | `flowchart LR` with subgraphs per role | Swimlane in `flowchart` reads left-to-right; vertical collapses the lanes |
-| One topic fanning outward | `mindmap` | A flowchart of a hierarchy looks like an org chart and loses the "expand one branch" feel |
-| Systems and their dependencies | `flowchart LR`, edges labelled with the interaction | Sequence notation promises timing you do not have |
-| Ordered messages between parties | `sequenceDiagram` | Only when the user actually listed the message order |
+| 带判断与回环的步骤 | `flowchart TD` | 时序图表达不了分支条件 |
+| 跨角色或跨系统的流程 | `flowchart LR`，每个角色一个 subgraph | 纵向 `TD` 会把泳道压扁 |
+| 系统与依赖 | `flowchart LR`，连线写清交互 | 时序图会承诺你并没有的时间顺序 |
+| 有明确先后顺序的消息往来 | `sequenceDiagram` | 只在用户真的给了顺序时用 |
+| 数据模型 | `erDiagram` | 别用类图冒充关系 |
+| 占比 | `pie` | 只有合计为 100% 时才用 |
+| 二维定位（重要度 × 紧急度） | `quadrantChart` | 一维排名用 `flowchart` 更好读 |
 
-If the user's content has no edges — just items — do not invent a diagram. A Markdown list *is* the
-right artefact for a sticky wall.
+内容里没有连线、只有条目时，别硬造一张图——那是一个清单，交给便签或文档，不是 Mermaid。
 
-## Node text
+## 节点文本
 
-- **≤ 15 characters per node.** Longer text goes into a second node or into the reply as a note.
-- No trailing punctuation inside a node.
-- CJK with parentheses, slashes or colons must be quoted: `A["审批（法务）"]`. Unquoted `(` starts a
-  shape modifier and the parse fails.
-- Nouns, not sentences. `生成报价单`, not `系统会在这里生成一份报价单`.
+- **每个节点 ≤ 15 字。** 更长的内容拆成两个节点，或写进回复。
+- 节点里不要句末标点。
+- 中文里带括号、斜杠、冒号的必须加引号：`A["审批（法务）"]`。裸 `(` 会被当成形状修饰符。
+- 名词，不是句子：`生成报价单`，不是 `系统会在这里生成一份报价单`。
 
-## Edges
+## 连线
 
-- Label every branch: `-->|是|`, `-->|否|`, `-->|超时|`. An unlabelled fan-out is a diagram the reader
-  has to reverse-engineer.
-- No edge crosses a subgraph boundary without a reason. If it does, the partition is wrong.
-- Happy path left-to-right or top-down; error paths to the side. Do not zigzag.
-- One start node per diagram. Two starts means two diagrams.
+- 每个分支都标注：`-->|是|`、`-->|否|`、`-->|超时|`。
+- 不过度跨界：一条线横穿两个 subgraph，说明分区错了。
+- 正常路径一个方向；错误路径放侧边，别来回折。
+- 一张图一个起点。两个起点就是两张图。
 
-## Sizing to the element budget
+## 元素数
 
-Each node, each edge and each subgraph frame counts against the 150-element free limit. Rough
-counting, which is close enough to warn the user accurately:
+`boardmix_diagram` 会自己数（节点按 id 去重 + 连线），并在 `staged.elements` 里返回。规则：
 
-| Diagram | Elements |
-| --- | --- |
-| 8 nodes + 9 edges | ~17 |
-| 15 nodes + 18 edges + 3 subgraphs | ~36 |
-| 25 nodes + 30 edges + 5 subgraphs | ~60 |
+| 规模 | 估算 | 说明 |
+| --- | --- | --- |
+| 8 节点 + 9 连线 | ~17 | 一屏能读完 |
+| 15 节点 + 18 连线 | ~33 | 还行 |
+| 25 节点 + 30 连线 | ~55 | 接近"能改得动"的上限 |
 
-Over 60, split the diagram along its own subgraph boundary and say why: two readable diagrams beat
-one unreadable one, and the split keeps them inside the free budget.
+超过 60 就按 subgraph 边界拆开，并说明为什么：两张读得懂的图胜一张读不懂的，也守住了免费额度。
 
-## Mind map shape
+## 交付前
 
-```text
-mindmap
-  root((Q3 路线))
-    目标
-      留存
-      收入
-    关键结果
-      留存率 45%
-      续费率 80%
-```
-
-- Three levels deep is the practical maximum for a canvas; a fourth level is a doc page, not a map.
-- Branch names are nouns; keep sibling branches parallel in grammar.
-- Do not put numbers in the map if the user will change them — they become stale inside a picture.
-
-## Paste-friendly Markdown for stickies
-
-```markdown
-- 用户反馈：导出太慢
-- 用户反馈：找不到历史版本
-- 待验证：模板库使用率
-```
-
-One bullet per sticky, no nesting, no bold. Nested bullets paste as one sticky containing dashes,
-which the user then has to split by hand.
-
-## Before you hand it over
-
-1. Count the nodes and edges; write the number in the reply.
-2. Read the Mermaid once for unquoted CJK punctuation.
-3. Check every branch has a label.
-4. Check there is exactly one entry point.
-5. Only then name the landing step (创作工具 → 流程图 / 思维导图).
+1. 让工具数元素，把数字写进回复；
+2. 通读一遍，找没加引号的中文标点；
+3. 每个分支都有标注；
+4. 只有一个入口；
+5. 这时才提落地方式：`boardmix_diagram` 的 `apply`，或把 `.mmd` 交给用户导入（创作工具 → 流程图）。

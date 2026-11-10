@@ -13,4 +13,6 @@ export const TOOL_IDS = {
 	read: "boardmix_read",
 	shot: "boardmix_shot",
 	act: "boardmix_act",
+	diagram: "boardmix_diagram",
+	aiPrompt: "boardmix_ai_prompt",
 } as const;
