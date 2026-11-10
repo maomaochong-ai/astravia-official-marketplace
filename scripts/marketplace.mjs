@@ -248,7 +248,7 @@ async function main() {
             }
             writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
             // 2. 生成 lockfile（resolved 指向本地路径）
-            execFileSync('npm', ['install', '--package-lock-only', '--no-audit', '--no-fund', '--legacy-peer-deps'], { cwd: directory, stdio: 'pipe' });
+            execFileSync(process.execPath, [npmCli, 'install', '--package-lock-only', '--no-audit', '--no-fund', '--legacy-peer-deps'], { cwd: directory, stdio: 'pipe' });
             // 3. 还原 package.json（semver 声明不变 ✅）
             writeFileSync(pkgPath, pkgOrig);
           }
