@@ -214,9 +214,15 @@ async function main() {
     root, output, previous: previous && resolve(previous), baseline, sourceSha: git('rev-parse', 'HEAD'), strictSlugs,
     buildPlugin: directory => {
       const npmCli = join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
+      // 失败的命令得能自己说出来：CI 里只看到 “Process completed with exit code 1”，
+      // 而 npm 的报错已经随 stdio:'inherit' 混在上面几百行里。
       const npmRun = args => {
-        if (process.platform === 'win32') execFileSync(process.execPath, [npmCli, ...args], { cwd: directory, stdio: 'inherit' });
-        else execFileSync('npm', args, { cwd: directory, stdio: 'inherit' });
+        try {
+          if (process.platform === 'win32') execFileSync(process.execPath, [npmCli, ...args], { cwd: directory, stdio: 'inherit' });
+          else execFileSync('npm', args, { cwd: directory, stdio: 'inherit' });
+        } catch (error) {
+          throw new Error(`npm ${args.join(' ')} failed in ${relative(root, directory)} (exit ${error.status ?? '?'})`);
+        }
       };
       const toolingDir = resolve(option('--tooling') ?? '.tooling/open-astravia');
       const dev = existsSync(join(toolingDir, 'packages'));
@@ -291,4 +297,16 @@ async function main() {
   console.log(`Prepared ${result.packages.length} new packages; distribution changed: ${result.changed}`);
 }
 
-if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) main().catch(error => { console.error(error.message); process.exitCode = 1; });
+if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
+  main().catch(error => {
+    const message = String(error?.message ?? error);
+    console.error(message);
+    // 与 publish-marketplace.mjs 同一个理由：没有仓库 admin 权限时看不到作业日志，
+    // 注解是唯一能让失败原因浮到面上的地方。
+    if (process.env.GITHUB_ACTIONS) {
+      const escaped = message.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+      console.log(`::error::${escaped.slice(0, 6000)}`);
+    }
+    process.exitCode = 1;
+  });
+}
