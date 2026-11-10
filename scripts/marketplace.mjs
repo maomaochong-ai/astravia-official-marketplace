@@ -254,7 +254,10 @@ async function main() {
             }
             writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
             // 2. 生成 lockfile（resolved 指向本地路径）
-            execFileSync(process.execPath, [npmCli, 'install', '--package-lock-only', '--no-audit', '--no-fund', '--legacy-peer-deps'], { cwd: directory, stdio: 'pipe' });
+            // 走同一个 npmRun：它知道 Windows 上要用 npm-cli.js、POSIX 上直接用 npm。
+            // 直接拼 `dirname(node)/node_modules/npm/bin/npm-cli.js` 只在 Windows 布局下成立，
+            // 在 GitHub runner 上 npm 住在 `<prefix>/lib/node_modules`，那条路径不存在。
+            npmRun(['install', '--package-lock-only', '--no-audit', '--no-fund', '--legacy-peer-deps']);
             // 3. 还原 package.json（semver 声明不变 ✅）
             writeFileSync(pkgPath, pkgOrig);
           }
