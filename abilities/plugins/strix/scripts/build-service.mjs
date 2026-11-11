@@ -1,26 +1,29 @@
 /**
- * Bundle the host-node service from `src/service/` into `service/main.mjs`.
+ * Bundle the host-node service from `src/service/` into `dist/service/main.mjs`.
  *
- * The host launches the entry with plain Node, and the marketplace packager copies
- * `service/` as it is - so the shipped artifact has to be JavaScript even though
- * every line is authored in TypeScript. This step is the bridge between the two,
- * and `npm run build` runs it before the UI build.
+ * The host launches the entry with plain Node, and the packager copies `dist/` as
+ * it finds it - so the artifact has to be JavaScript even though every line is
+ * authored in TypeScript. This step is the only bridge between the two, and there
+ * is deliberately no `service/` directory in the source tree: generated code lives
+ * next to the rest of the build output, which is already gitignored.
+ *
+ * Runs *after* `vite build`, because Vite empties `dist/` on each run.
  */
 
 import { build } from "esbuild";
-import { mkdir, readdir, readFile, rm } from "node:fs/promises";
+import { mkdir, readFile, readdir } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const outDir = join(root, "service");
+const outDir = join(root, "dist", "service");
+const outFile = join(outDir, "main.mjs");
 
-await rm(outDir, { recursive: true, force: true });
 await mkdir(outDir, { recursive: true });
 
 await build({
 	entryPoints: [join(root, "src/service/main.ts")],
-	outfile: join(outDir, "main.mjs"),
+	outfile: outFile,
 	bundle: true,
 	platform: "node",
 	format: "esm",
@@ -29,7 +32,7 @@ await build({
 	logLevel: "warning",
 });
 
-/** The service must stay one language: refuse to ship any Python. */
+/** The shipped service must stay one language; refuse to bundle any Python. */
 async function assertJavaScriptOnly(dir) {
 	for (const entry of await readdir(dir, { withFileTypes: true })) {
 		const full = join(dir, entry.name);
@@ -42,5 +45,6 @@ async function assertJavaScriptOnly(dir) {
 }
 await assertJavaScriptOnly(outDir);
 
-const bundle = await readFile(join(outDir, "main.mjs"), "utf8");
-console.log(`service/main.mjs built (${(bundle.length / 1024).toFixed(1)} kB)`);
+const bundle = await readFile(outFile, "utf8");
+if (!bundle.includes("tools/list")) throw new Error("bundle looks wrong: no MCP tool surface found");
+console.log(`dist/service/main.mjs built (${(bundle.length / 1024).toFixed(1)} kB)`);

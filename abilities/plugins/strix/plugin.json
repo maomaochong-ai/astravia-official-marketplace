@@ -2,7 +2,7 @@
   "id": "strix",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -58,56 +58,56 @@
         "id": "strix-bridge",
         "runtime": {
           "kind": "host-node",
-          "version": "0.3.0",
-          "entry": "service/main.mjs",
+          "version": "0.3.1",
+          "entry": "dist/service/main.mjs",
           "platforms": {
             "win32-x64": {
-              "executable": "service/main.mjs",
+              "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "948dab5bb94d785edb419784f94c73bff1bb79e90d6979e366418e2dbbdb4603",
+                  "sha256": "88970e6ac78041e274afb02726f9c77d24bed6d4ce7b316f9d90a82f015cc2b6",
                   "archive": "file",
-                  "destination": "service/main.mjs"
+                  "destination": "dist/service/main.mjs"
                 }
               ]
             },
             "darwin-x64": {
-              "executable": "service/main.mjs",
+              "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "948dab5bb94d785edb419784f94c73bff1bb79e90d6979e366418e2dbbdb4603",
+                  "sha256": "88970e6ac78041e274afb02726f9c77d24bed6d4ce7b316f9d90a82f015cc2b6",
                   "archive": "file",
-                  "destination": "service/main.mjs"
+                  "destination": "dist/service/main.mjs"
                 }
               ]
             },
             "darwin-arm64": {
-              "executable": "service/main.mjs",
+              "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "948dab5bb94d785edb419784f94c73bff1bb79e90d6979e366418e2dbbdb4603",
+                  "sha256": "88970e6ac78041e274afb02726f9c77d24bed6d4ce7b316f9d90a82f015cc2b6",
                   "archive": "file",
-                  "destination": "service/main.mjs"
+                  "destination": "dist/service/main.mjs"
                 }
               ]
             },
             "linux-x64": {
-              "executable": "service/main.mjs",
+              "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "948dab5bb94d785edb419784f94c73bff1bb79e90d6979e366418e2dbbdb4603",
+                  "sha256": "88970e6ac78041e274afb02726f9c77d24bed6d4ce7b316f9d90a82f015cc2b6",
                   "archive": "file",
-                  "destination": "service/main.mjs"
+                  "destination": "dist/service/main.mjs"
                 }
               ]
             },
             "linux-arm64": {
-              "executable": "service/main.mjs",
+              "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "948dab5bb94d785edb419784f94c73bff1bb79e90d6979e366418e2dbbdb4603",
+                  "sha256": "88970e6ac78041e274afb02726f9c77d24bed6d4ce7b316f9d90a82f015cc2b6",
                   "archive": "file",
-                  "destination": "service/main.mjs"
+                  "destination": "dist/service/main.mjs"
                 }
               ]
             }

@@ -83,5 +83,4 @@ export const dockerApi = {
 	exec: (name: string, script: string, timeoutMs: number) =>
 		docker(["exec", "-i", name, "sh", "-c", script], timeoutMs),
 	remove: (name: string) => docker(["rm", "-f", name], 60_000),
-	inspect: (name: string) => docker(["inspect", "-f", "{{.State.Running}}", name], 15_000),
 };

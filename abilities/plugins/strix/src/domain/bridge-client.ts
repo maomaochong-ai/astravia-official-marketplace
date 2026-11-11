@@ -10,7 +10,7 @@
  * client only reads what those calls produced.
  */
 
-import type { BridgeEvent, BridgeState, StrixFinding } from "./runtime-contract";
+import type { BridgeEvent, BridgeState, StrixFinding } from "../runtime-contract";
 
 export interface BridgeClient {
 	state(): Promise<BridgeState>;

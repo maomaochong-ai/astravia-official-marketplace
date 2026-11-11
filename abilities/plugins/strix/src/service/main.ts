@@ -13,6 +13,7 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { dockerReady, imagePresent } from "./docker";
 import * as findings from "./findings";
 import { locateSkills, loadBodies, loadIndex } from "./skills";
@@ -32,15 +33,19 @@ function record(payload: Record<string, unknown>): void {
 }
 
 const sandbox = new Sandbox(record, DATA_DIR);
-let version = "0.0.0";
-try {
-	// Written by the host's installer beside the runtime; absent in a source checkout.
-	version = (await import("node:fs")).readFileSync(new URL("../.runtime.json", import.meta.url), "utf8")
-		? JSON.parse((await import("node:fs/promises")).then ? "{}" : "{}")
-		: "0.0.0";
-} catch {
-	version = "0.0.0";
+
+/** The installer writes `.runtime.json` beside the entry; absent in a source checkout. */
+function readVersion(): string {
+	try {
+		const marker = JSON.parse(readFileSync(new URL("../.runtime.json", import.meta.url), "utf8")) as {
+			version?: string;
+		};
+		return typeof marker.version === "string" ? marker.version : "0.0.0";
+	} catch {
+		return "0.0.0";
+	}
 }
+const version = readVersion();
 
 async function environment() {
 	const [docker, image] = await Promise.all([dockerReady(), imagePresent(sandboxImage())]);

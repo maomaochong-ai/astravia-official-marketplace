@@ -119,11 +119,6 @@ export async function list(sessionId: string, params: Record<string, unknown> = 
 	return { count: ordered.length, bySeverity: tally(ordered), findings: ordered };
 }
 
-export async function clear(sessionId: string): Promise<{ cleared: string }> {
-	await write(sessionId, []);
-	return { cleared: sessionId };
-}
-
 const SECTIONS: [string, keyof Finding][] = [
 	["Description", "description"],
 	["Impact", "impact"],

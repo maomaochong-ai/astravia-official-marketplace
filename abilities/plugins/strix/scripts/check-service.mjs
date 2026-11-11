@@ -3,7 +3,8 @@
 import { spawn } from "node:child_process";
 import { join } from "node:path";
 
-const SERVICE = join(import.meta.dirname, "..", "service", "main.mjs");
+// The service is a build artifact: `npm run build` produces dist/service/main.mjs.
+const SERVICE = join(import.meta.dirname, "..", "dist", "service", "main.mjs");
 const PORT = 18777;
 const BASE = `http://127.0.0.1:${PORT}`;
 

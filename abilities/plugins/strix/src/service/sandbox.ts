@@ -162,11 +162,6 @@ export class Sandbox {
 		this.emit({ event: "sandbox_stopped", sessionId });
 		return { stopped: true, sessionId };
 	}
-
-	/** Extra directories are mounted read-only by default; this is only for the log line. */
-	get mountRoot(): string {
-		return join(this.dataDir, "mounts");
-	}
 }
 
 export function quote(value: string): string {

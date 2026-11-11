@@ -32,14 +32,15 @@ src/service/                  the same service, authored in TypeScript
   docker.ts                   docker CLI plumbing (run/exec/rm/pull)
   skills.ts                   reads Strix's skill library from the installed engine
   findings.ts                 findings ledger and Markdown report
-service/main.mjs              bundled output of src/service (generated, shipped)
+dist/service/main.mjs         bundled output of src/service (generated at build, shipped)
 agent/skills/                 nine upstream consumer skills, copied verbatim
 ```
 
-Everything the plugin compiles is TypeScript. `service/main.mjs` is a build
-artifact — `npm run build:service` bundles `src/service/*.ts` with esbuild, and
-`npm run build` does that before building the UI. The packager ships the bundle;
-the sources stay in `src/`.
+Everything the plugin compiles is TypeScript. `dist/service/main.mjs` is a build
+artifact: `npm run build` runs Vite first (which empties `dist/`) and then bundles
+`src/service/*.ts` with esbuild into `dist/`, which is gitignored. The packager
+ships `dist/`; the sources stay in `src/`. There is no `service/` directory in the
+source tree - generated code lives with the rest of the build output.
 
 ### Where Strix's engine is reused, and where it is not
 
@@ -76,11 +77,13 @@ already selected in Astravia.
 ```bash
 cd abilities/plugins/strix
 npm install
+npm run typecheck       # tsc --noEmit
 npm test
-npm run build:service   # bundle src/service -> service/main.mjs
+npm run build:service   # bundle src/service -> dist/service/main.mjs
 npm run stamp-service   # rewrite the artifact digest after a service change
-npm run build           # service bundle + UI
+npm run build           # Vite first (empties dist), then the service bundle
 npm run check:service   # host-node service: health, /mcp, /api/state
+npm run check           # typecheck + tests + service smoke
 ```
 
 Repository-level checks:

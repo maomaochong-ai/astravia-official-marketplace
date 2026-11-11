@@ -1,14 +1,16 @@
 {
   "name": "@astravia-marketplace/strix",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node scripts/build-service.mjs && vite build",
+    "build": "vite build && node scripts/build-service.mjs",
     "build:service": "node scripts/build-service.mjs",
     "test": "vitest run",
     "check:service": "node scripts/check-service.mjs",
-    "stamp-service": "node scripts/stamp-service.mjs"
+    "stamp-service": "node scripts/stamp-service.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check": "npm run typecheck && npm test && npm run check:service"
   },
   "devDependencies": {
     "@astravia-org/plugin-sdk": "^0.3.2",

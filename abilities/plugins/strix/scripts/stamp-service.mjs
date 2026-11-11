@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PLATFORMS = ["win32-x64", "darwin-x64", "darwin-arm64", "linux-x64", "linux-arm64"];
 /** Everything the service needs at runtime; the TS sources are bundled into this file. */
-const SERVICE_FILES = ["service/main.mjs"];
+const SERVICE_FILES = ["dist/service/main.mjs"];
 
 const entries = [];
 for (const relative of SERVICE_FILES) {
