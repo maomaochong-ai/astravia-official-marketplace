@@ -1,24 +1,22 @@
 # Strix
 
 Strix's security toolkit inside Astravia: a full penetration-testing sandbox plus
-Strix's own 78-skill knowledge library, driven by the conversation you already
-have.
+Strix's own skill library, driven by the conversation you already have.
 
 This plugin is a first-party integration over
-[usestrix/strix](https://github.com/usestrix/strix). It does not reimplement a scan
-and it does not ship a second agent: the host application already runs an agent
-with the user's configured model, so the plugin contributes what that agent
-lacks — Strix's sandbox and Strix's skills — and stays out of the model business
-entirely.
+[usestrix/strix](https://github.com/usestrix/strix). It does not ship an agent and
+does not ask for a model: the host application already runs an agent on the model
+the user configured, so the plugin contributes what that agent lacks — Strix's
+container and Strix's tradecraft — and stays out of the model business.
 
 ## What the plugin contributes
 
 | Surface | Behaviour |
 |---|---|
-| Activity tab `strix.console` | `initiallyVisible: false` — nothing appears under the conversation until you open it. Mirrors the upstream TUI: trace on the left, sandbox/targets/findings boxes on the right. |
-| Input action `strix.activate` | One click opens the tab and marks the next prompt as a Strix task (`decoratePrompt`). |
+| Activity tab `strix.console` | `initiallyVisible: false` — nothing appears under the conversation until you open it. Trace on the left, sandbox / targets / findings on the right. |
+| Input action `strix.activate` | One click opens the tab; while active, every prompt carries Strix's method (`decoratePrompt`). The button inherits the plugin's own icon and label. |
 | MCP tools | `strix_environment`, `strix_sandbox_start`, `strix_exec`, `strix_sandbox_status`, `strix_sandbox_stop`, `strix_list_skills`, `strix_load_skills`, `strix_file_finding`, `strix_list_findings`, `strix_report`. |
-| Skills | The nine upstream consumer skills ship in `agent/skills/` but are declared `hidden`: the capability page, slash menu and skill picker show **Strix**, not nine lookalikes. The agent still loads them. |
+| Skills | The nine upstream consumer skills ship in `agent/skills/` but are declared `hidden`: the capability page, slash menu and skill picker show **Strix** — name and icon — not nine lookalikes. The agent still loads them. |
 
 ## Architecture
 
@@ -26,44 +24,52 @@ entirely.
 src/index.tsx                 registration only (tab + input action)
 src/runtime.ts                strix-bridge lifecycle via ctx.services
 src/domain/bridge-client.ts   HTTP + SSE client, read-only
-src/features/scan-console/    the console: trace, session box, composer
+src/features/scan-console/    the console: trace, session, targets, composer
 src/features/findings/        findings list
-service/main.mjs              host-node service: MCP tool surface + /api/*
-service/bridge/tools.py       Strix sandbox (create_or_reuse + session.exec) and skills
-service/bridge/findings.py    findings ledger and Markdown report
-agent/skills/                 9 upstream consumer skills, copied verbatim
+src/service/                  the same service, authored in TypeScript
+  main.ts                     MCP tool surface + /api/*
+  sandbox.ts                  container lifecycle and command execution
+  docker.ts                   docker CLI plumbing (run/exec/rm/pull)
+  skills.ts                   reads Strix's skill library from the installed engine
+  findings.ts                 findings ledger and Markdown report
+service/main.mjs              bundled output of src/service (generated, shipped)
+agent/skills/                 nine upstream consumer skills, copied verbatim
 ```
+
+Everything the plugin compiles is TypeScript. `service/main.mjs` is a build
+artifact — `npm run build:service` bundles `src/service/*.ts` with esbuild, and
+`npm run build` does that before building the UI. The packager ships the bundle;
+the sources stay in `src/`.
 
 ### Where Strix's engine is reused, and where it is not
 
-* **Reused:** `strix.runtime.session_manager.create_or_reuse` for the container,
-  `session.exec` for commands, `strix.skills.get_available_skills` /
-  `load_skills` for the knowledge packs. These are the same entry points Strix's
-  own runner and `load_skill` tool use, so the sandbox image, bind mounts and
-  skill rendering are upstream's, not ours.
-* **Not used:** `run_strix_scan` and its agent loop. The host already has an agent
-  loop with a model, a conversation and tool dispatch; running Strix's in parallel
-  would mean a second model credential and two competing transcripts.
+* **Reused:** Strix's sandbox **image** (all of its tooling — nmap, nuclei, ffuf,
+  sqlmap, Caido, agent-browser, trivy, gitleaks, trufflehog …) and its **skill
+  library**, read as Markdown from the installed `strix-agent` package. Upgrade the
+  engine and both improve; nothing here rewrites a pack.
+* **Not used:** `run_strix_scan` and its agent loop. The host already has an agent,
+  a conversation and tool dispatch, and running Strix's in parallel would need a
+  second model credential and produce two competing transcripts.
 
-### Why the service declares every file
+### Why the service declares its artifact
 
 The host's installer accepts a service runtime only when the payload set matches
 `plugin.json#providers.services[].runtime.platforms[<tag>].artifacts` one-for-one
 with verified SHA-256 (`plugin-service-runtime-installer.ts`), and it refuses to
-start a runtime it did not install. So `src/runtime.ts` reads the artifact list
-back out of the packaged `plugin.json`, fetches each file over
+start a runtime it did not install. `src/runtime.ts` therefore reads the artifact
+list back out of the packaged `plugin.json`, fetches each file over
 `astravia-plugin://<id>/versions/<version>/…`, installs, then starts. After
-editing anything under `service/`, re-stamp the digests: `npm run stamp-service`.
+changing the service, re-stamp the digest: `npm run stamp-service`.
 
 ## Prerequisites
 
 | Need | Why | Check |
 |---|---|---|
-| Python ≥ 3.12 with `strix-agent` | the bridge imports the engine | `python -c "import strix"` |
-| Docker | every Strix tool runs inside its sandbox | `docker info` |
+| Docker | every Strix tool runs inside its sandbox image | `docker info` |
+| `strix-agent` on some Python in `PATH` | the skill library lives inside it; the plugin reads the Markdown, it does not run the engine | `python -c "import strix"` |
 
-No model credential is needed here: inference happens in the host, on the model
-you already selected in Astravia.
+No model credential is needed here: inference happens in the host, on the model you
+already selected in Astravia.
 
 ## Build and check
 
@@ -71,10 +77,10 @@ you already selected in Astravia.
 cd abilities/plugins/strix
 npm install
 npm test
-npm run stamp-service   # after editing service/
-npm run build
+npm run build:service   # bundle src/service -> service/main.mjs
+npm run stamp-service   # rewrite the artifact digest after a service change
+npm run build           # service bundle + UI
 npm run check:service   # host-node service: health, /mcp, /api/state
-npm run check:bridge    # Python bridge protocol over stdin/stdout
 ```
 
 Repository-level checks:
