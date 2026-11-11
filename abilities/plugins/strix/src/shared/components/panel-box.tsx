@@ -1,9 +1,7 @@
 /**
- * Bordered pane, matching the upstream TUI's `panelBox`.
- *
- * Upstream draws every sidebar section as a rounded box with a dim border that
- * turns green on focus (strix/interface/tui/internal/app/view.go). The tab uses
- * the same shape so the plugin reads as the same product.
+ * Panel shell: a rounded card with a header row, matching upstream's sidebar boxes
+ * (view.go:panelBox) and borrowing one idea from the host's own UI - the title row
+ * is a dim label with an optional count on the right.
  */
 
 export interface PanelBoxProps {

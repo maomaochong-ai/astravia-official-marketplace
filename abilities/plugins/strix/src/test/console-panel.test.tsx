@@ -55,7 +55,8 @@ describe("Strix console panel", () => {
 		for (const title of ["session.title", "targets.title", "findings.title"]) {
 			expect(screen.getByText(title)).toBeTruthy();
 		}
-		expect(screen.getByText("example.com")).toBeTruthy();
+		// The target appears in the Targets panel and as a composer suggestion.
+		expect(screen.getAllByText("example.com").length).toBeGreaterThan(0);
 		expect(screen.getByText("timeline.empty")).toBeTruthy();
 	});
 
@@ -68,7 +69,7 @@ describe("Strix console panel", () => {
 			/>,
 		);
 		expect(screen.getByText("exec_command")).toBeTruthy();
-		expect(screen.getByText("✓ Done")).toBeTruthy();
+		expect(screen.getByText("Done")).toBeTruthy();
 		expect(screen.getByText(/nmap -sV example.com/)).toBeTruthy();
 	});
 
@@ -76,7 +77,7 @@ describe("Strix console panel", () => {
 		render(
 			<StrixConsolePanel t={t} model={model({ trace: [run("ffuf -u https://example.com/FUZZ")], busy: true })} send={async () => undefined} />,
 		);
-		expect(screen.getByText("● In progress...")).toBeTruthy();
+		expect(screen.getByText("In progress…")).toBeTruthy();
 		expect(screen.getByText("panel.working")).toBeTruthy();
 	});
 

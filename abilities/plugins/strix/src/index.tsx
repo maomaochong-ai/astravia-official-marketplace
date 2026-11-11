@@ -1,21 +1,3 @@
-/**
- * Strix plugin entry: registration only.
- *
- * What this plugin contributes, in host terms:
- *  - an activity tab showing what the agent is doing with Strix's sandbox,
- *  - an input action that opens it and marks the next prompt as a Strix task,
- *  - MCP tools (`plugin.json#agent.mcpServers`) that give the agent Strix's
- *    sandbox, its 78 skills and a findings ledger.
- *
- * The agent itself is the host's: it already has a model, a conversation and a
- * tool loop. Rebuilding any of that here would need a second credential and would
- * duplicate behaviour the application already ships.
- *
- * The plugin's own skills are declared with `defaultVisibility: "hidden"`; a user
- * installs *Strix*, and the capability page and slash menu must show Strix - icon
- * and description - rather than nine lookalike entries.
- */
-
 import "./style.css";
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { definePlugin } from "@astravia-org/plugin-sdk";
@@ -35,7 +17,15 @@ function ConsoleTab({ ctx, runtime }: { ctx: PluginContext; runtime: ServiceRunt
 	const client = useRef(createBridgeClient(() => runtime.ensureReady())).current;
 	const model = useScanConsole(client);
 	const send = (prompt: string) => ctx.conversation.sendPrompt(prompt);
-	return <StrixConsolePanel t={t} model={model} status={runtime.lastStatus()} send={send} />;
+	return (
+		<StrixConsolePanel
+			t={t}
+			model={model}
+			status={runtime.lastStatus()}
+			send={send}
+			iconUrl={ctx.plugin.iconUrl}
+		/>
+	);
 }
 
 export default definePlugin({

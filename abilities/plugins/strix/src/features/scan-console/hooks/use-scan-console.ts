@@ -80,14 +80,16 @@ export function useScanConsole(client: BridgeClient): ScanConsoleModel {
 			client.events((event: BridgeEvent) => {
 				const at = Date.now();
 				switch (event.event) {
-					case "sandbox_status":
+					case "sandbox_status": {
+						const phaseLabel = String((event as { phase?: string }).phase ?? "sandbox");
 						setTrace((previous) =>
 							[
 								...previous,
-								{ id: `note-${(seq.current += 1)}`, kind: "note" as const, label: String((event as { phase?: string }).phase ?? "sandbox"), at },
+								{ id: `note-${(seq.current += 1)}`, kind: "note" as const, label: phaseLabel, at },
 							].slice(-TRACE_LIMIT),
 						);
 						break;
+					}
 					case "sandbox_ready":
 						setSandbox((event as { status?: SandboxStatus }).status ?? { running: true });
 						void boot();
@@ -115,16 +117,34 @@ export function useScanConsole(client: BridgeClient): ScanConsoleModel {
 						break;
 					}
 					case "tool_end": {
-						const payload = event as { command?: string; ok?: boolean; exitCode?: number | null };
+						const payload = event as {
+							ok?: boolean;
+							exitCode?: number | null;
+							output?: string;
+							durationMs?: number;
+						};
 						setBusy(false);
-						// Close the matching row instead of adding one: a command and its result
-						// are one line in the trace, exactly as the upstream TUI renders it.
+						// Close the row instead of adding one: a command and its result are one
+						// line in the trace, exactly as the upstream TUI renders it.
 						setTrace((previous) => {
-							const index = [...previous].reverse().findIndex((item) => item.kind === "command" && item.ok === undefined);
+							const index = [...previous]
+								.reverse()
+								.findIndex((item) => item.kind === "command" && item.ok === undefined);
 							if (index < 0) return previous;
-							const at2 = previous.length - 1 - index;
+							const target = previous.length - 1 - index;
 							const next = previous.slice();
-							next[at2] = { ...next[at2], ok: payload.ok ?? true, detail: payload.exitCode === undefined ? next[at2].detail : `exit ${payload.exitCode}` };
+							const meta = [
+								payload.exitCode === undefined ? undefined : `exit ${payload.exitCode}`,
+								payload.durationMs === undefined ? undefined : `${(payload.durationMs / 1000).toFixed(1)}s`,
+							]
+								.filter(Boolean)
+								.join(" · ");
+							next[target] = {
+								...next[target],
+								ok: payload.ok ?? true,
+								detail: meta || next[target].detail,
+								output: payload.output || undefined,
+							};
 							return next;
 						});
 						void boot();

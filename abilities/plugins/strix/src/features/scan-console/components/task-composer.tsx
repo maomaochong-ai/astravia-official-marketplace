@@ -17,6 +17,8 @@ export interface TaskComposerProps {
 	disabled?: boolean;
 }
 
+const EXAMPLES = ["example.com", "https://app.example.com/api", "/path/to/repo"];
+
 export function TaskComposer({ t, send, disabled }: TaskComposerProps): React.ReactElement {
 	const [target, setTarget] = useState("");
 	const [sending, setSending] = useState(false);
@@ -63,12 +65,29 @@ export function TaskComposer({ t, send, disabled }: TaskComposerProps): React.Re
 					onClick={() => void submit()}
 					disabled={disabled || sending || !target.trim()}
 				>
+					{/* A play glyph, not an icon font: the panel already depends on none. */}
+					<span aria-hidden="true">▶</span>
 					{sending ? t("composer.sending") : t("composer.start")}
 				</button>
-				<span className="astra-strix-dim">
+				<span className="astra-strix-hint">
 					{feedback ?? (disabled ? t("composer.blocked") : t("composer.hint"))}
 				</span>
 			</div>
+			{!target && !sending && !feedback ? (
+				<div className="astra-strix-examples">
+					{EXAMPLES.map((example) => (
+						<button
+							key={example}
+							type="button"
+							className="astra-strix-chip"
+							onClick={() => setTarget(example)}
+							disabled={disabled}
+						>
+							{example}
+						</button>
+					))}
+				</div>
+			) : null}
 		</section>
 	);
 }

@@ -92,7 +92,15 @@ export type BridgeEvent =
 	| { event: "sandbox_ready"; sessionId?: string; status?: SandboxStatus }
 	| { event: "sandbox_stopped"; sessionId?: string }
 	| { event: "tool_start"; tool: string; command?: string; workdir?: string | null }
-	| { event: "tool_end"; tool: string; command?: string; ok?: boolean; exitCode?: number | null }
+	| {
+			event: "tool_end";
+			tool: string;
+			command?: string;
+			ok?: boolean;
+			exitCode?: number | null;
+			output?: string;
+			durationMs?: number;
+	  }
 	| { event: string; [key: string]: unknown };
 
 /** One row of the panel's trace, derived from the bridge's event stream. */
@@ -103,4 +111,6 @@ export interface TraceEntry {
 	detail?: string;
 	ok?: boolean;
 	at: number;
+	/** Tail of the command's output, when the bridge sent one. */
+	output?: string;
 }

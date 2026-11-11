@@ -1,14 +1,13 @@
 /**
- * The activity-tab surface: the upstream TUI's frame around the host agent's work.
+ * The activity-tab surface: Strix's own screen, framed for the host agent's work.
  *
- * Upstream's screen has two columns (strix/interface/tui/internal/app/view.go:mainView):
- * a bordered trace with the composer under it, and a sidebar of rounded boxes -
- * stats, targets, findings. This keeps that shape, and fills it from the plugin's
- * own event stream: the commands the agent ran in Strix's sandbox, the session it
- * is running in, and the findings it filed.
+ * Shape is upstream's (strix/interface/tui/internal/app/view.go:mainView): a
+ * bordered trace with the composer under it, and a sidebar of rounded panels -
+ * session, targets, findings. What differs is what fills it: the commands the
+ * *host* agent ran through Strix's sandbox, and the findings it filed.
  *
- * The panel is a window, not a cockpit. It starts nothing; the composer hands an
- * assessment to the host agent, which is the agent that has a model.
+ * The panel starts nothing. Its composer hands an assessment to the agent, which
+ * is the one component here that owns a model.
  */
 
 import { FindingList } from "../../findings/components/finding-list";
@@ -24,17 +23,13 @@ export interface StrixConsolePanelProps {
 	/** Managed-service status, so a stuck service explains itself instead of spinning. */
 	status?: ServiceStatus;
 	send: (prompt: string) => Promise<unknown>;
+	/** Host-resolved brand icon; the header uses the same mark as the capability card. */
+	iconUrl?: string;
 }
 
-function SessionBox({ t, model }: { t: (key: string) => string; model: ScanConsoleModel }): React.ReactElement {
-	const { sandbox, environment } = model;
-	const rows: { label: string; value: string; tone?: string }[] = [
-		{
-			label: t("session.state"),
-			value: sandbox.running ? t("session.running") : t("session.idle"),
-			tone: sandbox.running ? "astra-strix-green" : "astra-strix-dim",
-		},
-	];
+function SessionPanel({ t, model }: { t: (key: string) => string; model: ScanConsoleModel }): React.ReactElement {
+	const { sandbox, environment, busy } = model;
+	const rows: { label: string; value: string; tone?: string }[] = [];
 	if (sandbox.sessionId) rows.push({ label: t("session.id"), value: sandbox.sessionId });
 	if (sandbox.uptimeSec) rows.push({ label: t("session.uptime"), value: `${sandbox.uptimeSec}s` });
 	if (sandbox.image) rows.push({ label: t("session.image"), value: sandbox.image });
@@ -44,25 +39,41 @@ function SessionBox({ t, model }: { t: (key: string) => string; model: ScanConso
 	if (environment?.engine.version) rows.push({ label: t("session.engine"), value: environment.engine.version });
 
 	return (
-		<div className="astra-strix-stats">
-			{rows.map((row) => (
-				<p key={row.label}>
-					<span className="astra-strix-dim">{row.label}: </span>
-					<span className={row.tone}>{row.value}</span>
-				</p>
-			))}
+		<div className="astra-strix-session">
+			<div className="astra-strix-session-head">
+				<span className="astra-strix-dot" data-on={sandbox.running ? "yes" : "no"} />
+				<span className={sandbox.running ? "astra-strix-green" : "astra-strix-dim"}>
+					{sandbox.running ? t("session.running") : t("session.idle")}
+				</span>
+				{busy ? <span className="astra-strix-pulse" aria-hidden="true" /> : null}
+			</div>
+			{rows.length ? (
+				<dl className="astra-strix-kv">
+					{rows.map((row) => (
+						<div key={row.label} className="astra-strix-kv-row">
+							<dt>{row.label}</dt>
+							<dd className={row.tone}>{row.value}</dd>
+						</div>
+					))}
+				</dl>
+			) : (
+				<p className="astra-strix-dim">{t("session.noneYet")}</p>
+			)}
 		</div>
 	);
 }
 
-function TargetsBox({ t, model }: { t: (key: string) => string; model: ScanConsoleModel }): React.ReactElement {
+function TargetsPanel({ t, model }: { t: (key: string) => string; model: ScanConsoleModel }): React.ReactElement {
 	const targets = model.sandbox.targets ?? [];
 	if (!targets.length) return <p className="astra-strix-dim">{t("targets.empty")}</p>;
 	return (
 		<ul className="astra-strix-targets">
 			{targets.map((target) => (
 				<li key={target} className="astra-strix-target">
-					<span className="astra-strix-target-name">{target}</span>
+					<span className="astra-strix-target-mark">▸</span>
+					<span className="astra-strix-target-name" title={target}>
+						{target}
+					</span>
 				</li>
 			))}
 		</ul>
@@ -80,10 +91,10 @@ function Blockers({ t, model }: { t: (key: string) => string; model: ScanConsole
 	if (!rows.length) return null;
 
 	return (
-		<div className="astra-strix-blockers">
+		<div className="astra-strix-blockers" role="status">
 			{rows.map((row) => (
 				<p key={row.key} className="astra-strix-setup-row">
-					<span className="astra-strix-red">✗</span>
+					<span className="astra-strix-blocker-mark">✗</span>
 					<span>{t(row.key)}</span>
 					<span className="astra-strix-dim">{t(row.hint)}</span>
 				</p>
@@ -92,29 +103,46 @@ function Blockers({ t, model }: { t: (key: string) => string; model: ScanConsole
 	);
 }
 
-export function StrixConsolePanel({ t, model, status, send }: StrixConsolePanelProps): React.ReactElement {
+export function StrixConsolePanel({ t, model, status, send, iconUrl }: StrixConsolePanelProps): React.ReactElement {
 	const ready = model.phase === "ready";
 	const serverUp = status ? status.phase === "starting" || status.phase === "ready" : true;
+	const critical = model.findings.filter((item) => item.severity === "critical").length;
 
 	return (
 		<div className="astra-strix-panel">
 			<header className="astra-strix-titlebar">
-				<span className="astra-strix-wordmark">
-					<strong>Strix</strong>
-					<span className="astra-strix-dim"> · {t("panel.subtitle")}</span>
-				</span>
-				<span className="astra-strix-chip astra-strix-dim">{t("panel.agentModel")}</span>
-				{model.busy ? <span className="astra-strix-chip astra-strix-amber">{t("panel.working")}</span> : null}
-				{!serverUp ? (
-					<span className="astra-strix-chip astra-strix-amber">
-						{t("panel.service")}: {status?.phase}
+				<span className="astra-strix-brand">
+					{iconUrl ? <img className="astra-strix-logo" src={iconUrl} alt="" /> : <span className="astra-strix-logo-fallback">S</span>}
+					<span className="astra-strix-brand-text">
+						<strong>Strix</strong>
+						<span className="astra-strix-dim">{t("panel.subtitle")}</span>
 					</span>
-				) : null}
-				{model.phase === "error" ? (
-					<button type="button" className="astra-strix-chip astra-strix-red" onClick={() => void model.boot()}>
-						{t("boot.retry")}
-					</button>
-				) : null}
+				</span>
+
+				<span className="astra-strix-chips">
+					{model.sandbox.running ? (
+						<span className="astra-strix-chip astra-strix-green">
+							<span className="astra-strix-dot" data-on="yes" /> {t("session.running")}
+						</span>
+					) : null}
+					{model.busy ? <span className="astra-strix-chip astra-strix-amber">{t("panel.working")}</span> : null}
+					{critical ? (
+						<span className="astra-strix-chip astra-strix-red">
+							{t("severity.critical")} {critical}
+						</span>
+					) : null}
+					<span className="astra-strix-chip astra-strix-dim">{t("panel.agentModel")}</span>
+					{!serverUp ? (
+						<span className="astra-strix-chip astra-strix-amber">
+							{t("panel.service")}: {status?.phase}
+						</span>
+					) : null}
+					{model.phase === "error" ? (
+						<button type="button" className="astra-strix-chip astra-strix-red" onClick={() => void model.boot()}>
+							{t("boot.retry")}
+						</button>
+					) : null}
+				</span>
 			</header>
 
 			{model.error ? <p className="astra-strix-error">{model.error}</p> : null}
@@ -123,11 +151,17 @@ export function StrixConsolePanel({ t, model, status, send }: StrixConsolePanelP
 				<section className="astra-strix-trace-pane">
 					<div className="astra-strix-trace">
 						{model.phase === "booting" ? (
-							<p className="astra-strix-dim">{t("boot.loading")}</p>
+							<p className="astra-strix-empty-state">
+								<span className="astra-strix-spinner" aria-hidden="true" />
+								{t("boot.loading")}
+							</p>
 						) : model.trace.length ? (
 							model.trace.map((entry) => <TraceBlock key={entry.id} entry={entry} />)
 						) : (
-							<p className="astra-strix-dim">{t("timeline.empty")}</p>
+							<div className="astra-strix-empty-state">
+								<span className="astra-strix-empty-icon">▚</span>
+								<p>{t("timeline.empty")}</p>
+							</div>
 						)}
 					</div>
 					<div className="astra-strix-composer">
@@ -137,13 +171,17 @@ export function StrixConsolePanel({ t, model, status, send }: StrixConsolePanelP
 				</section>
 
 				<aside className="astra-strix-sidebar">
-					<PanelBox title={t("session.title")} hint={model.sandbox.running ? t("session.running") : undefined}>
-						<SessionBox t={t} model={model} />
+					<PanelBox
+						title={t("session.title")}
+						hint={model.sandbox.running ? t("session.running") : undefined}
+						focused={model.sandbox.running}
+					>
+						<SessionPanel t={t} model={model} />
 					</PanelBox>
 					<PanelBox title={t("targets.title")} hint={String(model.sandbox.targets?.length ?? 0)}>
-						<TargetsBox t={t} model={model} />
+						<TargetsPanel t={t} model={model} />
 					</PanelBox>
-					<PanelBox title={t("findings.title")} hint={String(model.findings.length)} focused>
+					<PanelBox title={t("findings.title")} hint={String(model.findings.length)}>
 						<FindingList t={t} findings={model.findings} runStatus={model.sandbox.running ? "running" : "completed"} />
 					</PanelBox>
 				</aside>

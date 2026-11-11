@@ -104,7 +104,19 @@ class Sandbox:
         workdir = str(params.get("workdir") or "").strip()
 
         script = command if not workdir else f"cd {shell_quote(workdir)} && {command}"
+        started = time.monotonic()
         self._emit({"event": "tool_start", "tool": "exec_command", "command": command, "workdir": workdir or None})
+        result = await asyncio.wait_for(self._session.exec("sh", "-c", script), timeout=timeout)
+        elapsed_ms = int((time.monotonic() - started) * 1000)
+        payload = {
+            "command": command,
+            "workdir": workdir or None,
+            "exitCode": getattr(result, "exit_code", None),
+            "stdout": _text(getattr(result, "stdout", "")),
+            "stderr": _text(getattr(result, "stderr", "")),
+            "ok": bool(result.ok()) if hasattr(result, "ok") else True,
+            "durationMs": elapsed_ms,
+        }
         result = await asyncio.wait_for(self._session.exec("sh", "-c", script), timeout=timeout)
         payload = {
             "command": command,
@@ -121,6 +133,10 @@ class Sandbox:
                 "command": command,
                 "ok": payload["ok"],
                 "exitCode": payload["exitCode"],
+                # A short tail is enough for the panel to show what the command actually
+                # printed; the agent gets the full text through the tool result.
+                "output": _tail(payload["stdout"] or payload["stderr"]),
+                "durationMs": payload["durationMs"],
             }
         )
         return payload
@@ -142,6 +158,17 @@ class Sandbox:
 
 def shell_quote(value: str) -> str:
     return "'" + value.replace("'", "'\"'\"'") + "'"
+
+
+OUTPUT_TAIL_LINES = 8
+OUTPUT_TAIL_CHARS = 600
+
+
+def _tail(text: str) -> str:
+    """Last few lines of a command's output, for the panel's one-line summary."""
+    lines = [line for line in text.strip().splitlines() if line.strip()]
+    tail = "\n".join(lines[-OUTPUT_TAIL_LINES:])
+    return tail[-OUTPUT_TAIL_CHARS:]
 
 
 def _text(value: Any) -> str:
