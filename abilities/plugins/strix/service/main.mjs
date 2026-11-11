@@ -348,6 +348,10 @@ const server = createServer(async (req, res) => {
 		if (url.pathname === "/api/scan/cancel" && req.method === "POST") {
 			return json(res, 200, await call("cancel_scan", {}, 60000));
 		}
+		if (url.pathname === "/api/model" && req.method === "POST") {
+			const body = await readBody(req);
+			return json(res, 200, await call("configure_model", body, 30000));
+		}
 		if (url.pathname === "/api/events") {
 			res.writeHead(200, {
 				"content-type": "text/event-stream",

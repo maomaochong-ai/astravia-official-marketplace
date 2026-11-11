@@ -22,6 +22,8 @@ export interface BridgeClient {
 	state(workspace?: string): Promise<BridgeState>;
 	start(request: StartScanRequest): Promise<{ runName: string; runDir: string }>;
 	cancel(): Promise<{ cancelled: boolean }>;
+	/** Write the model choice into strix's own config and return the new path. */
+	configureModel(request: { model: string; apiBase?: string; apiKey?: string }): Promise<{ model: string }>;
 	findings(runName: string, workspace?: string): Promise<StrixFinding[]>;
 	report(runName: string, workspace?: string): Promise<string>;
 	events(onEvent: (event: BridgeEvent) => void): () => void;
@@ -55,6 +57,16 @@ export function createBridgeClient(baseUrl: () => Promise<string>): BridgeClient
 		async cancel() {
 			const base = await baseUrl();
 			return readJson(await fetch(`${base}/api/scan/cancel`, { method: "POST" }));
+		},
+		async configureModel(request) {
+			const base = await baseUrl();
+			return readJson(
+				await fetch(`${base}/api/model`, {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify(request),
+				}),
+			);
 		},
 		async findings(runName, workspace) {
 			const base = await baseUrl();

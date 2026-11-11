@@ -12,16 +12,22 @@
 import { FindingList } from "../../findings/components/finding-list";
 import { PanelBox } from "../../../shared/components/panel-box";
 import { AgentList } from "./agent-list";
+import { ModelPanel } from "./model-panel";
 import { LaunchForm } from "./launch-form";
 import { StatsBox } from "./stats-box";
 import { TraceBlock } from "./trace-block";
 import type { ScanConsoleModel } from "../hooks/use-scan-console";
 import type { ServiceStatus } from "../../../runtime-contract";
+import type { HostModels } from "../../../domain/host-models";
 
 export interface StrixConsolePanelProps {
 	t: (key: string) => string;
 	model: ScanConsoleModel;
 	/** Managed-service status, so a stuck service explains itself instead of spinning. */
+	status?: ServiceStatus;
+	/** Models the host already has configured, so the panel can adopt one by name. */
+	hostModels?: HostModels;
+	onUseHostModel?: (modelKey: string) => Promise<void>;
 	status?: ServiceStatus;
 }
 
@@ -47,7 +53,6 @@ function Setup({ t, model }: { t: (key: string) => string; model: ScanConsoleMod
 		{ ok: probe.python.found, key: "setup.python", detail: probe.python.executable },
 		{ ok: probe.engine.installed, key: "setup.engine", detail: probe.engine.version },
 		{ ok: probe.docker.ready, key: "setup.docker", detail: probe.docker.detail },
-		{ ok: probe.llm.configured, key: "setup.llm", detail: probe.llm.model },
 	];
 	if (rows.every((row) => row.ok)) return null;
 	return (
@@ -66,12 +71,11 @@ function Setup({ t, model }: { t: (key: string) => string; model: ScanConsoleMod
 			) : null}
 			{!probe.python.found ? <p className="astra-strix-hint">{t("setup.pythonHint")}</p> : null}
 			{!probe.docker.ready ? <p className="astra-strix-hint">{t("setup.dockerHint")}</p> : null}
-			{!probe.llm.configured ? <p className="astra-strix-hint">{t("setup.llmHint")}</p> : null}
 		</div>
 	);
 }
 
-export function StrixConsolePanel({ t, model, status }: StrixConsolePanelProps): React.ReactElement {
+export function StrixConsolePanel({ t, model, status, hostModels, onUseHostModel }: StrixConsolePanelProps): React.ReactElement {
 	const ready = model.phase === "ready";
 	const run = model.activeRun;
 	const serverUp = status ? status.phase === "starting" || status.phase === "ready" : true;
@@ -113,6 +117,12 @@ export function StrixConsolePanel({ t, model, status }: StrixConsolePanelProps):
 					</div>
 					<div className="astra-strix-composer">
 						<Setup t={t} model={model} />
+						<ModelPanel
+							t={t}
+							model={model}
+							hostModels={hostModels}
+							onUseHostModel={onUseHostModel ?? (async () => undefined)}
+						/>
 						<LaunchForm
 							t={t}
 							scanning={model.scanning}

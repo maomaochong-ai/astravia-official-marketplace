@@ -19,7 +19,8 @@
 import "./style.css";
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { definePlugin } from "@astravia-org/plugin-sdk";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { apiBaseFor, readHostModels, type HostModels } from "./domain/host-models";
 import { createBridgeClient } from "./domain/bridge-client";
 import { StrixConsolePanel } from "./features/scan-console/components/strix-console-panel";
 import { useScanConsole } from "./features/scan-console/hooks/use-scan-console";
@@ -35,7 +36,34 @@ function ConsoleTab({ ctx, runtime }: { ctx: PluginContext; runtime: ServiceRunt
 	const client = useRef(createBridgeClient(() => runtime.ensureReady())).current;
 	const workspace = (ctx as unknown as { workspace?: { path?: string } }).workspace?.path;
 	const model = useScanConsole(client, workspace);
-	return <StrixConsolePanel t={t} model={model} status={runtime.lastStatus()} />;
+	const [hostModels, setHostModels] = useState<HostModels>();
+
+	// The host's own model list is what the user recognises; reading it once per mount is
+	// enough, and it needs `ai.models.list` rather than any provider credential.
+	useEffect(() => {
+		let alive = true;
+		void readHostModels(ctx).then((result) => {
+			if (alive) setHostModels(result);
+		});
+		return () => {
+			alive = false;
+		};
+	}, [ctx]);
+
+	const useHostModel = async (modelKey: string): Promise<void> => {
+		await client.configureModel({ model: modelKey, apiBase: apiBaseFor(modelKey) });
+		await model.boot();
+	};
+
+	return (
+		<StrixConsolePanel
+			t={t}
+			model={model}
+			status={runtime.lastStatus()}
+			hostModels={hostModels}
+			onUseHostModel={useHostModel}
+		/>
+	);
 }
 
 export default definePlugin({

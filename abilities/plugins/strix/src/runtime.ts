@@ -29,7 +29,6 @@ export interface ServiceRuntime {
 	/** Base URL of the running bridge, installing and starting it when needed. */
 	ensureReady(): Promise<string>;
 	lastStatus(): ServiceStatus | undefined;
-	/** Last failure, worded for display. */
 	lastError(): string | undefined;
 	dispose(): void;
 }

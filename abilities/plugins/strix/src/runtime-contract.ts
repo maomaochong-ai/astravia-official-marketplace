@@ -48,7 +48,21 @@ export interface EnvironmentProbe {
 	python: { version: string; executable: string; found: boolean };
 	engine: { installed: boolean; version: string };
 	docker: { ready: boolean; detail: string; image: string };
-	llm: { model: string; configured: boolean; keySource: string };
+	llm: {
+		model: string;
+		provider?: string;
+		/** `api` for a provider key, `subscription` for `chatgpt/...`, `none` when unset. */
+		mode: "api" | "subscription" | "none";
+		configured: boolean;
+		keySource: string;
+		/** The vendor variable strix would read first, when one applies. */
+		keyEnv?: string;
+		apiBase?: string;
+		/** `model` when nothing is chosen, `key` when only a credential is missing. */
+		missing: string[];
+		cloudAvailable?: boolean;
+		detail?: string;
+	};
 	configPath: string;
 	ready: boolean;
 }

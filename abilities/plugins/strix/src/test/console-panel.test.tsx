@@ -16,7 +16,7 @@ const probe = (overrides: Partial<EnvironmentProbe> = {}): EnvironmentProbe => (
 	python: { version: "3.13.0", executable: "/usr/bin/python3", found: true },
 	engine: { installed: true, version: "1.7.0" },
 	docker: { ready: true, detail: "", image: "ghcr.io/usestrix/strix-sandbox:1.4.0" },
-	llm: { model: "anthropic/claude-sonnet-4", configured: true, keySource: "env" },
+	llm: { model: "anthropic/claude-sonnet-4", mode: "api", configured: true, keySource: "env", missing: [] },
 	configPath: "/root/.strix/cli-config.json",
 	ready: true,
 	...overrides,
@@ -113,6 +113,49 @@ describe("Strix console panel", () => {
 		expect(screen.getByText("setup.docker")).toBeTruthy();
 		expect(screen.getByText("docker daemon is not reachable")).toBeTruthy();
 		expect(screen.getByText("uv tool install strix-agent")).toBeTruthy();
+	});
+
+	it("does not call a model missing when only the credential is absent, and names the variable", () => {
+		render(
+			<StrixConsolePanel
+				t={t}
+				model={model({
+					phase: "unready",
+					environment: probe({
+						ready: false,
+						llm: {
+							model: "anthropic/claude-sonnet-4-5",
+							provider: "anthropic",
+							mode: "api",
+							configured: false,
+							keySource: "missing",
+							keyEnv: "ANTHROPIC_API_KEY",
+							missing: ["key"],
+						},
+					}),
+				})}
+			/>,
+		);
+		// The model is chosen, so the panel must not claim it is unset...
+		expect(screen.queryByText("setup.modelUnset")).toBeNull();
+		expect(screen.getAllByText("anthropic/claude-sonnet-4-5").length).toBeGreaterThan(0);
+		// ...and must name the exact variable instead of a generic warning.
+		expect(screen.getByText("ANTHROPIC_API_KEY")).toBeTruthy();
+	});
+
+	it("offers the host's model by name so the two never disagree silently", async () => {
+		const onUseHostModel = vi.fn(async () => undefined);
+		render(
+			<StrixConsolePanel
+				t={t}
+				model={model({ environment: probe({ llm: { model: "openai/gpt-5", mode: "api", configured: true, keySource: "env", missing: [] } }) })}
+				hostModels={{ preferred: "deepseek/deepseek-chat", available: [] }}
+				onUseHostModel={onUseHostModel}
+			/>,
+		);
+		expect(screen.getByText("deepseek/deepseek-chat")).toBeTruthy();
+		await userEvent.click(screen.getByRole("button", { name: "setup.useHostModel" }));
+		expect(onUseHostModel).toHaveBeenCalledWith("deepseek/deepseek-chat");
 	});
 
 	it("sends targets split by line, dropping blanks", async () => {
