@@ -4,9 +4,13 @@
 		{
 			"type": "hero",
 			"eyebrow": "Security testing",
-			"title": "Run a real penetration test from the conversation",
-			"description": "Strix dispatches a team of security agents that probe your code, APIs and running apps the way an attacker would, then hands back exploitable findings with proof and fixes.",
-			"badges": ["Autonomous agents", "Proof of concept", "SARIF export"]
+			"title": "Strix's pentest toolkit, driven by your own agent",
+			"description": "A ready-made security sandbox and Strix's 78-skill library, wired into the conversation you already have. Your model does the thinking; Strix supplies the environment and the tradecraft.",
+			"badges": [
+				"Autonomous agents",
+				"Proof of concept",
+				"SARIF export"
+			]
 		},
 		{
 			"type": "showcase",
@@ -14,32 +18,32 @@
 				"template": "chat-thread",
 				"canvas": "generic",
 				"brand_name": "Strix",
-				"user_prompt": "Check our staging API for auth bypass.",
-				"assistant_reply": "Found one critical IDOR and filed the fix."
+				"user_prompt": "Pentest staging.example.com.",
+				"assistant_reply": "Started the sandbox; one critical IDOR filed."
 			}
 		},
 		{
 			"type": "feature-grid",
 			"items": [
 				{
-					"title": "Attacker's workflow",
-					"description": "Recon, exploitation and reporting run as separate specialised agents, so each stage is judged by the agent that owns it.",
+					"title": "The real toolchain",
+					"description": "nmap, nuclei, ffuf, sqlmap, subfinder, Caido, agent-browser, trivy, gitleaks and trufflehog, inside one container.",
 					"icon": "solar:shield-keyhole-bold"
 				},
 				{
-					"title": "Evidence, not guesses",
-					"description": "Every finding carries the request, payload or code path that proved it, plus counter-evidence and a confidence rating.",
+					"title": "Strix's own skills",
+					"description": "78 knowledge packs on vulnerabilities, technologies and tooling - loaded by the agent before it starts testing.",
 					"icon": "solar:document-text-bold"
 				},
 				{
-					"title": "Live console",
-					"description": "Watch each agent's tool calls as they happen, then read findings sorted by severity without leaving the app.",
-					"icon": "solar:monitor-bold"
+					"title": "Your model, your key",
+					"description": "No second credential: inference runs in Astravia on the model you already picked.",
+					"icon": "solar:cpu-bolt-bold"
 				},
 				{
-					"title": "Runs stay on disk",
-					"description": "Each scan writes a normal Strix run directory, so reports, SARIF and raw logs stay usable outside this plugin.",
-					"icon": "solar:folder-with-files-bold"
+					"title": "Evidence-backed findings",
+					"description": "Every finding carries the request, payload or code path that proved it, with CVSS, CWE and remediation.",
+					"icon": "solar:clipboard-check-bold"
 				}
 			]
 		},
@@ -47,16 +51,16 @@
 			"type": "steps",
 			"items": [
 				{
-					"title": "Prepare the machine once",
-					"description": "Strix needs Docker for its sandbox and its own model credential. The console lists exactly what is missing, and where to set it."
+					"title": "Open the console once",
+					"description": "Strix scans sits in the tab menu; the plugin adds nothing under the conversation until you open it."
 				},
 				{
-					"title": "Describe the targets",
-					"description": "Open Strix scans from the tab menu, or click Strix scan to open it with the skill command ready in the composer."
+					"title": "Point it at a target",
+					"description": "Type a host, URL or local repo and press Enter. The request goes to your agent with Strix's method attached."
 				},
 				{
-					"title": "Read the findings",
-					"description": "Severity, CVSS, proof of concept and remediation per finding; the Markdown report and SARIF file are in the run folder."
+					"title": "Watch and read",
+					"description": "Commands run inside Strix's sandbox and appear in the trace; each confirmed issue lands in Findings with proof and fix."
 				}
 			]
 		},

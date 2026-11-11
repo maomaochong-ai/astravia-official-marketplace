@@ -1,23 +1,35 @@
 """Bridge entry point: JSON lines in, JSON lines out.
 
-Started by ``service/main.mjs`` as a child process. The Node side owns the HTTP
-and MCP surface; this process owns Python-only work (importing strix, running a
-scan, reading a run directory). Keeping the split this way means the plugin
-never has to bundle a Python interpreter into a platform artifact.
+Started by ``service/main.mjs`` as a child process. The Node side owns HTTP and
+MCP; this process owns Python-only work - importing strix, driving its sandbox,
+loading its skills, persisting findings. Keeping the split this way means the
+plugin never has to bundle a Python interpreter into a platform artifact.
+
+There is no agent loop here on purpose: the host application runs the agent, this
+bridge supplies Strix's capabilities to it.
 """
 
 from __future__ import annotations
 
 import asyncio
 import os
-import pathlib
 import sys
 import threading
 from typing import Any
 
-from . import artifacts, environment
+from . import environment, findings
 from .protocol import Protocol
-from .scan import ScanRunner, install_guard
+from .tools import Sandbox, list_skills, load_skills
+
+
+def _install_guard() -> None:
+    try:
+        import strix  # noqa: F401
+    except Exception as exc:  # noqa: BLE001
+        raise RuntimeError(
+            "strix-agent is not importable in this Python environment; install it with "
+            "`uv tool install strix-agent` or point STRIX_PYTHON at a Python that has it"
+        ) from exc
 
 
 async def serve() -> None:
@@ -37,7 +49,7 @@ async def serve() -> None:
     def emit(payload: dict[str, Any]) -> None:
         protocol.emit(payload)
 
-    runner = ScanRunner(emit)
+    sandbox = Sandbox(emit)
     protocol.emit({"event": "bridge_ready", "pid": os.getpid()})
 
     while True:
@@ -50,7 +62,7 @@ async def serve() -> None:
         op = str(request.get("op") or "")
         params = request.get("params") or {}
         try:
-            result = await dispatch(op, params, runner)
+            result = await dispatch(op, params, sandbox)
             protocol.reply(request_id, result)
             if op == "shutdown":
                 break
@@ -58,32 +70,43 @@ async def serve() -> None:
             raise
         except Exception as exc:  # noqa: BLE001 - every failure is a reply, never a crash
             protocol.fail(request_id, str(exc))
-    protocol.close()
 
 
-async def dispatch(op: str, params: dict[str, Any], runner: ScanRunner) -> Any:
+async def dispatch(op: str, params: dict[str, Any], sandbox: Sandbox) -> Any:
     if op == "ping":
         return {"pong": True}
     if op == "probe":
         return environment.probe()
-    if op == "start_scan":
-        install_guard()
-        return await runner.start(params)
-    if op == "cancel_scan":
-        return await runner.cancel()
-    if op == "list_runs":
-        return artifacts.list_runs(params.get("workspace"), int(params.get("limit") or 50))
-    if op == "run_summary":
-        run_name = params["runName"]
-        return artifacts.run_summary(
-            pathlib.Path(artifacts.run_dir(params.get("workspace"), run_name))
-        )
-    if op == "findings":
-        return artifacts.findings(params.get("workspace"), params["runName"])
+
+    if op == "sandbox_start":
+        _install_guard()
+        return await sandbox.start(params)
+    if op == "sandbox_status":
+        return sandbox.status()
+    if op == "sandbox_exec":
+        return await sandbox.exec(params)
+    if op == "sandbox_stop":
+        return await sandbox.stop()
+
+    if op == "skills_list":
+        _install_guard()
+        return list_skills(params)
+    if op == "skills_load":
+        _install_guard()
+        return load_skills(params)
+
+    session_id = str(params.get("sessionId") or sandbox.status()["sessionId"] or "default")
+    if op == "findings_add":
+        return findings.add(session_id, params)
+    if op == "findings_list":
+        return findings.list_findings(session_id, params)
+    if op == "findings_clear":
+        return findings.clear(session_id)
     if op == "report":
-        return {"markdown": artifacts.report(params.get("workspace"), params["runName"])}
+        return findings.report(session_id, params)
+
     if op == "shutdown":
-        await runner.cancel()
+        await sandbox.stop()
         return {"bye": True}
     raise ValueError(f"unknown op: {op}")
 

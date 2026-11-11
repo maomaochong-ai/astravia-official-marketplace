@@ -1,29 +1,22 @@
 /**
- * State model for one console session.
+ * State model for the console.
  *
- * The panel shows whichever run is most interesting: the live one if a scan is
- * in flight, otherwise the newest run in the workspace. Everything the panel
- * renders is derived here so the components stay presentational.
+ * The panel is a window on what the **host agent** is doing with Strix's tools:
+ * the sandbox session, the commands that ran, and the findings it filed. It never
+ * starts a scan itself - the agent does that - so this hook only reads.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { TuiUiEvent } from "../components/trace-block";
-import type {
-	BridgeClient,
-	StartScanRequest,
-} from "../../../domain/bridge-client";
+import type { BridgeClient } from "../../../domain/bridge-client";
 import type {
 	BridgeEvent,
 	EnvironmentProbe,
-	ScanRecord,
-	ScanRunSummary,
+	SandboxStatus,
 	StrixFinding,
+	TraceEntry,
 } from "../../../runtime-contract";
 
-const TIMELINE_LIMIT = 400;
-
-/** The bridge forwards upstream's projected records verbatim; this is that shape. */
-type RankedEvent = TuiUiEvent & { id: string };
+const TRACE_LIMIT = 300;
 
 export type ConsolePhase = "booting" | "ready" | "unready" | "error";
 
@@ -31,82 +24,50 @@ export interface ScanConsoleModel {
 	phase: ConsolePhase;
 	environment?: EnvironmentProbe;
 	error?: string;
-	/** The host model the scan will run on, when the plugin can borrow it. */
-	relay?: { available: boolean; model: string | null };
-	runs: ScanRunSummary[];
-	activeRun?: ScanRunSummary;
+	sandbox: SandboxStatus;
 	findings: StrixFinding[];
-	timeline: TuiUiEvent[];
-	scanning: boolean;
+	trace: TraceEntry[];
+	/** True while a command is in flight, so the status line can say so. */
+	busy: boolean;
 	boot: () => Promise<void>;
-	start: (request: StartScanRequest) => Promise<void>;
-	cancel: () => Promise<void>;
-	selectRun: (runName: string) => void;
+	stopSandbox: () => Promise<void>;
 }
 
 function isProbe(value: unknown): value is EnvironmentProbe {
 	return Boolean(value && typeof value === "object" && "ready" in (value as Record<string, unknown>));
 }
 
-export function useScanConsole(client: BridgeClient, workspace?: string): ScanConsoleModel {
+export function useScanConsole(client: BridgeClient): ScanConsoleModel {
 	const [phase, setPhase] = useState<ConsolePhase>("booting");
 	const [environment, setEnvironment] = useState<EnvironmentProbe>();
 	const [error, setError] = useState<string>();
-	const [relay, setRelay] = useState<{ available: boolean; model: string | null }>();
-	const [runs, setRuns] = useState<ScanRunSummary[]>([]);
-	const [selectedRun, setSelectedRun] = useState<string>();
-	const [findingsByRun, setFindingsByRun] = useState<Record<string, StrixFinding[]>>({});
-	const [timeline, setTimeline] = useState<TuiUiEvent[]>([]);
-	const [scanning, setScanning] = useState(false);
-	const liveRun = useRef<string | undefined>(undefined);
-
-	const activeRun = useMemo(() => {
-		if (selectedRun) return runs.find((run) => run.runName === selectedRun) ?? runs[0];
-		return runs[0];
-	}, [runs, selectedRun]);
-
-	const loadFindings = useCallback(
-		async (runName: string) => {
-			try {
-				const items = await client.findings(runName, workspace);
-				setFindingsByRun((previous) => ({ ...previous, [runName]: items }));
-			} catch {
-				/* a run may not have written findings yet */
-			}
-		},
-		[client, workspace],
-	);
+	const [sandbox, setSandbox] = useState<SandboxStatus>({ running: false });
+	const [findings, setFindings] = useState<StrixFinding[]>([]);
+	const [trace, setTrace] = useState<TraceEntry[]>([]);
+	const [busy, setBusy] = useState(false);
+	const seq = useRef(0);
 
 	const boot = useCallback(async () => {
 		try {
-			const state = await client.state(workspace);
-			const hostRelay = state.relay ?? { available: false, model: null };
-			setRelay(hostRelay);
+			const state = await client.state();
 			if (isProbe(state.environment)) {
 				setEnvironment(state.environment);
-				// A scan needs the engine, the sandbox and a model. The host relay supplies the
-				// model, so Strix's own provider config only matters when no relay is available.
-				const usable =
-					state.environment.engine.installed &&
-					state.environment.docker.ready &&
-					(hostRelay.available || state.environment.llm.configured);
-				setPhase(usable ? "ready" : "unready");
+				setPhase(state.environment.ready ? "ready" : "unready");
 				setError(undefined);
 			} else {
 				setPhase("error");
 				setError(("error" in state.environment && String(state.environment.error)) || "bridge unavailable");
 			}
-			setRuns(state.runs ?? []);
-			const newest = state.runs?.[0];
-			if (newest) void loadFindings(newest.runName);
+			setSandbox(state.sandbox ?? { running: false });
+			setFindings(state.findings ?? []);
 		} catch (cause) {
 			setPhase("error");
 			setError(cause instanceof Error ? cause.message : String(cause));
 		}
-	}, [client, loadFindings, workspace]);
+	}, [client]);
 
-	// Boot once per mount. `boot` refreshes state; the effect must not follow its identity,
-	// or a re-created client would restart the whole service handshake on every render.
+	// Boot once per mount: `boot` refreshes state, and following its identity
+	// would re-run the service handshake on every render.
 	const booted = useRef(false);
 	useEffect(() => {
 		if (booted.current) return;
@@ -117,32 +78,55 @@ export function useScanConsole(client: BridgeClient, workspace?: string): ScanCo
 	useEffect(
 		() =>
 			client.events((event: BridgeEvent) => {
+				const at = Date.now();
 				switch (event.event) {
-					case "scan_queued": {
-						const runName = String((event as { runName?: string }).runName ?? "");
-						liveRun.current = runName;
-						setScanning(true);
-						setTimeline([]);
+					case "sandbox_status":
+						setTrace((previous) =>
+							[
+								...previous,
+								{ id: `note-${(seq.current += 1)}`, kind: "note" as const, label: String((event as { phase?: string }).phase ?? "sandbox"), at },
+							].slice(-TRACE_LIMIT),
+						);
+						break;
+					case "sandbox_ready":
+						setSandbox((event as { status?: SandboxStatus }).status ?? { running: true });
+						void boot();
+						break;
+					case "sandbox_stopped":
+						setSandbox({ running: false });
+						setBusy(false);
+						void boot();
+						break;
+					case "tool_start": {
+						const payload = event as { tool?: string; command?: string; workdir?: string | null };
+						setBusy(true);
+						setTrace((previous) =>
+							[
+								...previous,
+								{
+									id: `run-${(seq.current += 1)}`,
+									kind: "command" as const,
+									label: payload.command ?? payload.tool ?? "command",
+									detail: payload.workdir ?? undefined,
+									at,
+								},
+							].slice(-TRACE_LIMIT),
+						);
 						break;
 					}
-					case "scan_event": {
-						const record = (event as { record?: RankedEvent }).record;
-						if (!record) break;
-						// Upstream republishes an event as its content grows (version bumps); keep one
-						// row per event id so streaming text replaces itself instead of stacking.
-						setTimeline((previous) => {
-							const at = previous.findIndex((item) => item.id === record.id);
-							if (at < 0) return [...previous, record].slice(-TIMELINE_LIMIT);
+					case "tool_end": {
+						const payload = event as { command?: string; ok?: boolean; exitCode?: number | null };
+						setBusy(false);
+						// Close the matching row instead of adding one: a command and its result
+						// are one line in the trace, exactly as the upstream TUI renders it.
+						setTrace((previous) => {
+							const index = [...previous].reverse().findIndex((item) => item.kind === "command" && item.ok === undefined);
+							if (index < 0) return previous;
+							const at2 = previous.length - 1 - index;
 							const next = previous.slice();
-							next[at] = record;
+							next[at2] = { ...next[at2], ok: payload.ok ?? true, detail: payload.exitCode === undefined ? next[at2].detail : `exit ${payload.exitCode}` };
 							return next;
 						});
-						break;
-					}
-					case "scan_finished":
-					case "scan_failed":
-					case "scan_cancelled": {
-						setScanning(false);
 						void boot();
 						break;
 					}
@@ -153,46 +137,18 @@ export function useScanConsole(client: BridgeClient, workspace?: string): ScanCo
 		[boot, client],
 	);
 
-	useEffect(() => {
-		if (!activeRun) return;
-		if (findingsByRun[activeRun.runName]) return;
-		void loadFindings(activeRun.runName);
-	}, [activeRun, findingsByRun, loadFindings]);
-
-	const start = useCallback(
-		async (request: StartScanRequest) => {
-			setError(undefined);
-			try {
-				await client.start({ ...request, workspace });
-			} catch (cause) {
-				setError(cause instanceof Error ? cause.message : String(cause));
-				setScanning(false);
-			}
-		},
-		[client, workspace],
-	);
-
-	const cancel = useCallback(async () => {
+	const stopSandbox = useCallback(async () => {
 		try {
-			await client.cancel();
+			await client.stopSandbox();
 		} finally {
-			setScanning(false);
+			setSandbox({ running: false });
+			setBusy(false);
+			void boot();
 		}
-	}, [client]);
+	}, [boot, client]);
 
-	return {
-		phase,
-		environment,
-		error,
-		relay,
-		runs,
-		activeRun,
-		findings: activeRun ? findingsByRun[activeRun.runName] ?? [] : [],
-		timeline,
-		scanning,
-		boot,
-		start,
-		cancel,
-		selectRun: setSelectedRun,
-	};
+	return useMemo(
+		() => ({ phase, environment, error, sandbox, findings, trace, busy, boot, stopSandbox }),
+		[phase, environment, error, sandbox, findings, trace, busy, boot, stopSandbox],
+	);
 }

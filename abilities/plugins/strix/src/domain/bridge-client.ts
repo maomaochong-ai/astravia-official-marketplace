@@ -1,29 +1,22 @@
 /**
  * HTTP client for the bridge service.
  *
- * Answers three questions the panel asks: what machine am I on, what runs exist,
- * and what is happening right now. The live feed is Server-Sent Events because
- * the bridge already streams line-delimited JSON; buffering it into polls would
- * lose the ordering that makes a scan readable.
+ * Three things the panel asks of it: what this machine can do, what the sandbox
+ * is doing now, and which findings exist. The live feed is Server-Sent Events,
+ * because the bridge already streams line-delimited JSON and ordering is what
+ * makes a run readable.
+ *
+ * No scanning happens here: the agent calls the plugin's MCP tools, and this
+ * client only reads what those calls produced.
  */
 
-import type { BridgeEvent, BridgeState, ScanRunSummary, StrixFinding } from "./runtime-contract";
-
-export interface StartScanRequest {
-	targets: readonly string[];
-	instruction?: string;
-	scanMode?: "quick" | "standard" | "deep";
-	workspace?: string;
-	maxTurns?: number;
-	maxBudgetUsd?: number;
-}
+import type { BridgeEvent, BridgeState, StrixFinding } from "./runtime-contract";
 
 export interface BridgeClient {
-	state(workspace?: string): Promise<BridgeState>;
-	start(request: StartScanRequest): Promise<{ runName: string; runDir: string }>;
-	cancel(): Promise<{ cancelled: boolean }>;
-	findings(runName: string, workspace?: string): Promise<StrixFinding[]>;
-	report(runName: string, workspace?: string): Promise<string>;
+	state(): Promise<BridgeState>;
+	findings(): Promise<StrixFinding[]>;
+	report(): Promise<{ markdown: string; count: number }>;
+	stopSandbox(): Promise<{ stopped: boolean }>;
 	events(onEvent: (event: BridgeEvent) => void): () => void;
 }
 
@@ -36,38 +29,23 @@ async function readJson<T>(response: Response): Promise<T> {
 }
 
 export function createBridgeClient(baseUrl: () => Promise<string>): BridgeClient {
-	const query = (workspace?: string) =>
-		workspace ? `?workspace=${encodeURIComponent(workspace)}` : "";
-
 	return {
-		async state(workspace) {
+		async state() {
 			const base = await baseUrl();
-			return readJson<BridgeState>(await fetch(`${base}/api/state${query(workspace)}`, { cache: "no-store" }));
+			return readJson<BridgeState>(await fetch(`${base}/api/state`, { cache: "no-store" }));
 		},
-		async start(request) {
+		async findings() {
 			const base = await baseUrl();
-			return readJson(await fetch(`${base}/api/scan`, {
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify(request),
-			}));
+			const state = await readJson<BridgeState>(await fetch(`${base}/api/state`, { cache: "no-store" }));
+			return state.findings ?? [];
 		},
-		async cancel() {
+		async report() {
 			const base = await baseUrl();
-			return readJson(await fetch(`${base}/api/scan/cancel`, { method: "POST" }));
+			return readJson(await fetch(`${base}/api/report`));
 		},
-		async findings(runName, workspace) {
+		async stopSandbox() {
 			const base = await baseUrl();
-			return readJson<StrixFinding[]>(
-				await fetch(`${base}/api/runs/${encodeURIComponent(runName)}/findings${query(workspace)}`),
-			);
-		},
-		async report(runName, workspace) {
-			const base = await baseUrl();
-			const payload = await readJson<{ markdown: string }>(
-				await fetch(`${base}/api/runs/${encodeURIComponent(runName)}/report${query(workspace)}`),
-			);
-			return payload.markdown;
+			return readJson(await fetch(`${base}/api/sandbox/stop`, { method: "POST" }));
 		},
 		events(onEvent) {
 			let source: EventSource | undefined;
@@ -90,9 +68,4 @@ export function createBridgeClient(baseUrl: () => Promise<string>): BridgeClient
 			};
 		},
 	};
-}
-
-export function mergeRun(list: readonly ScanRunSummary[], next: ScanRunSummary): ScanRunSummary[] {
-	const without = list.filter((run) => run.runName !== next.runName);
-	return [next, ...without];
 }

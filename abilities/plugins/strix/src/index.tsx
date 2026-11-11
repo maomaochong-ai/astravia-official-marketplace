@@ -1,19 +1,19 @@
 /**
  * Strix plugin entry: registration only.
  *
- * Surfaces registered here, in this order:
- *  1. `strix.console` activity tab - `initiallyVisible: false`, so installing the
- *     plugin does not add a panel under the conversation. It appears when the
- *     user opens it from the tab menu or triggers activation below.
- *  2. `strix.activate` input action - opens the tab and marks the next prompt as
- *     a Strix request.
+ * What this plugin contributes, in host terms:
+ *  - an activity tab showing what the agent is doing with Strix's sandbox,
+ *  - an input action that opens it and marks the next prompt as a Strix task,
+ *  - MCP tools (`plugin.json#agent.mcpServers`) that give the agent Strix's
+ *    sandbox, its 78 skills and a findings ledger.
  *
- * The plugin's skills are declared with `defaultVisibility: "hidden"` in
- * plugin.json. They are implementation detail: a user installs *Strix*, and the
- * capability page, slash menu and skill picker must show Strix - icon and
- * description - not nine separate entries that look like nine products. The
- * agent still loads them through `agent.skillPaths`; activation therefore speaks
- * to the agent through `decoratePrompt` instead of typing a skill command.
+ * The agent itself is the host's: it already has a model, a conversation and a
+ * tool loop. Rebuilding any of that here would need a second credential and would
+ * duplicate behaviour the application already ships.
+ *
+ * The plugin's own skills are declared with `defaultVisibility: "hidden"`; a user
+ * installs *Strix*, and the capability page and slash menu must show Strix - icon
+ * and description - rather than nine lookalike entries.
  */
 
 import "./style.css";
@@ -21,7 +21,6 @@ import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { definePlugin } from "@astravia-org/plugin-sdk";
 import { useRef } from "react";
 import { createBridgeClient } from "./domain/bridge-client";
-import { publishHostModels, readRelayCredentials, serveModelRequests } from "./domain/host-llm-relay";
 import { StrixConsolePanel } from "./features/scan-console/components/strix-console-panel";
 import { useScanConsole } from "./features/scan-console/hooks/use-scan-console";
 import { createServiceRuntime, type ServiceRuntime } from "./runtime";
@@ -31,32 +30,17 @@ const ACTION_ID = "strix.activate";
 
 function ConsoleTab({ ctx, runtime }: { ctx: PluginContext; runtime: ServiceRuntime }): React.ReactElement {
 	const t = (key: string) => ctx.i18n.t(key);
-	// One client per mounted tab. Rebuilding it during render would give the hook a new
+	// One client per mounted tab: rebuilding it during render would hand the hook a new
 	// identity on every paint, and its effects would re-run the boot sequence forever.
 	const client = useRef(createBridgeClient(() => runtime.ensureReady())).current;
-	const workspace = (ctx as unknown as { workspace?: { path?: string } }).workspace?.path;
-	const model = useScanConsole(client, workspace);
-	return <StrixConsolePanel t={t} model={model} status={runtime.lastStatus()} />;
+	const model = useScanConsole(client);
+	const send = (prompt: string) => ctx.conversation.sendPrompt(prompt);
+	return <StrixConsolePanel t={t} model={model} status={runtime.lastStatus()} send={send} />;
 }
 
 export default definePlugin({
 	async activate(ctx: PluginContext): Promise<Disposable> {
 		const runtime = createServiceRuntime(ctx);
-
-		// Borrow the host's model: publish the model list, then serve the bridge's
-		// requests with ctx.ai. This lives with activation, not with the panel, so a
-		// running scan keeps its model after the tab is closed.
-		const relayAbort = new AbortController();
-		void (async () => {
-			try {
-				const baseUrl = await runtime.ensureReady();
-				const credentials = await readRelayCredentials(baseUrl);
-				await publishHostModels(ctx, baseUrl);
-				if (credentials) await serveModelRequests(ctx, baseUrl, relayAbort.signal);
-			} catch (error) {
-				console.warn("[strix] host model relay unavailable", error);
-			}
-		})();
 
 		const tab: Disposable = ctx.ui.registerActivityTab({
 			id: TAB_ID,
@@ -80,9 +64,8 @@ export default definePlugin({
 				ctx.ui.setActivityTabVisible(TAB_ID, true);
 				ctx.ui.openActivityTab(TAB_ID, { width: "max" });
 			},
-			// The plugin's own instructions travel with the prompt, so the agent knows the
-			// console is open and what to do with a target - without the user having to
-			// remember a hidden skill name.
+			// The method travels with the prompt: the agent then knows which tools exist
+			// and in what order to use them, without the user reciting a skill name.
 			decoratePrompt: () => ({ instructions: [ctx.i18n.t("prompt.instructions")] }),
 		});
 
@@ -90,7 +73,6 @@ export default definePlugin({
 			dispose(): void {
 				action.dispose();
 				tab.dispose();
-				relayAbort.abort();
 				runtime.dispose();
 			},
 		};

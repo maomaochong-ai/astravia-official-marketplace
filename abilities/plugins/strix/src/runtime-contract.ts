@@ -47,54 +47,16 @@ export interface ServiceBridgeHost {
 export interface EnvironmentProbe {
 	python: { version: string; executable: string; found: boolean };
 	engine: { installed: boolean; version: string };
-	docker: { ready: boolean; detail: string; image: string };
-	llm: {
-		model: string;
-		provider?: string;
-		/** `api` for a provider key, `subscription` for `chatgpt/...`, `none` when unset. */
-		mode: "api" | "subscription" | "none";
-		configured: boolean;
-		keySource: string;
-		/** The vendor variable strix would read first, when one applies. */
-		keyEnv?: string;
-		apiBase?: string;
-		/** `model` when nothing is chosen, `key` when only a credential is missing. */
-		missing: string[];
-		cloudAvailable?: boolean;
-		detail?: string;
-	};
-	configPath: string;
+	docker: { ready: boolean; detail: string; image: string; imagePresent?: boolean | null };
 	ready: boolean;
 }
 
-export interface BridgeState {
-	environment: EnvironmentProbe | { error: string };
-	runs: ScanRunSummary[];
-	logTail: BridgeEvent[];
-	/** Present when the renderer has registered the host's models with the bridge. */
-	relay?: { available: boolean; model: string | null };
-}
-
-export interface ScanTargetInfo {
-	type: string;
-	original?: string;
-	details?: Record<string, unknown>;
-}
-
-export interface ScanRunSummary {
-	runName: string;
-	runId: string;
-	status: string;
-	startTime?: string | null;
-	endTime?: string | null;
-	scanMode?: string | null;
-	targets?: ScanTargetInfo[];
-	instruction?: string;
-	findingCount: number;
-	hasReport: boolean;
-	hasSarif: boolean;
-	exitReason?: string | null;
-	path?: string;
+export interface SandboxStatus {
+	running: boolean;
+	sessionId?: string | null;
+	targets?: string[];
+	image?: string | null;
+	uptimeSec?: number;
 }
 
 export interface StrixFinding {
@@ -107,32 +69,38 @@ export interface StrixFinding {
 	technical_analysis?: string;
 	remediation_steps?: string;
 	poc_description?: string;
+	evidence?: string;
 	cvss?: number | string;
 	cve?: string;
 	cwe?: string;
+	confidence?: string;
+	created_at?: string;
 	code_locations?: readonly { file?: string; start_line?: number; end_line?: number }[];
+}
+
+export interface BridgeState {
+	environment: EnvironmentProbe | { error: string };
+	sandbox: SandboxStatus;
+	findings: StrixFinding[];
+	logTail: BridgeEvent[];
 }
 
 export type BridgeEvent =
 	| { event: "bridge_ready"; pid?: number }
-	| { event: "scan_queued"; runName: string; scanMode?: string }
-	| { event: "scan_started"; runName: string }
-	| { event: "scan_status"; runName: string; phase: string }
-	| { event: "scan_event"; runName: string; record: ScanRecord }
-	| { event: "scan_finished"; runName: string; status: string; summary?: ScanRunSummary | null }
-	| { event: "scan_cancelled"; runName: string }
-	| { event: "scan_failed"; runName: string; error: string; traceback?: string }
-	| { event: "projection_error"; message: string }
+	| { event: "sandbox_starting"; sessionId?: string; targets?: string[] }
+	| { event: "sandbox_status"; phase: string }
+	| { event: "sandbox_ready"; sessionId?: string; status?: SandboxStatus }
+	| { event: "sandbox_stopped"; sessionId?: string }
+	| { event: "tool_start"; tool: string; command?: string; workdir?: string | null }
+	| { event: "tool_end"; tool: string; command?: string; ok?: boolean; exitCode?: number | null }
 	| { event: string; [key: string]: unknown };
 
-export interface ScanRecord {
-	id?: number;
-	agent_id?: string;
-	type?: string;
-	role?: string;
-	content?: string;
-	tool_name?: string;
-	tool_args?: unknown;
-	timestamp?: string;
-	[key: string]: unknown;
+/** One row of the panel's trace, derived from the bridge's event stream. */
+export interface TraceEntry {
+	id: string;
+	kind: "command" | "note";
+	label: string;
+	detail?: string;
+	ok?: boolean;
+	at: number;
 }

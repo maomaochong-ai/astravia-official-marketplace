@@ -38,7 +38,7 @@ def main() -> int:
         [
             {"id": "1", "op": "ping", "params": {}},
             {"id": "2", "op": "probe", "params": {}},
-            {"id": "3", "op": "list_runs", "params": {"workspace": str(SERVICE)}},
+            {"id": "3", "op": "sandbox_status", "params": {}},
             {"id": "4", "op": "nope", "params": {}},
             {"id": "5", "op": "shutdown", "params": {}},
         ]
@@ -47,12 +47,13 @@ def main() -> int:
     assert replies[0]["event"] == "bridge_ready", replies[0]
     assert by_id["1"]["ok"] is True and by_id["1"]["result"]["pong"] is True, by_id.get("1")
     probe = by_id["2"]["result"]
-    assert set(probe) >= {"python", "engine", "docker", "llm", "ready"}, probe
+    # No model key here on purpose: the host agent owns the model.
+    assert set(probe) >= {"python", "engine", "docker", "ready"}, probe
     assert isinstance(probe["docker"]["ready"], bool), probe
-    assert by_id["3"]["ok"] is True and isinstance(by_id["3"]["result"], list), by_id.get("3")
+    assert by_id["3"]["ok"] is True and by_id["3"]["result"]["running"] is False, by_id.get("3")
     assert by_id["4"]["ok"] is False and "unknown op" in by_id["4"]["error"], by_id.get("4")
     assert by_id["5"]["result"]["bye"] is True, by_id.get("5")
-    print("python bridge ok:", json.dumps({"probe": probe, "runs": len(by_id["3"]["result"])})[:400])
+    print("python bridge ok:", json.dumps({"probe": probe, "sandbox": by_id["3"]["result"]})[:400])
     return 0
 
 
