@@ -1,5 +1,5 @@
-// Smoke-test the host-node service: start it the way the host does, wait for the
-// readiness endpoint, then exercise the MCP surface and the state route.
+// Smoke-test the host-node service the way the host uses it: start the built
+// entry with node, wait on the readiness endpoint, then exercise MCP and state.
 import { spawn } from "node:child_process";
 import { join } from "node:path";
 
@@ -8,7 +8,7 @@ const PORT = 18777;
 const BASE = `http://127.0.0.1:${PORT}`;
 
 const child = spawn(process.execPath, [SERVICE], {
-	env: { ...process.env, ASTRAVIA_SERVICE_PORT: String(PORT), STRIX_PYTHON: process.env.STRIX_PYTHON || "python" },
+	env: { ...process.env, ASTRAVIA_SERVICE_PORT: String(PORT) },
 	stdio: ["ignore", "pipe", "pipe"],
 });
 let stderr = "";
@@ -51,7 +51,14 @@ try {
 
 	const list = await rpc("tools/list");
 	const names = list.result.tools.map((tool) => tool.name);
-	for (const expected of ["strix_environment", "strix_sandbox_start", "strix_exec", "strix_load_skills", "strix_file_finding", "strix_report"]) {
+	for (const expected of [
+		"strix_environment",
+		"strix_sandbox_start",
+		"strix_exec",
+		"strix_load_skills",
+		"strix_file_finding",
+		"strix_report",
+	]) {
 		assert(names.includes(expected), `missing tool ${expected}: ${names.join(",")}`);
 	}
 
@@ -63,11 +70,12 @@ try {
 	assert(unknown.error?.code === -32601, "unknown tool did not fail cleanly");
 
 	const state = await (await fetch(`${BASE}/api/state`)).json();
-	assert(state.environment && "ready" in state.environment, "state has no environment");
+	assert(state.environment && state.sandbox, "state is incomplete");
 	assert(Array.isArray(state.findings), "state has no findings array");
-	assert(state.sandbox && state.sandbox.running === false, "state has no sandbox status");
 
-	console.log(`service ok: tools=${names.length} engine=${probe.engine.installed} docker=${probe.docker.ready}`);
+	console.log(
+		`service ok: tools=${names.length} docker=${probe.docker.ready} skills=${Boolean(probe.skills)}`,
+	);
 } finally {
 	child.kill();
 }

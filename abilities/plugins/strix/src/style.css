@@ -1,43 +1,26 @@
 /**
  * Console styling.
  *
- * The palette is upstream's (strix/interface/tui/internal/render/styles.go): near
- * black surface, #d4d4d4 text, #22c55e focus, one color per severity. It is kept as
- * literals rather than host tokens on purpose - the panel is a reproduction of
- * Strix's own screen, and it must look the same inside a light host theme.
+ * This panel lives inside the host's conversation surface, so it borrows the host's
+ * theme variables and type scale instead of shipping a palette of its own: it has to
+ * look native in a light session and in a dark one. Monospace is kept for the one
+ * thing that is code - the commands Strix ran - because proportional type makes a
+ * shell command harder to read, not easier.
  *
- * Everything below `astra-strix-` is the plugin's own; no host class is restyled.
+ * Only `astra-strix-*` classes are defined here; no host class is modified.
  */
 
 @import "tailwindcss";
 
 .astra-strix-panel {
-	--astra-bg: #0a0a0a;
-	--astra-surface: #101010;
-	--astra-raised: #161616;
-	--astra-border: #242424;
-	--astra-border-strong: #333333;
-	--astra-text: #d4d4d4;
-	--astra-dim: #6b7280;
-	--astra-green: #22c55e;
-	--astra-green-soft: rgba(34, 197, 94, 0.12);
-	--astra-blue: #3b82f6;
-	--astra-red: #ef4444;
-	--astra-amber: #f59e0b;
-	--astra-label: #a1a1aa;
-
 	display: flex;
 	flex-direction: column;
 	height: 100%;
 	min-height: 0;
-	background:
-		radial-gradient(1200px 400px at 20% -10%, rgba(34, 197, 94, 0.06), transparent 60%),
-		var(--astra-bg);
-	color: var(--astra-text);
-	font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, monospace;
-	font-size: 12.5px;
-	line-height: 1.6;
-	letter-spacing: 0.01em;
+	background: var(--background);
+	color: var(--foreground);
+	font-size: 13px;
+	line-height: 1.55;
 }
 
 /* ---- title bar ------------------------------------------------------- */
@@ -47,9 +30,8 @@
 	align-items: center;
 	justify-content: space-between;
 	gap: 0.75rem;
-	padding: 0.6rem 0.9rem;
-	border-bottom: 1px solid var(--astra-border);
-	background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
+	padding: 0.6rem 0.85rem;
+	border-bottom: 1px solid var(--border);
 	flex-wrap: wrap;
 }
 
@@ -63,10 +45,9 @@
 .astra-strix-logo {
 	width: 22px;
 	height: 22px;
-	border-radius: 5px;
+	border-radius: 6px;
 	object-fit: contain;
 	background: #000;
-	box-shadow: 0 0 0 1px var(--astra-border-strong);
 }
 
 .astra-strix-logo-fallback {
@@ -74,28 +55,27 @@
 	place-items: center;
 	width: 22px;
 	height: 22px;
-	border-radius: 5px;
-	background: #000;
-	box-shadow: 0 0 0 1px var(--astra-border-strong);
-	color: var(--astra-green);
+	border-radius: 6px;
+	background: var(--primary);
+	color: var(--primary-foreground);
 	font-weight: 700;
+	font-size: 12px;
 }
 
 .astra-strix-brand-text {
 	display: flex;
 	flex-direction: column;
-	line-height: 1.2;
+	line-height: 1.25;
+	min-width: 0;
 }
 
 .astra-strix-brand-text strong {
-	font-size: 13px;
-	letter-spacing: 0.02em;
+	font-size: 13.5px;
+	font-weight: 600;
 }
 
 .astra-strix-brand-text .astra-strix-dim {
-	font-size: 10.5px;
-	letter-spacing: 0.06em;
-	text-transform: uppercase;
+	font-size: 11.5px;
 }
 
 .astra-strix-chips {
@@ -109,13 +89,12 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 0.3rem;
-	border: 1px solid var(--astra-border);
+	border: 1px solid var(--border);
 	border-radius: 999px;
-	padding: 0.1rem 0.55rem;
-	font-size: 11px;
-	background: var(--astra-raised);
+	padding: 0.05rem 0.55rem;
+	font-size: 11.5px;
+	background: var(--muted, transparent);
 	color: inherit;
-	cursor: default;
 	white-space: nowrap;
 }
 
@@ -124,48 +103,45 @@ button.astra-strix-chip {
 }
 
 button.astra-strix-chip:hover {
-	border-color: var(--astra-border-strong);
+	border-color: var(--foreground);
 }
 
 .astra-strix-dot {
 	width: 6px;
 	height: 6px;
 	border-radius: 50%;
-	background: var(--astra-dim);
-	box-shadow: none;
+	background: var(--muted-foreground);
+	flex: 0 0 auto;
 }
 
 .astra-strix-dot[data-on="yes"] {
-	background: var(--astra-green);
-	box-shadow: 0 0 0 3px var(--astra-green-soft);
+	background: var(--primary, #22c55e);
 }
 
 .astra-strix-pulse {
 	width: 6px;
 	height: 6px;
 	border-radius: 50%;
-	background: var(--astra-amber);
+	background: var(--primary, #22c55e);
 	animation: astra-strix-pulse 1.2s ease-in-out infinite;
 }
 
 @keyframes astra-strix-pulse {
 	0%,
 	100% {
-		opacity: 0.35;
-		transform: scale(0.85);
+		opacity: 0.3;
 	}
 	50% {
 		opacity: 1;
-		transform: scale(1.15);
 	}
 }
 
 .astra-strix-spinner {
-	width: 12px;
-	height: 12px;
+	width: 13px;
+	height: 13px;
 	border-radius: 50%;
-	border: 2px solid var(--astra-border-strong);
-	border-top-color: var(--astra-green);
+	border: 2px solid var(--border);
+	border-top-color: var(--foreground);
 	animation: astra-strix-spin 0.9s linear infinite;
 }
 
@@ -175,36 +151,37 @@ button.astra-strix-chip:hover {
 	}
 }
 
+/* Semantic colors follow the host theme, with a readable fallback off-theme. */
 .astra-strix-dim {
-	color: var(--astra-dim);
+	color: var(--muted-foreground);
 }
 
 .astra-strix-green {
-	color: var(--astra-green);
+	color: var(--chart-2, #16a34a);
 }
 
 .astra-strix-blue {
-	color: var(--astra-blue);
+	color: var(--chart-1, #2563eb);
 }
 
 .astra-strix-red {
-	color: var(--astra-red);
+	color: var(--destructive, #dc2626);
 }
 
 .astra-strix-amber {
-	color: var(--astra-amber);
+	color: var(--chart-4, #d97706);
 }
 
 .astra-strix-mono {
-	font-family: inherit;
+	font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, monospace;
 }
 
 .astra-strix-error {
 	margin: 0;
-	padding: 0.5rem 0.9rem;
-	color: var(--astra-red);
-	border-bottom: 1px solid var(--astra-border);
-	background: rgba(239, 68, 68, 0.07);
+	padding: 0.5rem 0.85rem;
+	color: var(--destructive, #dc2626);
+	border-bottom: 1px solid var(--border);
+	background: color-mix(in srgb, var(--destructive, #dc2626) 8%, transparent);
 	white-space: pre-wrap;
 }
 
@@ -223,69 +200,75 @@ button.astra-strix-chip:hover {
 	.astra-strix-body {
 		grid-template-columns: minmax(0, 1fr);
 	}
+	.astra-strix-sidebar {
+		flex-direction: row;
+		overflow-x: auto;
+	}
+	.astra-strix-box {
+		min-width: 16rem;
+	}
 }
 
 .astra-strix-trace-pane {
 	display: flex;
 	flex-direction: column;
 	min-height: 0;
-	border: 1px solid var(--astra-border);
-	border-radius: 0.65rem;
-	background: var(--astra-surface);
+	border: 1px solid var(--border);
+	border-radius: 0.7rem;
+	background: var(--card, var(--background));
 	overflow: hidden;
-	flex: 1;
 }
 
 .astra-strix-trace {
 	flex: 1;
 	min-height: 10rem;
 	overflow-y: auto;
-	padding: 0.65rem 0.75rem;
+	padding: 0.55rem 0.6rem;
 	display: flex;
 	flex-direction: column;
-	gap: 0.35rem;
-	scrollbar-width: thin;
+	gap: 0.3rem;
 }
 
 .astra-strix-composer {
-	border-top: 1px solid var(--astra-border);
-	padding: 0.6rem 0.75rem 0.75rem;
+	border-top: 1px solid var(--border);
+	padding: 0.55rem 0.6rem 0.65rem;
 	display: flex;
 	flex-direction: column;
 	gap: 0.5rem;
-	background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.02));
 }
 
 /* ---- trace rows ------------------------------------------------------ */
 
 .astra-strix-tool {
 	border: 1px solid transparent;
-	border-left: 2px solid var(--astra-border-strong);
-	border-radius: 0.4rem;
-	background: rgba(255, 255, 255, 0.015);
+	border-left: 2px solid var(--border);
+	border-radius: 0.45rem;
 	overflow: hidden;
+	transition: background 120ms ease;
+}
+
+.astra-strix-tool:hover {
+	background: var(--accent, rgba(127, 127, 127, 0.06));
 }
 
 .astra-strix-tool[data-state="running"] {
-	border-left-color: var(--astra-amber);
-	background: rgba(245, 158, 11, 0.05);
+	border-left-color: var(--chart-4, #d97706);
 }
 
 .astra-strix-tool[data-state="ok"] {
-	border-left-color: var(--astra-green);
+	border-left-color: var(--chart-2, #16a34a);
 }
 
 .astra-strix-tool[data-state="fail"] {
-	border-left-color: var(--astra-red);
-	background: rgba(239, 68, 68, 0.05);
+	border-left-color: var(--destructive, #dc2626);
 }
 
 .astra-strix-tool-row {
 	display: flex;
 	align-items: flex-start;
-	gap: 0.5rem;
+	gap: 0.45rem;
 	width: 100%;
-	padding: 0.35rem 0.5rem;
+	padding: 0.3rem 0.45rem;
 	background: none;
 	border: none;
 	color: inherit;
@@ -294,19 +277,16 @@ button.astra-strix-chip:hover {
 	cursor: pointer;
 }
 
-.astra-strix-tool-row:hover {
-	background: rgba(255, 255, 255, 0.03);
-}
-
 .astra-strix-tool-glyph {
-	flex: 0 0 0.9rem;
-	line-height: 1.45;
+	flex: 0 0 0.85rem;
+	font-size: 11px;
+	line-height: 1.6;
 }
 
 .astra-strix-tool-body {
 	display: flex;
 	flex-direction: column;
-	gap: 0.1rem;
+	gap: 0.05rem;
 	min-width: 0;
 	flex: 1;
 }
@@ -314,42 +294,43 @@ button.astra-strix-chip:hover {
 .astra-strix-tool-head {
 	display: flex;
 	align-items: baseline;
-	gap: 0.5rem;
+	gap: 0.45rem;
 	font-size: 11px;
+	overflow: hidden;
 }
 
 .astra-strix-tool-state {
 	font-size: 10.5px;
-	letter-spacing: 0.04em;
+	letter-spacing: 0.03em;
 	text-transform: uppercase;
 }
 
 .astra-strix-tool-meta {
-	color: var(--astra-dim);
+	color: var(--muted-foreground);
 	white-space: nowrap;
 }
 
 .astra-strix-tool-cmd {
 	display: block;
-	color: var(--astra-text);
+	color: var(--foreground);
 	white-space: pre-wrap;
 	word-break: break-all;
-	font-family: inherit;
+	font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, monospace;
 	font-size: 12px;
 }
 
 .astra-strix-tool-chevron {
-	color: var(--astra-dim);
+	color: var(--muted-foreground);
 	font-size: 10px;
 	flex: 0 0 auto;
 }
 
 .astra-strix-tool-output {
 	margin: 0;
-	padding: 0.4rem 0.6rem 0.5rem 1.6rem;
-	border-top: 1px dashed var(--astra-border);
-	color: #b9b9b9;
-	font-family: inherit;
+	padding: 0.35rem 0.5rem 0.45rem 1.55rem;
+	border-top: 1px solid var(--border);
+	color: var(--muted-foreground);
+	font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, monospace;
 	font-size: 11.5px;
 	white-space: pre-wrap;
 	word-break: break-word;
@@ -360,9 +341,9 @@ button.astra-strix-chip:hover {
 .astra-strix-note {
 	display: flex;
 	align-items: center;
-	gap: 0.45rem;
+	gap: 0.4rem;
 	margin: 0.1rem 0;
-	color: var(--astra-label);
+	color: var(--muted-foreground);
 	font-size: 11.5px;
 }
 
@@ -370,13 +351,12 @@ button.astra-strix-chip:hover {
 	width: 4px;
 	height: 4px;
 	border-radius: 50%;
-	background: var(--astra-border-strong);
+	background: var(--border);
 }
 
 .astra-strix-note-time {
 	margin-left: auto;
-	color: var(--astra-dim);
-	font-size: 10.5px;
+	font-variant-numeric: tabular-nums;
 }
 
 /* ---- empty states ---------------------------------------------------- */
@@ -389,21 +369,21 @@ button.astra-strix-chip:hover {
 	gap: 0.5rem;
 	height: 100%;
 	min-height: 8rem;
-	color: var(--astra-dim);
+	color: var(--muted-foreground);
 	text-align: center;
 	padding: 1.5rem 1rem;
 }
 
 .astra-strix-empty-icon {
-	font-size: 20px;
-	opacity: 0.5;
-	letter-spacing: 0.2em;
+	font-size: 18px;
+	opacity: 0.55;
+	letter-spacing: 0.15em;
 }
 
 .astra-strix-empty-state p {
 	margin: 0;
-	max-width: 34ch;
-	font-size: 12px;
+	max-width: 36ch;
+	font-size: 12.5px;
 }
 
 /* ---- sidebar --------------------------------------------------------- */
@@ -414,13 +394,12 @@ button.astra-strix-chip:hover {
 	gap: 0.6rem;
 	min-height: 0;
 	overflow-y: auto;
-	scrollbar-width: thin;
 }
 
 .astra-strix-box {
-	border: 1px solid var(--astra-border);
-	border-radius: 0.65rem;
-	background: var(--astra-surface);
+	border: 1px solid var(--border);
+	border-radius: 0.7rem;
+	background: var(--card, var(--background));
 	display: flex;
 	flex-direction: column;
 	min-height: 0;
@@ -428,8 +407,7 @@ button.astra-strix-chip:hover {
 }
 
 .astra-strix-box-focused {
-	border-color: rgba(34, 197, 94, 0.45);
-	box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.12) inset;
+	border-color: color-mix(in srgb, var(--chart-2, #16a34a) 55%, var(--border));
 }
 
 .astra-strix-box-head {
@@ -437,28 +415,28 @@ button.astra-strix-chip:hover {
 	align-items: center;
 	justify-content: space-between;
 	gap: 0.5rem;
-	padding: 0.35rem 0.65rem;
-	border-bottom: 1px solid var(--astra-border);
-	background: rgba(255, 255, 255, 0.02);
+	padding: 0.35rem 0.6rem;
+	border-bottom: 1px solid var(--border);
+	background: var(--muted, transparent);
 }
 
 .astra-strix-box-title {
-	color: var(--astra-label);
+	color: var(--muted-foreground);
 	font-size: 10.5px;
-	letter-spacing: 0.1em;
+	letter-spacing: 0.08em;
 	text-transform: uppercase;
 }
 
 .astra-strix-box-hint {
-	color: var(--astra-dim);
+	color: var(--muted-foreground);
 	font-size: 10.5px;
+	font-variant-numeric: tabular-nums;
 }
 
 .astra-strix-box-body {
-	padding: 0.5rem 0.65rem;
+	padding: 0.45rem 0.6rem;
 	overflow-y: auto;
 	max-height: 15rem;
-	scrollbar-width: thin;
 }
 
 /* ---- session panel --------------------------------------------------- */
@@ -466,21 +444,21 @@ button.astra-strix-chip:hover {
 .astra-strix-session {
 	display: flex;
 	flex-direction: column;
-	gap: 0.45rem;
+	gap: 0.4rem;
 }
 
 .astra-strix-session-head {
 	display: flex;
 	align-items: center;
 	gap: 0.4rem;
-	font-size: 12px;
+	font-size: 12.5px;
 }
 
 .astra-strix-kv {
 	margin: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 0.15rem;
+	gap: 0.1rem;
 }
 
 .astra-strix-kv-row {
@@ -491,7 +469,7 @@ button.astra-strix-chip:hover {
 }
 
 .astra-strix-kv dt {
-	color: var(--astra-dim);
+	color: var(--muted-foreground);
 	font-size: 11px;
 }
 
@@ -501,6 +479,7 @@ button.astra-strix-chip:hover {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	font-size: 11.5px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 /* ---- targets --------------------------------------------------------- */
@@ -511,25 +490,27 @@ button.astra-strix-chip:hover {
 	padding: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 0.2rem;
+	gap: 0.15rem;
 }
 
 .astra-strix-target {
 	display: flex;
-	gap: 0.4rem;
+	gap: 0.35rem;
 	align-items: baseline;
 	min-width: 0;
 }
 
 .astra-strix-target-mark {
-	color: var(--astra-green);
-	font-size: 10px;
+	color: var(--muted-foreground);
+	font-size: 9px;
 }
 
 .astra-strix-target-name {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 11.5px;
 }
 
 /* ---- findings -------------------------------------------------------- */
@@ -540,43 +521,43 @@ button.astra-strix-chip:hover {
 	padding: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 0.15rem;
+	gap: 0.1rem;
 }
 
 .astra-strix-finding {
-	border-radius: 0.35rem;
+	border-radius: 0.4rem;
 }
 
 .astra-strix-finding[data-open="yes"] {
-	background: rgba(255, 255, 255, 0.03);
+	background: var(--muted, rgba(127, 127, 127, 0.07));
 }
 
 .astra-strix-finding-row {
 	display: flex;
-	gap: 0.45rem;
+	gap: 0.4rem;
 	align-items: baseline;
 	width: 100%;
 	background: none;
 	border: none;
-	padding: 0.2rem 0.25rem;
+	padding: 0.22rem 0.25rem;
 	color: inherit;
 	font: inherit;
 	text-align: left;
 	cursor: pointer;
-	border-radius: 0.35rem;
+	border-radius: 0.4rem;
 }
 
 .astra-strix-finding-row:hover {
-	background: rgba(255, 255, 255, 0.04);
+	background: var(--accent, rgba(127, 127, 127, 0.08));
 }
 
 .astra-strix-severity {
-	flex: 0 0 4.9rem;
+	flex: 0 0 4.6rem;
 	display: inline-flex;
 	align-items: center;
-	gap: 0.3rem;
+	gap: 0.28rem;
 	font-size: 10.5px;
-	letter-spacing: 0.04em;
+	letter-spacing: 0.03em;
 	text-transform: uppercase;
 }
 
@@ -598,7 +579,7 @@ button.astra-strix-chip:hover {
 	display: flex;
 	flex-direction: column;
 	gap: 0.3rem;
-	padding: 0.25rem 0.3rem 0.5rem 5.35rem;
+	padding: 0.2rem 0.35rem 0.5rem 5.1rem;
 }
 
 .astra-strix-finding-detail p {
@@ -609,26 +590,27 @@ button.astra-strix-chip:hover {
 
 .astra-strix-finding-facts {
 	display: flex;
-	gap: 0.6rem;
+	gap: 0.55rem;
 	flex-wrap: wrap;
 	font-size: 10.5px;
-	color: var(--astra-dim);
+	color: var(--muted-foreground);
+	font-variant-numeric: tabular-nums;
 }
 
 .astra-strix-detail-label {
-	color: var(--astra-label);
+	color: var(--muted-foreground);
 	font-size: 10px;
-	letter-spacing: 0.1em;
+	letter-spacing: 0.08em;
 	text-transform: uppercase;
 }
 
 .astra-strix-evidence {
 	margin: 0;
 	padding: 0.35rem 0.5rem;
-	border-radius: 0.3rem;
-	background: #000;
-	border: 1px solid var(--astra-border);
-	font-family: inherit;
+	border-radius: 0.35rem;
+	background: var(--muted, rgba(127, 127, 127, 0.1));
+	border: 1px solid var(--border);
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	font-size: 11px;
 	white-space: pre-wrap;
 	word-break: break-word;
@@ -642,10 +624,10 @@ button.astra-strix-chip:hover {
 	display: flex;
 	flex-direction: column;
 	gap: 0.2rem;
-	border: 1px solid rgba(239, 68, 68, 0.35);
+	border: 1px solid color-mix(in srgb, var(--destructive, #dc2626) 40%, var(--border));
 	border-radius: 0.5rem;
 	padding: 0.45rem 0.6rem;
-	background: rgba(239, 68, 68, 0.06);
+	background: color-mix(in srgb, var(--destructive, #dc2626) 6%, transparent);
 }
 
 .astra-strix-setup-row {
@@ -654,11 +636,11 @@ button.astra-strix-chip:hover {
 	gap: 0.4rem;
 	align-items: baseline;
 	flex-wrap: wrap;
-	font-size: 11.5px;
+	font-size: 12px;
 }
 
 .astra-strix-blocker-mark {
-	color: var(--astra-red);
+	color: var(--destructive, #dc2626);
 }
 
 .astra-strix-card {
@@ -669,28 +651,31 @@ button.astra-strix-chip:hover {
 
 .astra-strix-input {
 	width: 100%;
-	background: #050505;
-	color: var(--astra-text);
-	border: 1px solid var(--astra-border-strong);
-	border-radius: 0.45rem;
-	padding: 0.45rem 0.6rem;
+	background: var(--background);
+	color: var(--foreground);
+	border: 1px solid var(--border);
+	border-radius: 0.5rem;
+	padding: 0.4rem 0.6rem;
 	font: inherit;
 	transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 
 .astra-strix-input::placeholder {
-	color: #4b5563;
+	color: var(--muted-foreground);
+	opacity: 0.8;
 }
 
 .astra-strix-input:focus-visible {
 	outline: none;
-	border-color: var(--astra-green);
-	box-shadow: 0 0 0 3px var(--astra-green-soft);
+	border-color: var(--ring, var(--foreground));
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring, var(--foreground)) 18%, transparent);
 }
 
 .astra-strix-textarea {
 	resize: vertical;
 	min-height: 3rem;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 12.5px;
 }
 
 .astra-strix-row {
@@ -704,7 +689,6 @@ button.astra-strix-chip:hover {
 	justify-content: space-between;
 }
 
-/* Example targets, so the first run needs no typing to try. */
 .astra-strix-examples {
 	display: flex;
 	gap: 0.3rem;
@@ -714,61 +698,56 @@ button.astra-strix-chip:hover {
 .astra-strix-examples .astra-strix-chip {
 	cursor: pointer;
 	background: transparent;
-	color: var(--astra-dim);
+	color: var(--muted-foreground);
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .astra-strix-examples .astra-strix-chip:hover:not(:disabled) {
-	color: var(--astra-text);
-	border-color: var(--astra-green);
+	color: var(--foreground);
+	border-color: var(--ring, var(--foreground));
 }
 
 .astra-strix-button {
 	display: inline-flex;
 	align-items: center;
 	gap: 0.35rem;
-	border: 1px solid var(--astra-border-strong);
-	border-radius: 0.45rem;
-	background: var(--astra-raised);
+	border: 1px solid var(--border);
+	border-radius: 0.5rem;
+	background: transparent;
 	color: inherit;
-	padding: 0.3rem 0.8rem;
+	padding: 0.28rem 0.75rem;
 	font: inherit;
 	cursor: pointer;
-	transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+	transition: background 120ms ease, border-color 120ms ease;
 }
 
 .astra-strix-button:hover:not(:disabled) {
-	border-color: var(--astra-green);
-	background: var(--astra-green-soft);
-}
-
-.astra-strix-button:active:not(:disabled) {
-	transform: translateY(1px);
+	background: var(--accent, rgba(127, 127, 127, 0.1));
 }
 
 .astra-strix-button:disabled {
-	opacity: 0.4;
+	opacity: 0.45;
 	cursor: not-allowed;
 }
 
 .astra-strix-button-primary {
+	background: var(--primary);
 	border-color: transparent;
-	background: var(--astra-green);
-	color: #04140a;
-	font-weight: 600;
+	color: var(--primary-foreground);
+	font-weight: 500;
 }
 
 .astra-strix-button-primary:hover:not(:disabled) {
-	background: #2ee06a;
-	border-color: transparent;
+	background: color-mix(in srgb, var(--primary) 88%, var(--foreground));
 }
 
 .astra-strix-hint {
 	margin: 0;
-	color: var(--astra-dim);
+	color: var(--muted-foreground);
 	font-size: 11.5px;
 }
 
 .astra-strix-code {
-	font-family: inherit;
-	color: var(--astra-green);
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 11.5px;
 }
