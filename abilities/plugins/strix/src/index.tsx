@@ -19,9 +19,9 @@
 import "./style.css";
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { definePlugin } from "@astravia-org/plugin-sdk";
-import { useEffect, useRef, useState } from "react";
-import { apiBaseFor, readHostModels, type HostModels } from "./domain/host-models";
+import { useRef } from "react";
 import { createBridgeClient } from "./domain/bridge-client";
+import { publishHostModels, readRelayCredentials, serveModelRequests } from "./domain/host-llm-relay";
 import { StrixConsolePanel } from "./features/scan-console/components/strix-console-panel";
 import { useScanConsole } from "./features/scan-console/hooks/use-scan-console";
 import { createServiceRuntime, type ServiceRuntime } from "./runtime";
@@ -36,39 +36,27 @@ function ConsoleTab({ ctx, runtime }: { ctx: PluginContext; runtime: ServiceRunt
 	const client = useRef(createBridgeClient(() => runtime.ensureReady())).current;
 	const workspace = (ctx as unknown as { workspace?: { path?: string } }).workspace?.path;
 	const model = useScanConsole(client, workspace);
-	const [hostModels, setHostModels] = useState<HostModels>();
-
-	// The host's own model list is what the user recognises; reading it once per mount is
-	// enough, and it needs `ai.models.list` rather than any provider credential.
-	useEffect(() => {
-		let alive = true;
-		void readHostModels(ctx).then((result) => {
-			if (alive) setHostModels(result);
-		});
-		return () => {
-			alive = false;
-		};
-	}, [ctx]);
-
-	const useHostModel = async (modelKey: string): Promise<void> => {
-		await client.configureModel({ model: modelKey, apiBase: apiBaseFor(modelKey) });
-		await model.boot();
-	};
-
-	return (
-		<StrixConsolePanel
-			t={t}
-			model={model}
-			status={runtime.lastStatus()}
-			hostModels={hostModels}
-			onUseHostModel={useHostModel}
-		/>
-	);
+	return <StrixConsolePanel t={t} model={model} status={runtime.lastStatus()} />;
 }
 
 export default definePlugin({
 	async activate(ctx: PluginContext): Promise<Disposable> {
 		const runtime = createServiceRuntime(ctx);
+
+		// Borrow the host's model: publish the model list, then serve the bridge's
+		// requests with ctx.ai. This lives with activation, not with the panel, so a
+		// running scan keeps its model after the tab is closed.
+		const relayAbort = new AbortController();
+		void (async () => {
+			try {
+				const baseUrl = await runtime.ensureReady();
+				const credentials = await readRelayCredentials(baseUrl);
+				await publishHostModels(ctx, baseUrl);
+				if (credentials) await serveModelRequests(ctx, baseUrl, relayAbort.signal);
+			} catch (error) {
+				console.warn("[strix] host model relay unavailable", error);
+			}
+		})();
 
 		const tab: Disposable = ctx.ui.registerActivityTab({
 			id: TAB_ID,
@@ -102,6 +90,7 @@ export default definePlugin({
 			dispose(): void {
 				action.dispose();
 				tab.dispose();
+				relayAbort.abort();
 				runtime.dispose();
 			},
 		};

@@ -1,8 +1,12 @@
 /**
- * Launch surface: targets, focus, scan mode, and the two buttons that matter.
+ * Composer: one target box, one optional focus box, and Start.
  *
- * Validation is deliberately local (a target is any non-empty line) because
- * Strix itself rejects bad targets with a specific message at scan preparation;
+ * Every control that is not needed to begin a scan was removed: depth and budget
+ * default to Strix's own values and stay behind "more", because a first-run user
+ * pressing Start should not have to reason about them.
+ *
+ * Validation is deliberately local (a target is any non-empty line) because Strix
+ * itself rejects bad targets with a specific message at scan preparation;
  * duplicating its target inference here would drift from upstream.
  */
 
@@ -23,7 +27,7 @@ export function LaunchForm({ t, scanning, disabled, onStart, onCancel }: LaunchF
 	const [targets, setTargets] = useState("");
 	const [instruction, setInstruction] = useState("");
 	const [mode, setMode] = useState<(typeof MODES)[number]>("deep");
-	const [budget, setBudget] = useState("");
+	const [advanced, setAdvanced] = useState(false);
 
 	const parsed = targets
 		.split("\n")
@@ -32,75 +36,65 @@ export function LaunchForm({ t, scanning, disabled, onStart, onCancel }: LaunchF
 
 	const submit = async (): Promise<void> => {
 		if (!parsed.length || scanning) return;
-		const budgetValue = Number(budget);
 		await onStart({
 			targets: parsed,
 			instruction: instruction.trim() || undefined,
 			scanMode: mode,
-			maxBudgetUsd: Number.isFinite(budgetValue) && budgetValue > 0 ? budgetValue : undefined,
 		});
 	};
 
 	return (
 		<section className="astra-strix-card">
-			<label className="astra-strix-label" htmlFor="strix-targets">
-				{t("launch.targets.label")}
-			</label>
 			<textarea
 				id="strix-targets"
+				aria-label={t("launch.targets.label")}
 				className="astra-strix-input astra-strix-textarea"
 				placeholder={t("launch.targets.placeholder")}
 				value={targets}
 				onChange={(event) => setTargets(event.target.value)}
-				rows={3}
-				disabled={scanning}
-			/>
-			<p className="astra-strix-hint">{t("launch.targets.hint")}</p>
-
-			<label className="astra-strix-label" htmlFor="strix-instruction">
-				{t("launch.instruction.label")}
-			</label>
-			<textarea
-				id="strix-instruction"
-				className="astra-strix-input"
-				placeholder={t("launch.instruction.placeholder")}
-				value={instruction}
-				onChange={(event) => setInstruction(event.target.value)}
+				onKeyDown={(event) => {
+					// Enter starts; Shift+Enter is a newline, so several targets still work.
+					if (event.key === "Enter" && !event.shiftKey) {
+						event.preventDefault();
+						void submit();
+					}
+				}}
 				rows={2}
 				disabled={scanning}
 			/>
 
-			<div className="astra-strix-row">
-				<label className="astra-strix-label" htmlFor="strix-mode">
-					{t("launch.mode.label")}
-				</label>
-				<select
-					id="strix-mode"
-					className="astra-strix-input astra-strix-select"
-					value={mode}
-					onChange={(event) => setMode(event.target.value as (typeof MODES)[number])}
-					disabled={scanning}
-				>
-					{MODES.map((item) => (
-						<option key={item} value={item}>
-							{t(`launch.mode.${item}`)}
-						</option>
-					))}
-				</select>
-
-				<label className="astra-strix-label" htmlFor="strix-budget">
-					{t("launch.budget.label")}
-				</label>
-				<input
-					id="strix-budget"
-					className="astra-strix-input astra-strix-budget"
-					inputMode="decimal"
-					placeholder={t("launch.budget.placeholder")}
-					value={budget}
-					onChange={(event) => setBudget(event.target.value)}
-					disabled={scanning}
-				/>
-			</div>
+			{advanced ? (
+				<>
+					<textarea
+						id="strix-instruction"
+						aria-label={t("launch.instruction.label")}
+						className="astra-strix-input"
+						placeholder={t("launch.single.placeholder")}
+						value={instruction}
+						onChange={(event) => setInstruction(event.target.value)}
+						rows={2}
+						disabled={scanning}
+					/>
+					<div className="astra-strix-row">
+						<label className="astra-strix-label" htmlFor="strix-mode">
+							{t("launch.mode.label")}
+						</label>
+						<select
+							id="strix-mode"
+							className="astra-strix-input astra-strix-select"
+							value={mode}
+							onChange={(event) => setMode(event.target.value as (typeof MODES)[number])}
+							disabled={scanning}
+						>
+							{MODES.map((item) => (
+								<option key={item} value={item}>
+									{t(`launch.mode.${item}`)}
+								</option>
+							))}
+						</select>
+					</div>
+				</>
+			) : null}
 
 			<div className="astra-strix-row astra-strix-actions">
 				<button
@@ -116,6 +110,9 @@ export function LaunchForm({ t, scanning, disabled, onStart, onCancel }: LaunchF
 						{t("launch.button.cancel")}
 					</button>
 				) : null}
+				<button type="button" className="astra-strix-link" onClick={() => setAdvanced((value) => !value)}>
+					{advanced ? t("launch.less") : t("launch.more")}
+				</button>
 			</div>
 		</section>
 	);

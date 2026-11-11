@@ -1,84 +1,70 @@
 /**
- * The activity-tab surface, laid out like the upstream TUI.
+ * The activity-tab surface.
  *
- * Upstream's screen has two columns (strix/interface/tui/internal/app/view.go:mainView):
- * a bordered chat trace with the composer under it on the left, and a sidebar of
- * rounded boxes - viewer, stats, targets, agents, findings, MCP - on the right.
- * This panel keeps that arrangement so the plugin looks like the tool it wraps;
- * the only thing added is the launch form, which upstream collects at its setup
- * screen and which therefore sits where its composer sits.
+ * Layout follows the upstream TUI's two columns - a bordered trace with the
+ * composer under it, and a findings list beside it - but keeps only what a user
+ * acts on. An earlier version stacked status, targets, agents and a model panel
+ * above the form; every one of those is either config the plugin now derives
+ * from the host or detail nobody reads before pressing Start.
+ *
+ * Model, engine and sandbox are no longer "setup steps" to satisfy: the scan runs
+ * on the host's own model through the plugin's relay, so the only thing worth
+ * saying up front is that the engine or Docker is missing.
  */
 
 import { FindingList } from "../../findings/components/finding-list";
 import { PanelBox } from "../../../shared/components/panel-box";
-import { AgentList } from "./agent-list";
-import { ModelPanel } from "./model-panel";
 import { LaunchForm } from "./launch-form";
 import { StatsBox } from "./stats-box";
 import { TraceBlock } from "./trace-block";
 import type { ScanConsoleModel } from "../hooks/use-scan-console";
 import type { ServiceStatus } from "../../../runtime-contract";
-import type { HostModels } from "../../../domain/host-models";
 
 export interface StrixConsolePanelProps {
 	t: (key: string) => string;
 	model: ScanConsoleModel;
 	/** Managed-service status, so a stuck service explains itself instead of spinning. */
 	status?: ServiceStatus;
-	/** Models the host already has configured, so the panel can adopt one by name. */
-	hostModels?: HostModels;
-	onUseHostModel?: (modelKey: string) => Promise<void>;
-	status?: ServiceStatus;
 }
 
-function Targets({ t, model }: { t: (key: string) => string; model: ScanConsoleModel }): React.ReactElement {
-	const targets = model.activeRun?.targets ?? [];
-	if (!targets.length) return <p className="astra-strix-dim">{t("targets.empty")}</p>;
-	return (
-		<ul className="astra-strix-targets">
-			{targets.map((target, index) => (
-				<li key={`${target.original ?? index}`} className="astra-strix-target">
-					<span className="astra-strix-dim">{target.type}</span>
-					<span className="astra-strix-target-name">{target.original ?? String(index)}</span>
-				</li>
-			))}
-		</ul>
-	);
-}
-
-function Setup({ t, model }: { t: (key: string) => string; model: ScanConsoleModel }): React.ReactElement | null {
+function Blockers({ t, model }: { t: (key: string) => string; model: ScanConsoleModel }): React.ReactElement | null {
 	const probe = model.environment;
 	if (!probe) return null;
-	const rows = [
-		{ ok: probe.python.found, key: "setup.python", detail: probe.python.executable },
-		{ ok: probe.engine.installed, key: "setup.engine", detail: probe.engine.version },
-		{ ok: probe.docker.ready, key: "setup.docker", detail: probe.docker.detail },
-	];
-	if (rows.every((row) => row.ok)) return null;
+	const missing = [
+		!probe.python.found
+			? { key: "setup.python", detail: probe.python.executable, hint: "setup.pythonHint" }
+			: undefined,
+		!probe.engine.installed
+			? { key: "setup.engine", detail: probe.engine.version, hint: "setup.engineHint" }
+			: undefined,
+		!probe.docker.ready ? { key: "setup.docker", detail: probe.docker.detail, hint: "setup.dockerHint" } : undefined,
+	].filter((row): row is { key: string; detail: string; hint: string } => Boolean(row));
+
+	// A model is only a blocker when the host has none either.
+	if (!model.relay?.available && !probe.llm.configured) {
+		missing.push({ key: "setup.llm", detail: probe.llm.detail ?? "", hint: "setup.llmHint" });
+	}
+	if (!missing.length) return null;
+
 	return (
-		<div className="astra-strix-setup">
-			{rows.map((row) => (
+		<div className="astra-strix-blockers">
+			{missing.map((row) => (
 				<p key={row.key} className="astra-strix-setup-row">
-					<span className={row.ok ? "astra-strix-green" : "astra-strix-red"}>{row.ok ? "✓" : "✗"}</span>
+					<span className="astra-strix-red">✗</span>
 					<span>{t(row.key)}</span>
-					{!row.ok && row.detail ? <code className="astra-strix-code">{row.detail}</code> : null}
+					{row.detail ? <code className="astra-strix-code">{row.detail}</code> : null}
+					<span className="astra-strix-dim">{t(row.hint)}</span>
 				</p>
 			))}
-			{!probe.engine.installed ? (
-				<p className="astra-strix-hint">
-					<code className="astra-strix-code">uv tool install strix-agent</code>
-				</p>
-			) : null}
-			{!probe.python.found ? <p className="astra-strix-hint">{t("setup.pythonHint")}</p> : null}
-			{!probe.docker.ready ? <p className="astra-strix-hint">{t("setup.dockerHint")}</p> : null}
 		</div>
 	);
 }
 
-export function StrixConsolePanel({ t, model, status, hostModels, onUseHostModel }: StrixConsolePanelProps): React.ReactElement {
+export function StrixConsolePanel({ t, model, status }: StrixConsolePanelProps): React.ReactElement {
 	const ready = model.phase === "ready";
 	const run = model.activeRun;
 	const serverUp = status ? status.phase === "starting" || status.phase === "ready" : true;
+	const hostModel = model.relay?.model;
 
 	return (
 		<div className="astra-strix-panel">
@@ -86,6 +72,10 @@ export function StrixConsolePanel({ t, model, status, hostModels, onUseHostModel
 				<span className="astra-strix-wordmark">
 					<strong>Strix</strong>
 					<span className="astra-strix-dim"> · {t("panel.subtitle")}</span>
+				</span>
+				{/* The model is the host's, so say which one rather than offering a picker. */}
+				<span className="astra-strix-chip astra-strix-dim" title={t("panel.modelHint")}>
+					{hostModel ?? model.environment?.llm.model ?? t("stats.modelUnknown")}
 				</span>
 				{model.scanning ? <span className="astra-strix-chip astra-strix-green">{t("panel.live")}</span> : null}
 				{!serverUp ? (
@@ -108,21 +98,13 @@ export function StrixConsolePanel({ t, model, status, hostModels, onUseHostModel
 						{model.phase === "booting" ? (
 							<p className="astra-strix-dim">{t("boot.loading")}</p>
 						) : model.timeline.length ? (
-							model.timeline.map((event, index) => (
-								<TraceBlock key={event.id ?? index} event={event} />
-							))
+							model.timeline.map((event, index) => <TraceBlock key={event.id ?? index} event={event} />)
 						) : (
 							<p className="astra-strix-dim">{t("timeline.empty")}</p>
 						)}
 					</div>
 					<div className="astra-strix-composer">
-						<Setup t={t} model={model} />
-						<ModelPanel
-							t={t}
-							model={model}
-							hostModels={hostModels}
-							onUseHostModel={onUseHostModel ?? (async () => undefined)}
-						/>
+						<Blockers t={t} model={model} />
 						<LaunchForm
 							t={t}
 							scanning={model.scanning}
@@ -134,15 +116,11 @@ export function StrixConsolePanel({ t, model, status, hostModels, onUseHostModel
 				</section>
 
 				<aside className="astra-strix-sidebar">
-					<PanelBox title={t("stats.title")}>
-						<StatsBox t={t} environment={model.environment} run={run} />
-					</PanelBox>
-					<PanelBox title={t("targets.title")} hint={String(run?.targets?.length ?? 0)}>
-						<Targets t={t} model={model} />
-					</PanelBox>
-					<PanelBox title={t("agents.title")}>
-						<AgentList t={t} events={model.timeline} />
-					</PanelBox>
+					{run ? (
+						<PanelBox title={t("stats.title")}>
+							<StatsBox t={t} environment={model.environment} run={run} hostModel={hostModel} />
+						</PanelBox>
+					) : null}
 					<PanelBox title={t("findings.title")} hint={String(model.findings.length)} focused>
 						<FindingList t={t} findings={model.findings} runStatus={run?.status} />
 					</PanelBox>

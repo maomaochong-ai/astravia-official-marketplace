@@ -200,34 +200,6 @@ def _model_state(config_env: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def configure_model(model: str, api_base: str = "", api_key: str = "") -> dict[str, Any]:
-    """Write the model choice into strix's own config, leaving the rest untouched.
-
-    The plugin may adopt the host's model *name*; it never receives the host's key,
-    so a blank `api_key` keeps whatever strix already has.
-    """
-    model = (model or "").strip()
-    if not model:
-        raise ValueError("model is required")
-    payload = _read_json(STRIX_CONFIG)
-    env = payload.get("env") if isinstance(payload.get("env"), dict) else {}
-    env["STRIX_LLM"] = model
-    if api_base.strip():
-        env["LLM_API_BASE"] = api_base.strip()
-    elif _provider_of(model) in PROVIDER_API_BASES:
-        env.setdefault("LLM_API_BASE", PROVIDER_API_BASES[_provider_of(model)])
-    if api_key.strip():
-        env["LLM_API_KEY"] = api_key.strip()
-    payload["env"] = env
-    STRIX_DIR.mkdir(parents=True, exist_ok=True)
-    STRIX_CONFIG.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    try:
-        STRIX_CONFIG.chmod(0o600)
-    except OSError:
-        pass
-    return {"model": model, "configPath": str(STRIX_CONFIG)}
-
-
 def probe() -> dict[str, Any]:
     """Everything the settings and launch surfaces need, in one round trip."""
     config_env = _read_strix_config()

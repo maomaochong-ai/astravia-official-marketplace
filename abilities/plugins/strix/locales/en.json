@@ -20,7 +20,7 @@
   "setup.docker": "Docker sandbox available",
   "setup.llm": "Model and API key configured",
   "setup.llmMissing": "model missing",
-  "setup.llmHint": "Set STRIX_LLM and LLM_API_KEY in ~/.strix/cli-config.json (env block) so scans have a model to drive.",
+  "setup.llmHint": "Astravia has no model configured for this plugin to use",
   "setup.dockerHint": "Strix runs its tools inside a Docker sandbox. Start Docker Desktop, then retry.",
   "targets.title": "Targets",
   "targets.empty": "No target yet.",
@@ -66,5 +66,10 @@
   "setup.useHostModel": "use this",
   "setup.modelHint": "Choose a model: run /strix or set STRIX_LLM in ~/.strix/cli-config.json.",
   "setup.keyHint": "Give Strix a credential for it:",
-  "setup.cloudHint": "Or run scans through Strix Cloud: strix cloud login."
+  "setup.cloudHint": "Or run scans through Strix Cloud: strix cloud login.",
+  "launch.more": "more",
+  "launch.less": "less",
+  "launch.single.placeholder": "Focus, credentials, anything the agent should know",
+  "setup.engineHint": "Install the engine: uv tool install strix-agent",
+  "panel.modelHint": "The scan runs on this Astravia model"
 }

@@ -1,9 +1,9 @@
 /**
  * Sidebar stats box, mirroring upstream's `statsView`.
  *
- * Upstream lists model, subscription state, token usage and version, one per
- * line. The plugin knows the same things from the environment probe and the run
- * record, so the box reads the same way.
+ * Upstream lists model, usage and version one per line. Here the model is the
+ * host's (the scan borrows it), so the box names it directly instead of asking
+ * the user to keep two configurations in sync.
  */
 
 import type { EnvironmentProbe, ScanRunSummary } from "../../../runtime-contract";
@@ -12,15 +12,14 @@ export interface StatsBoxProps {
 	t: (key: string) => string;
 	environment?: EnvironmentProbe;
 	run?: ScanRunSummary;
+	/** The host model the scan runs on, when the relay is live. */
+	hostModel?: string | null;
 }
 
-export function StatsBox({ t, environment, run }: StatsBoxProps): React.ReactElement {
+export function StatsBox({ t, environment, run, hostModel }: StatsBoxProps): React.ReactElement {
 	return (
 		<div className="astra-strix-stats">
-			<p>{environment?.llm.model || t("stats.modelUnknown")}</p>
-			{environment?.llm.configured === false ? (
-				<p className="astra-strix-red">{t("setup.llmMissing")}</p>
-			) : null}
+			<p>{hostModel ?? environment?.llm.model ?? t("stats.modelUnknown")}</p>
 			{run?.scanMode ? (
 				<p>
 					{t("stats.mode")}: {run.scanMode}

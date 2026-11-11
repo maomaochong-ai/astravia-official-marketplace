@@ -14,6 +14,7 @@
  * panel, not a reason to restart the process forever.
  */
 import { execFileSync, spawn } from "node:child_process";
+import { createModelRelay, toHostChatRequest, toOpenAiCompletion, toSseChunks } from "./model-relay.mjs";
 import { existsSync, readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
@@ -33,6 +34,7 @@ let pythonError = "";
 const pending = new Map();
 const subscribers = new Set();
 const log = [];
+const relay = createModelRelay();
 
 function record(line) {
 	log.push(line);
@@ -331,6 +333,54 @@ const server = createServer(async (req, res) => {
 			});
 		}
 		if (url.pathname === "/mcp" && req.method === "POST") return await handleMcp(req, res);
+		// --- host-model relay (OpenAI-compatible, loopback, bearer token) ---------
+		if (url.pathname.startsWith("/v1/")) {
+			const auth = req.headers.authorization || "";
+			if (auth !== `Bearer ${relay.token}`) return json(res, 401, { error: "bad token" });
+		}
+		if (url.pathname === "/v1/models") {
+			return json(res, 200, {
+				object: "list",
+				data: relay.models.models.map((model) => ({ id: model.modelKey, object: "model", owned_by: "astravia" })),
+			});
+		}
+		if (url.pathname === "/v1/chat/completions" && req.method === "POST") {
+			const body = await readBody(req);
+			const model = relay.models.default || relay.models.models[0]?.modelKey || "host-model";
+			const completion = await relay
+				.dispatch(toHostChatRequest(body))
+				.then((chat) => toOpenAiCompletion(chat, model));
+			if (body?.stream) {
+				const { head, tail } = toSseChunks(completion);
+				res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache" });
+				res.write(`data: ${JSON.stringify(head)}\n\n`);
+				res.write(`data: ${JSON.stringify(tail)}\n\n`);
+				res.write("data: [DONE]\n\n");
+				return res.end();
+			}
+			return json(res, 200, completion);
+		}
+
+		// --- plugin-side relay plumbing ---------------------------------------
+		if (url.pathname === "/api/relay") {
+			return json(res, 200, {
+				baseUrl: `http://127.0.0.1:${server.address()?.port || PORT}/v1`,
+				token: relay.token,
+				models: relay.models.models.map((model) => model.modelKey),
+				default: relay.models.default,
+			});
+		}
+		if (url.pathname === "/api/relay/models" && req.method === "POST") {
+			relay.setModels(await readBody(req));
+			return json(res, 200, { registered: relay.models.models.length });
+		}
+		if (url.pathname === "/api/relay/job" && req.method === "GET") {
+			return json(res, 200, (await relay.nextJob()) ?? { idle: true });
+		}
+		if (url.pathname === "/api/relay/result" && req.method === "POST") {
+			const body = await readBody(req);
+			return json(res, 200, { accepted: relay.complete(String(body.id ?? ""), body) });
+		}
 
 		if (url.pathname === "/api/state") {
 			const workspace = url.searchParams.get("workspace") || "";
@@ -338,19 +388,33 @@ const server = createServer(async (req, res) => {
 				call("probe").catch((error) => ({ error: String(error) })),
 				childReady ? call("list_runs", { workspace }).catch(() => []) : Promise.resolve([]),
 			]);
-			return json(res, 200, { environment, runs, logTail: log.slice(-40) });
+			return json(res, 200, {
+				environment,
+				runs,
+				logTail: log.slice(-40),
+				relay: {
+					available: relay.models.models.length > 0,
+					model: relay.models.default || relay.models.models[0]?.modelKey || null,
+				},
+			});
 		}
 		if (url.pathname === "/api/scan" && req.method === "POST") {
 			const body = await readBody(req);
+			// When the host's models are registered, point the scan at this service's own
+			// OpenAI-compatible endpoint: the user then needs no second credential at all.
+			const hostModel = relay.models.default || relay.models.models[0]?.modelKey;
+			if (hostModel) {
+				body.llm = {
+					baseUrl: `http://127.0.0.1:${server.address()?.port || PORT}/v1`,
+					apiKey: relay.token,
+					model: hostModel,
+				};
+			}
 			const result = await call("start_scan", body, 300000);
 			return json(res, 200, result);
 		}
 		if (url.pathname === "/api/scan/cancel" && req.method === "POST") {
 			return json(res, 200, await call("cancel_scan", {}, 60000));
-		}
-		if (url.pathname === "/api/model" && req.method === "POST") {
-			const body = await readBody(req);
-			return json(res, 200, await call("configure_model", body, 30000));
 		}
 		if (url.pathname === "/api/events") {
 			res.writeHead(200, {

@@ -17,6 +17,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 import contextlib
+import json
+import os
+import traceback
+from pathlib import Path
+from typing import Any
+import contextlib
 import traceback
 from typing import Any
 
@@ -52,6 +58,10 @@ class ScanRunner:
             raise ValueError("at least one target is required")
 
         args = self._build_args(params, targets)
+        # Point strix at the host model before anything resolves settings: load_settings is
+        # memoized, so the connection has to be in place ahead of the first read.
+        self._apply_host_model(params.get("llm") or {})
+
         self._workspace = workspace or None
 
         from strix.interface.scan_setup import build_targets_info, prepare_run
@@ -101,6 +111,48 @@ class ScanRunner:
             targets_info=[],
             run_name=None,
         )
+
+    def _apply_host_model(self, llm: dict[str, Any]) -> None:
+        """Route strix's model calls to the plugin's relay of the host's own models.
+
+        `openai/<name>` keeps the SDK on its own chat-completions client (no litellm
+        provider lookup), `STRIX_API_TYPE` pins that route, and the base URL points back
+        at this service. The model name inside the request is cosmetic: the relay maps
+        every call onto the model the user picked in Astravia.
+        """
+        base_url = str(llm.get("baseUrl") or "").strip()
+        token = str(llm.get("apiKey") or "").strip()
+        model = str(llm.get("model") or "").strip()
+        if not (base_url and token and model):
+            return
+
+        os.environ["STRIX_LLM"] = f"openai/{model}"
+        os.environ["LLM_API_BASE"] = base_url
+        os.environ["LLM_API_KEY"] = token
+        os.environ["STRIX_API_TYPE"] = "chat_completions"
+        # Settings are memoized; the override also keeps a stale file from winning.
+        from strix.config import apply_config_override
+
+        config_path = Path(os.environ.get("ASTRAVIA_SERVICE_DATA_DIR") or ".") / "strix-host-model.json"
+        try:
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "env": {
+                            "STRIX_LLM": os.environ["STRIX_LLM"],
+                            "LLM_API_BASE": base_url,
+                            "LLM_API_KEY": token,
+                            "STRIX_API_TYPE": "chat_completions",
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            apply_config_override(config_path)
+        except Exception:  # noqa: BLE001 - env alone is enough to resolve settings
+            pass
+        self._emit({"event": "scan_model", "runName": None, "model": model, "source": "host"})
 
     async def _drive(self, args: argparse.Namespace) -> None:
         from strix.core.runner import run_strix_scan

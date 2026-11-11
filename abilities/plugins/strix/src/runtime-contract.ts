@@ -71,6 +71,8 @@ export interface BridgeState {
 	environment: EnvironmentProbe | { error: string };
 	runs: ScanRunSummary[];
 	logTail: BridgeEvent[];
+	/** Present when the renderer has registered the host's models with the bridge. */
+	relay?: { available: boolean; model: string | null };
 }
 
 export interface ScanTargetInfo {

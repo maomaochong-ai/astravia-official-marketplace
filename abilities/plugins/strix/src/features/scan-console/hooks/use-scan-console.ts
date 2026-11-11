@@ -31,6 +31,8 @@ export interface ScanConsoleModel {
 	phase: ConsolePhase;
 	environment?: EnvironmentProbe;
 	error?: string;
+	/** The host model the scan will run on, when the plugin can borrow it. */
+	relay?: { available: boolean; model: string | null };
 	runs: ScanRunSummary[];
 	activeRun?: ScanRunSummary;
 	findings: StrixFinding[];
@@ -50,6 +52,7 @@ export function useScanConsole(client: BridgeClient, workspace?: string): ScanCo
 	const [phase, setPhase] = useState<ConsolePhase>("booting");
 	const [environment, setEnvironment] = useState<EnvironmentProbe>();
 	const [error, setError] = useState<string>();
+	const [relay, setRelay] = useState<{ available: boolean; model: string | null }>();
 	const [runs, setRuns] = useState<ScanRunSummary[]>([]);
 	const [selectedRun, setSelectedRun] = useState<string>();
 	const [findingsByRun, setFindingsByRun] = useState<Record<string, StrixFinding[]>>({});
@@ -77,9 +80,17 @@ export function useScanConsole(client: BridgeClient, workspace?: string): ScanCo
 	const boot = useCallback(async () => {
 		try {
 			const state = await client.state(workspace);
+			const hostRelay = state.relay ?? { available: false, model: null };
+			setRelay(hostRelay);
 			if (isProbe(state.environment)) {
 				setEnvironment(state.environment);
-				setPhase(state.environment.ready ? "ready" : "unready");
+				// A scan needs the engine, the sandbox and a model. The host relay supplies the
+				// model, so Strix's own provider config only matters when no relay is available.
+				const usable =
+					state.environment.engine.installed &&
+					state.environment.docker.ready &&
+					(hostRelay.available || state.environment.llm.configured);
+				setPhase(usable ? "ready" : "unready");
 				setError(undefined);
 			} else {
 				setPhase("error");
@@ -173,6 +184,7 @@ export function useScanConsole(client: BridgeClient, workspace?: string): ScanCo
 		phase,
 		environment,
 		error,
+		relay,
 		runs,
 		activeRun,
 		findings: activeRun ? findingsByRun[activeRun.runName] ?? [] : [],

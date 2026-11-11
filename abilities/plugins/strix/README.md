@@ -40,6 +40,17 @@ The service answers `/api/health/ready` with 200 as soon as its HTTP server list
 
 Upstream has no server mode, no local HTTP API and no JSON event stream (`--json` exists only on `strix cloud`). Its library entry point takes an `event_sink`, which is the only supported way to observe a scan live. The bridge calls that entry point and projects events through upstream's own `TuiLiveView`, so the timeline shows what Strix believes happened rather than a second guess at the SDK objects.
 
+## Which model a scan runs on
+
+The scan runs on **the model you already use in Astravia**. Nothing here asks for a second credential:
+
+1. On activation the plugin reads `ctx.ai.listModels()` and hands the list to the Strix bridge service.
+2. The bridge serves an OpenAI-compatible endpoint on loopback (`/v1/chat/completions`, bearer-token guarded).
+3. `ctx.ai.chat()` answers those requests inside the host, so the model name and the provider key stay in Astravia.
+4. Each scan is started with `STRIX_LLM=openai/<host model>`, `LLM_API_BASE=<that endpoint>` and `STRIX_API_TYPE=chat_completions`, applied just before Strix reads its settings.
+
+The relay is started by plugin activation, not by the panel, so closing the tab does not cut inference off mid-scan. Strix's own `~/.strix/cli-config.json` only matters when no host model exists (a headless `strix` CLI run, for instance).
+
 ## Prerequisites
 
 | Need | Why | Check |

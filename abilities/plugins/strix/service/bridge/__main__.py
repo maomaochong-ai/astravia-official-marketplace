@@ -66,12 +66,6 @@ async def dispatch(op: str, params: dict[str, Any], runner: ScanRunner) -> Any:
         return {"pong": True}
     if op == "probe":
         return environment.probe()
-    if op == "configure_model":
-        return environment.configure_model(
-            str(params.get("model") or ""),
-            str(params.get("apiBase") or ""),
-            str(params.get("apiKey") or ""),
-        )
     if op == "start_scan":
         install_guard()
         return await runner.start(params)

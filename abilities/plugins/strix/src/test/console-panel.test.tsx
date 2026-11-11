@@ -61,12 +61,13 @@ const toolEvent = (id: string, agent: string, status: string, name = "exec_comma
 });
 
 describe("Strix console panel", () => {
-	it("renders the upstream two-column layout: trace pane plus sidebar boxes", () => {
+	it("renders the two-column layout: trace pane, findings box, one composer", () => {
 		render(<StrixConsolePanel t={t} model={model()} />);
-		for (const title of ["stats.title", "targets.title", "agents.title", "findings.title"]) {
-			expect(screen.getByText(title)).toBeTruthy();
-		}
+		expect(screen.getByText("findings.title")).toBeTruthy();
 		expect(screen.getByText("timeline.empty")).toBeTruthy();
+		// The composer is the only form; a target box and Start are enough to begin.
+		expect(screen.getByLabelText("launch.targets.label")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "launch.button.start" })).toBeTruthy();
 	});
 
 	it("renders tool events the way the TUI does, with the status glyph", () => {
@@ -81,17 +82,14 @@ describe("Strix console panel", () => {
 		expect(screen.getByText(/nmap -sV target/)).toBeTruthy();
 	});
 
-	it("shows one agent row with the status of its last tool call", () => {
+	it("names the host model in the header, because that is what the scan will use", () => {
 		render(
 			<StrixConsolePanel
 				t={t}
-				model={model({
-					timeline: [toolEvent("tool_1", "root", "running"), toolEvent("tool_2", "child-1", "failed")],
-				})}
+				model={model({ relay: { available: true, model: "deepseek/deepseek-chat" } })}
 			/>,
 		);
-		expect(screen.getByText("root")).toBeTruthy();
-		expect(screen.getByText("child-1")).toBeTruthy();
+		expect(screen.getByText("deepseek/deepseek-chat")).toBeTruthy();
 	});
 
 	it("lists exactly what is missing before the first scan instead of showing a dead button", () => {
@@ -112,58 +110,52 @@ describe("Strix console panel", () => {
 		expect(screen.getByText("setup.python")).toBeTruthy();
 		expect(screen.getByText("setup.docker")).toBeTruthy();
 		expect(screen.getByText("docker daemon is not reachable")).toBeTruthy();
-		expect(screen.getByText("uv tool install strix-agent")).toBeTruthy();
+		expect(screen.getByText("setup.engine")).toBeTruthy();
+		expect(screen.getByText("setup.engineHint")).toBeTruthy();
 	});
 
-	it("does not call a model missing when only the credential is absent, and names the variable", () => {
+	it("does not treat a missing strix credential as a blocker when the host supplies the model", () => {
 		render(
 			<StrixConsolePanel
 				t={t}
 				model={model({
-					phase: "unready",
+					phase: "ready",
+					relay: { available: true, model: "anthropic/claude-sonnet-4-5" },
 					environment: probe({
-						ready: false,
 						llm: {
-							model: "anthropic/claude-sonnet-4-5",
-							provider: "anthropic",
-							mode: "api",
+							model: "",
+							mode: "none",
 							configured: false,
 							keySource: "missing",
-							keyEnv: "ANTHROPIC_API_KEY",
-							missing: ["key"],
+							missing: ["model"],
 						},
 					}),
 				})}
 			/>,
 		);
-		// The model is chosen, so the panel must not claim it is unset...
-		expect(screen.queryByText("setup.modelUnset")).toBeNull();
+		// The relay covers inference, so nothing about strix's own key may appear here.
+		expect(screen.queryByText("setup.llm")).toBeNull();
 		expect(screen.getAllByText("anthropic/claude-sonnet-4-5").length).toBeGreaterThan(0);
-		// ...and must name the exact variable instead of a generic warning.
-		expect(screen.getByText("ANTHROPIC_API_KEY")).toBeTruthy();
 	});
 
-	it("offers the host's model by name so the two never disagree silently", async () => {
-		const onUseHostModel = vi.fn(async () => undefined);
+	it("still blocks on a model when neither the host nor strix has one", () => {
 		render(
 			<StrixConsolePanel
 				t={t}
-				model={model({ environment: probe({ llm: { model: "openai/gpt-5", mode: "api", configured: true, keySource: "env", missing: [] } }) })}
-				hostModels={{ preferred: "deepseek/deepseek-chat", available: [] }}
-				onUseHostModel={onUseHostModel}
+				model={model({
+					phase: "unready",
+					environment: probe({ llm: { model: "", mode: "none", configured: false, keySource: "missing", missing: ["model"] } }),
+				})}
 			/>,
 		);
-		expect(screen.getByText("deepseek/deepseek-chat")).toBeTruthy();
-		await userEvent.click(screen.getByRole("button", { name: "setup.useHostModel" }));
-		expect(onUseHostModel).toHaveBeenCalledWith("deepseek/deepseek-chat");
+		expect(screen.getByText("setup.llm")).toBeTruthy();
 	});
 
-	it("sends targets split by line, dropping blanks", async () => {
+	it("Enter starts the scan, Shift+Enter adds another target", async () => {
 		const start = vi.fn(async () => undefined);
 		render(<StrixConsolePanel t={t} model={model({ start })} />);
 		const targets = screen.getByLabelText("launch.targets.label") as HTMLTextAreaElement;
-		await userEvent.type(targets, "https://a.example{enter}{enter}https://b.example");
-		await userEvent.click(screen.getByRole("button", { name: "launch.button.start" }));
+		await userEvent.type(targets, "https://a.example{Shift>}{Enter}{/Shift}https://b.example{Enter}");
 		expect(start).toHaveBeenCalledWith(
 			expect.objectContaining({ targets: ["https://a.example", "https://b.example"], scanMode: "deep" }),
 		);
