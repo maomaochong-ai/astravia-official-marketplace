@@ -20,7 +20,7 @@
   "setup.docker": "Docker 沙箱可用",
   "setup.llm": "已配置模型与密钥",
   "setup.llmMissing": "缺少模型",
-  "setup.llmHint": "在 ~/.strix/cli-config.json 的 env 段填写 STRIX_LLM 与 LLM_API_KEY，扫描才有模型可用。",
+  "setup.llmHint": "Astravia 还没有可供插件使用的模型",
   "setup.dockerHint": "Strix 的工具都在 Docker 沙箱内运行。请先启动 Docker Desktop 再重试。",
   "targets.title": "目标",
   "targets.empty": "还没有目标。",
@@ -66,5 +66,10 @@
   "setup.useHostModel": "改用这个",
   "setup.modelHint": "先选模型：在 ~/.strix/cli-config.json 设置 STRIX_LLM。",
   "setup.keyHint": "为它提供凭据：",
-  "setup.cloudHint": "也可以通过 Strix Cloud 扫描：strix cloud login。"
+  "setup.cloudHint": "也可以通过 Strix Cloud 扫描：strix cloud login。",
+  "launch.more": "更多",
+  "launch.less": "收起",
+  "launch.single.placeholder": "测试账号、重点区域，或任何需要智能体知道的信息",
+  "setup.engineHint": "安装引擎：uv tool install strix-agent",
+  "panel.modelHint": "扫描使用 Astravia 中配置的这个模型"
 }
