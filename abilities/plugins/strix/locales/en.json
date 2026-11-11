@@ -54,5 +54,8 @@
   "finding.poc": "Proof of concept",
   "finding.remediation": "Remediation",
   "session.noneYet": "No session yet. The agent starts one when it begins.",
-  "composer.examples": "try"
+  "composer.examples": "try",
+  "crash.title": "The Strix pane could not render",
+  "crash.hint": "This is a bug in the plugin, not in your scan. The message below is what to report.",
+  "crash.retry": "Try again"
 }

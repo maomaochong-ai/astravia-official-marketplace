@@ -54,5 +54,8 @@
   "finding.poc": "验证过程",
   "finding.remediation": "修复建议",
   "session.noneYet": "还没有会话。Agent 开始时才会创建。",
-  "composer.examples": "试试"
+  "composer.examples": "试试",
+  "crash.title": "Strix 面板渲染失败",
+  "crash.hint": "这是插件自身的缺陷，与你的扫描无关。下面这段信息可以直接反馈。",
+  "crash.retry": "重试"
 }
