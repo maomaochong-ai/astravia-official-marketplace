@@ -16,6 +16,7 @@ import { TaskComposer } from "./task-composer";
 import { TraceBlock } from "./trace-block";
 import type { ScanConsoleModel } from "../hooks/use-scan-console";
 import type { ServiceStatus } from "../../../runtime-contract";
+import { normalizeProbe } from "../../../domain/bridge-payloads";
 
 export interface StrixConsolePanelProps {
 	t: (key: string) => string;
@@ -28,12 +29,13 @@ export interface StrixConsolePanelProps {
 }
 
 function SessionPanel({ t, model }: { t: (key: string) => string; model: ScanConsoleModel }): React.ReactElement {
-	const { sandbox, environment, busy } = model;
+	const { sandbox, busy } = model;
+	const environment = normalizeProbe(model.environment);
 	const rows: { label: string; value: string; tone?: string }[] = [];
 	if (sandbox.sessionId) rows.push({ label: t("session.id"), value: sandbox.sessionId });
 	if (sandbox.uptimeSec) rows.push({ label: t("session.uptime"), value: `${sandbox.uptimeSec}s` });
 	if (sandbox.image) rows.push({ label: t("session.image"), value: sandbox.image });
-	if (environment?.docker.imagePresent === false) {
+	if (environment?.docker?.imagePresent === false) {
 		rows.push({ label: t("session.imageState"), value: t("session.imageMissing"), tone: "astra-strix-amber" });
 	}
 	if (environment?.engine.version) rows.push({ label: t("session.engine"), value: environment.engine.version });
@@ -81,12 +83,12 @@ function TargetsPanel({ t, model }: { t: (key: string) => string; model: ScanCon
 }
 
 function Blockers({ t, model }: { t: (key: string) => string; model: ScanConsoleModel }): React.ReactElement | null {
-	const probe = model.environment;
+	const probe = normalizeProbe(model.environment);
 	if (!probe) return null;
 	const rows = [
-		!probe.python.found ? { key: "setup.python", hint: "setup.pythonHint" } : undefined,
-		!probe.engine.installed ? { key: "setup.engine", hint: "setup.engineHint" } : undefined,
-		!probe.docker.ready ? { key: "setup.docker", hint: "setup.dockerHint" } : undefined,
+		!probe.python?.found ? { key: "setup.python", hint: "setup.pythonHint" } : undefined,
+		!probe.engine?.installed ? { key: "setup.engine", hint: "setup.engineHint" } : undefined,
+		!probe.docker?.ready ? { key: "setup.docker", hint: "setup.dockerHint" } : undefined,
 	].filter((row): row is { key: string; hint: string } => Boolean(row));
 	if (!rows.length) return null;
 

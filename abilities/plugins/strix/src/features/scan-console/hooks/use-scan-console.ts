@@ -4,17 +4,15 @@
  * The panel is a window on what the **host agent** is doing with Strix's tools:
  * the sandbox session, the commands that ran, and the findings it filed. It never
  * starts a scan itself - the agent does that - so this hook only reads.
+ *
+ * Service payloads are narrowed in `domain/bridge-payloads` before anything renders;
+ * see that file for why a partial probe must not reach a component.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BridgeClient } from "../../../domain/bridge-client";
-import type {
-	BridgeEvent,
-	EnvironmentProbe,
-	SandboxStatus,
-	StrixFinding,
-	TraceEntry,
-} from "../../../runtime-contract";
+import { normalizeFindings, normalizeProbe, normalizeSandbox } from "../../../domain/bridge-payloads";
+import type { BridgeEvent, EnvironmentProbe, SandboxStatus, StrixFinding, TraceEntry } from "../../../runtime-contract";
 
 const TRACE_LIMIT = 300;
 
@@ -33,15 +31,11 @@ export interface ScanConsoleModel {
 	stopSandbox: () => Promise<void>;
 }
 
-function isProbe(value: unknown): value is EnvironmentProbe {
-	return Boolean(value && typeof value === "object" && "ready" in (value as Record<string, unknown>));
-}
-
 export function useScanConsole(client: BridgeClient): ScanConsoleModel {
 	const [phase, setPhase] = useState<ConsolePhase>("booting");
 	const [environment, setEnvironment] = useState<EnvironmentProbe>();
 	const [error, setError] = useState<string>();
-	const [sandbox, setSandbox] = useState<SandboxStatus>({ running: false });
+	const [sandbox, setSandbox] = useState<SandboxStatus>({ running: false, targets: [] });
 	const [findings, setFindings] = useState<StrixFinding[]>([]);
 	const [trace, setTrace] = useState<TraceEntry[]>([]);
 	const [busy, setBusy] = useState(false);
@@ -50,16 +44,18 @@ export function useScanConsole(client: BridgeClient): ScanConsoleModel {
 	const boot = useCallback(async () => {
 		try {
 			const state = await client.state();
-			if (isProbe(state.environment)) {
-				setEnvironment(state.environment);
-				setPhase(state.environment.ready ? "ready" : "unready");
+			const probe = normalizeProbe(state?.environment);
+			setSandbox(normalizeSandbox(state?.sandbox));
+			setFindings(normalizeFindings(state?.findings));
+			if (probe) {
+				setEnvironment(probe);
+				setPhase(probe.ready ? "ready" : "unready");
 				setError(undefined);
 			} else {
+				const detail = (state?.environment as { error?: unknown } | undefined)?.error;
 				setPhase("error");
-				setError(("error" in state.environment && String(state.environment.error)) || "bridge unavailable");
+				setError(typeof detail === "string" && detail ? detail : "bridge unavailable");
 			}
-			setSandbox(state.sandbox ?? { running: false });
-			setFindings(state.findings ?? []);
 		} catch (cause) {
 			setPhase("error");
 			setError(cause instanceof Error ? cause.message : String(cause));
@@ -81,21 +77,20 @@ export function useScanConsole(client: BridgeClient): ScanConsoleModel {
 				const at = Date.now();
 				switch (event.event) {
 					case "sandbox_status": {
-						const phaseLabel = String((event as { phase?: string }).phase ?? "sandbox");
+						const label = String((event as { phase?: string }).phase ?? "sandbox");
 						setTrace((previous) =>
-							[
-								...previous,
-								{ id: `note-${(seq.current += 1)}`, kind: "note" as const, label: phaseLabel, at },
-							].slice(-TRACE_LIMIT),
+							[...previous, { id: `note-${(seq.current += 1)}`, kind: "note" as const, label, at }].slice(
+								-TRACE_LIMIT,
+							),
 						);
 						break;
 					}
 					case "sandbox_ready":
-						setSandbox((event as { status?: SandboxStatus }).status ?? { running: true });
+						setSandbox(normalizeSandbox((event as { status?: unknown }).status ?? { running: true }));
 						void boot();
 						break;
 					case "sandbox_stopped":
-						setSandbox({ running: false });
+						setSandbox({ running: false, targets: [] });
 						setBusy(false);
 						void boot();
 						break;
@@ -161,7 +156,7 @@ export function useScanConsole(client: BridgeClient): ScanConsoleModel {
 		try {
 			await client.stopSandbox();
 		} finally {
-			setSandbox({ running: false });
+			setSandbox({ running: false, targets: [] });
 			setBusy(false);
 			void boot();
 		}

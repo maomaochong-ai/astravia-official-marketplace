@@ -3,6 +3,7 @@ import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { definePlugin } from "@astravia-org/plugin-sdk";
 import { useRef } from "react";
 import { createBridgeClient } from "./domain/bridge-client";
+import { ConsoleBoundary } from "./features/scan-console/components/console-boundary";
 import { StrixConsolePanel } from "./features/scan-console/components/strix-console-panel";
 import { useScanConsole } from "./features/scan-console/hooks/use-scan-console";
 import { createServiceRuntime, type ServiceRuntime } from "./runtime";
@@ -18,13 +19,15 @@ function ConsoleTab({ ctx, runtime }: { ctx: PluginContext; runtime: ServiceRunt
 	const model = useScanConsole(client);
 	const send = (prompt: string) => ctx.conversation.sendPrompt(prompt);
 	return (
-		<StrixConsolePanel
-			t={t}
-			model={model}
-			status={runtime.lastStatus()}
-			send={send}
-			iconUrl={ctx.plugin.iconUrl}
-		/>
+		<ConsoleBoundary t={t}>
+			<StrixConsolePanel
+				t={t}
+				model={model}
+				status={runtime.lastStatus()}
+				send={send}
+				iconUrl={ctx.plugin?.iconUrl}
+			/>
+		</ConsoleBoundary>
 	);
 }
 

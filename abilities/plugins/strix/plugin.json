@@ -2,7 +2,7 @@
   "id": "strix",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -58,7 +58,7 @@
         "id": "strix-bridge",
         "runtime": {
           "kind": "host-node",
-          "version": "0.3.1",
+          "version": "0.3.2",
           "entry": "dist/service/main.mjs",
           "platforms": {
             "win32-x64": {
