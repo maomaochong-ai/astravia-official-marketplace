@@ -1,84 +1,80 @@
 # Strix
 
-Security testing inside Astravia: a team of autonomous agents probes code, APIs and running applications, then reports exploitable findings with proof and remediation.
+Strix's security toolkit inside Astravia: a full penetration-testing sandbox plus
+Strix's own 78-skill knowledge library, driven by the conversation you already
+have.
 
-This plugin is a thin integration over [usestrix/strix](https://github.com/usestrix/strix). It does not reimplement scanning: the engine, its sandbox and its 78 internal skills are used exactly as upstream ships them.
+This plugin is a first-party integration over
+[usestrix/strix](https://github.com/usestrix/strix). It does not reimplement a scan
+and it does not ship a second agent: the host application already runs an agent
+with the user's configured model, so the plugin contributes what that agent
+lacks — Strix's sandbox and Strix's skills — and stays out of the model business
+entirely.
 
-## What the plugin adds
+## What the plugin contributes
 
 | Surface | Behaviour |
 |---|---|
-| Activity tab `strix.console` | Registered with `initiallyVisible: false` — nothing appears under the conversation until you open it. |
-| Input action `strix.activate` | One click opens the tab and puts `/penetration-testing-with-strix ` in the composer. |
-| Slash commands / skill picker | The nine upstream consumer skills in `agent/skills/` are declared via `agent.skillPaths`, so `/penetration-testing-with-strix` and friends work as soon as the plugin is enabled. |
-| Agent tools over MCP | `strix_probe_environment`, `strix_start_scan`, `strix_cancel_scan`, `strix_list_runs`, `strix_get_findings`, `strix_get_report`. |
+| Activity tab `strix.console` | `initiallyVisible: false` — nothing appears under the conversation until you open it. Mirrors the upstream TUI: trace on the left, sandbox/targets/findings boxes on the right. |
+| Input action `strix.activate` | One click opens the tab and marks the next prompt as a Strix task (`decoratePrompt`). |
+| MCP tools | `strix_environment`, `strix_sandbox_start`, `strix_exec`, `strix_sandbox_status`, `strix_sandbox_stop`, `strix_list_skills`, `strix_load_skills`, `strix_file_finding`, `strix_list_findings`, `strix_report`. |
+| Skills | The nine upstream consumer skills ship in `agent/skills/` but are declared `hidden`: the capability page, slash menu and skill picker show **Strix**, not nine lookalikes. The agent still loads them. |
 
 ## Architecture
 
 ```text
 src/index.tsx                 registration only (tab + input action)
 src/runtime.ts                strix-bridge lifecycle via ctx.services
-src/domain/bridge-client.ts   HTTP + SSE client for the bridge
-src/features/scan-console/    launch form, live timeline, panel
-src/features/findings/        severity summary, finding list and card
-service/main.mjs              host-node service: HTTP API + MCP endpoint
-service/bridge/*.py           Python half: imports strix, drives scans
+src/domain/bridge-client.ts   HTTP + SSE client, read-only
+src/features/scan-console/    the console: trace, session box, composer
+src/features/findings/        findings list
+service/main.mjs              host-node service: MCP tool surface + /api/*
+service/bridge/tools.py       Strix sandbox (create_or_reuse + session.exec) and skills
+service/bridge/findings.py    findings ledger and Markdown report
 agent/skills/                 9 upstream consumer skills, copied verbatim
 ```
 
-The split exists because the host only ships `host-node` and `managed-binary` runtimes. Packaging a Python interpreter into a per-platform binary would mean shipping and checksumming a ~100 MB artifact per OS; instead the Node service starts `python -m bridge` and relays JSON lines. Upstream changes therefore land in `service/bridge/scan.py`, never in the manifest or the UI.
+### Where Strix's engine is reused, and where it is not
 
-### How the service gets installed
+* **Reused:** `strix.runtime.session_manager.create_or_reuse` for the container,
+  `session.exec` for commands, `strix.skills.get_available_skills` /
+  `load_skills` for the knowledge packs. These are the same entry points Strix's
+  own runner and `load_skill` tool use, so the sandbox image, bind mounts and
+  skill rendering are upstream's, not ours.
+* **Not used:** `run_strix_scan` and its agent loop. The host already has an agent
+  loop with a model, a conversation and tool dispatch; running Strix's in parallel
+  would mean a second model credential and two competing transcripts.
 
-The host never unpacks a plugin's service itself: `PluginServiceRuntimeInstaller.resolve()` refuses to start a runtime that `install()` did not write, and `install()` accepts only a payload set matching `plugin.json#providers.services[].runtime.platforms[<tag>].artifacts` one-for-one with verified SHA-256. So `src/runtime.ts` reads the declared artifact list back out of the packaged `plugin.json`, fetches each file over `astravia-plugin://<id>/versions/<version>/…`, installs, then starts.
+### Why the service declares every file
 
-That is why every shipped service file is declared, not just the entry: declaring only `service/main.mjs` would install a runtime whose Python half is missing. After touching anything under `service/`, re-stamp the digests:`npm run stamp-service`.
-
-The service answers `/api/health/ready` with 200 as soon as its HTTP server listens and reports the Python side in the body. The host treats a non-2xx health probe as a broken process and restarts it; a missing interpreter is something the panel explains and the user fixes, not a crash loop.
-
-### Why scanning hangs off `run_strix_scan`
-
-Upstream has no server mode, no local HTTP API and no JSON event stream (`--json` exists only on `strix cloud`). Its library entry point takes an `event_sink`, which is the only supported way to observe a scan live. The bridge calls that entry point and projects events through upstream's own `TuiLiveView`, so the timeline shows what Strix believes happened rather than a second guess at the SDK objects.
-
-## Which model a scan runs on
-
-The scan runs on **the model you already use in Astravia**. Nothing here asks for a second credential:
-
-1. On activation the plugin reads `ctx.ai.listModels()` and hands the list to the Strix bridge service.
-2. The bridge serves an OpenAI-compatible endpoint on loopback (`/v1/chat/completions`, bearer-token guarded).
-3. `ctx.ai.chat()` answers those requests inside the host, so the model name and the provider key stay in Astravia.
-4. Each scan is started with `STRIX_LLM=openai/<host model>`, `LLM_API_BASE=<that endpoint>` and `STRIX_API_TYPE=chat_completions`, applied just before Strix reads its settings.
-
-The relay is started by plugin activation, not by the panel, so closing the tab does not cut inference off mid-scan. Strix's own `~/.strix/cli-config.json` only matters when no host model exists (a headless `strix` CLI run, for instance).
+The host's installer accepts a service runtime only when the payload set matches
+`plugin.json#providers.services[].runtime.platforms[<tag>].artifacts` one-for-one
+with verified SHA-256 (`plugin-service-runtime-installer.ts`), and it refuses to
+start a runtime it did not install. So `src/runtime.ts` reads the artifact list
+back out of the packaged `plugin.json`, fetches each file over
+`astravia-plugin://<id>/versions/<version>/…`, installs, then starts. After
+editing anything under `service/`, re-stamp the digests: `npm run stamp-service`.
 
 ## Prerequisites
 
 | Need | Why | Check |
 |---|---|---|
 | Python ≥ 3.12 with `strix-agent` | the bridge imports the engine | `python -c "import strix"` |
-| Docker | Strix runs every tool inside its sandbox; without it, only `view`, `auth`, `cloud` work | `docker info` |
-| `STRIX_LLM` + `LLM_API_KEY` | the scan needs its own model credential | `~/.strix/cli-config.json` |
+| Docker | every Strix tool runs inside its sandbox | `docker info` |
 
-Install the engine with `uv tool install strix-agent`. Set the model in `~/.strix/cli-config.json`:
-
-```json
-{ "env": { "STRIX_LLM": "anthropic/claude-sonnet-4-5", "LLM_API_KEY": "sk-..." } }
-```
-
-The plugin never reads the host's model credentials: Strix's provider naming is its own, and a wrong-but-present key produces a scan that authenticates nowhere.
-
-Point the bridge at a specific interpreter with `STRIX_PYTHON` when the default `python` is not the one that has `strix-agent`.
+No model credential is needed here: inference happens in the host, on the model
+you already selected in Astravia.
 
 ## Build and check
 
 ```bash
 cd abilities/plugins/strix
 npm install
-npm run test
-npm run stamp-service  # rewrite the 7 service digests after editing service/
+npm test
+npm run stamp-service   # after editing service/
 npm run build
-npm run check:service  # host-node service: health, /mcp, /api/state
-npm run check:bridge   # Python bridge protocol over stdin/stdout
+npm run check:service   # host-node service: health, /mcp, /api/state
+npm run check:bridge    # Python bridge protocol over stdin/stdout
 ```
 
 Repository-level checks:
@@ -91,8 +87,12 @@ node --test tests/*.test.mjs
 
 ## Release note
 
-`docs/plugin-project-structure.md:52` lists `release/` as a committed archive directory. This plugin follows the repository's `.gitignore` and `scripts/stage-plugin-release.py` instead: `dist/` and `release/` stay out of Git and CI publishes the immutable `.astraviapkg`. See `AGENTS.md:259`.
+`docs/plugin-project-structure.md:52` lists `release/` as a committed archive
+directory. This plugin follows the repository's `.gitignore` and
+`scripts/stage-plugin-release.py` instead: `dist/` and `release/` stay out of Git
+and CI publishes the immutable `.astraviapkg`. See `AGENTS.md:259`.
 
 ## Attribution
 
-Strix is Apache-2.0, © usestrix. The icon in `assets/icon.png` is the upstream mark from `docs/logo/strix.png`.
+Strix is Apache-2.0, © usestrix. The icon in `assets/icon.png` is the upstream mark
+from `docs/logo/strix.png`.
