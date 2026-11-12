@@ -1,10 +1,9 @@
 ---
 name: filmcraft
-alias: FilmCraft 自动化
+alias: FilmCraft
 description: "Operate FilmCraft from the conversation: run its commands by name or shortcut, follow a named recipe for the chores (save, save-as, export, zoom-in, zoom-out, fit, group, ungroup, cut, copy), aim the canvas by fractions when a task is spatial, and prove every step with a measured reading before claiming it worked. 影视剪辑：时间线、素材箱、字幕轨、转场与导出. Use whenever the user wants FilmCraft material created, changed or exported without doing the clicking themselves."
 ---
-# FilmCraft 自动化
-
+# FilmCraft
 这个技能只做一件事：**让用户说一句话，编辑器里的功能真的被执行，执行结果可核对。**
 影视剪辑：时间线、素材箱、字幕轨、转场与导出。
 

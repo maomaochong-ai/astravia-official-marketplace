@@ -4,8 +4,8 @@
 		{
 			"type": "hero",
 			"eyebrow": "Security testing",
-			"title": "Strix's pentest toolkit, driven by your own agent",
-			"description": "A ready-made security sandbox and Strix's 78-skill library, wired into the conversation you already have. Your model does the thinking; Strix supplies the environment and the tradecraft.",
+			"title": "The Strix pentest console, inside a Astravia tab",
+			"description": "Strix's terminal interface, its sandbox and its 78-skill library - launched from a tab and run on the model you already configured. No second API key.",
 			"badges": [
 				"Autonomous agents",
 				"Proof of concept",
@@ -19,12 +19,17 @@
 				"canvas": "generic",
 				"brand_name": "Strix",
 				"user_prompt": "Pentest staging.example.com.",
-				"assistant_reply": "Started the sandbox; one critical IDOR filed."
+				"assistant_reply": "Sandbox up; one critical IDOR filed."
 			}
 		},
 		{
 			"type": "feature-grid",
 			"items": [
+				{
+					"title": "The screen you know",
+					"description": "Wordmark, launch prompt, model line, trace, sidebar: the CLI's layout and palette, rebuilt for a tab.",
+					"icon": "solar:monitor-bold"
+				},
 				{
 					"title": "The real toolchain",
 					"description": "nmap, nuclei, ffuf, sqlmap, subfinder, Caido, agent-browser, trivy, gitleaks and trufflehog, inside one container.",
@@ -32,18 +37,13 @@
 				},
 				{
 					"title": "Strix's own skills",
-					"description": "78 knowledge packs on vulnerabilities, technologies and tooling - loaded by the agent before it starts testing.",
+					"description": "78 knowledge packs on vulnerabilities, technologies and tooling - loaded before testing starts.",
 					"icon": "solar:document-text-bold"
 				},
 				{
-					"title": "Your model, your key",
-					"description": "No second credential: inference runs in Astravia on the model you already picked.",
+					"title": "Your model, no new key",
+					"description": "The console's loop runs on ctx.ai: the model and plan you already picked in Astravia.",
 					"icon": "solar:cpu-bolt-bold"
-				},
-				{
-					"title": "Evidence-backed findings",
-					"description": "Every finding carries the request, payload or code path that proved it, with CVSS, CWE and remediation.",
-					"icon": "solar:clipboard-check-bold"
 				}
 			]
 		},
@@ -51,16 +51,16 @@
 			"type": "steps",
 			"items": [
 				{
-					"title": "Open the console once",
-					"description": "Strix scans sits in the tab menu; the plugin adds nothing under the conversation until you open it."
+					"title": "Open the tab",
+					"description": "Strix sits in the tab menu; nothing appears under the conversation until you open it."
 				},
 				{
-					"title": "Point it at a target",
-					"description": "Type a host, URL or local repo and press Enter. The request goes to your agent with Strix's method attached."
+					"title": "Name a target and press Enter",
+					"description": "A host, URL or local repo becomes the scan target; the rest of the sentence becomes the instruction."
 				},
 				{
 					"title": "Watch and read",
-					"description": "Commands run inside Strix's sandbox and appear in the trace; each confirmed issue lands in Findings with proof and fix."
+					"description": "Commands run in Strix's sandbox and appear in the trace; each confirmed issue lands in Findings with proof and fix."
 				}
 			]
 		},

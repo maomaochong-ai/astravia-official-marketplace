@@ -1,10 +1,9 @@
 ---
 name: cadcraft
-alias: CadCraft 自动化
+alias: CadCraft
 description: "Operate CadCraft from the conversation: run its commands by name or shortcut, follow a named recipe for the chores (new, export, import, all, delete, switch), aim the canvas by fractions when a task is spatial, and prove every step with a measured reading before claiming it worked. 制图：命令行、对象捕捉、图层、标注、填充、块与 DXF. Use whenever the user wants CadCraft material created, changed or exported without doing the clicking themselves."
 ---
-# CadCraft 自动化
-
+# CadCraft
 这个技能只做一件事：**让用户说一句话，编辑器里的功能真的被执行，执行结果可核对。**
 制图：命令行、对象捕捉、图层、标注、填充、块与 DXF。
 

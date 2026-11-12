@@ -5,10 +5,10 @@ import plugin from "../index";
 /**
  * Activation and first paint, with the host stubbed.
  *
- * The panel is a Module Federation remote mounted by the host: when something in
- * it throws at render, the user sees an empty pane and nothing in the transcript.
- * This mounts the real component the plugin registers, so a crash shows up here
- * instead of in the app.
+ * The panel is a Module Federation remote mounted by the host: when something in it
+ * throws at render, the user sees an empty pane and nothing in the transcript. This
+ * mounts the real component the plugin registers, so a crash shows up here instead of
+ * in the app.
  */
 
 afterEach(cleanup);
@@ -21,12 +21,17 @@ async function disposeOf(value: unknown): Promise<void> {
 	}
 }
 
-function fakeHost(services: Record<string, unknown> = {}) {
+function fakeHost(services: Record<string, unknown> = {}, models: unknown[] = [{ modelKey: "openai/gpt-5", name: "GPT-5", provider: "openai", id: "gpt-5", api: "chat", reasoning: false, input: ["text"], contextWindow: 128000 }]) {
 	let registered: { component: () => React.ReactElement } | undefined;
 	const ctx = {
-		plugin: { id: "strix", version: "0.0.0", iconUrl: "astravia-plugin://strix/versions/0.0.0/assets/icon.png" },
+		plugin: { id: "strix", version: "0.4.0", iconUrl: "astravia-plugin://strix/versions/0.4.0/assets/icon.png" },
 		i18n: { t: (key: string) => key },
-		conversation: { sendPrompt: async () => ({ status: "sent" }) },
+		ai: {
+			listModels: async () => ({ defaultModel: (models[0] as { modelKey: string }).modelKey, models }),
+			complete: async () => ({ modelKey: "openai/gpt-5", text: "", stopReason: "stop", usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } }),
+			stream: async () => ({ modelKey: "openai/gpt-5", text: "", stopReason: "stop", usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } }),
+			chat: async () => ({ modelKey: "openai/gpt-5", text: "done", toolCalls: [], stopReason: "stop", usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 } }),
+		},
 		ui: {
 			registerActivityTab: (contribution: { component: () => React.ReactElement }) => {
 				registered = contribution;
@@ -57,35 +62,19 @@ describe("plugin activation", () => {
 		expect(tab?.component).toBeTypeOf("function");
 
 		// The service is unreachable in this stub, so the panel must fall back to its
-		// error state instead of crashing.
+		// launch screen with a failure line instead of crashing.
 		render(tab!.component());
-		expect(screen.getByText("panel.subtitle")).toBeTruthy();
-		expect(screen.getByLabelText("composer.label")).toBeTruthy();
+		expect(screen.getByText("launch.tagline")).toBeTruthy();
+		expect(screen.getByLabelText("launch.label")).toBeTruthy();
 
 		await disposeOf(disposable);
 	});
 
-	it("renders the ready state when the service reports a live sandbox", async () => {
+	it("shows the host's model on the launch screen", async () => {
 		const host = fakeHost();
 		const disposable = await plugin.activate(host.ctx);
-		globalThis.fetch = (async () =>
-			new Response(
-				JSON.stringify({
-					environment: {
-						python: { version: "3.13", executable: "python", found: true },
-						engine: { installed: true, version: "1.7.0" },
-						docker: { ready: true, detail: "", image: "img", imagePresent: true },
-						ready: true,
-					},
-					sandbox: { running: true, sessionId: "s1", targets: ["example.com"], uptimeSec: 12 },
-					findings: [{ id: "f1", title: "XSS in search", severity: "high" }],
-				}),
-				{ status: 200 },
-			)) as typeof fetch;
-
 		render(host.tab()!.component());
-		expect(await screen.findByText("example.com")).toBeTruthy();
-		expect(screen.getByText("XSS in search")).toBeTruthy();
+		expect(await screen.findByText("GPT-5")).toBeTruthy();
 		await disposeOf(disposable);
 	});
 
@@ -93,33 +82,25 @@ describe("plugin activation", () => {
 		const host = fakeHost();
 		const disposable = await plugin.activate(host.ctx);
 		globalThis.fetch = (async () =>
-			new Response(
-				JSON.stringify({
-					environment: { error: "docker is not running" },
-					sandbox: { running: false },
-					findings: [],
-				}),
-				{ status: 200 },
-			)) as typeof fetch;
+			new Response(JSON.stringify({ environment: { error: "docker is not running" }, sandbox: { running: false }, findings: [] }), {
+				status: 200,
+			})) as typeof fetch;
 
 		render(host.tab()!.component());
-		expect(screen.getByText("panel.subtitle")).toBeTruthy();
+		expect(screen.getByText("launch.tagline")).toBeTruthy();
 		await disposeOf(disposable);
 	});
 
 	it("survives a probe that is missing sections the pane expects", async () => {
-		// A probe is assembled from several host calls; if one of them fails the object
-		// still carries `ready`, and every field below it is missing.
 		const host = fakeHost();
 		const disposable = await plugin.activate(host.ctx);
 		globalThis.fetch = (async () =>
-			new Response(
-				JSON.stringify({ environment: { ready: false }, sandbox: { running: false }, findings: [] }),
-				{ status: 200 },
-			)) as typeof fetch;
+			new Response(JSON.stringify({ environment: { ready: false }, sandbox: { running: false }, findings: [] }), {
+				status: 200,
+			})) as typeof fetch;
 
 		render(host.tab()!.component());
-		expect(screen.getByText("panel.subtitle")).toBeTruthy();
+		expect(screen.getByText("launch.tagline")).toBeTruthy();
 		await disposeOf(disposable);
 	});
 

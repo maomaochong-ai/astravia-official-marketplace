@@ -4,8 +4,8 @@
 		{
 			"type": "hero",
 			"eyebrow": "安全测试",
-			"title": "把 Strix 的渗透工具链交给你的 Agent",
-			"description": "现成的安全沙箱，加上 Strix 自带的 78 个技能库，直接接进你已经在用的对话。模型负责思考，Strix 提供环境与手法。",
+			"title": "Strix 的渗透控制台，就在标签页里",
+			"description": "Strix 的终端界面、沙箱与 78 个技能包，从标签页启动，跑在你已经配好的模型上，不需要第二份 API Key。",
 			"badges": [
 				"自主智能体",
 				"验证过程",
@@ -19,12 +19,17 @@
 				"canvas": "generic",
 				"brand_name": "Strix",
 				"user_prompt": "对 staging.example.com 做渗透测试。",
-				"assistant_reply": "沙箱已启动，记录一个严重越权。"
+				"assistant_reply": "沙箱已起，记录一个严重越权。"
 			}
 		},
 		{
 			"type": "feature-grid",
 			"items": [
+				{
+					"title": "熟悉的界面",
+					"description": "词标、启动提示、模型行、命令轨迹、右侧面板：CLI 的排版与配色，为标签页重画一遍。",
+					"icon": "solar:monitor-bold"
+				},
 				{
 					"title": "真正的工具链",
 					"description": "nmap、nuclei、ffuf、sqlmap、subfinder、Caido、agent-browser、trivy、gitleaks、trufflehog，同一个容器内。",
@@ -32,18 +37,13 @@
 				},
 				{
 					"title": "Strix 自己的技能",
-					"description": "78 份关于漏洞、技术与工具的知识包，Agent 会在开测前加载。",
+					"description": "78 份关于漏洞、技术与工具的知识包，开测前自动加载。",
 					"icon": "solar:document-text-bold"
 				},
 				{
-					"title": "你的模型，你的密钥",
-					"description": "不需要第二份凭据：推理在 Astravia 里用你已选的模型完成。",
+					"title": "你的模型，不用新密钥",
+					"description": "控制台的循环走 ctx.ai：用你在 Astravia 里已经选好的模型与额度。",
 					"icon": "solar:cpu-bolt-bold"
-				},
-				{
-					"title": "有证据的结论",
-					"description": "每条问题都带证明它的请求、载荷或代码路径，并附 CVSS、CWE 与修复建议。",
-					"icon": "solar:clipboard-check-bold"
 				}
 			]
 		},
@@ -51,16 +51,16 @@
 			"type": "steps",
 			"items": [
 				{
-					"title": "打开一次控制台",
-					"description": "「Strix 扫描」在标签页菜单里；没打开之前它不会占用对话区域。"
+					"title": "打开标签页",
+					"description": "Strix 在标签页菜单里；没打开之前它不占用对话区域。"
 				},
 				{
-					"title": "填一个目标",
-					"description": "输入域名、网址或本地仓库并回车，请求会带着 Strix 的方法交给你的 Agent。"
+					"title": "填目标，回车",
+					"description": "域名、网址或本地仓库会成为扫描目标，句子里剩下的部分成为指令。"
 				},
 				{
 					"title": "看过程，读结论",
-					"description": "命令在 Strix 沙箱里执行并出现在轨迹里；确认的问题进入「发现」，附证据与修复。"
+					"description": "命令在沙箱里执行并出现在轨迹里；确认的问题进入「问题」，附证据与修复。"
 				}
 			]
 		},

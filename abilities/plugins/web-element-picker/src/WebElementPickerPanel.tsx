@@ -355,18 +355,15 @@ export function WebElementPickerPanel(): JSX.Element {
 								mimeType: "image/png",
 							});
 							if (ref) {
-								// pro：挂一次性附件，下一次发送给 AI 时宿主自动合并 instructions/metadata。
+								// 把 blob 引用写进输入框，而不是挂一次性附件：宿主会在 setPromptAttachment
+								// 时把这个插件的输入栏动作一并激活，而那枚胶囊从此不会自己消失——插件
+								// 装得越多，工具行就越满。写进草稿的一句话用户看得见、也删得掉。
 								try {
-									ctx?.ui.setPromptAttachment({
-										id: blobId,
-										label: t("panel.screenshotLabel"),
-										instructions: [
-											`The user captured the selected web element region as a screenshot. Read the image blob "${blobId}" from the plugin storage when you need it.`,
-										],
-										metadata: { blobId },
-									});
+									ctx?.conversation.insertText(
+										`[${t("panel.screenshotLabel")}] ${blobId}`,
+									);
 								} catch {
-									// 权限未授权等：附件挂载失败不影响截图本身已保存的提示。
+									// 会话不可写时不影响截图本身已保存的提示。
 								}
 								showToast(t("panel.screenshotAttached"));
 							} else {

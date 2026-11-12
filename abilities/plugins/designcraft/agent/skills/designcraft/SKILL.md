@@ -1,10 +1,9 @@
 ---
 name: designcraft
-alias: DesignCraft 自动化
+alias: DesignCraft
 description: "Operate DesignCraft from the conversation: run its commands by name or shortcut, follow a named recipe for the chores (none in this build), aim the canvas by fractions when a task is spatial, and prove every step with a measured reading before claiming it worked. 排版出版：跨页、主页、串接文本框、样式、IDML 与 PDF. Use whenever the user wants DesignCraft material created, changed or exported without doing the clicking themselves."
 ---
-# DesignCraft 自动化
-
+# DesignCraft
 这个技能只做一件事：**让用户说一句话，编辑器里的功能真的被执行，执行结果可核对。**
 排版出版：跨页、主页、串接文本框、样式、IDML 与 PDF。
 

@@ -1,10 +1,9 @@
 ---
 name: photocraft
-alias: Photocraft 自动化
+alias: Photocraft
 description: "Operate Photocraft from the conversation: run its commands by name or shortcut, follow a named recipe for the chores (new, open, save, save-as, save-acopy, cut, copy, paste), aim the canvas by fractions when a task is spatial, and prove every step with a measured reading before claiming it worked. 位图编辑：图层、蒙版、选区、文字、调整层与 PSD. Use whenever the user wants Photocraft material created, changed or exported without doing the clicking themselves."
 ---
-# Photocraft 自动化
-
+# Photocraft
 这个技能只做一件事：**让用户说一句话，编辑器里的功能真的被执行，执行结果可核对。**
 位图编辑：图层、蒙版、选区、文字、调整层与 PSD。
 

@@ -39,12 +39,12 @@ export class ConsoleBoundary extends Component<ConsoleBoundaryProps, State> {
 		if (!error) return this.props.children;
 		const t = this.props.t;
 		return (
-			<div className="astra-strix-panel astra-strix-panel-broken">
+			<div className="astra-strix-term astra-strix-panel-broken">
 				<div className="astra-strix-crash" role="alert">
 					<p className="astra-strix-crash-title">{t("crash.title")}</p>
-					<p className="astra-strix-hint">{t("crash.hint")}</p>
-					<pre className="astra-strix-evidence">{`${error.name}: ${error.message}${stack ? `\n${stack.trim()}` : ""}`}</pre>
-					<button type="button" className="astra-strix-button" onClick={() => this.setState({})}>
+					<p className="astra-strix-dim">{t("crash.hint")}</p>
+					<pre className="astra-strix-error-text">{`${error.name}: ${error.message}${stack ? `\n${stack.trim()}` : ""}`}</pre>
+					<button type="button" className="astra-strix-statusline-stop" onClick={() => this.setState({})}>
 						{t("crash.retry")}
 					</button>
 				</div>

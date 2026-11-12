@@ -1,9 +1,10 @@
 /**
- * The host-node service: MCP tool surface plus the panel's read-only API.
+ * The host-node service: MCP tool surface plus the panel's API.
  *
- * One process, one language. The tools hand the host agent Strix's sandbox, its
- * skill library and a findings ledger; nothing here owns a model, because the
- * agent that calls these tools is the host's own.
+ * One process, one language. The tools hand a driver Strix's sandbox, its skill
+ * library and a findings ledger. Two drivers exist and they share this registry:
+ * the host agent (over MCP) and the plugin's own console, which runs the loop on
+ * the host's model and calls the same tools over `/api/tool`.
  *
  * Readiness: /api/health/ready answers 200 as soon as the server listens and puts
  * the detail in the body. The host treats a non-2xx probe as a broken process and
@@ -289,6 +290,24 @@ const server = createServer(async (req, res) => {
 			return json(res, 200, { ready: true, version });
 		}
 		if (url.pathname === "/mcp" && req.method === "POST") return await handleMcp(req, res);
+		if (url.pathname === "/api/tool" && req.method === "POST") {
+			// One HTTP call per tool, through the same handler the MCP surface uses: the
+			// console drives the loop, this process owns the container.
+			const body = await readBody(req);
+			const name = typeof body.name === "string" ? body.name : "";
+			const tool = TOOLS.find((item) => item.name === name);
+			if (!tool) return json(res, 404, { ok: false, error: `unknown tool: ${name}` });
+			const args =
+				body.arguments && typeof body.arguments === "object"
+					? (body.arguments as Record<string, unknown>)
+					: {};
+			try {
+				return json(res, 200, { ok: true, result: await tool.handler(args) });
+			} catch (error) {
+				// A failed tool is still an answer the loop must see, not a transport error.
+				return json(res, 200, { ok: false, error: error instanceof Error ? error.message : String(error) });
+			}
+		}
 		if (url.pathname === "/api/state") {
 			const [env, list] = await Promise.all([
 				environment().catch((error) => ({ error: String(error) })),

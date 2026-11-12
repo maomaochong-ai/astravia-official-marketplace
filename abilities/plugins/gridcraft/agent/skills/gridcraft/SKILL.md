@@ -1,10 +1,9 @@
 ---
 name: gridcraft
-alias: GridCraft 自动化
+alias: GridCraft
 description: "Operate GridCraft from the conversation: run its commands by name or shortcut, follow a named recipe for the chores (new, open, save-as, delete, cut, copy, paste, clear-contents), aim the canvas by fractions when a task is spatial, and prove every step with a measured reading before claiming it worked. 表格：单元格、公式、区域、排序筛选与图表. Use whenever the user wants GridCraft material created, changed or exported without doing the clicking themselves."
 ---
-# GridCraft 自动化
-
+# GridCraft
 这个技能只做一件事：**让用户说一句话，编辑器里的功能真的被执行，执行结果可核对。**
 表格：单元格、公式、区域、排序筛选与图表。
 

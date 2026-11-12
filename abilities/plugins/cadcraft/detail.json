@@ -56,8 +56,8 @@
           "description": "About 11 MB of editor files arrive on first open, into the plugin's data directory, and are reused offline after that."
         },
         {
-          "title": "Open the CADCraft tab",
-          "description": "Opening the tab shows the editor itself — no preparation screen, no package to fetch."
+          "title": "Open it from the composer",
+          "description": "Press / or the first button left of the composer and pick CADCraft from the plugin list. Its tab opens with it, and a toggle appears in the input bar. Turning the toggle off drops that context — it does not close the document you are editing."
         },
         {
           "title": "Select a drawing, then open it",

@@ -1,10 +1,9 @@
 ---
 name: deckcraft
-alias: DeckCraft 自动化
+alias: DeckCraft
 description: "Operate DeckCraft from the conversation: run its commands by name or shortcut, follow a named recipe for the chores (new, save, undo, redo, zoom-in, zoom-out, fit, delete, duplicate, group, ungroup, cut, copy, paste), aim the canvas by fractions when a task is spatial, and prove every step with a measured reading before claiming it worked. 演示文稿：幻灯片、母版、占位符、版式与导出. Use whenever the user wants DeckCraft material created, changed or exported without doing the clicking themselves."
 ---
-# DeckCraft 自动化
-
+# DeckCraft
 这个技能只做一件事：**让用户说一句话，编辑器里的功能真的被执行，执行结果可核对。**
 演示文稿：幻灯片、母版、占位符、版式与导出。
 

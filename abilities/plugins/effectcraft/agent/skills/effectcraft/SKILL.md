@@ -1,10 +1,9 @@
 ---
 name: effectcraft
-alias: EffectCraft 自动化
+alias: EffectCraft
 description: "Operate EffectCraft from the conversation: run its commands by name or shortcut, follow a named recipe for the chores (undo, redo), aim the canvas by fractions when a task is spatial, and prove every step with a measured reading before claiming it worked. 合成与动效：合成、图层、关键帧、特效与渲染. Use whenever the user wants EffectCraft material created, changed or exported without doing the clicking themselves."
 ---
-# EffectCraft 自动化
-
+# EffectCraft
 这个技能只做一件事：**让用户说一句话，编辑器里的功能真的被执行，执行结果可核对。**
 合成与动效：合成、图层、关键帧、特效与渲染。
 

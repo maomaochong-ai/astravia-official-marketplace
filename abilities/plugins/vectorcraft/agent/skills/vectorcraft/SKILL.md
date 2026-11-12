@@ -1,10 +1,9 @@
 ---
 name: vectorcraft
-alias: VectorCraft 自动化
+alias: VectorCraft
 description: "Operate VectorCraft from the conversation: run its commands by name or shortcut, follow a named recipe for the chores (new, open, save, undo, redo, all, none, zoom-in, zoom-out, group, ungroup, cut, copy, paste), aim the canvas by fractions when a task is spatial, and prove every step with a measured reading before claiming it worked. 矢量插画：路径、描边、图像描摹、3D 与印刷分页. Use whenever the user wants VectorCraft material created, changed or exported without doing the clicking themselves."
 ---
-# VectorCraft 自动化
-
+# VectorCraft
 这个技能只做一件事：**让用户说一句话，编辑器里的功能真的被执行，执行结果可核对。**
 矢量插画：路径、描边、图像描摹、3D 与印刷分页。
 

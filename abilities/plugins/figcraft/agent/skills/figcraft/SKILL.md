@@ -1,10 +1,9 @@
 ---
 name: figcraft
-alias: FigCraft 自动化
+alias: FigCraft
 description: "Operate FigCraft from the conversation: run its commands by name or shortcut, follow a named recipe for the chores (none in this build), aim the canvas by fractions when a task is spatial, and prove every step with a measured reading before claiming it worked. 界面设计：画板、组件、自动布局、原型与交付. Use whenever the user wants FigCraft material created, changed or exported without doing the clicking themselves."
 ---
-# FigCraft 自动化
-
+# FigCraft
 这个技能只做一件事：**让用户说一句话，编辑器里的功能真的被执行，执行结果可核对。**
 界面设计：画板、组件、自动布局、原型与交付。
 

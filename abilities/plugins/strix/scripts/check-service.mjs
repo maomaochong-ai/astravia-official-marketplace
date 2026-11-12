@@ -70,6 +70,26 @@ try {
 	const unknown = await rpc("tools/call", { name: "nope", arguments: {} });
 	assert(unknown.error?.code === -32601, "unknown tool did not fail cleanly");
 
+	// The console's loop reaches the same registry over HTTP rather than MCP. Both
+	// a real answer and a failure must come back as 200-with-a-body: the loop turns
+	// `ok: false` into a tool result and keeps going.
+	const toolCall = await (
+		await fetch(`${BASE}/api/tool`, {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ name: "strix_environment", arguments: {} }),
+		})
+	).json();
+	assert(toolCall.ok === true && toolCall.result?.docker, `api/tool did not run: ${JSON.stringify(toolCall)}`);
+	const toolFail = await (
+		await fetch(`${BASE}/api/tool`, {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ name: "nope", arguments: {} }),
+		})
+	).json();
+	assert(toolFail.ok === false, "api/tool accepted an unknown tool");
+
 	const state = await (await fetch(`${BASE}/api/state`)).json();
 	assert(state.environment && state.sandbox, "state is incomplete");
 	assert(Array.isArray(state.findings), "state has no findings array");

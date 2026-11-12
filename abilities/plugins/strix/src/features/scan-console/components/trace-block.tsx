@@ -1,11 +1,14 @@
 /**
- * One entry of the trace, drawn the way upstream's TUI draws a tool call.
+ * One block of the scan trace.
  *
- * Upstream renders a running command as `→ Using tool exec_command`, its arguments
- * underneath, and a status glyph (render/registry.go). This keeps that reading
- * order - what ran, what it printed, how it ended - and adds the two things a
- * mouse can use and a terminal cannot: the output folds away, and the row carries
- * its duration.
+ * The reading order is upstream's tool renderer (render/registry.go): the tool
+ * name, its arguments, then the status line. The two additions are the ones a
+ * pointer makes possible - the output folds away, and the block keeps the exit
+ * code and duration it closed with.
+ *
+ * Assistant and note lines are upstream's chat renderer: dim italics for a status
+ * note, a blue bar and `You:` for what the operator typed, and plain body text for
+ * the agent.
  */
 
 import { useState } from "react";
@@ -15,57 +18,55 @@ export interface TraceBlockProps {
 	entry: TraceEntry;
 }
 
-function status(entry: TraceEntry): { glyph: string; label: string; tone: string } {
-	if (entry.kind === "note") return { glyph: "·", label: entry.label, tone: "astra-strix-dim" };
-	if (entry.ok === undefined) return { glyph: "●", label: "In progress…", tone: "astra-strix-amber" };
-	if (entry.ok) return { glyph: "✓", label: "Done", tone: "astra-strix-green" };
-	return { glyph: "✗", label: "Failed", tone: "astra-strix-red" };
-}
+function ToolBlock({ entry }: { entry: TraceEntry }): React.ReactElement {
+	const [open, setOpen] = useState(false);
+	const state = entry.ok === undefined ? "running" : entry.ok ? "ok" : "fail";
+	const status = state === "running" ? "● In progress..." : state === "ok" ? "✓ Done" : "✗ Failed";
+	const expandable = Boolean(entry.output);
 
-function clock(at: number): string {
-	const date = new Date(at);
-	return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}:${String(
-		date.getSeconds(),
-	).padStart(2, "0")}`;
+	return (
+		<div className="astra-strix-tool" data-state={state}>
+			<div className="astra-strix-tool-head">
+				<span className="astra-strix-dim">→ Using tool </span>
+				<span className="astra-strix-tool-name">{entry.label}</span>
+			</div>
+			{entry.detail ? <code className="astra-strix-tool-args">{entry.detail}</code> : null}
+			<button
+				type="button"
+				className="astra-strix-tool-status"
+				data-state={state}
+				onClick={() => (expandable ? setOpen((value) => !value) : undefined)}
+				aria-expanded={expandable ? open : undefined}
+			>
+				<span className="astra-strix-tool-glyph">{status}</span>
+				{expandable ? <span className="astra-strix-dim"> {open ? "▾" : "▸"}</span> : null}
+			</button>
+			{open && entry.output ? <pre className="astra-strix-tool-output">{entry.output}</pre> : null}
+		</div>
+	);
 }
 
 export function TraceBlock({ entry }: TraceBlockProps): React.ReactElement {
-	const [open, setOpen] = useState(false);
-	const mark = status(entry);
+	if (entry.kind === "tool") return <ToolBlock entry={entry} />;
 
 	if (entry.kind === "note") {
+		return <p className="astra-strix-note">{entry.label}</p>;
+	}
+
+	if (entry.kind === "user") {
 		return (
-			<p className="astra-strix-note">
-				<span className="astra-strix-note-dot" />
-				{entry.label}
-				<span className="astra-strix-note-time">{clock(entry.at)}</span>
-			</p>
+			<div className="astra-strix-you">
+				{entry.label.split("\n").map((line, index) => (
+					<p key={`${index}-${line}`}>
+						<span className="astra-strix-you-bar" aria-hidden="true">
+							▍
+						</span>
+						<span className="astra-strix-you-name">{index === 0 ? "You:" : ""}</span> {line}
+					</p>
+				))}
+			</div>
 		);
 	}
 
-	const hasOutput = Boolean(entry.output);
-
-	return (
-		<article className="astra-strix-tool" data-state={entry.ok === undefined ? "running" : entry.ok ? "ok" : "fail"}>
-			<button
-				type="button"
-				className="astra-strix-tool-row"
-				onClick={() => (hasOutput ? setOpen((value) => !value) : undefined)}
-				aria-expanded={hasOutput ? open : undefined}
-			>
-				<span className={`astra-strix-tool-glyph ${mark.tone}`}>{mark.glyph}</span>
-				<span className="astra-strix-tool-body">
-					<span className="astra-strix-tool-head">
-						<span className="astra-strix-dim">exec_command</span>
-						<span className={`astra-strix-tool-state ${mark.tone}`}>{mark.label}</span>
-						{entry.detail ? <span className="astra-strix-tool-meta">{entry.detail}</span> : null}
-						<span className="astra-strix-tool-meta">{clock(entry.at)}</span>
-					</span>
-					<code className="astra-strix-tool-cmd">{entry.label}</code>
-				</span>
-				{hasOutput ? <span className="astra-strix-tool-chevron">{open ? "▾" : "▸"}</span> : null}
-			</button>
-			{open && hasOutput ? <pre className="astra-strix-tool-output">{entry.output}</pre> : null}
-		</article>
-	);
+	return <p className="astra-strix-say">{entry.label}</p>;
 }

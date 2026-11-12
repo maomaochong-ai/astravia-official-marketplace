@@ -1,13 +1,13 @@
 /**
  * HTTP client for the bridge service.
  *
- * Three things the panel asks of it: what this machine can do, what the sandbox
- * is doing now, and which findings exist. The live feed is Server-Sent Events,
- * because the bridge already streams line-delimited JSON and ordering is what
- * makes a run readable.
+ * Three things the plugin asks of it: what this machine can do, what the sandbox
+ * is doing now, and which findings exist. `callTool` is the one write path: the
+ * agent loop lives in the plugin (its model is the host's), so it needs the same
+ * tools the MCP surface exposes, over the same registry.
  *
- * No scanning happens here: the agent calls the plugin's MCP tools, and this
- * client only reads what those calls produced.
+ * The live feed is Server-Sent Events, because the bridge already streams
+ * line-delimited JSON and ordering is what makes a run readable.
  */
 
 import type { BridgeEvent, BridgeState, StrixFinding } from "../runtime-contract";
@@ -17,6 +17,8 @@ export interface BridgeClient {
 	findings(): Promise<StrixFinding[]>;
 	report(): Promise<{ markdown: string; count: number }>;
 	stopSandbox(): Promise<{ stopped: boolean }>;
+	/** Run one bridge tool by name; throws on an unknown name or a tool failure. */
+	callTool(name: string, args?: Record<string, unknown>): Promise<unknown>;
 	events(onEvent: (event: BridgeEvent) => void): () => void;
 }
 
@@ -46,6 +48,20 @@ export function createBridgeClient(baseUrl: () => Promise<string>): BridgeClient
 		async stopSandbox() {
 			const base = await baseUrl();
 			return readJson(await fetch(`${base}/api/sandbox/stop`, { method: "POST" }));
+		},
+		async callTool(name, args = {}) {
+			const base = await baseUrl();
+			// The bridge answers 200 for a tool that ran and failed (the failure is the
+			// tool's result), so `ok` in the body - not the HTTP status - decides.
+			const body = await readJson<{ ok?: boolean; result?: unknown; error?: string }>(
+				await fetch(`${base}/api/tool`, {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ name, arguments: args }),
+				}),
+			);
+			if (body.ok === false) throw new Error(body.error || `${name} failed`);
+			return body.result;
 		},
 		events(onEvent) {
 			let source: EventSource | undefined;

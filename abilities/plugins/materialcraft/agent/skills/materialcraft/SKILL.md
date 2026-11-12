@@ -1,10 +1,9 @@
 ---
 name: materialcraft
-alias: MaterialCraft 自动化
+alias: MaterialCraft
 description: "Operate MaterialCraft from the conversation: run its commands by name or shortcut, follow a named recipe for the chores (open, save, save-as, export, undo, redo, delete, duplicate, cut, copy, paste), aim the canvas by fractions when a task is spatial, and prove every step with a measured reading before claiming it worked. 材质与着色：节点、参数、预览与烘焙. Use whenever the user wants MaterialCraft material created, changed or exported without doing the clicking themselves."
 ---
-# MaterialCraft 自动化
-
+# MaterialCraft
 这个技能只做一件事：**让用户说一句话，编辑器里的功能真的被执行，执行结果可核对。**
 材质与着色：节点、参数、预览与烘焙。
 

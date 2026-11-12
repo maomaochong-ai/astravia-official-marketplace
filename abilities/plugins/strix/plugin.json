@@ -2,7 +2,7 @@
   "id": "strix",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -16,20 +16,11 @@
   "permissions": [
     "ui.slot.activity-tab",
     "ui.slot.input-action",
+    "ai.models.list",
+    "ai.complete",
     "agent.skills.control",
     "agent.mcp.control",
-    "agent.command.run",
-    "agent.command.spawn",
-    "storage.read",
-    "storage.write",
     "shell.openExternal"
-  ],
-  "commands": [
-    "python",
-    "python3",
-    "uv",
-    "pipx",
-    "docker"
   ],
   "providers": {
     "cli": [
@@ -58,14 +49,14 @@
         "id": "strix-bridge",
         "runtime": {
           "kind": "host-node",
-          "version": "0.3.2",
+          "version": "0.4.0",
           "entry": "dist/service/main.mjs",
           "platforms": {
             "win32-x64": {
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "88970e6ac78041e274afb02726f9c77d24bed6d4ce7b316f9d90a82f015cc2b6",
+                  "sha256": "a7bdeafae8d682dfcb91c093dd2450c1999189fd80639663fc33daff286119b8",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -75,7 +66,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "88970e6ac78041e274afb02726f9c77d24bed6d4ce7b316f9d90a82f015cc2b6",
+                  "sha256": "a7bdeafae8d682dfcb91c093dd2450c1999189fd80639663fc33daff286119b8",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -85,7 +76,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "88970e6ac78041e274afb02726f9c77d24bed6d4ce7b316f9d90a82f015cc2b6",
+                  "sha256": "a7bdeafae8d682dfcb91c093dd2450c1999189fd80639663fc33daff286119b8",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -95,7 +86,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "88970e6ac78041e274afb02726f9c77d24bed6d4ce7b316f9d90a82f015cc2b6",
+                  "sha256": "a7bdeafae8d682dfcb91c093dd2450c1999189fd80639663fc33daff286119b8",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -105,7 +96,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "88970e6ac78041e274afb02726f9c77d24bed6d4ce7b316f9d90a82f015cc2b6",
+                  "sha256": "a7bdeafae8d682dfcb91c093dd2450c1999189fd80639663fc33daff286119b8",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -241,7 +232,7 @@
         "serviceId": "strix-bridge",
         "path": "/mcp",
         "displayName": "Strix security toolkit",
-        "description": "Strix sandbox, its 78 security skills, and a findings ledger, for the agent to drive."
+        "description": "Strix sandbox, its skill library, and a findings ledger, for the agent to drive."
       }
     }
   },

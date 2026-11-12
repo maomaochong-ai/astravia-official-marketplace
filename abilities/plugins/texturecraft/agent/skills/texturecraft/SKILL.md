@@ -1,10 +1,9 @@
 ---
 name: texturecraft
-alias: TextureCraft 自动化
+alias: TextureCraft
 description: "Operate TextureCraft from the conversation: run its commands by name or shortcut, follow a named recipe for the chores (open, save, save-as, export, import, undo, redo), aim the canvas by fractions when a task is spatial, and prove every step with a measured reading before claiming it worked. 材质：通道、贴图、程序化图层与导出. Use whenever the user wants TextureCraft material created, changed or exported without doing the clicking themselves."
 ---
-# TextureCraft 自动化
-
+# TextureCraft
 这个技能只做一件事：**让用户说一句话，编辑器里的功能真的被执行，执行结果可核对。**
 材质：通道、贴图、程序化图层与导出。
 

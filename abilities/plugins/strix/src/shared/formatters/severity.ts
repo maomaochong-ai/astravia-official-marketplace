@@ -26,18 +26,19 @@ export function severityRank(value: unknown): number {
 	return SEVERITIES.indexOf(normalizeSeverity(value));
 }
 
+/** Upstream's report palette (render/styles.go:SeverityColor), as a class per severity. */
 export function severityTone(value: unknown): string {
 	switch (normalizeSeverity(value)) {
 		case "critical":
-			return "text-red-600 dark:text-red-400";
+			return "astra-strix-sev-critical";
 		case "high":
-			return "text-orange-600 dark:text-orange-400";
+			return "astra-strix-sev-high";
 		case "medium":
-			return "text-amber-600 dark:text-amber-400";
+			return "astra-strix-sev-medium";
 		case "low":
-			return "text-sky-600 dark:text-sky-400";
+			return "astra-strix-sev-low";
 		default:
-			return "text-muted-foreground";
+			return "astra-strix-sev-info";
 	}
 }
 

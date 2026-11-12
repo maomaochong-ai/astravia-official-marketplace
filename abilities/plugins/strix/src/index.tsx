@@ -3,31 +3,45 @@ import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { definePlugin } from "@astravia-org/plugin-sdk";
 import { useRef } from "react";
 import { createBridgeClient } from "./domain/bridge-client";
-import { ConsoleBoundary } from "./features/scan-console/components/console-boundary";
-import { StrixConsolePanel } from "./features/scan-console/components/strix-console-panel";
-import { useScanConsole } from "./features/scan-console/hooks/use-scan-console";
+import { StrixTab } from "./features/scan-console/components/strix-tab";
+import { useStrixSession } from "./features/scan-console/hooks/use-strix-session";
 import { createServiceRuntime, type ServiceRuntime } from "./runtime";
 
 const TAB_ID = "strix.console";
 const ACTION_ID = "strix.activate";
 
-function ConsoleTab({ ctx, runtime }: { ctx: PluginContext; runtime: ServiceRuntime }): React.ReactElement {
+function StrixTabRoot({
+	ctx,
+	runtime,
+	onQuit,
+}: {
+	ctx: PluginContext;
+	runtime: ServiceRuntime;
+	onQuit: () => void;
+}): React.ReactElement {
 	const t = (key: string) => ctx.i18n.t(key);
 	// One client per mounted tab: rebuilding it during render would hand the hook a new
 	// identity on every paint, and its effects would re-run the boot sequence forever.
 	const client = useRef(createBridgeClient(() => runtime.ensureReady())).current;
-	const model = useScanConsole(client);
-	const send = (prompt: string) => ctx.conversation.sendPrompt(prompt);
+	const session = useStrixSession({ runtime, client, ai: ctx.ai, t });
+
 	return (
-		<ConsoleBoundary t={t}>
-			<StrixConsolePanel
-				t={t}
-				model={model}
-				status={runtime.lastStatus()}
-				send={send}
-				iconUrl={ctx.plugin?.iconUrl}
-			/>
-		</ConsoleBoundary>
+		<StrixTab
+			t={t}
+			version={ctx.plugin.version}
+			phase={session.phase}
+			log={session.log}
+			model={session.model}
+			environment={session.environment}
+			sandbox={session.sandbox}
+			findings={session.findings}
+			trace={session.trace}
+			busy={session.busy}
+			start={session.start}
+			send={session.send}
+			stop={session.stop}
+			onQuit={onQuit}
+		/>
 	);
 }
 
@@ -42,7 +56,15 @@ export default definePlugin({
 			scope_use: ["conversation", "project"],
 			// Requirement: no panel until the user asks for one.
 			initiallyVisible: false,
-			component: () => <ConsoleTab ctx={ctx} runtime={runtime} />,
+			component: () => (
+				<StrixTabRoot
+					ctx={ctx}
+					runtime={runtime}
+					// ctrl+c closes the tab, the way it quits the CLI: the screen is a
+					// terminal, and the tab is what it occupies here.
+					onQuit={() => ctx.ui.setActivityTabVisible(TAB_ID, false)}
+				/>
+			),
 		});
 
 		const action: Disposable = ctx.ui.registerInputAction({

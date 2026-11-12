@@ -1,10 +1,9 @@
 ---
 name: wordcraft
-alias: WordCraft 自动化
+alias: WordCraft
 description: "Operate WordCraft from the conversation: run its commands by name or shortcut, follow a named recipe for the chores (new, open, save, save-as, undo, redo, all, zoom-in, zoom-out, zoom100, cut, copy, paste), aim the canvas by fractions when a task is spatial, and prove every step with a measured reading before claiming it worked. 文字处理：样式、节、目录、批注与导出. Use whenever the user wants WordCraft material created, changed or exported without doing the clicking themselves."
 ---
-# WordCraft 自动化
-
+# WordCraft
 这个技能只做一件事：**让用户说一句话，编辑器里的功能真的被执行，执行结果可核对。**
 文字处理：样式、节、目录、批注与导出。
 

@@ -6,7 +6,15 @@
  * instead of throwing) and the payloads the bridge service returns.
  */
 
-export type ServicePhase = "idle" | "installing" | "starting" | "ready" | "stopping" | "error" | "failed" | "stopped";
+export type ServicePhase =
+	| "idle"
+	| "installing"
+	| "starting"
+	| "ready"
+	| "stopping"
+	| "error"
+	| "failed"
+	| "stopped";
 
 export interface ServiceStatus {
 	phase: ServicePhase;
@@ -103,14 +111,21 @@ export type BridgeEvent =
 	  }
 	| { event: string; [key: string]: unknown };
 
-/** One row of the panel's trace, derived from the bridge's event stream. */
+/**
+ * One row of the trace. The three kinds mirror what upstream draws in its
+ * viewport: a tool block (`→ Using tool …`), a chat line from the agent, and a
+ * dim status note from the backend.
+ */
 export interface TraceEntry {
 	id: string;
-	kind: "command" | "note";
+	kind: "tool" | "say" | "user" | "note";
+	/** For tools: the tool name. For chat: the message body. For notes: the line. */
 	label: string;
+	/** Arguments, exit code and duration, rendered under a tool name. */
 	detail?: string;
+	/** Undefined while a tool call is still in flight. */
 	ok?: boolean;
 	at: number;
-	/** Tail of the command's output, when the bridge sent one. */
+	/** Tail of a command's output, folded away until the row is opened. */
 	output?: string;
 }
