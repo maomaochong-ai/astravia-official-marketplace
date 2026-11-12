@@ -1,7 +1,7 @@
 {
   "plugin.name": "寒霜破甲",
   "plugin.description": "离线静态体检 APK、AAB、IPA、DEX、ELF、PE、Mach-O 与压缩包：识别格式、清单事实、权限、导出组件、原生加固、硬编码凭据并给出评分报告。不执行样本、不自带工具链；只有你机器上已经装了 radare2 / jadx / apktool 时才会用它们。",
-  "skill.name": "寒霜破甲 · 攻防执行",
+  "skill.name": "寒霜破甲",
   "skill.description": "红蓝队交战执行器：CTF 题目、靶场、AWD 轮次、卡密与授权逆向、样本分诊、应急响应。内置工作台工具包 2.0 协议：实验模式、部署校验、seep / IDA 工具链。执行优先——每轮答复先给可执行产物。",
   "skill.apkseep.name": "APK 逆向工程",
   "skill.apkseep.description": "Android 全链路逆向：APK/AAB/DEX/SO 资产画像、客户端鉴权脆弱性走查（CWE-602）、二进制微创补丁、Frida/RPC 插桩、脱壳与 Java2C/VMP 差分、重打包签名。含四道硬性质量门禁（G1–G4）与反调试、反 Hook 对抗。",

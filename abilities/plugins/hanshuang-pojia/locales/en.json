@@ -1,7 +1,7 @@
 {
   "plugin.name": "Hanshuang Pojia",
   "plugin.description": "Statically triage APK, AAB, IPA, DEX, ELF, PE, Mach-O and archive samples: format, manifest facts, permissions, exported components, native hardening, embedded secrets and a scored report. Nothing is executed and no toolchain is bundled; radare2, jadx and apktool are used only where you already have them.",
-  "skill.name": "Hanshuang Pojia — engagement executor",
+  "skill.name": "Hanshuang Pojia",
   "skill.description": "Red-team and blue-team engagement executor: CTF challenges, ranges, AWD rounds, license and activation reversing, malware triage and incident response. Carries the workbench kit 2.0 protocol: lab mode, deployment verification, and the seep / IDA MCP toolchain. Execution-first — every reply opens with the artifact.",
   "skill.apkseep.name": "APK reverse engineering",
   "skill.apkseep.description": "Full-chain Android reversing: APK/AAB/DEX/SO triage, client-auth weakness review (CWE-602), minimal binary patches, Frida/RPC instrumentation, unpacking, Java2C/VMP diffing and resigned repackaging. Four hard quality gates (G1–G4) plus anti-tamper and anti-hook countermeasures.",
