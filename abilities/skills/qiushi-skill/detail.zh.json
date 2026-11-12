@@ -13,10 +13,14 @@
       ]
     },
     {
-      "type": "image",
-      "src": "assets/logo.png",
-      "alt": "qiushi-skill 项目标识",
-      "caption": "上游项目官方标识（assets/logo_main.png），除文件格式外未作改动。"
+      "type": "links",
+      "title": "完整图文介绍",
+      "items": [
+        {
+          "label": "在浏览器中打开完整介绍页",
+          "href": "https://maomaochong-ai.github.io/astravia-official-marketplace/abilities/skills/qiushi-skill/assets/preview/index.html"
+        }
+      ]
     },
     {
       "type": "feature-grid",
@@ -103,7 +107,7 @@
       "items": [
         {
           "title": "看图文介绍页",
-          "description": "包里带一份离线页面 assets/preview/index.html。自己看就行：让助手跑 scripts/open-preview.sh（Windows 用 open-preview.ps1），会用默认浏览器打开；也可以直接打开 ~/.astravia/skills/qiushi-skill/assets/preview/index.html。图片全部内联，不需要联网。"
+          "description": "点上面的「完整图文介绍」即用浏览器打开自包含的介绍页：十份规程的结构、每件方法的入口与产物都排在一页里，图片全部内联，打开后不需要联网。离线时也可以直接打开 ~/.astravia/skills/qiushi-skill/assets/preview/index.html。"
         },
         {
           "title": "需要角色时派一个",
