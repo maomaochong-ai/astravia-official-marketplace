@@ -211,5 +211,4 @@ npm run validate   # 用宿主自己的 manifest 解析器校验 plugin.json
 ## 许可与来源
 
 MIT。`agent/` 下的工艺库移植自 [ainovel-cli](https://github.com/voocel/ainovel-cli)（Apache-2.0），并改编自
-novel-master（MIT）；逐文件的归属与改动见 `agent/ATTRIBUTION.md`。架构上的每个决定都在
-`../../docs/adr/mahua-writing-team/` 里逐条记录。
+novel-master（MIT）；逐文件的归属与改动见 `agent/ATTRIBUTION.md`。

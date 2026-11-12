@@ -2,7 +2,6 @@
  * A skill only appears in Astravia's skill picker if its frontmatter survives the
  * host's strict YAML parse — `packages/coding-agent` calls `parse()` from `yaml`
  * and drops the whole skill when it throws
- * (ADR docs/adr/<plugin>/craft-0015-a-skill-must-survive-a-strict-yaml-parse.md).
  *
  * The trap is the description: these sentences are long, and one colon-space in
  * the middle of a plain scalar turns the rest of the line into a nested mapping

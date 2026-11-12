@@ -15,8 +15,6 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
  * "Stopped" is measured with the same tolerance `change.changed` uses: a canvas redraws
  * with antialiasing and dither on every frame, so exact equality either never arrives or
  * arrives on a half-drawn frame. A timeout is an answer, not an error.
- *
- * ADR: docs/adr/<slug>/craft-0025-settled-means-quiet-not-identical.md
  */
 export function registerWaitTool(ctx: PluginContext): Disposable {
   const id = APP.id;

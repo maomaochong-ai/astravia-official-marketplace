@@ -20,7 +20,6 @@ export interface ContainerFullscreen {
  * still undo it — so a refusal falls back to covering the viewport with the same
  * element and Escape (or the same button) leaves that state too.
  *
- * ADR: docs/adr/excalidraw/0004-icons-only-and-a-fullscreen-that-returns.md
  */
 export function useContainerFullscreen(onError: (message: string) => void): ContainerFullscreen {
   const containerRef = useRef<HTMLDivElement | null>(null);

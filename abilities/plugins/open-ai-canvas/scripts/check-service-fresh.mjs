@@ -35,7 +35,7 @@ if (!fs.existsSync(target)) {
     banner: {
       js: [
         "// 生成物：不要直接编辑。源在 server/src/，构建命令 `npm run build:boot`。",
-        "// 单文件是硬约束——宿主只下载并执行这一个 entry（见 docs/adr/open-ai-canvas/0012-service-module-layout.md）。",
+        "// 单文件是硬约束——宿主只下载并执行这一个 entry。",
       ].join("\n"),
     },
   });

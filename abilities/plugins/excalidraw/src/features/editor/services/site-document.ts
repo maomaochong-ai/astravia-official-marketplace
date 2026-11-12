@@ -17,8 +17,7 @@
  *     sees the interface language and the host's message port.
  *
  * Nothing here downloads anything at runtime: the bytes in the package are the site
- * the build recipe produced from a pinned upstream commit (see
- * docs/adr/excalidraw/0001-the-tab-runs-upstreams-web-build.md).
+ * the build recipe produced from a pinned upstream commit .
  */
 import bridgeSource from "../../../bridge/host-bridge.js?raw";
 import { APP } from "../../../app.config.ts";
@@ -33,7 +32,7 @@ const EMBED_MARK = "excalidraw-embed-seed";
  * `astravia-plugin://…` have the opaque origin `null`, so the two compare equal and
  * a legitimate single-level embed is refused. Emptying `referrer` makes upstream's
  * `new URL(referrer)` throw, which is the branch it already treats as "not
- * self-embedded". Evidence: docs/adr/excalidraw/0001-the-tab-runs-upstreams-web-build.md.
+ * self-embedded".
  */
 const EMBED_SEED_JS =
   'try{Object.defineProperty(document,"referrer",{configurable:true,get:function(){return ""}})}catch(e){}';

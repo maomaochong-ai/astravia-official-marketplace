@@ -28,10 +28,6 @@ import { RegionMarquee } from "./region-marquee.tsx";
  * `craft:capture` already takes normalized coordinates, so no new capability was needed.
  * The canvas is one wasm surface, so an area is the smallest unit the shell can ask
  * for; there are no elements to click.
- *
- * ADR: docs/adr/<slug>/0001-the-tab-runs-upstreams-web-build.md
- * ADR: docs/adr/<slug>/craft-0018-the-header-became-a-corner.md
- * ADR: docs/adr/<slug>/craft-0021-the-canvas-is-clicked-not-covered.md
  */
 export function CraftTab({ ctx }: { ctx: PluginContext }): JSX.Element {
 	const session = useCraftEditor(ctx);

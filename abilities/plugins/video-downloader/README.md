@@ -132,7 +132,7 @@ without the user writing a script first:
 
 They are read-only on purpose: a built-in is part of the release, so an edit or a toggle would be
 silently lost on the next update. The panel hides those controls and the store refuses the write.
-[ADR 0003](../../../docs/adr/video-downloader/0003-builtin-adapters-supersede-0001.md) supersedes
+ADR 0003 supersedes
 ADR 0001 §2 ("no site scripts") and records why the assumption stopped holding; ADR 0001 still
 describes the run contract and the rejected alternatives.
 

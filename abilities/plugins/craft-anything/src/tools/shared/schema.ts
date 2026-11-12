@@ -3,9 +3,6 @@ import { CHANGE_DISTANCE, CHANGE_DRIFT } from "../../features/editor/services/ex
 /**
  * The shapes the model sees. One file, because a tool's parameters are a contract and two
  * tools that disagree about the same field is how a schema rots.
- *
- * ADR: docs/adr/<slug>/craft-0009-one-batch-and-a-text-map.md
- * ADR: docs/adr/<slug>/craft-0026-act-says-what-it-expects.md
  */
 
 /** Both scopes: an editor is used from a conversation and from a project. */

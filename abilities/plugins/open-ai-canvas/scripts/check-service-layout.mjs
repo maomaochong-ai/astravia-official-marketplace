@@ -7,7 +7,7 @@
  * 约定守不住，靠一次 `npm test` 可以。
  *
  * 同时确认「手写源码只有 .ts」：产物 `server/boot.mjs` 是唯一的例外，它不是源，
- * 是 esbuild 的输出，宿主只能跑它（见 docs/adr/open-ai-canvas/0012）。
+ * 是 esbuild 的输出，宿主只能跑它。
  */
 import fs from "node:fs";
 import path from "node:path";

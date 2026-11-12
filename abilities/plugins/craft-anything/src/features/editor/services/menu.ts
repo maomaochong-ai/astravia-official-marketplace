@@ -15,8 +15,6 @@ import type { CanvasDelta } from "./open-document.ts";
  * The order is deliberate and the same as everywhere else in this plugin: the platform
  * shortcut the app itself documents first (one keystroke, no timing), the menu path
  * second, and a measured canvas delta after each so a miss is reported, not assumed.
- *
- * ADR: docs/adr/<slug>/craft-0017-the-selection-is-offered-through-the-apps-own-open.md
  */
 
 export interface MenuRequest {

@@ -2,7 +2,6 @@
  * The postMessage dialect spoken by src/bridge/host-bridge.js inside the editor
  * frame. Shapes are narrowed here so the UI never branches on raw `unknown`.
  *
- * ADR: docs/adr/excalidraw/0002-bytes-move-through-the-host.md
  */
 
 export interface LinkMessage {

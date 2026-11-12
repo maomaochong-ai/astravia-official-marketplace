@@ -12,8 +12,6 @@ import type { JSX } from "react";
  *
  * A slot **replaces** the default rendering, so it must never be the reason a result
  * disappears: pending, empty, malformed and error cases all fall back to the raw text.
- *
- * ADR: docs/adr/<slug>/craft-0018-the-header-became-a-corner.md
  */
 interface ActStepView {
   index?: number;

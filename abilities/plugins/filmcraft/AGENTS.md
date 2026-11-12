@@ -2,13 +2,10 @@
 
 这个目录是**手写源码**，不是产物。craft 家族十五支插件共享同一份宿主侧代码，`src/**` 逐字节相同；
 一致性由 `tests/craft-parity.test.mjs` 守住，改一处就要改另外十四处。
-理由与边界写在 [`docs/adr/filmcraft/craft-0001-seven-copies-and-a-parity-test.md`](../../../../docs/adr/filmcraft/craft-0001-seven-copies-and-a-parity-test.md)。
 
 编辑器本体**不是我们写的**：`web/` 就是上游为 `payload/manifest.json` 钉住的那一版发出来的
 `<app>-web-<version>.zip`——打包前下载、校验 sha256、剥掉外层目录后原样装进包里。我们不编译它，
-也不改它一个字节。为什么站点走 `srcdoc` 而不是导航进去，见
-[`docs/adr/filmcraft/craft-0001-seven-copies-and-a-parity-test.md`](../../../../docs/adr/filmcraft/craft-0001-seven-copies-and-a-parity-test.md)、
-[`docs/adr/filmcraft/craft-0012-the-site-is-upstreams-release-bundle.md`](../../../../docs/adr/filmcraft/craft-0012-the-site-is-upstreams-release-bundle.md)。
+也不改它一个字节。为什么站点走 `srcdoc` 而不是导航进去，原因见 `src/features/editor/services/site-document.ts` 顶部的说明。
 
 ## 开工
 

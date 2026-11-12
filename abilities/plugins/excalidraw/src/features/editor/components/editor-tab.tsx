@@ -8,7 +8,6 @@ import { EditorStatusBar } from "./editor-status-bar.tsx";
  * The activity tab: upstream's own web build as an inline document in a frame, one
  * status line above it, no second editor and no second theme.
  *
- * ADR: docs/adr/excalidraw/0001-the-tab-runs-upstreams-web-build.md
  */
 export function EditorTab({ ctx }: { ctx: PluginContext }): JSX.Element {
   const session = useEditorSession(ctx);

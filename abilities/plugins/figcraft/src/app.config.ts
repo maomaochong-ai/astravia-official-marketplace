@@ -18,8 +18,7 @@ export const APP = {
   site: "web",
   /**
    * Interface-language seed. Whether the canvas actually renders Chinese is the upstream
-   * build's business (its own language table and glyphs); see
-   * docs/adr/figcraft/craft-0007-chinese-comes-from-the-shell.md.
+   * build's business (its own language table and glyphs).
    */
   locale: "zh",
   /** Fill-only preference seed; empty when the app keeps no interface language there. */

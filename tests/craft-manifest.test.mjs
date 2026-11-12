@@ -8,7 +8,7 @@
  * from the era when the plugin downloaded a zip. `node --test` is the cheap place to
  * catch that; the site itself (`web/`) is built by CI and is not in git.
  *
- * `docs/adr/<plugin>/craft-0006-the-skill-is-the-doorway.md` is why the skill assertions exist:
+ * The skill showing up in the picker with a name and an icon is why these assertions exist:
  * the plugin is only reachable if the skill shows up in the picker with a name and an
  * icon, so that is a testable product requirement, not a cosmetic detail.
  */

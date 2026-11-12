@@ -5,8 +5,8 @@ description: "Put structure on a Boardmix canvas the way the product itself does
 
 # Canvas work
 
-画布里的图形是像素，我们读不到图层结构（`docs/adr/boardmix/bm-0001`）。
-但产品自己有一个**文本 → 原生图形**的转换器：它解析 Mermaid（`docs/adr/boardmix/bm-0002`）。
+画布里的图形是像素，我们读不到图层结构。
+但产品自己有一个**文本 → 原生图形**的转换器：它解析 Mermaid。
 所以这件事的正确做法不是点一百下，而是**写一份 Mermaid，交给它**。
 
 ## 一条规则

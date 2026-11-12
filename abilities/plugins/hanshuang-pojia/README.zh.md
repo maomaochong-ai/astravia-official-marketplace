@@ -233,7 +233,7 @@ MCP 工具全表、十篇手册索引、宿主安装矩阵、校验基线、中�
 ```text
 cases/                             # 19 个先例包：只有源码，构建期内联，从不随包
 docs/                              # 工程文档：README.md 索引 + contract/ reference/ audits/ plans/
-                                   # ADR 在仓库根：docs/adr/hanshuang-pojia/
+                                   # ADR 在仓库根：docs/adr/
 agent/
 ├── skills/                          # 九个 SKILL.md 目录，经 skillPaths 注册
 │   ├── hanshuang-pojia/             # 宿主在对话区列出的主技能，含 references/

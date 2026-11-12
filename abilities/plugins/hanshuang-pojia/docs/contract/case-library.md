@@ -1,6 +1,6 @@
 # 案件契约与战例库
 
-> 面向改这份代码的人。决策依据见 [ADR 0006](../../../../../docs/adr/hanshuang-pojia/0006-case-contract-v2-and-precedent-library.md)（案例契约）与 [ADR 0007](../../../../../docs/adr/hanshuang-pojia/0007-case-corpus-layer.md)（语料层）；
+> 面向改这份代码的人。决策依据见 ADR 0006（案例契约）与 ADR 0007（语料层）；
 > 用户视角的操作步骤见 [USAGE.md](../../USAGE.md)；界面逐页说明见随包手册
 > [PANEL-HANDBOOK.md](../../src/content/docs/manual/PANEL-HANDBOOK.md)。
 

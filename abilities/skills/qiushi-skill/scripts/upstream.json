@@ -34,7 +34,7 @@
     "references/cases/tangping-editorial-perspective.md": "docs/assets/tangping_editorial_perspective.md"
   },
   "adaptations": [
-    "Merge the upstream plugin's eleven skills into one Astravia skill (see docs/adr/qiushi-skill/0004-single-skill-with-internal-routing.md).",
+    "Merge the upstream plugin's eleven skills into one Astravia skill.",
     "Entry SKILL.md (upstream skills/arming-thought/SKILL.md): rename frontmatter name to the package slug, rewrite description for single-entry triggering, turn routing targets into paths under references/skills/<name>/SKILL.md, add a 'how to read these' section. All other prose unchanged.",
     "Downstream playbooks are stored as references/skills/<name>/SKILL.md, byte-identical to upstream SKILL.md; renamed so no recursive scan registers them as separate skills.",
     "Add the Astravia-required version field to the entry SKILL.md frontmatter plus market presentation and provenance files (ability.json, detail.json, detail.zh.json, NOTICE.md, README files, upstream.json).",

@@ -2,7 +2,7 @@
  * The fifteen craft plugins ship the same shell under fifteen names.
  *
  * There used to be a generator that rewrote the shared copies; it was removed on
- * purpose (ADR docs/adr/<plugin>/craft-0001-seven-copies-and-a-parity-test.md). The copy model only holds
+ * purpose. The copy model only holds
  * if drift is visible, so this test fails the moment one plugin's copy of a shared
  * file differs from designcraft's. `app.config.ts` is the one file that is meant to
  * differ: it is the whole per-app surface.

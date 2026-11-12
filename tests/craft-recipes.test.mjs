@@ -13,7 +13,6 @@
  *
  * It is the difference between "the skill says you can export" and "export exists".
  *
- * ADR: docs/adr/<plugin>/craft-0030-a-recipe-is-the-unit-of-automation.md
  */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";

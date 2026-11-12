@@ -20,7 +20,6 @@
  * vocabulary of the canvas shell this file came from; both ends ship together,
  * so they stay as they are (ADR 0002).
  *
- * ADR: docs/adr/excalidraw/0002-bytes-move-through-the-host.md
  */
 (function () {
   "use strict";

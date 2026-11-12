@@ -13,8 +13,6 @@ import { craftWorkspace } from "../session-registry.ts";
  *
  * One file per day, seven files kept. Old entries are worth less than a repository that
  * stays clean, and rotation is the same housekeeping `shots/` already does.
- *
- * ADR: docs/adr/<slug>/craft-0027-precision-starts-from-recorded-failures.md
  */
 
 export const JOURNAL_DIR = `.craft/${APP.id}/runs`;

@@ -9,7 +9,7 @@ artefacts. A precedent is a starting point you copy, not an authorisation you in
 
 Patch offsets, AOB signatures, protocol tables and algorithm constants **are** kept: they are
 *derived* addresses, not sample bytes, and without them a precedent says "change the branch" and
-leaves you to guess which one ([ADR 0007](../../../../docs/adr/hanshuang-pojia/0007-case-corpus-layer.md) D2).
+leaves you to guess which one (ADR 0007 D2).
 The reader-facing narrative for each case lives in the document library under
 `src/content/docs/cases/<slug>/`, pointed at by `caseDocs`.
 

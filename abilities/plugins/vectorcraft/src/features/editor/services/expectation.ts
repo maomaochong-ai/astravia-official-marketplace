@@ -16,8 +16,6 @@ import { craftWorkspace } from "../session-registry.ts";
  * comparison of two PNGs fails on encoding alone; what `probe` can measure — the letter
  * map, the mean colour, the grid it was sampled on — is what a baseline stores. When the
  * question needs real pixels, the model reads the `shot` file with its own eyes.
- *
- * ADR: docs/adr/<slug>/craft-0026-act-says-what-it-expects.md
  */
 
 /** 0–441 (the RGB cube diagonal); below this the mean colour did not really move. */

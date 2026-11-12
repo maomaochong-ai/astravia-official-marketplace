@@ -17,7 +17,6 @@ import type { EditorSession } from "../hooks/use-editor-session.ts";
  * The three controls are unchanged: language is a word, full screen and reload are
  * icons with an accessible name and a platform tooltip. No "open in a browser".
  *
- * ADR: docs/adr/excalidraw/0004-icons-only-and-a-fullscreen-that-returns.md
  */
 export function EditorStatusBar({ session }: { session: EditorSession }): JSX.Element {
   const { strings, phase, binding, candidate, savedAt, notice, isFullscreen, progress, uiLang } = session;

@@ -5,7 +5,7 @@ description: "Put Boardmix's own 博思 AI to work from the conversation: compos
 
 # 博思 AI
 
-页内 AI 就是那个「按一句话改画布」的 agent（`docs/adr/boardmix/bm-0003`）。
+页内 AI 就是那个「按一句话改画布」的 agent。
 插件不是它，也替代不了它；插件能把**一句写清楚的 prompt** 送到它的输入框里，并在用户明确要求时按下发送。
 
 **三个地址其实是同一页。** `/ai/chat` 与 `/ai/ppt` 都 redirect 到 `/agent`。`boardmix_ai` 的三个 `kind`

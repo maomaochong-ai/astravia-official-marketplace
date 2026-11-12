@@ -185,7 +185,7 @@ qiushi-skill/
 └── README.md  README.zh.md
 ```
 
-十份规程沿用上游的文件名 `SKILL.md`，内容与上游逐字节一致。这个文件名恰恰也是宿主发现技能的依据：它递归走一遍安装后的目录，见到 `SKILL.md` 就当一条独立技能。`references/skills/.ignore` 让这次遍历在这十份文件上停下（规则 `*/SKILL.md`），面板因此只有一条而不是十一条。宿主在每一层都会读 `.gitignore` / `.ignore` / `.fdignore`，并把规则自动加上该层目录前缀，所以一行就够。选 `.ignore` 而不是 `.gitignore`，是因为后者在这里会连带让 git 不再追踪这些正文。为什么不拆成十一个技能见 `docs/adr/qiushi-skill/0004-single-skill-with-internal-routing.md`；文件名与台账位置的决定见 `0007`。
+十份规程沿用上游的文件名 `SKILL.md`，内容与上游逐字节一致。这个文件名恰恰也是宿主发现技能的依据：它递归走一遍安装后的目录，见到 `SKILL.md` 就当一条独立技能。`references/skills/.ignore` 让这次遍历在这十份文件上停下（规则 `*/SKILL.md`），面板因此只有一条而不是十一条。宿主在每一层都会读 `.gitignore` / `.ignore` / `.fdignore`，并把规则自动加上该层目录前缀，所以一行就够。选 `.ignore` 而不是 `.gitignore`，是因为后者在这里会连带让 git 不再追踪这些正文。
 
 ## 📦 安装
 

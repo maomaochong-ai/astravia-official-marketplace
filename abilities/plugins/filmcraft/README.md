@@ -1,4 +1,4 @@
-# FilmCraft
+﻿# FilmCraft
 
 Cut video on a real timeline inside Astravia — the upstream FilmCraft non-linear editor with colour, sound and a WebGL fallback for machines without WebGPU.
 
@@ -39,7 +39,6 @@ sha256 与上游同版 `SHA256SUMS.txt` 里那一行必须同时对上，然后�
 
 这个上游构建只有英文界面，画布因此保持英文。硬切中文只会得到英文文案加中文日期与数字格式，那是更隐蔽的错位，所以语言种子留空。
 外壳（标签标题、状态条、本页说明）仍是中英双语，跟随 Astravia 语言。
-边界与判据见 [`docs/adr/filmcraft/craft-0007-chinese-comes-from-the-shell.md`](../../../../docs/adr/filmcraft/craft-0007-chinese-comes-from-the-shell.md)。
 
 ## 文件怎么进、怎么出
 
@@ -59,8 +58,7 @@ node scripts/build-craft-web.mjs        # 下载并校验上游站点（加 --if
 
 `src/**` 在十五支 craft 插件之间逐字节相同，唯一按应用不同的是 `src/app.config.ts`（还有
 `plugin.json`、`payload/manifest.json`、`locales/` 与展示层文件）。这里就是源码：改共享行为要在十五支上
-做同样的改动，`tests/craft-parity.test.mjs` 会在漏改时失败。见
-[`docs/adr/filmcraft/craft-0001`](../../../../docs/adr/filmcraft/craft-0001-seven-copies-and-a-parity-test.md)。
+做同样的改动，`tests/craft-parity.test.mjs` 会在漏改时失败。
 
 `web/` 不要手改：它是上游发的那份字节，下一次打包会重新覆盖。
 

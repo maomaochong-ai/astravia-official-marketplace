@@ -41,9 +41,6 @@ import { text } from "./shared/reply.ts";
  *
  * A recipe that cannot run says so: `invoked: false` plus the step that failed. That is the
  * point of having recipes at all — a chore either completes, or names the step that did not.
- *
- * ADR: docs/adr/<slug>/craft-0029-address-the-function-not-the-pixel.md
- * ADR: docs/adr/<slug>/craft-0030-a-recipe-is-the-unit-of-automation.md
  */
 export function registerRecipeTool(ctx: PluginContext): Disposable {
   const id = APP.id;

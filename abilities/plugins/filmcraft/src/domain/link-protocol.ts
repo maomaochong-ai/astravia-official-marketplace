@@ -1,8 +1,6 @@
 /**
  * The postMessage dialect spoken by src/bridge/host-bridge.js inside the editor
  * frame. Shapes are narrowed here so the UI never branches on raw `unknown`.
- *
- * ADR: docs/adr/photocraft/0002-bytes-move-through-the-host.md
  */
 
 /** WebGPU → WebGL2 → software. Upstream understands the last two as URL flags. */

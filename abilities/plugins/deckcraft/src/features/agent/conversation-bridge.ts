@@ -18,8 +18,6 @@ import { publishCraftIntent, setCraftWorkspace } from "../editor/session-registr
  *
  * Subscription is best-effort: a host build without `agent.session.read` throws,
  * and the panel then simply loses the early hint — nothing else depends on it.
- *
- * ADR: docs/adr/<slug>/craft-0019-the-agent-looks-at-the-picture.md
  */
 export function connectConversation(ctx: PluginContext): Disposable {
   const prefix = `${APP.id}_`;

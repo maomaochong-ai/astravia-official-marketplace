@@ -20,8 +20,7 @@ export const APP = {
    * Interface-language seed. This build keeps its CJK glyphs in a separate file
    * (`lightcraft_zh_hans.otf`) rather than inside the wasm; CI builds the site with upstream's
    * own font step (a pinned craft-fonts checkout), so the face is in the package and the canvas
-   * can actually draw the Chinese strings. See
-   * docs/adr/lightcraft/craft-0007-chinese-comes-from-the-shell.md.
+   * can actually draw the Chinese strings.
    */
   locale: "zh",
   /** Fill-only preference seed; empty when the app keeps no interface language there. */

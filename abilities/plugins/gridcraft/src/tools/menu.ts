@@ -20,8 +20,6 @@ import { text } from "./shared/reply.ts";
  * menu route (`File > Export > Save for Web`). Both are tried, both are measured, and a
  * miss is reported with every attempt so the caller can fall back to `act` deliberately
  * instead of guessing why nothing happened.
- *
- * ADR: docs/adr/<slug>/craft-0029-address-the-function-not-the-pixel.md
  */
 export function registerMenuTool(ctx: PluginContext): Disposable {
   const id = APP.id;

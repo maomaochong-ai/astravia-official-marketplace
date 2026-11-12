@@ -20,8 +20,6 @@ export interface ContainerFullscreen {
  * then rejects. The button must still do something and, more importantly, must
  * still undo it — so a refusal falls back to covering the viewport with the same
  * element and Escape (or the same button) leaves that state too.
- *
- * ADR: docs/adr/<slug>/craft-0010-icons-only-and-a-fullscreen-that-returns.md
  */
 export function useContainerFullscreen(onError: (message: string) => void): ContainerFullscreen {
   const containerRef = useRef<HTMLDivElement | null>(null);

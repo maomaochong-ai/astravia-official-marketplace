@@ -13,8 +13,6 @@
  *   - a showcase line that the detail card clips, or a locale key that falls back to
  *     the key name in front of the user.
  *
- * ADR: docs/adr/excalidraw/0001-the-tab-runs-upstreams-web-build.md
- * ADR: docs/adr/excalidraw/0002-bytes-move-through-the-host.md
  */
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";

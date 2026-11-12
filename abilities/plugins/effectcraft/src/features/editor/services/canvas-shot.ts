@@ -21,8 +21,6 @@ import { askCraftFrame, craftWorkspace, recordCraftShot } from "../session-regis
  *
  * Shots are rotated (newest `KEEP` kept): a debugging aid that quietly fills a
  * repository is worse than no aid at all.
- *
- * ADR: docs/adr/<slug>/craft-0019-the-agent-looks-at-the-picture.md
  */
 export const SHOT_DIR = `.craft/${APP.id}/shots`;
 const KEEP = 6;

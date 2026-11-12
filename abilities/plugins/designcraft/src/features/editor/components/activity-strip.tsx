@@ -15,8 +15,6 @@ import type { EditorStrings } from "../strings.ts";
  * The page has no locale, so a note is `{ kind, detail }` and never a sentence: the
  * kind is a short latin tag (`STAGE`, `KEY`, `STEP`) and the detail is the raw subject
  * the caller already wrote in the user's language.
- *
- * ADR: docs/adr/<slug>/craft-0018-the-header-became-a-corner.md
  */
 const ROWS = 2;
 // An intent is cleared by `tool-call-end`. If that event never arrives (the turn was

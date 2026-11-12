@@ -21,9 +21,6 @@ import { text } from "./shared/reply.ts";
  * Two readers: the model gets a letter map and a mean colour, the person gets the same
  * frame as a PNG. `remember_as` turns one look into a baseline; `expect` turns another
  * look into a verdict.
- *
- * ADR: docs/adr/<slug>/craft-0019-the-agent-looks-at-the-picture.md
- * ADR: docs/adr/<slug>/craft-0026-act-says-what-it-expects.md
  */
 export function registerProbeTool(ctx: PluginContext): Disposable {
   const id = APP.id;

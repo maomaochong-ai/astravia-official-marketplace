@@ -17,8 +17,6 @@
  * The same file is shipped by every craft plugin: it knows nothing about a
  * particular app, only about the shape of those two seams and of the loading
  * element (`<id>_loading`) upstream removes once the editor is up.
- *
- * ADR: docs/adr/photocraft/0002-bytes-move-through-the-host.md
  */
 (function () {
   "use strict";

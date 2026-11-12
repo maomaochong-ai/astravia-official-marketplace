@@ -33,7 +33,7 @@
 | `contract/` | 必须遵守的规则 | 改代码、写案例的人 | 改规则时同步改 |
 | `reference/` | 当前事实的权威表 | **代码与测试直接读** | 事实变了就必须改 |
 | `audits/` | 带版本与时点的一次性报告 | 人 | 会，标题里写着版本 |
-| 仓库根 `docs/adr/hanshuang-pojia/` | 已采纳的决策 | 改代码的人 | 正文不改写；现状由文末「实现核对」节追加 |
+| 仓库根 `docs/adr/hanshuang-pojia/` | 已采纳的决策 | 改代码的人 |
 
 分类轴是**拿它干什么**，不是主题。「工具链」一个主题就横跨三类：`reference/toolchain-parity.md` 是当前
 事实表（测试读它），`audits/toolchain-bundling.md` 是 2.8.0 那天的观察，ADR 0003 是当时怎么决定的。
@@ -60,7 +60,7 @@
 
 - [toolchain-bundling.md](audits/toolchain-bundling.md) — 2.8.0：插件到底带不带工具链，与 2.0 便携版逐项对照。
 - [upstream-parity-audit-2.9.3.md](audits/upstream-parity-audit-2.9.3.md) — 2.9.3：能力对等全量审计。
-  部分结论已被 [ADR 0006](../../../../docs/adr/hanshuang-pojia/0006-case-contract-v2-and-precedent-library.md) 补正。
+  部分结论已被 ADR 0006 补正。
 - [upstream-ui-parity-2.9.8.md](audits/upstream-ui-parity-2.9.8.md) — 2.9.8：界面与实时面板对等审计。
 - [win-defender-triage-2.9.8.md](audits/win-defender-triage-2.9.8.md) — 2.9.8：Defender 报毒的定性排查，
   顺带记了 2.9.6 文档加载机制的返工（`import.meta.glob` → 纯文本静态资源）。
@@ -87,8 +87,6 @@ ADR **不在这个目录里**：2026-10-27 起统一放在仓库根 `docs/adr/ha
 要推翻就新写一条并注明取代关系。与当前实现对齐的部分写在每篇文末的「实现核对」节，带核对版本与可重跑
 命令——这样「当时怎么定的」和「现在是什么样」不会互相冒充。
 
-索引在 [`docs/adr/hanshuang-pojia/README.md`](../../../../docs/adr/hanshuang-pojia/README.md)：九篇的主题、
-状态、落实与偏差都在那里，别靠编号猜。2026-10-27 已按 **2.11.0** 逐篇核过一轮，其中 ADR 0001 的 D4、D9
 被实现反转且尚无新 ADR，看那两篇时以文末核对节为准；同日新增 ADR 0009（授权晚到与门禁落盘）。
 
 `plans/` 是 2.0 对标时期的施工计划，工作完成即失效，保留只为追溯当时怎么排的；**不要在这里加新计划**。
@@ -127,6 +125,4 @@ ADR **不在这个目录里**：2026-10-27 起统一放在仓库根 `docs/adr/ha
 | `docs/upstream-ui-parity-2.9.8.md` | `docs/audits/upstream-ui-parity-2.9.8.md` |
 | `docs/win-defender-triage-2.9.8.md` | `docs/audits/win-defender-triage-2.9.8.md` |
 | `docs/ui-handbook.md` | `src/content/docs/manual/PANEL-HANDBOOK.md`（随包发布） |
-| `docs/adr/0001…0007-*.md` | `docs/adr/hanshuang-pojia/0001…0007-*.md`（仓库根，2026-10-27 搬家） |
-| （插件内无对应文件） | `docs/adr/hanshuang-pojia/0008-runnable-case-corpus.md`（初拟编号 ADR 001，搬家时统一为 0008） |
 | `docs/modules/<域>.md`（9 篇） | `docs/domains/<域>/dev.md`，并新增 `docs/domains/<域>/usage.md` |

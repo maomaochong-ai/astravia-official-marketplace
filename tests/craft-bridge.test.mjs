@@ -13,8 +13,6 @@
  *   - `craft:probe` describes the canvas in text, because a plugin tool result reaches
  *     the model as text and pixels would be useless there.
  *
- * ADR: docs/adr/<plugin>/craft-0004-inactive-tabs-stop-drawing.md
- * ADR: docs/adr/<plugin>/craft-0009-one-batch-and-a-text-map.md
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

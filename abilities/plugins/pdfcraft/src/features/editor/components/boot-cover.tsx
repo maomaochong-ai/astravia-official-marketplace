@@ -23,8 +23,6 @@ import type { EditorStrings } from "../strings.ts";
  * the elapsed seconds, never from a bar that stalls at 90 %. The cover does not animate:
  * a spinning glyph next to a stalled bar reads as a second clock, and one bar style across
  * the family is what makes fifteen plugins look like one product.
- *
- * ADR: docs/adr/<slug>/craft-0013-a-slow-boot-is-not-a-failure.md
  */
 
 interface BootCoverProps {

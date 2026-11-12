@@ -19,10 +19,6 @@ import { text } from "./shared/reply.ts";
  * A batch, not a click: the page runs the steps in order, paced by frames, narrating each
  * one on the canvas, and the result reports the picture before and after. `change` says
  * something happened; `assert` (from `expect`) says the right thing happened.
- *
- * ADR: docs/adr/<slug>/craft-0009-one-batch-and-a-text-map.md
- * ADR: docs/adr/<slug>/craft-0025-settled-means-quiet-not-identical.md
- * ADR: docs/adr/<slug>/craft-0026-act-says-what-it-expects.md
  */
 export function registerActTool(ctx: PluginContext): Disposable {
   const id = APP.id;

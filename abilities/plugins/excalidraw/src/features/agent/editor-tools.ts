@@ -30,8 +30,6 @@ import type { CraftProbe, LinkMessage } from "../../domain/link-protocol.ts";
  * installed at once. `label` is a `%catalogKey%` so the tool headers follow the host
  * locale.
  *
- * ADR: docs/adr/excalidraw/0005-the-agent-drives-the-canvas.md
- * ADR: docs/adr/excalidraw/0009-one-batch-instead-of-one-click.md
  */
 const SCOPE = ["conversation", "project"] as const;
 

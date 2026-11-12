@@ -38,7 +38,7 @@ saving now, what extra pages can this plugin read, and what is the engine allowe
 and 2.4.0's header icons hid two of them behind unlabelled glyphs. The Download tab keeps
 the single-column order above; nothing about the primary flow gained a step. Rationale and
 the rejected alternatives (a left icon rail, a modal) are in
-[ADR 0002](../../../docs/adr/video-downloader/0002-panel-information-architecture.md).
+面板的信息结构见本目录。
 
 ## Why this shape
 

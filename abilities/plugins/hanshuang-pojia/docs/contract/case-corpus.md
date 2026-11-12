@@ -1,6 +1,6 @@
 # 案例语料编写契约
 
-面向在本仓库补齐先例语料的人与 AI。规则来自 [ADR 0007](../../../../../docs/adr/hanshuang-pojia/0007-case-corpus-layer.md)；
+面向在本仓库补齐先例语料的人与 AI。规则来自 ADR 0007；
 [case-library.md](./case-library.md) 讲机制，本文只讲**怎么交一个合格的包**。
 
 一个案例落地成**两份东西**：
@@ -162,6 +162,6 @@ node --test src/test/case-precedents.test.ts      # 排名与契约
   并发写会互相覆盖）；
 - **不要运行** `node scripts/sync-precedents.mjs`（同上）；
 - **不要改**共享文件：`src/test/*.test.ts` 的计数、`cases/README.md` 的表、
-  `docs/adr/hanshuang-pojia/*`（仓库根，不在插件内）、`scripts/*`、`locales/*`；`cases/_shared/**` 也是共享的，新原语由集成者加，
+`scripts/*`、`locales/*`；`cases/_shared/**` 也是共享的，新原语由集成者加，
   不自己往里面塞。
 - 整树生成与集成由一个人在全部包落地后统一执行。

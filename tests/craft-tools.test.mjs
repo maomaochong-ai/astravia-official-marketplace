@@ -8,10 +8,6 @@
  * a trail on disk — plus the tool layout: one file per tool, so a schema change has one
  * home (ADR craft-0029).
  *
- * ADR: docs/adr/<plugin>/craft-0025-settled-means-quiet-not-identical.md
- * ADR: docs/adr/<plugin>/craft-0026-act-says-what-it-expects.md
- * ADR: docs/adr/<plugin>/craft-0027-precision-starts-from-recorded-failures.md
- * ADR: docs/adr/<plugin>/craft-0029-address-the-function-not-the-pixel.md
  */
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";

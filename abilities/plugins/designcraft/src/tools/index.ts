@@ -19,9 +19,6 @@ import { registerRecipeTool } from "./recipe.ts";
  * The count is not the point — the split is. Every craft app ships these eight under its
  * own prefix, and they stay deliberately small: a recipe instead of five round trips, a
  * name instead of a pixel, one reading instead of a screenshot, one wait instead of a sleep.
- *
- * ADR: docs/adr/<slug>/craft-0009-one-batch-and-a-text-map.md
- * ADR: docs/adr/<slug>/craft-0029-address-the-function-not-the-pixel.md
  */
 export function registerCraftTools(ctx: PluginContext): Disposable[] {
   return [

@@ -1,4 +1,4 @@
-# PDFCraft
+﻿# PDFCraft
 
 Read and rearrange PDFs inside Astravia — the upstream PDFCraft workbench for merging, splitting, rotating and securing documents, with no account and no telemetry.
 
@@ -40,7 +40,6 @@ sha256 与上游同版 `SHA256SUMS.txt` 里那一行必须同时对上，然后�
 画布里的界面语言由上游构建自己决定：它有自己的中文语言表就跟着变，没有就还是英文。
 面板在宿主语言是中文时把 `navigator.language` / `navigator.languages` 换成中文，再交给上游；这只改“它读到的系统语言”，不替上游翻译，也不保证字形存在。
 外壳（标签标题、状态条、本页说明）是另一回事：`src/features/editor/strings.ts` 中英双语，跟随 Astravia 语言。
-边界与判据见 [`docs/adr/pdfcraft/craft-0007-chinese-comes-from-the-shell.md`](../../../../docs/adr/pdfcraft/craft-0007-chinese-comes-from-the-shell.md)。
 
 ## 文件怎么进、怎么出
 
@@ -60,8 +59,7 @@ node scripts/build-craft-web.mjs        # 下载并校验上游站点（加 --if
 
 `src/**` 在十五支 craft 插件之间逐字节相同，唯一按应用不同的是 `src/app.config.ts`（还有
 `plugin.json`、`payload/manifest.json`、`locales/` 与展示层文件）。这里就是源码：改共享行为要在十五支上
-做同样的改动，`tests/craft-parity.test.mjs` 会在漏改时失败。见
-[`docs/adr/pdfcraft/craft-0001`](../../../../docs/adr/pdfcraft/craft-0001-seven-copies-and-a-parity-test.md)。
+做同样的改动，`tests/craft-parity.test.mjs` 会在漏改时失败。
 
 `web/` 不要手改：它是上游发的那份字节，下一次打包会重新覆盖。
 

@@ -3,14 +3,11 @@
 这个目录是**手写源码**，不是产物。宿主侧代码（`src/**`、`src/bridge/host-bridge.js`）从 craft 家族
 那一套外壳起步，但这里是**独立一支**：不参与 `tests/craft-parity.test.mjs` 的逐字节比对，也不在
 `tests/craft-manifest.test.mjs` 的钉子名单里——改这里不会牵动其它插件，同样也不需要跟它们保持一致。
-来龙去脉写在 [`docs/adr/excalidraw/0001-the-tab-runs-upstreams-web-build.md`](../../../../docs/adr/excalidraw/0001-the-tab-runs-upstreams-web-build.md)。
 
 编辑器本体**不是我们写的**：`web/` 是上游 `excalidraw/excalidraw` 在 `payload/manifest.json` 钉住的
 那个 commit 上、由 `excalidraw-app` 自己构建出来的站点。我们不改它的源码，也不改它编译出来的 JS；
 构建脚本只做两件事——用一份包装配置把 PWA/站点地图插件摘掉并把 `base` 设成 `./`，以及把产物里
-指向 CDN 的资源路径改回包内。为什么站点走 `srcdoc` 而不是导航进去，见
-[`docs/adr/excalidraw/0001-the-tab-runs-upstreams-web-build.md`](../../../../docs/adr/excalidraw/0001-the-tab-runs-upstreams-web-build.md)
-与 [`docs/adr/excalidraw/0002-bytes-move-through-the-host.md`](../../../../docs/adr/excalidraw/0002-bytes-move-through-the-host.md)。
+指向 CDN 的资源路径改回包内。为什么站点走 `srcdoc` 而不是导航进去，原因写在 `src/features/editor/services/site-document.ts` 顶部。
 
 ## 开工
 
