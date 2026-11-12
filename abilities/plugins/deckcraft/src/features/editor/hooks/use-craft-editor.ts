@@ -124,22 +124,19 @@ export interface EditorSession {
  * never reports anything at all.
  */
 export function useCraftEditor(ctx: PluginContext): EditorSession {
-  const strings = editorStrings(ctx.i18n.locale);
-  // The host keeps this document alive while its tab is hidden (display:none) so that
-  // unsaved work survives a tab switch. Nothing on this side spins at 60 fps for a
-  // page nobody is looking at: the bridge holds the app's next frame instead.
-  // `active` defaults to false when the host provides no context, so a build that
-  // predates the hook never pauses a live editor — we only pause after seeing active.
-  const tab = useActivityTab();
-  // The user's own toggle in the composer, not the panel's selection: see engagement.ts.
-  const engaged = useCraftEngaged();
-  const everActive = useRef(false);
-  /** `tab.active` is a value, not a getter: a scope registered once must read it live. */
-  const activeRef = useRef(false);
-  activeRef.current = tab.active === true;
-  if (tab.active) everActive.current = true;
-  const paused = everActive.current && !tab.active;
-  const uiLang: "zh" | "en" = /^zh/i.test(ctx.i18n.locale || "") ? "zh" : "en";
+  // Live locale: `ctx.i18n.locale` is a plain read, so a panel mounted before the
+  // user switched language would keep the strings it was first painted with. Host
+  // language changes are pushed through `onChange`, and the seed handed to the
+  // page has to move with them too — otherwise the shell is Chinese and the frame
+  // still boots English.
+  const [locale, setLocale] = useState(ctx.i18n.locale);
+  useEffect(() => {
+    setLocale(ctx.i18n.locale);
+    const subscription = ctx.i18n.onChange((next) => setLocale(next));
+    return () => subscription.dispose();
+  }, [ctx]);
+  const strings = editorStrings(locale);
+  const uiLang: "zh" | "en" = /^zh/i.test(locale || "") ? "zh" : "en";
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
   const [iframeDoc, setIframeDoc] = useState<string | null>(null);
   const [phase, setPhase] = useState<EditorPhase>("starting");

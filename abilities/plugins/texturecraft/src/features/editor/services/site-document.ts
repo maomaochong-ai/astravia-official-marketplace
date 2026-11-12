@@ -162,6 +162,12 @@ async function renderSiteDocument(request: SiteDocumentRequest): Promise<string>
   const head = [
     `<base href="${root}">`,
     `<script>(function(){try{history.replaceState(null,"",${JSON.stringify(url.href)})}catch(e){}})()</script>`,
+    // Typing surfaces only. Layout apps ship a Latin-only stack, so a Chinese
+    // character has no glyph and draws as a tofu box — typing Chinese in
+    // WordCraft/PDFCraft stayed broken even after the interface language switched.
+    // Scoped to the editing surfaces on purpose: an `!important` font-family over
+    // `*` would also overwrite the icon fonts these apps draw their toolbars with.
+    `<style>input,textarea,[contenteditable="true"],[contenteditable=""]{font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","WenQuanYi Micro Hei",system-ui,sans-serif !important}</style>`,
     seedScript(request.uiLang),
   ].join("");
 
