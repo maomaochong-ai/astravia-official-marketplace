@@ -13,10 +13,14 @@
       ]
     },
     {
-      "type": "image",
-      "src": "assets/logo.png",
-      "alt": "The qiushi-skill project mark",
-      "caption": "Official mark of the upstream project (assets/logo_main.png), unmodified apart from format."
+      "type": "links",
+      "title": "Full illustrated guide",
+      "items": [
+        {
+          "label": "Open the complete guide in your browser",
+          "href": "https://maomaochong-ai.github.io/astravia-official-marketplace/abilities/skills/qiushi-skill/assets/preview/index.html"
+        }
+      ]
     },
     {
       "type": "feature-grid",
@@ -103,7 +107,7 @@
       "items": [
         {
           "title": "Open the illustrated intro",
-          "description": "The package ships a self-contained page at assets/preview/index.html: open ~/.astravia/skills/qiushi-skill/assets/preview/index.html, or run bash scripts/open-preview.sh inside the package to have the default browser open it. Every image is inlined, so it works offline."
+          "description": "The entry above opens the self-contained page in your browser: the structure of all ten playbooks, what each method takes in and hands back, on one page. Every image is inlined, so it needs no network once open. Offline, open ~/.astravia/skills/qiushi-skill/assets/preview/index.html directly."
         },
         {
           "title": "Dispatch a role when one is needed",
