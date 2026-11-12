@@ -56,8 +56,8 @@
           "description": "Add it from the marketplace. The editor ships inside the plugin, so there is nothing to fetch."
         },
         {
-          "title": "Open the Photocraft tab",
-          "description": "Opening the tab shows the editor itself — no preparation screen, no package to fetch."
+          "title": "Open it from the composer",
+          "description": "Press / or the first button left of the composer and pick Photocraft from the plugin list. Its tab opens with it, and a toggle appears in the input bar. Turning the toggle off drops that context — it does not close the document you are editing."
         },
         {
           "title": "Select an image in the Explorer, then open it",

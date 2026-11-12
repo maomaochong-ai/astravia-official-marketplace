@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "plugin",
   "slug": "strix",
-  "version": "0.3.2",
+  "version": "0.4.1",
   "icon": "assets/icon.png",
   "detail": {
     "format": "blocks",
@@ -29,3 +29,4 @@
     }
   }
 }
+

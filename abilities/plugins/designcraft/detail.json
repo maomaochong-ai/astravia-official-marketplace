@@ -56,8 +56,8 @@
           "description": "The editor ships inside the plugin, so the first open is immediate and later opens need no network. after that."
         },
         {
-          "title": "Open the DesignCraft tab",
-          "description": "Opening the tab shows the editor itself — no preparation screen, no package to fetch."
+          "title": "Open it from the composer",
+          "description": "Press / or the first button left of the composer and pick DesignCraft from the plugin list. Its tab opens with it, and a toggle appears in the input bar. Turning the toggle off drops that context — it does not close the document you are editing."
         },
         {
           "title": "Select a document, then open it",
