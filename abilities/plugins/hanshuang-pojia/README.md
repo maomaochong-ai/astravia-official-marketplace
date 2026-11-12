@@ -289,7 +289,7 @@ binaries, keys, salts, endpoints, real product names. ADRs 006 and 007 record th
 ```text
 cases/                             # 19 precedent packages: source only, inlined at build time, never shipped
 docs/                              # engineering docs: README.md index + contract/ reference/ audits/ plans/
-                                   # ADRs live at the repo root: docs/adr/hanshuang-pojia/
+                                   # ADRs live at the repo root: docs/adr/
 agent/
 ├── skills/                          # registered via skillPaths; nine SKILL.md directories
 │   ├── hanshuang-pojia/             # the handbook, PART I–V, including the kit protocol

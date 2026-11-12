@@ -61,7 +61,7 @@ pin 写在 `payload/manifest.json`（`schemaVersion: 5`、`build.kind: "source-b
 | `agent/skills/excalidraw/SKILL.md` | 交给 Agent 的作业说明 |
 | `web/` | 构建产物，gitignore |
 
-决策记录在 [`docs/adr/excalidraw/`](../../../docs/adr/excalidraw/README.md)。
+
 
 ## 本地跑
 

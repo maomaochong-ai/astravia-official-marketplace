@@ -75,8 +75,7 @@ text they were given (`staged`, `applied`, `delivered`, `sent`).
 
 The canvas does have a full object-model API inside the shipped bundle (`createSticky`, `createMM`,
 `move`, `setTextContent`, …), but it is bound to an internal SDK bridge rather than to the page, so a
-cross-origin panel cannot call it. That is why there is no `boardmix_create_shape`: see
-`docs/adr/boardmix/bm-0001`. What *is* supported — and what the last two rows use — is handing the
+cross-origin panel cannot call it. That is why there is no `boardmix_create_shape`. What *is* supported — and what the last two rows use — is handing the
 product text it already knows how to turn into shapes: Mermaid (`bm-0002`), and its own AI prompt box
 (`bm-0003`).
 

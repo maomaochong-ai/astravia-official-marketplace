@@ -185,7 +185,7 @@ qiushi-skill/
 └── README.md  README.zh.md
 ```
 
-The ten playbooks keep the upstream filename, `SKILL.md`, and are byte-identical to upstream. That filename is also what the host looks for when it discovers skills: it walks the installed folder recursively and turns every `SKILL.md` it finds into its own panel entry. `references/skills/.ignore` stops that walk at these ten files (`*/SKILL.md`), so the panel shows one entry instead of eleven. The host reads `.gitignore` / `.ignore` / `.fdignore` at every level and prefixes each rule with that folder, which is why a one-line file is enough. `.ignore` is used rather than `.gitignore` because a `.gitignore` there would also make git stop tracking the playbooks. Why not eleven skills is argued in `docs/adr/qiushi-skill/0004-single-skill-with-internal-routing.md`; the filename and ledger decisions are in `0007`.
+The ten playbooks keep the upstream filename, `SKILL.md`, and are byte-identical to upstream. That filename is also what the host looks for when it discovers skills: it walks the installed folder recursively and turns every `SKILL.md` it finds into its own panel entry. `references/skills/.ignore` stops that walk at these ten files (`*/SKILL.md`), so the panel shows one entry instead of eleven. The host reads `.gitignore` / `.ignore` / `.fdignore` at every level and prefixes each rule with that folder, which is why a one-line file is enough. `.ignore` is used rather than `.gitignore` because a `.gitignore` there would also make git stop tracking the playbooks.
 
 ## Install
 

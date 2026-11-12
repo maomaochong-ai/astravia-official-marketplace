@@ -300,7 +300,7 @@ Android 一线作战：解包、反编译、微创补丁、Frida 插桩、脱壳
 | `docs/contract/` | 必须遵守的契约：案件机制、语料编写 | 改代码/写案例的人 |
 | `docs/reference/` | 当前事实的权威表（`toolchain-parity.md`，测试直接读它） | 代码与测试 |
 | `docs/audits/` | 带版本与时点的一次性对等/排查报告，结论可能已过期 | 人读 |
-| `docs/adr/hanshuang-pojia/`（仓库根） | 已采纳的决策，一条一个文件，正文不改写、只在文末追加「实现核对」 | 改代码的人 |
+| `docs/adr/hanshuang-pojia/`（仓库根） | 已采纳的决策放这里，一条一个文件 | 改代码的人 |
 | `docs/plans/` | 历史施工计划，已被 ADR 取代，只作追溯 | 人读 |
 | `src/content/docs/{manual,kit-docs,kb,cases}/` | 随包文档库正文，面板「文档」页按需 fetch | 使用者 |
 

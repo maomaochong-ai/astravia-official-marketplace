@@ -78,7 +78,7 @@ notes.push(`路由目标 ${routeTargets.length} 条`);
 // 2. 包内 Markdown 的相对链接与 .md 引用
 //
 // 只有运行时会真正跟随的文档才算严格：SKILL.md、references/、agents/。
-// README / NOTICE 里的仓库路径（docs/adr/...）是写给源码读者的，安装后不落地，仅作提示。
+// README / NOTICE 里的仓库内路径是写给源码读者的，安装后不落地，仅作提示。
 const strictPrefixes = ["references/", "agents/"];
 const markdownFiles = (await walk(root)).filter((file) => file.endsWith(".md"));
 let docOnlyReferences = 0;

@@ -92,6 +92,6 @@
 
 上游 `bin/`（安装 CLI）不进入本包：它要解析 npm 包名与 GitHub 坐标，这两个东西在本包里都不存在，也无法在不联网的前提下工作。它的「复制 + 清单 + 拒绝覆盖非自己写入的路径」行为由 `scripts/install-platforms.mjs` 按 `scripts/platforms.json` 重新实现。上游 `docs/platforms.md` 重写为 `PLATFORMS.md` / `PLATFORMS.zh.md`，删掉 `npx`、插件市场命令与各宿主原生安装器，改指本包脚本。
 
-`hooks/` 与 `commands/` 现在**是**收录的：宿主的会话启动引擎确实读 `hooks/hooks.json`，此前「没有对应扩展点」的判断已被实证推翻，取舍记录在 `docs/adr/qiushi-skill/0008-readme-hooks-and-platform-portability.md`，它推翻了 `0002` 决策 4 中关于 hooks 的那一半与 `0005` 关于 tangping 的那条。`0004` 的单技能形态不受影响。
+`hooks/` 与 `commands/` 现在**是**收录的：宿主的会话启动引擎确实读 `hooks/hooks.json`，此前「没有对应扩展点」的判断已被实证推翻。
 
 市场展示文件（`ability.json`、`detail.json`、`detail.zh.json`）、`assets/preview/`、`assets/diagram/`、`agents/`、`scripts/`、`tests/`、`PLATFORMS.md` / `PLATFORMS.zh.md` 与溯源文件（`scripts/upstream.json`、本文件）为本仓库新增。`README.md` / `README.zh.md` 以上游同名文件为底本改写：保留「为什么需要这个」「这不是什么」「方法结构」「九大思想武器」「支撑文件」「灵感来源」「原著引用说明」等介绍段落与引语，替换掉上游的分发与安装方式（npm CLI、Claude Code marketplace、各宿主目录）、徽章与 star 图表、社区案例外链，并补上本包的安装、自检与上游同步三段。
