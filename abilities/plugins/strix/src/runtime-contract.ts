@@ -56,6 +56,8 @@ export interface EnvironmentProbe {
 	python: { version: string; executable: string; found: boolean };
 	engine: { installed: boolean; version: string };
 	docker: { ready: boolean; detail: string; image: string; imagePresent?: boolean | null };
+	/** Which environment a scan will run in; `host` means no container (ADR strix-0001). */
+	mode?: "docker" | "host";
 	ready: boolean;
 }
 

@@ -21,7 +21,7 @@ import { readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { SERVICE_TOOL_NAMES, STRIX_TOOL_SPECS } from "../agent/strix-tools";
 import { CoverageStore } from "./coverage";
-import { dockerReady, imagePresent } from "./docker";
+import { resolveEnvironment } from "./environment";
 import * as findings from "./findings";
 import { NoteStore } from "./notes";
 import { Sandbox, sandboxImage } from "./sandbox";
@@ -60,10 +60,12 @@ function readVersion(): string {
 const version = readVersion();
 
 async function environment() {
-	const [docker, image] = await Promise.all([dockerReady(), imagePresent(sandboxImage())]);
+	const resolved = await resolveEnvironment(sandboxImage());
+	const docker = resolved.docker;
 	const skills = await locateSkills();
 	return {
-		docker: { ready: docker.ready, detail: docker.detail, image: sandboxImage(), imagePresent: image },
+		mode: resolved.mode,
+		docker: { ready: docker.ready, detail: docker.detail, image: sandboxImage(), imagePresent: docker.imagePresent },
 		engine: {
 			// "installed" here means the skill library is reachable, which is all the
 			// plugin needs now: the container carries the tools.
@@ -71,7 +73,10 @@ async function environment() {
 			detail: skills ? skills.root : "strix-agent is not installed in any Python on PATH",
 		},
 		skills: skills ? { root: skills.root, source: skills.source } : null,
-		ready: docker.ready && Boolean(skills),
+		// Ready means "a scan can start here": with a daemon the container carries the
+		// tools; without one the user's session does, so only the skill library has to
+		// be there (ADR strix-0001).
+		ready: Boolean(skills) && (resolved.mode === "host" || docker.ready),
 	};
 }
 

@@ -54,7 +54,10 @@ export interface StrixTabProps {
 /** Why Enter cannot launch yet, in the order the user would fix them. */
 function blockedReason(t: (key: string) => string, model: ModelChoice | undefined, environment: EnvironmentProbe | undefined): string | undefined {
 	if (!model) return t("launch.blocked.model");
-	if (environment && !environment.docker.ready) return t("launch.blocked.docker");
+	// No daemon is no longer a gate: the tools run in the user's session instead
+	// (ADR strix-0001), with weaker isolation and a label that says so. The only real
+	// block is an environment that reports itself unusable.
+	if (environment && environment.ready === false) return t("launch.blocked.docker");
 	return undefined;
 }
 
