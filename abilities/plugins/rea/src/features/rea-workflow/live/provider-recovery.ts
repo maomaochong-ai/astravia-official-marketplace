@@ -3,7 +3,12 @@
  *
  * 只在 phase === "failed" 时动手 —— "disabled" 是用户/宿主的显式状态，不重试。
  * 每次失败连最多重试 3 次（5s / 15s / 45s），成功后计数归零。
- * 重试机会耗尽后通知用户，并把"降级"交给系统提示块处理（见 agent-integration.ts）。
+ *
+ * **只在用户真的调过 REA 时才说话。** 装完插件那一刻引擎通常还没装，这是正常起点，
+ * 不是故障：面板的引擎页已经把「没装 / 版本旧 / 没权限」分开写清楚了，再抢一条
+ * 「引擎不可用」的右下角提示，用户读到的只会是「这插件是不是不能用」。
+ * 即使要报，也不制造 `error`：宿主会因此挂上「复制堆栈」并让提示永不消失，而这里
+ * 根本没有栈可看——失败原因本来就在面板的最近输出里。
  */
 
 import type { Disposable, PluginCliProviderStatus, PluginContext } from "@astravia-org/plugin-sdk";
@@ -30,6 +35,9 @@ export interface ReaRecoveryHandle extends Disposable {
 
 const DEFAULT_DELAYS: readonly number[] = [5_000, 15_000, 45_000];
 
+/** 一条提示活多久：够读完那句话，不够变成一个永久横幅。 */
+const ENGINE_NOTICE_MS = 8_000;
+
 export function activateProviderRecovery(
 	ctx: PluginContext,
 	store: ReaLiveStore,
@@ -43,7 +51,6 @@ export function activateProviderRecovery(
 	let awaiting = false;
 	let exhausted = false;
 	let sawFailure = false;
-	let warnedStart = false;
 	let timer: ReturnType<typeof setTimeout> | null = null;
 	let disposed = false;
 
@@ -59,13 +66,6 @@ export function activateProviderRecovery(
 		if (disposed || awaiting || exhausted || attempts >= maxAttempts) return;
 		const delay = delays[Math.min(attempts, delays.length - 1)] ?? 15_000;
 		awaiting = true;
-		if (!warnedStart) {
-			warnedStart = true;
-			ctx.ui.notify({
-				message: ctx.i18n.t("live.engine.schedule", { attempts: String(maxAttempts) }),
-				variant: "info",
-			});
-		}
 		timer = setTimeout(() => {
 			timer = null;
 			awaiting = false;
@@ -86,12 +86,17 @@ export function activateProviderRecovery(
 
 	const markExhausted = (): void => {
 		exhausted = true;
-		const lastMessage = store.getSnapshot().providerMessage;
+		// 本会话一次 REA 调用都没有：用户只是在看插件，并没打算用它。
+		// 面板的引擎页已经把状态与修法写在那里，这时候弹提示只会被读成「插件坏了」。
+		if (store.sessionCallCount() === 0) return;
+		const reason = store.getSnapshot().providerMessage?.trim();
 		ctx.ui.notify({
 			title: ctx.i18n.t("live.engine.exhaustedTitle"),
-			message: lastMessage ?? ctx.i18n.t("live.engine.exhausted"),
-			variant: "error",
-			error: new Error(lastMessage ?? "rea-agents provider unavailable"),
+			message: ctx.i18n.t("live.engine.exhausted", {
+				message: reason !== undefined && reason.length > 0 ? reason : ctx.i18n.t("live.engine.unknownReason"),
+			}),
+			variant: "warning",
+			durationMs: ENGINE_NOTICE_MS,
 		});
 	};
 
@@ -105,9 +110,13 @@ export function activateProviderRecovery(
 				attempts = 0;
 				exhausted = false;
 				sawFailure = false;
-				warnedStart = false;
-				if (wasBroken) {
-					ctx.ui.notify({ message: ctx.i18n.t("live.engine.recovered"), variant: "success" });
+				// 同样只在本会话真的用过 REA 时才报：“可以用了”对一个从没打算用它的人也是噪音。
+				if (wasBroken && store.sessionCallCount() > 0) {
+					ctx.ui.notify({
+						message: ctx.i18n.t("live.engine.recovered"),
+						variant: "success",
+						durationMs: ENGINE_NOTICE_MS,
+					});
 				}
 				return;
 			}
@@ -142,7 +151,6 @@ export function activateProviderRecovery(
 		retryNow: async (): Promise<void> => {
 			clearTimer();
 			exhausted = false;
-			warnedStart = false;
 			attempts = 0;
 			await attempt();
 		},

@@ -1,5 +1,5 @@
 import type { PluginContext } from "@astravia-org/plugin-sdk";
-import { definePluginPromptContext, useActivityTab } from "@astravia-org/plugin-sdk";
+import { useActivityTab } from "@astravia-org/plugin-sdk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import {
@@ -35,6 +35,7 @@ import type { WorkspaceFile } from "../services/workspace-files.ts";
 import { saveCanvasShot } from "../services/canvas-shot.ts";
 import type { RegionRect } from "../services/canvas-shot.ts";
 import { recallDocument, rememberDocument } from "../services/last-document.ts";
+import { publishCraftState, useCraftEngaged } from "../engagement.ts";
 import { useContainerFullscreen } from "./use-container-fullscreen.ts";
 
 /** Smallest drag that counts as an area rather than a misplaced click. */
@@ -130,6 +131,8 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   // `active` defaults to false when the host provides no context, so a build that
   // predates the hook never pauses a live editor — we only pause after seeing active.
   const tab = useActivityTab();
+  // The user's own toggle in the composer, not the panel's selection: see engagement.ts.
+  const engaged = useCraftEngaged();
   const everActive = useRef(false);
   /** `tab.active` is a value, not a getter: a scope registered once must read it live. */
   const activeRef = useRef(false);
@@ -634,52 +637,38 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
 
   // ------------------------------------------------- what the model should know
 
-  // The state of this editor rides along with the prompt **only while this tab is the
-  // one the user has selected** — the host draws the chip under the composer for as
-  // long as it is set, and a chip naming the editor while the user is talking about
-  // something else is furniture, not context. Selecting the tab is the moment the
-  // conversation starts being about this canvas; leaving it is the moment it stops.
+  // The state of this editor is published for `decoratePrompt()` and nowhere else.
   //
-  // It is `sticky` for the stretch it is attached: a canvas app stays the subject of
-  // the conversation until the user looks away, and a one-shot attachment would make
-  // the agent forget the artwork between two messages.
-  //
-  // This is structured `context`, not `instructions`: the host renders the payload as
-  // data (`<plugin_prompt_contexts>`) and the model is told to treat it as state, so a
-  // file name can never read as an order.
+  // It used to be a prompt attachment, which the host draws as a chip *under* the
+  // composer card — outside the bar, in a slot that is not scoped to a conversation.
+  // A market plugin has no business occupying that slot: its entry is the toggle, and
+  // its visible artifact is the chip the host draws inside the bar while it is on.
+  // See engagement.ts for the channel that replaced it.
   useEffect(() => {
-    if (!awake || tab.active !== true) {
-      ctx.ui.setPromptAttachment(null);
+    // The toggle cannot be on in a build that never registered it, so there is
+    // nothing to describe there — and no state to publish either.
+    if (!engaged || !awake || tab.active !== true) {
+      publishCraftState(null);
       return;
     }
-    ctx.ui.setPromptAttachment({
-      id: `${APP.id}:editor`,
-      label: APP.name,
-      labels: binding ? [binding.name] : undefined,
-      lifecycle: "sticky",
-      context: definePluginPromptContext({
-        schema: "astravia.craft.editor-state",
-        version: 1,
-        payload: {
-          app: APP.id,
-          document: binding?.name ?? null,
-          path: binding?.path ?? null,
-          phase,
-          backend: backend || null,
-          capture: craftShotPath(),
-          // The crop the user pointed at, so the model knows a region was chosen on
-          // purpose and where the file is. Absent until the first marquee.
-          region: region ? { path: region.path, rect: region.rect } : null,
-          recent: craftNotes()
-            .slice(-6)
-            .map((note) => ({ kind: note.kind, detail: note.detail, ok: note.ok })),
-        },
-      }),
+    publishCraftState({
+      app: APP.id,
+      document: binding?.name ?? null,
+      path: binding?.path ?? null,
+      phase,
+      backend: backend || null,
+      capture: craftShotPath(),
+      // The crop the user pointed at, so the model knows a region was chosen on
+      // purpose and where the file is. Absent until the first marquee.
+      region: region ? { path: region.path, rect: region.rect } : null,
+      recent: craftNotes()
+        .slice(-6)
+        .map((note) => ({ kind: note.kind, detail: note.detail, ok: note.ok })),
     });
-  }, [awake, tab.active, binding, phase, backend, notes, region, ctx]);
+  }, [engaged, awake, tab.active, binding, phase, backend, notes, region]);
 
-  // A closed tab must not leave a chip in the input bar pointing at nothing.
-  useEffect(() => () => ctx.ui.setPromptAttachment(null), [ctx]);
+  // A closed editor must not keep describing a canvas nobody is looking at.
+  useEffect(() => () => publishCraftState(null), []);
 
   // ------------------------------------------------------------- shortcuts
 

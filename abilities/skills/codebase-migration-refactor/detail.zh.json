@@ -3,10 +3,10 @@
   "blocks": [
     {
       "type": "hero",
-      "eyebrow": "一条规则，一串 PR",
+      "eyebrow": "一条规则，分批推进",
       "title": "两百个文件要改，别变成一个八千行的 diff",
-      "description": "把升级目标或重命名要求交给 Astravia：它先把变换写成一条精确规则，量出影响范围，然后按批次推进——每批一个 GitHub PR，CI 绿了才开下一批，进度记在同一个 issue 上。",
-      "badges": ["影响范围盘点", "语法级改造", "一批一 PR", "CI 把关"]
+      "description": "把升级目标或重命名要求交给 Astravia：它先把变换写成一条精确规则，量出影响范围，然后一次交付一批可评审的改动——每批验证通过才开下一批，有追踪工具时进度落在同一个 issue 上。",
+      "badges": ["影响范围盘点", "语法级改造", "批次大小可评审", "逐批验证"]
     },
     {
       "type": "showcase",
@@ -14,7 +14,7 @@
         "template": "chat-thread",
         "brand_name": "Astravia",
         "user_prompt": "把这个仓库从 jest 换到 vitest。",
-        "assistant_reply": "issue LIN-482，8 个 PR 全绿。"
+        "assistant_reply": "8 个批次，测试全绿，一条 issue 记完。"
       }
     },
     {
@@ -32,13 +32,13 @@
           "icon": "solar:magnifer-zoom-in-bold"
         },
         {
-          "title": "一批一个 PR",
-          "description": "每个 PR 约 25 个文件，挂在同一个 tracking issue 下，正文写明用的 codemod 与手工补改的文件。你只看一个小 diff，说继续。",
+          "title": "一批是能评审的量",
+          "description": "每批约 25 个文件、独立分支——有追踪工具或 GitHub CLI 时就是一份 PR，正文写明用的 codemod 与手工补改的文件。你只看一个小 diff，说继续。",
           "icon": "solar:code-square-bold"
         },
         {
-          "title": "每批都要过 CI",
-          "description": "上一批 PR 绿了才开下一个分支；最后一批跑全量测试、真正启动一次应用，再清查死配置与遗留兼容层。",
+          "title": "每批先验证再继续",
+          "description": "旧写法的计数得降到 0、测试得过，才开下一个分支；最后一批跑全量测试、真正启动一次应用，再清查死配置与遗留兼容层。",
           "icon": "solar:shield-check-bold"
         }
       ]
@@ -48,8 +48,8 @@
       "title": "从提出要求到合并完成",
       "items": [
         {
-          "title": "先连接一次",
-          "description": "整场迁移由 Composio CLI 串联：登录一次，接上 GitHub 账号（用于开 PR、看 CI 状态），再接 Linear 或 Jira（用于建 tracking issue）。第一批未经你同意不会推送。"
+          "title": "选一种交付方式",
+          "description": "接上 GitHub CLI，它就能每批开一个 PR 并等检查结果；接上 Composio 与 Linear 或 Jira，同一批改动会自动记进一个 tracking issue。两者都没有时，它仍然分批改完并给出自己跑过的测试输出。第一批未经你同意不会推送。"
         },
         {
           "title": "说明要改什么",
@@ -61,7 +61,7 @@
         },
         {
           "title": "一批一批合",
-          "description": "每批是独立分支与 PR，附上跑过的检查。确认后下一批 rebase 上去，进度以评论形式回到 tracking issue。"
+          "description": "每批是独立分支——有追踪工具或 GitHub CLI 时就是一份 PR——跑过的检查写在它旁边。你确认后，下一批 rebase 上去。"
         }
       ]
     },
@@ -69,7 +69,7 @@
       "type": "callout",
       "tone": "info",
       "title": "第一批开始前需要准备什么",
-      "content": "一个有目标仓库推送权限的 GitHub 账号，以及一个用来记进度 issue 的 Linear 或 Jira 空间。Composio 只需安装并连接一次；没有它时，变换规则与分批计划依然可用，但不会代开 PR，也没有 CI 结论可查，评审记录需要自己整理。"
+      "content": "一个有目标仓库推送权限的 GitHub 账号。追踪工具——Linear、Jira，或 GitHub CLI 自带的 issue——决定每批能否变成一份带 CI 结论的 PR；都没有时，迁移仍然分批跑完并如实报告验证结果，评审记录需要你自己整理。没真跑过的检查不会被写成已通过。"
     },
     {
       "type": "callout",
@@ -79,7 +79,7 @@
     },
     {
       "type": "markdown",
-      "content": "## 会产出什么\n\n- 一份写下来的变换规则，可以重复执行，也可以交给同事。\n- 一个 tracking issue，每批一条评论；每批约 25 个文件的 PR，正文写明用的 codemod、跑过的检查和手工补改的地方。\n- 收尾报告：改了什么、哪些是故意没改、怎么验证，以及残留清单——死配置、被关掉的检查、兼容层、过时的文档。\n\n## 最适合的场景\n\n每个 import 都会被影响的框架升级；单体仓库里的跨包 API 重命名；测试框架或打包器替换；CommonJS 迁到 ESM；把膨胀的模块拆成独立包；以及那些「知道该做、但没人愿意开八千行 diff」的积压清理。\n\n## 它不会做什么\n\n不替你合并、不强推已经评审过的批次、不顺手格式化没改逻辑的文件（那只会把真正的改动埋掉）。范围不清楚时它会先问一句，而不是挑一个便宜的解读把「顺手清理一下」做实。"
+      "content": "## 会产出什么\n\n- 一份写下来的变换规则，可以重复执行，也可以交给同事。\n- 每批约 25 个文件的独立分支；有追踪工具或 GitHub CLI 时各成一份 PR，写明用的 codemod、跑过的检查和手工补改的地方。\n- 收尾报告：改了什么、哪些是故意没改、怎么验证，以及残留清单——死配置、被关掉的检查、兼容层、过时的文档。\n\n## 最适合的场景\n\n每个 import 都会被影响的框架升级；单体仓库里的跨包 API 重命名；测试框架或打包器替换；CommonJS 迁到 ESM；把膨胀的模块拆成独立包；以及那些「知道该做、但没人愿意开八千行 diff」的积压清理。\n\n## 它不会做什么\n\n不替你合并、不强推已经评审过的批次、不顺手格式化没改逻辑的文件（那只会把真正的改动埋掉）。范围不清楚时它会先问一句，而不是挑一个便宜的解读把「顺手清理一下」做实。"
     }
   ]
 }

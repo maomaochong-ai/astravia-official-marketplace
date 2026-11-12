@@ -89,9 +89,9 @@ describe("plugin permissions match the host APIs the code calls", () => {
 		expect(missing).toEqual([]);
 	});
 
-	it("keeps the prompt attachment behind its permission", () => {
-		const hook = readFileSync(join(SRC, "features/boardmix-workspace/hooks/use-prompt-attachment.ts"), "utf8");
+	it("keeps the input action behind its permission", () => {
+		const action = readFileSync(join(SRC, "hooks/input-action.ts"), "utf8");
 		// 光声明权限还不够：老宿主不认识这个权限名，has() 为假时也不能抛。
-		expect(hook).toContain('ctx.permissions.has("ui.slot.input-action")');
+		expect(action).toContain('ctx.permissions.has("ui.slot.input-action")');
 	});
 });

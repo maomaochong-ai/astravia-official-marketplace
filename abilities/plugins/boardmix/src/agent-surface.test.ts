@@ -45,10 +45,16 @@ describe("declared agent surface", () => {
 		expect(action).toMatch(/scope_use:\s*\[\s*"conversation"/);
 	});
 
-	it("shows the chip for the toggle, not only for the focused tab", () => {
+	it("keeps the state out of the composer footer, and puts it in the outgoing turn instead", () => {
 		const hook = read("src/features/boardmix-workspace/hooks/use-prompt-attachment.ts");
-		expect(hook).toContain("setBoardmixEngaged");
-		expect(hook).toContain("setPromptAttachment");
+		// 输入框卡片下沿是宿主内置附件的位置：市场插件一旦写进去，胶囊会跨消息、跨会话常驻。
+		expect(hook).not.toContain("ctx.ui.setPromptAttachment");
+
+		// 状态仍然要交给模型，只是换成发送时才求值的那条通道。
+		const action = read("src/hooks/input-action.ts");
+		expect(action).toContain("readBoardmixState");
+		expect(action).toContain("boardmixStateInstruction");
+
 		const domain = read("src/domain/boardmix-attachment.ts");
 		expect(domain).toMatch(/if \(!engaged && !panel\.active\) return null;/);
 	});

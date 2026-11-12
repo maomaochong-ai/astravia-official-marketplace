@@ -1,7 +1,6 @@
 import { definePlugin } from "@astravia-org/plugin-sdk";
 import { createElement } from "react";
 import { BoardmixWorkspace, AutomationRunSlot } from "./features/boardmix-workspace";
-import { bindBoardmixAttachment } from "./features/boardmix-workspace/hooks/use-prompt-attachment";
 import { registerBoardmixInputAction } from "./hooks/input-action";
 import { registerPromptAutomation } from "./hooks/prompt-submit-automation";
 import { ACTIVITY_TAB_ID, TOOL_IDS } from "./plugin-ids";
@@ -12,8 +11,7 @@ import "./style.css";
 export default definePlugin({
 	activate(ctx) {
 		setRuntime(ctx);
-		// 输入框下面那条胶囊有两个来源（面板状态、输入栏开关），它们都写进这一个 store。
-		bindBoardmixAttachment(ctx);
+		// 白板状态（面板上报 + 开关）存在一个模块 store 里，发送时由 decoratePrompt 取走。
 
 		// 面板内容：一个 webview，装 boardmix 自己的网页产品。
 		const tab = ctx.ui.registerActivityTab({

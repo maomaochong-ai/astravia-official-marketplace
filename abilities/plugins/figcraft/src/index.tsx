@@ -7,6 +7,7 @@ import { ActTimeline } from "./features/agent/components/act-timeline.tsx";
 import { connectConversation } from "./features/agent/conversation-bridge.ts";
 import { registerCraftTools } from "./tools/index.ts";
 import { CraftTab } from "./features/editor/components/craft-tab.tsx";
+import { craftStateInstruction, readCraftState, setCraftEngaged } from "./features/editor/engagement.ts";
 
 export const TAB_ID = APP.tabId;
 
@@ -56,6 +57,37 @@ export default definePlugin({
       },
     });
 
+    // The composer entry. Same shape as the whiteboard plugin's: a toggle inside the
+    // input bar, off by default, reachable from the "/" panel and from the composer's
+    // first button. Registering it is what gives a user a way *in* before any document
+    // is open — without it the only thing they ever saw was a chip under the composer
+    // that never went away, because it was driven by "this tab is selected" instead.
+    //
+    // The toggle is also what decides whether the editor's state rides along with the
+    // next prompt (see engagement.ts); turning it off only drops that context, it does
+    // not close the tab — the frame is holding work nobody asked to discard.
+    //
+    // `ui.slot.input-action` throws when the manifest did not ask for it, so a host
+    // build without that permission gets no toggle instead of a failed activation.
+    const action = ctx.permissions.has("ui.slot.input-action")
+      ? ctx.ui.registerInputAction({
+          id: `${APP.id}:editor`,
+          label: APP.name,
+          defaultActive: false,
+          scope_use: ["conversation", "project"],
+          onToggle: (active) => {
+            setCraftEngaged(active);
+            if (active) ctx.ui.openActivityTab(TAB_ID);
+          },
+          // Where the editor state reaches the model. Nothing is rendered at rest:
+          // `decoratePrompt` only runs on a send, and only while the toggle is on.
+          decoratePrompt: () => {
+            const state = readCraftState();
+            return state ? { instructions: [craftStateInstruction(APP.name, state)] } : {};
+          },
+        })
+      : null;
+
     // Tools are what make the plugin usable from the conversation; they fail closed
     // too, and a host build without the two tool permissions registers nothing.
     const tools = registerCraftTools(ctx);
@@ -73,8 +105,17 @@ export default definePlugin({
     // before any tool result exists; see conversation-bridge.ts.
     const conversation = connectConversation(ctx);
 
-    const activation: Activation = { owned: [tab, ...tools, timeline, conversation], released: false };
-    return () => release(activation);
+    const activation: Activation = {
+      owned: [...(action ? [action] : []), tab, ...tools, timeline, conversation],
+      released: false,
+    };
+    return () => {
+      // A reloaded or disabled plugin must not leave the toggle on for a tab that no
+      // longer exists; the host keeps the active ids per session, so reset the state
+      // the next activation reads.
+      setCraftEngaged(false);
+      release(activation);
+    };
   },
   deactivate() {},
 });
