@@ -40,6 +40,8 @@ export interface AssessmentRequest {
 	modelKey?: string;
 	targets: string[];
 	instruction: string;
+	/** The conversation's cwd, mounted into the sandbox as the working directory. */
+	workspace?: string;
 }
 
 function clip(value: string, limit = MAX_TOOL_CONTENT): string {
@@ -92,10 +94,8 @@ export class StrixAgent {
 	/** Begin an assessment: start the sandbox, seed the transcript, run the loop. */
 	async start(request: AssessmentRequest): Promise<void> {
 		if (this.running) throw new Error("a scan is already running");
-		this.messages = [
-			{ role: "user", content: buildAssessmentBrief(request.targets, request.instruction) },
-		];
-		await this.runLoop(request.modelKey, request.targets);
+		this.messages = [{ role: "user", content: buildAssessmentBrief(request.targets, request.instruction) }];
+		await this.runLoop(request.modelKey, request.targets, request.workspace);
 	}
 
 	/** A follow-up instruction inside the same assessment. */
@@ -105,14 +105,14 @@ export class StrixAgent {
 		await this.runLoop(modelKey);
 	}
 
-	private async runLoop(modelKey?: string, targets?: readonly string[]): Promise<void> {
+	private async runLoop(modelKey?: string, targets?: readonly string[], workspace?: string): Promise<void> {
 		this.running = true;
 		this.controller = new AbortController();
 		const { ai, bridge, emit, tools = STRIX_TOOLS, maxTurns = MAX_TURNS } = this.deps;
 		const signal = this.controller.signal;
 
 		try {
-			if (targets) await this.openSandbox(targets);
+			if (targets) await this.openSandbox(targets, workspace);
 
 			for (let turn = 0; turn < maxTurns; turn += 1) {
 				if (signal.aborted) {
@@ -176,17 +176,21 @@ export class StrixAgent {
 		}
 	}
 
-	/**
-	 * Start the container before the first model call, so a machine that cannot run
-	 * the sandbox says so in the launch log instead of burning a turn to find out.
+/**
+	 * Start the container before the first model call, so a machine that cannot run the
+	 * sandbox says so in the launch log instead of burning a turn to find out.
+	 *
+	 * The conversation's cwd is mounted as well: the same workspace the chat agent can
+	 * read is the one this loop gets to break, which is what makes "review this repo"
+	 * mean the same thing in both windows.
 	 */
-	private async openSandbox(targets: readonly string[]): Promise<void> {
+	private async openSandbox(targets: readonly string[], workspace?: string): Promise<void> {
 		const { bridge, emit } = this.deps;
-		const status = await bridge
-			.callTool("strix_sandbox_start", { targets: [...targets] })
-			.catch((cause: unknown) => {
-				throw new Error(`sandbox failed to start: ${cause instanceof Error ? cause.message : String(cause)}`);
-			});
+		const args: Record<string, unknown> = { targets: [...targets] };
+		if (workspace) args.localSources = [{ path: workspace }];
+		const status = await bridge.callTool("strix_sandbox_start", args).catch((cause: unknown) => {
+			throw new Error(`sandbox failed to start: ${cause instanceof Error ? cause.message : String(cause)}`);
+		});
 		emit({ type: "note", text: `Sandbox ready (${(status as { sessionId?: string }).sessionId ?? "session"}).` });
 	}
 }

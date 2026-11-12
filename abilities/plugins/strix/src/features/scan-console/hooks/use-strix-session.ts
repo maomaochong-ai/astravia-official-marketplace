@@ -1,23 +1,29 @@
 /**
  * The state machine behind the tab.
  *
- * Two phases of one screen, as upstream has them: a launch column (`setupView`)
- * and the scan (chat trace + sidebar). The difference is where the work happens -
- * the loop runs here, on the host's model, and this hook is what turns its events
- * plus the bridge's state into the rows the panel draws.
+ * Two phases of one screen, as upstream has them: a launch column (`setupView`) and
+ * the scan (chat trace + sidebar). What differs is where everything comes from - the
+ * panel is a *view of the active conversation*, not a private agent:
  *
- * Everything the tab needs arrives through `runtime.ensureReady()`: the service URL
- * is not known until the host has started the service, so the first paint is always
- * the launch column with a "connecting" line under it.
+ *  - the model is the conversation's (`resolveModel`), so switching model in the host
+ *    switches it here too;
+ *  - the workspace is the conversation's cwd, mounted into the sandbox;
+ *  - the trace carries both the loop this panel runs **and** the Strix calls the host
+ *    agent makes from the chat, because both drive the same sandbox.
+ *
+ * Everything the tab needs at boot arrives through `runtime.ensureReady()`: the
+ * service URL is not known until the host has started the service, so the first
+ * paint is always the launch column with a "connecting" line under it.
  */
 
-import type { PluginAiApi } from "@astravia-org/plugin-sdk";
+import type { ConversationEvent, ConversationState, PluginAiApi, PluginAiModel } from "@astravia-org/plugin-sdk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StrixAgent, type AgentEvent } from "../../../agent/strix-agent";
 import type { BridgeClient } from "../../../domain/bridge-client";
 import { normalizeFindings, normalizeProbe, normalizeSandbox } from "../../../domain/bridge-payloads";
+import { hostToolCall, resolveModel, workspaceLabel } from "../../../domain/host-sync";
 import { parseLaunchPrompt } from "../../../domain/launch-request";
-import { chooseModel, type ModelChoice } from "../../../domain/model-label";
+import type { ModelChoice } from "../../../domain/model-label";
 import type { BridgeEvent, EnvironmentProbe, SandboxStatus, StrixFinding, TraceEntry } from "../../../runtime-contract";
 
 const TRACE_LIMIT = 400;
@@ -39,7 +45,13 @@ export interface StrixSessionModel {
 	findings: StrixFinding[];
 	trace: TraceEntry[];
 	model?: ModelChoice;
+	/** True when the model is the one the active conversation runs on. */
+	modelFromConversation: boolean;
 	models: ModelChoice[];
+	/** Folder name of the conversation's workspace, shown in the status row. */
+	workspace?: string;
+	/** The host conversation is generating a turn right now. */
+	hostStreaming: boolean;
 	busy: boolean;
 	/** Start an assessment from the launch prompt. */
 	start: (prompt: string) => Promise<void>;
@@ -55,23 +67,39 @@ export interface StrixSessionOptions {
 	runtime: { ensureReady: () => Promise<string> };
 	client: BridgeClient;
 	ai: PluginAiApi;
+	/** Active conversation, from `useActiveConversation()`; null on a fresh-session page. */
+	conversation: ConversationState | null;
+	/** `ctx.conversation.on`: the host's turn and tool events, so its Strix calls land in the trace. */
+	subscribe: (listener: (event: ConversationEvent) => void) => { dispose(): void };
 	t: (key: string) => string;
 }
 
-export function useStrixSession({ runtime, client, ai, t }: StrixSessionOptions): StrixSessionModel {
+export function useStrixSession({ runtime, client, ai, conversation, subscribe, t }: StrixSessionOptions): StrixSessionModel {
 	const [phase, setPhase] = useState<SessionPhase>("booting");
 	const [log, setLog] = useState<LogLine[]>([]);
 	const [environment, setEnvironment] = useState<EnvironmentProbe>();
 	const [sandbox, setSandbox] = useState<SandboxStatus>({ running: false, targets: [] });
 	const [findings, setFindings] = useState<StrixFinding[]>([]);
 	const [trace, setTrace] = useState<TraceEntry[]>([]);
-	const [models, setModels] = useState<ModelChoice[]>([]);
-	const [model, setModel] = useState<ModelChoice>();
+	const [models, setModels] = useState<PluginAiModel[]>([]);
+	const [defaultModel, setDefaultModel] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
 
 	const seq = useRef(0);
 	const agentRef = useRef<StrixAgent | null>(null);
-	const modelRef = useRef<ModelChoice | null>(null);
+
+	// The conversation's model is the authority; recomputed on every conversation
+	// change so a model switch in the chat moves this panel with it.
+	const resolved = useMemo(
+		() => resolveModel({ conversationModel: conversation?.model, models, defaultModel }),
+		[conversation?.model, models, defaultModel],
+	);
+	const modelRef = useRef<ModelChoice | undefined>(resolved.choice);
+	const cwdRef = useRef<string | null>(conversation?.cwd ?? null);
+	useEffect(() => {
+		modelRef.current = resolved.choice;
+		cwdRef.current = conversation?.cwd ?? null;
+	}, [resolved.choice, conversation?.cwd]);
 
 	const note = useCallback((text: string, tone?: LogLine["tone"]) => {
 		setLog((previous) => [...previous, { text, ...(tone ? { tone } : {}) }].slice(-LOG_LIMIT));
@@ -83,7 +111,7 @@ export function useStrixSession({ runtime, client, ai, t }: StrixSessionOptions)
 		);
 	}, []);
 
-	/** Model + service + machine state, in one pass; every path lands on "setup". */
+	/** Service + machine state, plus the model list the conversation model resolves against. */
 	const refresh = useCallback(async () => {
 		note(t("log.connecting"));
 		try {
@@ -107,13 +135,9 @@ export function useStrixSession({ runtime, client, ai, t }: StrixSessionOptions)
 
 		try {
 			const list = await ai.listModels();
-			setModels(
-				list.models.map((item) => ({ modelKey: item.modelKey, name: item.name, provider: item.provider })),
-			);
-			const choice = chooseModel(list);
-			modelRef.current = choice ?? null;
-			setModel(choice);
-			if (!choice) note(t("log.noModel"), "error");
+			setModels(list.models);
+			setDefaultModel(list.defaultModel);
+			if (!list.models.length && !conversation?.model) note(t("log.noModel"), "error");
 		} catch (cause) {
 			// A host without `ai.complete` cannot run the loop; say so on the launch
 			// screen rather than letting Enter fail later.
@@ -121,7 +145,22 @@ export function useStrixSession({ runtime, client, ai, t }: StrixSessionOptions)
 		}
 
 		setPhase((current) => (current === "scanning" ? current : "setup"));
-	}, [ai, client, note, runtime, t]);
+	}, [ai, client, conversation?.model, note, runtime, t]);
+
+	// Where the model and the mounted folder came from, announced once per conversation
+	// in the launch log. Upstream's log is exactly this kind of launch-time status, and
+	// it is the only place the provenance can be stated without changing the layout.
+	const announced = useRef("");
+	useEffect(() => {
+		const key = `${resolved.choice?.modelKey ?? ""}|${conversation?.cwd ?? ""}`;
+		if (!key || key === announced.current) return;
+		announced.current = key;
+		if (resolved.fromConversation && resolved.choice) {
+			note(t("log.modelFromConversation").replace("{model}", resolved.choice.name));
+		}
+		const folder = workspaceLabel(conversation?.cwd);
+		if (folder) note(t("log.workspaceMounted").replace("{folder}", folder));
+	}, [conversation?.cwd, note, resolved, t]);
 
 	const booted = useRef(false);
 	useEffect(() => {
@@ -130,8 +169,8 @@ export function useStrixSession({ runtime, client, ai, t }: StrixSessionOptions)
 		void refresh();
 	}, [refresh]);
 
-	// The bridge narrates its own sandbox lifecycle; tool rows come from the loop,
-	// so subscribing to `tool_*` here would draw every command twice.
+	// The bridge narrates its sandbox lifecycle; tool rows come from the loop and the
+	// host conversation, so subscribing to `tool_*` here would draw commands twice.
 	useEffect(
 		() =>
 			client.events((event: BridgeEvent) => {
@@ -188,10 +227,7 @@ export function useStrixSession({ runtime, client, ai, t }: StrixSessionOptions)
 		[client, pushTrace],
 	);
 
-	const agent = useMemo(
-		() => new StrixAgent({ ai, bridge: client, emit: onAgentEvent }),
-		[ai, client, onAgentEvent],
-	);
+	const agent = useMemo(() => new StrixAgent({ ai, bridge: client, emit: onAgentEvent }), [ai, client, onAgentEvent]);
 
 	// Ownership: aborting on unmount stops a loop whose tab has gone away, so a
 	// closed panel cannot keep spending model calls in the background.
@@ -200,6 +236,49 @@ export function useStrixSession({ runtime, client, ai, t }: StrixSessionOptions)
 		return () => agent.abort();
 	}, [agent]);
 
+	/**
+	 * The host agent's own Strix calls, mirrored into the trace.
+	 *
+	 * Without this the panel would be blind to everything the user does from the chat:
+	 * `strix_sandbox_start` sets the targets, `strix_exec` runs the commands, and the
+	 * findings they file land in the sidebar. One assessment, two windows.
+	 */
+	useEffect(() => {
+		if (!conversation?.id) return;
+		const subscription = subscribe((event) => {
+			switch (event.type) {
+				case "tool-call-start": {
+					// Only Strix's own tools: another MCP server in the same conversation
+					// must not write rows into this assessment.
+					const row = hostToolCall(event.toolName, event.args);
+					if (row) pushTrace({ kind: "tool", label: row.label, detail: row.detail });
+					break;
+				}
+				case "tool-call-end": {
+					if (!hostToolCall(event.toolName)) break;
+					// Close the oldest open row rather than appending: the host emits end
+					// without the arguments, so the call is identified by an open row.
+					setTrace((previous) => {
+						const index = previous.findIndex((item) => item.kind === "tool" && item.ok === undefined);
+						if (index < 0) return previous;
+						const next = previous.slice();
+						const entry = next[index];
+						if (!entry) return previous;
+						next[index] = { ...entry, ok: !event.isError };
+						return next;
+					});
+					void client
+						.findings()
+						.then((list) => setFindings(normalizeFindings(list)))
+						.catch(() => undefined);
+					break;
+				}
+				default:
+					break;
+			}
+		});
+		return () => subscription.dispose();
+	}, [client, conversation?.id, pushTrace, subscribe]);
 	const start = useCallback(
 		async (prompt: string) => {
 			if (phase === "scanning") return;
@@ -208,7 +287,7 @@ export function useStrixSession({ runtime, client, ai, t }: StrixSessionOptions)
 				note(t("log.noModel"), "error");
 				return;
 			}
-			if (!request.targets.length && !request.instruction) {
+			if (!request.targets.length && !request.instruction && !cwdRef.current) {
 				note(t("log.noTarget"), "error");
 				return;
 			}
@@ -220,6 +299,7 @@ export function useStrixSession({ runtime, client, ai, t }: StrixSessionOptions)
 			setTrace([]);
 			setPhase("scanning");
 			setBusy(true);
+			const workspace = cwdRef.current;
 			note(
 				request.targets.length
 					? t("log.scanning").replace("{targets}", request.targets.join(", "))
@@ -227,7 +307,11 @@ export function useStrixSession({ runtime, client, ai, t }: StrixSessionOptions)
 				"ok",
 			);
 			try {
-				await agent.start({ ...request, modelKey: modelRef.current.modelKey });
+				await agent.start({
+					...request,
+					modelKey: modelRef.current.modelKey,
+					...(workspace ? { workspace } : {}),
+				});
 				setPhase("done");
 			} catch (cause) {
 				const detail = cause instanceof Error ? cause.message : String(cause);
@@ -272,7 +356,40 @@ export function useStrixSession({ runtime, client, ai, t }: StrixSessionOptions)
 	}, [client]);
 
 	return useMemo(
-		() => ({ phase, log, environment, sandbox, findings, trace, model, models, busy, start, send, stop, refresh }),
-		[phase, log, environment, sandbox, findings, trace, model, models, busy, start, send, stop, refresh],
+		() => ({
+			phase,
+			log,
+			environment,
+			sandbox,
+			findings,
+			trace,
+			model: resolved.choice,
+			modelFromConversation: resolved.fromConversation,
+			models: models.map((item) => ({ modelKey: item.modelKey, name: item.name, provider: item.provider })),
+			workspace: workspaceLabel(conversation?.cwd),
+			hostStreaming: Boolean(conversation?.isStreaming),
+			busy,
+			start,
+			send,
+			stop,
+			refresh,
+		}),
+		[
+			phase,
+			log,
+			environment,
+			sandbox,
+			findings,
+			trace,
+			resolved,
+			models,
+			conversation?.cwd,
+			conversation?.isStreaming,
+			busy,
+			start,
+			send,
+			stop,
+			refresh,
+		],
 	);
 }

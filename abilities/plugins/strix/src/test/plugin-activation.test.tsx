@@ -1,5 +1,24 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+/**
+ * The host bridge is what `useActiveConversation()` reads. In the app the host installs
+ * it; here it is stubbed with the same shape, so the tab mounts against a real
+ * conversation state (model + cwd) instead of a missing bridge.
+ */
+const conversationState = {
+	id: "session-1",
+	cwd: "D:\\open-source-projects\\strix",
+	sessionPath: null,
+	model: "anthropic/claude-opus-5-5",
+	isStreaming: false,
+};
+
+vi.mock("@astravia-org/plugin-sdk", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@astravia-org/plugin-sdk")>();
+	return { ...actual, useActiveConversation: () => conversationState };
+});
+
 import plugin from "../index";
 
 /**
@@ -41,6 +60,15 @@ function fakeHost(services: Record<string, unknown> = {}, models: unknown[] = [{
 			setActivityTabVisible: () => undefined,
 			openActivityTab: () => undefined,
 		},
+		// `agent.session.read`: the tab follows the active conversation, so the stub has to
+		// answer with the same event stream the host does.
+		conversation: {
+			on: () => ({ dispose() {} }),
+			sendPrompt: async () => ({ status: "sent" }),
+			insertText: () => undefined,
+			abort: async () => undefined,
+			createSession: async () => conversationState,
+		},
 		services: {
 			getStatus: async () => ({ phase: "stopped", installed: true }),
 			start: async () => ({ phase: "ready", installed: true }),
@@ -70,11 +98,22 @@ describe("plugin activation", () => {
 		await disposeOf(disposable);
 	});
 
-	it("shows the host's model on the launch screen", async () => {
+	it("shows the conversation's model, not the settings default", async () => {
 		const host = fakeHost();
 		const disposable = await plugin.activate(host.ctx);
 		render(host.tab()!.component());
-		expect(await screen.findByText("GPT-5")).toBeTruthy();
+		// The conversation runs claude-opus-5-5; the settings default is gpt-5. The chip
+		// carries the name, the launch log says where it came from.
+		expect(await screen.findByText("claude-opus-5-5")).toBeTruthy();
+		expect(await screen.findByText(/log.modelFromConversation/)).toBeTruthy();
+		await disposeOf(disposable);
+	});
+
+	it("says which workspace the sandbox will mount", async () => {
+		const host = fakeHost();
+		const disposable = await plugin.activate(host.ctx);
+		render(host.tab()!.component());
+		expect(await screen.findByText(/log.workspaceMounted/)).toBeTruthy();
 		await disposeOf(disposable);
 	});
 

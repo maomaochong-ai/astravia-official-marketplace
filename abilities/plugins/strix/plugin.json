@@ -2,7 +2,7 @@
   "id": "strix",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -18,6 +18,7 @@
     "ui.slot.input-action",
     "ai.models.list",
     "ai.complete",
+    "agent.session.read",
     "agent.skills.control",
     "agent.mcp.control",
     "shell.openExternal"
@@ -49,7 +50,7 @@
         "id": "strix-bridge",
         "runtime": {
           "kind": "host-node",
-          "version": "0.4.0",
+          "version": "0.4.1",
           "entry": "dist/service/main.mjs",
           "platforms": {
             "win32-x64": {

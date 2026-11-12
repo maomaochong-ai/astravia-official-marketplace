@@ -24,14 +24,24 @@ export interface ScanScreenProps {
 	sandbox: SandboxStatus;
 	findings: readonly StrixFinding[];
 	trace: readonly TraceEntry[];
+	/** Folder name of the conversation workspace that is mounted. */
+	workspace?: string;
+	/** The host conversation is generating a turn right now. */
+	hostStreaming: boolean;
 	busy: boolean;
 	onSend: (value: string) => void;
 	onStop: () => void;
 }
 
-function SessionBox({ t, sandbox, environment }: Pick<ScanScreenProps, "t" | "sandbox" | "environment">): React.ReactElement {
+function SessionBox({
+	t,
+	sandbox,
+	environment,
+	workspace,
+}: Pick<ScanScreenProps, "t" | "sandbox" | "environment" | "workspace">): React.ReactElement {
 	const rows: { label: string; value: string }[] = [];
 	if (sandbox.sessionId) rows.push({ label: t("session.id"), value: sandbox.sessionId });
+	if (workspace) rows.push({ label: t("session.workspace"), value: workspace });
 	if (sandbox.uptimeSec) rows.push({ label: t("session.uptime"), value: `${sandbox.uptimeSec}s` });
 	if (sandbox.image) rows.push({ label: t("session.image"), value: sandbox.image });
 	if (environment?.docker.imagePresent === false) {
@@ -54,6 +64,8 @@ export function ScanScreen({
 	t,
 	phase,
 	model,
+	workspace,
+	hostStreaming,
 	sandbox,
 	environment,
 	findings,
@@ -86,6 +98,7 @@ export function ScanScreen({
 						</span>
 						<span className="astra-strix-dim"> · {t("scan.steps")} {trace.filter((entry) => entry.kind === "tool").length}</span>
 						{critical ? <span className="astra-strix-red"> · {t("severity.critical")} {critical}</span> : null}
+						{hostStreaming ? <span className="astra-strix-blue"> · {t("scan.hostTurn")}</span> : null}
 						{model ? <span className="astra-strix-dim"> · {model.name}</span> : null}
 						<button type="button" className="astra-strix-statusline-stop" onClick={onStop} disabled={!scanning}>
 							{t("scan.stop")}
@@ -120,7 +133,7 @@ export function ScanScreen({
 
 				<aside className="astra-strix-side">
 					<PanelBox title={t("session.title")} hint={sandbox.running ? t("session.running") : undefined} focused={sandbox.running}>
-						<SessionBox t={t} sandbox={sandbox} environment={environment} />
+						<SessionBox t={t} sandbox={sandbox} environment={environment} workspace={workspace} />
 					</PanelBox>
 					<PanelBox title={t("targets.title")} hint={String(targets.length)}>
 						{targets.length ? (

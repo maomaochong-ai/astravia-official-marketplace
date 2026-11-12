@@ -31,13 +31,24 @@ npm run check           # typecheck + test + 服务冒烟
 
 界面刻意 **不** 用宿主主题变量：这一屏就是终端里的 `strix`，换成本地配色的卡片就不像它了。只有 `astra-strix-*` 类名，不碰宿主 class。
 
-## 模型从哪来
+## 模型从哪来（宿主 → 插件）
 
-上游用自己那份 `STRIX_LLM` + key；这里用宿主已配置的模型：
+上游用自己那份 `STRIX_LLM` + key；这里全部来自宿主，三条通道各有唯一来源：
 
-- `ctx.ai.listModels()` → 启动页那句 `● <name> · <provider>`（默认模型优先，否则第一个可用）。
-- `ctx.ai.chat()` → 真正的 agent loop，在 `agent/strix-agent.ts` 里。`chat` 是无状态的，转写由插件持有并整轮重放。
-- 工具来自桥接服务的同一份注册表，经 `POST /api/tool` 调用；MCP 面（`/mcp`）仍在，宿主的 agent 也能直接驱动同一套工具。
+| 通道 | 来源 | 用法 |
+|---|---|---|
+| **模型** | `useActiveConversation().model`（`provider/id`），没有时回退 `ctx.ai.listModels().defaultModel` | 直接传给 `ctx.ai.chat({ modelKey })`，并在启动页那句 `● <name> · <provider>` 上显示 |
+| **工作目录** | `useActiveConversation().cwd` | 作为 `strix_sandbox_start` 的 `localSources` 挂进 `/workspace/<name>`，启动日志写明挂载了哪个目录 |
+| **对话侧工具调用** | `ctx.conversation.on(...)` 的 `tool-call-start/end` | 用户在聊天里让宿主 agent 调 `strix_*` 时，这些调用会同步出现在插件轨迹里（按工具名过滤，别的 MCP server 不会混进来） |
+
+都靠权限 `agent.session.read`。纯函数在 `domain/host-sync.ts`（`resolveModel` / `strixToolName` / `hostToolCall` / `workspaceLabel`），有单测。
+
+要点：
+
+- **对话的模型优先**，即使它不在 `listModels()` 的文本模型列表里——宿主是权威，标签从 key 拆。
+- 聊天里换模型，插件顶部跟着换（`conversation-changed` → 重新解析）。
+- `ctx.ai.chat()` 是真 loop，在 `agent/strix-agent.ts`；`chat` 无状态，转写由插件持有并整轮重放。
+- 工具走桥接服务同一份注册表（`POST /api/tool`）；MCP 面（`/mcp`）仍在，宿主 agent 直接驱动同一套工具，两条路到达同一个沙箱。
 
 所以一次扫描不需要第二份凭据，也不会产生第二份对话。
 
@@ -45,7 +56,7 @@ npm run check           # typecheck + test + 服务冒烟
 
 | 位置 | 职责 |
 |---|---|
-| `src/index.tsx` | 只做装配：activity tab + input action |
+| `src/index.tsx` | 只做装配：activity tab + input action，并用 `useActiveConversation()` 把标签页绑到当前会话 |
 | `src/runtime.ts` | `strix-bridge` 生命周期（`ctx.services`）：声明 → 安装 → 启动 → 就绪 |
 | `src/runtime-contract.ts` | 宿主桥接的最小类型边界 |
 | `src/agent/strix-agent.ts` | agent loop：模型轮次、工具执行、失败回灌、上限与中止 |
@@ -54,6 +65,7 @@ npm run check           # typecheck + test + 服务冒烟
 | `src/domain/bridge-client.ts` | 对服务的客户端：state / report / stop / callTool / SSE |
 | `src/domain/launch-request.ts` | 启动提示词的解析（目标 vs 方法），对齐 `setup.go:submitSetupPrompt` |
 | `src/domain/model-label.ts` | `provider/model` 拆分与默认模型选择 |
+| `src/domain/host-sync.ts` | 宿主→插件三通道：模型解析、工作目录名、宿主工具调用→轨迹行 |
 | `src/features/scan-console/` | 两屏 UI、状态机、轨迹块、词标、错误边界 |
 | `src/features/findings/` | 问题列表与展开详情 |
 | `src/service/main.ts` | 受管服务入口：MCP 工具面 + `/api/*` + SSE |

@@ -20,6 +20,10 @@ export interface StrixTabProps {
 	phase: SessionPhase;
 	log: readonly LogLine[];
 	model?: ModelChoice;
+	/** Folder name of the conversation workspace. */
+	workspace?: string;
+	/** The host conversation is generating right now. */
+	hostStreaming: boolean;
 	environment?: EnvironmentProbe;
 	sandbox: SandboxStatus;
 	findings: readonly StrixFinding[];
@@ -49,6 +53,8 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					t={t}
 					phase={phase}
 					model={props.model}
+					workspace={props.workspace}
+					hostStreaming={props.hostStreaming}
 					environment={props.environment}
 					sandbox={props.sandbox}
 					findings={props.findings}

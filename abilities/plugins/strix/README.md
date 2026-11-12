@@ -16,6 +16,7 @@ interface of the CLI and keeps Strix's sandbox and tradecraft; the model comes f
 | Activity tab `strix.console` | `initiallyVisible: false` — nothing appears under the conversation until you open it. From there it is the CLI: launch column → trace + sidebar. |
 | Input action `strix.activate` | One click opens the tab; while active, every prompt carries Strix's method (`decoratePrompt`). |
 | Agent loop | `src/agent/strix-agent.ts`: `ctx.ai.chat()` in a loop over the bridge's tools, with the transcript kept here. Stop aborts before the next model call. |
+| Host binding | `useActiveConversation()` (`agent.session.read`): the tab runs on **the conversation's model**, mounts **the conversation's folder** as the sandbox workspace, and mirrors the host agent's own `strix_*` tool calls into the trace. Switch model in the chat and the panel follows. |
 | MCP tools | `strix_environment`, `strix_sandbox_start`, `strix_exec`, `strix_sandbox_status`, `strix_sandbox_stop`, `strix_list_skills`, `strix_load_skills`, `strix_file_finding`, `strix_list_findings`, `strix_report` — the host agent can still drive the same sandbox over MCP. |
 | Skills | The nine upstream consumer skills ship in `agent/skills/` but are declared `hidden`: the capability page, slash menu and skill picker show **Strix** — name and icon — not nine lookalikes. The agent still loads them. |
 

@@ -1,6 +1,6 @@
 import "./style.css";
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
-import { definePlugin } from "@astravia-org/plugin-sdk";
+import { definePlugin, useActiveConversation } from "@astravia-org/plugin-sdk";
 import { useRef } from "react";
 import { createBridgeClient } from "./domain/bridge-client";
 import { StrixTab } from "./features/scan-console/components/strix-tab";
@@ -10,6 +10,15 @@ import { createServiceRuntime, type ServiceRuntime } from "./runtime";
 const TAB_ID = "strix.console";
 const ACTION_ID = "strix.activate";
 
+/**
+ * The tab root binds the panel to the host.
+ *
+ * `useActiveConversation()` is the wiring that makes this a first-class surface
+ * rather than a silo: the tab reads the conversation's model, workspace and streaming
+ * state, and the session hook asks `ctx.ai` to run on exactly that model. Switching
+ * the model in the chat switches this panel; opening the tab in a project scans that
+ * project's folder.
+ */
 function StrixTabRoot({
 	ctx,
 	runtime,
@@ -20,10 +29,18 @@ function StrixTabRoot({
 	onQuit: () => void;
 }): React.ReactElement {
 	const t = (key: string) => ctx.i18n.t(key);
+	const conversation = useActiveConversation();
 	// One client per mounted tab: rebuilding it during render would hand the hook a new
 	// identity on every paint, and its effects would re-run the boot sequence forever.
 	const client = useRef(createBridgeClient(() => runtime.ensureReady())).current;
-	const session = useStrixSession({ runtime, client, ai: ctx.ai, t });
+	const session = useStrixSession({
+		runtime,
+		client,
+		ai: ctx.ai,
+		conversation,
+		subscribe: (listener) => ctx.conversation.on(listener),
+		t,
+	});
 
 	return (
 		<StrixTab
@@ -32,6 +49,8 @@ function StrixTabRoot({
 			phase={session.phase}
 			log={session.log}
 			model={session.model}
+			workspace={session.workspace}
+			hostStreaming={session.hostStreaming}
 			environment={session.environment}
 			sandbox={session.sandbox}
 			findings={session.findings}

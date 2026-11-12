@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Strix's launch screen, reproduced for the activity tab.
  *
  * Shape and wording are upstream's (setup.go:setupBody): wordmark, tagline, the
@@ -78,11 +78,8 @@ export function LaunchScreen({
 							aria-label={t("launch.label")}
 							placeholder={t("launch.placeholder")}
 							rows={rows}
-							{/* Upstream focuses its composer on launch (model.go:New): the panel opens green
-							    with the caret live, not grey waiting for a click. */}
 							autoFocus
 							value={value}
-							spellCheck={false}
 							onChange={(event) => setValue(event.target.value)}
 							onKeyDown={(event) => {
 								if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -144,3 +141,4 @@ export function LaunchScreen({
 		</div>
 	);
 }
+

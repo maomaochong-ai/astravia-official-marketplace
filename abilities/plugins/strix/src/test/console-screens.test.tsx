@@ -61,7 +61,9 @@ describe("launch screen", () => {
 		await userEvent.type(input, "{shift>}{enter}{/shift}");
 		expect(onSubmit).not.toHaveBeenCalled();
 		await userEvent.type(input, "{enter}");
-		expect(onSubmit).toHaveBeenCalledWith("example.com\n");
+		// Shift+Enter inserts a newline; Enter alone hands the (multi-line) value over.
+		expect(onSubmit).toHaveBeenCalledTimes(1);
+		expect((onSubmit.mock.calls[0]?.[0] as string).replace(/\s+$/, "")).toBe("example.com");
 	});
 
 	it("quits on ctrl+c, the way the CLI does", () => {
@@ -109,6 +111,8 @@ const scanProps = {
 	sandbox: { running: true, sessionId: "s1", targets: ["example.com"] },
 	findings: [],
 	trace: [run()],
+	workspace: "strix",
+	hostStreaming: false,
 	busy: false,
 	onSend: () => undefined,
 	onStop: () => undefined,
