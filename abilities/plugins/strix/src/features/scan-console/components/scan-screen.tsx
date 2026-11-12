@@ -10,10 +10,20 @@
 
 import { useState } from "react";
 import type { ModelChoice } from "../../../domain/model-label";
-import type { EnvironmentProbe, SandboxStatus, StrixFinding, TraceEntry } from "../../../runtime-contract";
+import type { AgentStatus } from "../../../agent/strix-agent";
+import type {
+	CoverageOutcome,
+	EnvironmentProbe,
+	NoteSummary,
+	SandboxStatus,
+	StrixFinding,
+	TodoItem,
+	TraceEntry,
+} from "../../../runtime-contract";
 import { PanelBox } from "../../../shared/components/panel-box";
 import { FindingList } from "../../findings/components/finding-list";
 import type { SessionPhase } from "../hooks/use-strix-session";
+import { ArtefactPanels } from "./artefact-panels";
 import { TraceBlock } from "./trace-block";
 
 export interface ScanScreenProps {
@@ -24,11 +34,16 @@ export interface ScanScreenProps {
 	sandbox: SandboxStatus;
 	findings: readonly StrixFinding[];
 	trace: readonly TraceEntry[];
+	todos: readonly TodoItem[];
+	notes: readonly NoteSummary[];
+	coverage: readonly CoverageOutcome[];
+	agents: readonly AgentStatus[];
 	/** Folder name of the conversation workspace that is mounted. */
 	workspace?: string;
 	/** The host conversation is generating a turn right now. */
 	hostStreaming: boolean;
 	busy: boolean;
+	question?: { text: string; options?: string[] };
 	onSend: (value: string) => void;
 	onStop: () => void;
 }
@@ -69,8 +84,13 @@ export function ScanScreen({
 	sandbox,
 	environment,
 	findings,
+	todos,
+	notes,
+	coverage,
+	agents,
 	trace,
 	busy,
+	question,
 	onSend,
 	onStop,
 }: ScanScreenProps): React.ReactElement {
@@ -105,6 +125,26 @@ export function ScanScreen({
 						</button>
 					</div>
 
+					{question ? (
+						<div className="astra-strix-question" role="status">
+							<p className="astra-strix-question-text">
+								<span className="astra-strix-amber" aria-hidden="true">
+									?
+								</span>{" "}
+								{question.text}
+							</p>
+							{question.options?.length ? (
+								<p className="astra-strix-question-options">
+									{question.options.map((option) => (
+										<button key={option} type="button" className="astra-strix-chip" onClick={() => onSend(option)}>
+											{option}
+										</button>
+									))}
+								</p>
+							) : null}
+						</div>
+					) : null}
+
 					<div className="astra-strix-prompt">
 						<label className="astra-strix-prompt-row">
 							<span className="astra-strix-prompt-caret" aria-hidden="true">
@@ -112,8 +152,8 @@ export function ScanScreen({
 							</span>
 							<textarea
 								className="astra-strix-prompt-input"
-								aria-label={t("scan.label")}
-								placeholder={t("scan.placeholder")}
+								aria-label={t(question ? "scan.answer" : "scan.label")}
+								placeholder={t(question ? "scan.answer" : "scan.placeholder")}
 								rows={1}
 								spellCheck={false}
 								value={draft}
@@ -149,6 +189,7 @@ export function ScanScreen({
 							<p className="astra-strix-dim">{t("targets.empty")}</p>
 						)}
 					</PanelBox>
+					<ArtefactPanels t={t} agents={agents} todos={todos} notes={notes} coverage={coverage} />
 					<PanelBox title={t("findings.title")} hint={String(findings.length)}>
 						<FindingList t={t} findings={findings} runStatus={scanning ? "running" : "completed"} />
 					</PanelBox>

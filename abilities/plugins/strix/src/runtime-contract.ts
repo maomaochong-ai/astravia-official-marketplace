@@ -90,6 +90,10 @@ export interface BridgeState {
 	environment: EnvironmentProbe | { error: string };
 	sandbox: SandboxStatus;
 	findings: StrixFinding[];
+	/** Artefacts the assessment accumulates alongside its findings. */
+	notes?: NoteSummary[];
+	todos?: TodoItem[];
+	coverage?: CoverageOutcome[];
 	logTail: BridgeEvent[];
 }
 
@@ -110,6 +114,28 @@ export type BridgeEvent =
 			durationMs?: number;
 	  }
 	| { event: string; [key: string]: unknown };
+/** A todo from the assessment plan (service `todo`). */
+export interface TodoItem {
+	id: string;
+	title: string;
+	status: string;
+	priority: string;
+}
+
+/** A note's summary: the body is fetched only when the model asks for it. */
+export interface NoteSummary {
+	id: string;
+	title: string;
+	category: string;
+	updatedAt: string;
+}
+
+/** One attack surface and what testing it produced. */
+export interface CoverageOutcome {
+	surface: string;
+	outcome: "vulnerable" | "clean" | "skipped";
+	note?: string;
+}
 
 /**
  * One row of the trace. The three kinds mirror what upstream draws in its

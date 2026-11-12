@@ -1,6 +1,6 @@
-import type { PluginAiApi, PluginAiChatRequest, PluginAiChatResult } from "@astravia-org/plugin-sdk";
+﻿import type { PluginAiApi, PluginAiChatRequest, PluginAiChatResult } from "@astravia-org/plugin-sdk";
 import { describe, expect, it, vi } from "vitest";
-import { StrixAgent, type AgentEvent } from "../agent/strix-agent";
+import { StrixAgent, type AgentEvent, type LocalToolHost } from "../agent/strix-agent";
 import type { BridgeClient } from "../domain/bridge-client";
 
 /**
@@ -37,6 +37,27 @@ function scriptedAi(replies: PluginAiChatResult[]): { ai: PluginAiApi; calls: Pl
 	return { ai, calls };
 }
 
+/** A model that answers by inspecting the request: needed once two agents interleave. */
+function responderAi(respond: (request: PluginAiChatRequest) => PluginAiChatResult): {
+	ai: PluginAiApi;
+	calls: PluginAiChatRequest[];
+} {
+	const calls: PluginAiChatRequest[] = [];
+	const unused = async () => {
+		throw new Error("not used");
+	};
+	const ai = {
+		listModels: async () => ({ defaultModel: null, models: [] }),
+		complete: unused,
+		stream: unused,
+		chat: async (request: PluginAiChatRequest) => {
+			calls.push(request);
+			return respond(request);
+		},
+	} as unknown as PluginAiApi;
+	return { ai, calls };
+}
+
 function stubBridge(handlers: Record<string, (args: Record<string, unknown>) => unknown>): {
 	bridge: BridgeClient;
 	calls: { name: string; args: Record<string, unknown> }[];
@@ -58,6 +79,15 @@ function stubBridge(handlers: Record<string, (args: Record<string, unknown>) => 
 	return { bridge, calls };
 }
 
+/** The plugin-side handlers the loop expects; the sandbox tools go to the stub bridge. */
+function stubLocal(overrides: Partial<LocalToolHost> = {}): LocalToolHost {
+	return {
+		askUser: async () => "approved",
+		finish: async () => undefined,
+		...overrides,
+	};
+}
+
 describe("Strix agent loop", () => {
 	it("starts the sandbox, runs a tool call, then stops when the model is done", async () => {
 		const events: AgentEvent[] = [];
@@ -73,7 +103,7 @@ describe("Strix agent loop", () => {
 			strix_exec: () => ({ exitCode: 0, durationMs: 1200, stdout: "uid=0(root)" }),
 		});
 
-		const agent = new StrixAgent({ ai, bridge, emit: (event) => events.push(event) });
+		const agent = new StrixAgent({ ai, bridge, emit: (event) => events.push(event), local: stubLocal() });
 		await agent.start({ targets: ["example.com"], instruction: "", modelKey: "openai/gpt" });
 
 		expect(toolCalls[0]).toEqual({ name: "strix_sandbox_start", args: { targets: ["example.com"] } });
@@ -103,7 +133,7 @@ describe("Strix agent loop", () => {
 			},
 		});
 
-		const agent = new StrixAgent({ ai, bridge, emit: () => undefined });
+		const agent = new StrixAgent({ ai, bridge, emit: () => undefined, local: stubLocal() });
 		await agent.start({ targets: ["example.com"], instruction: "" });
 
 		expect(calls[1]?.messages.at(-1)).toMatchObject({
@@ -117,7 +147,7 @@ describe("Strix agent loop", () => {
 		const { ai, calls } = scriptedAi([reply({ text: "first" }), reply({ text: "second" })]);
 		const { bridge } = stubBridge({ strix_sandbox_start: () => ({ running: true, sessionId: "s1" }) });
 
-		const agent = new StrixAgent({ ai, bridge, emit: () => undefined });
+		const agent = new StrixAgent({ ai, bridge, emit: () => undefined, local: stubLocal() });
 		await agent.start({ targets: ["example.com"], instruction: "" });
 		await agent.send("also check the admin panel");
 
@@ -138,7 +168,7 @@ describe("Strix agent loop", () => {
 			},
 		});
 
-		agent = new StrixAgent({ ai, bridge, emit: (event) => events.push(event) });
+		agent = new StrixAgent({ ai, bridge, emit: (event) => events.push(event), local: stubLocal() });
 		await agent.start({ targets: ["example.com"], instruction: "" });
 
 		expect(calls).toHaveLength(1);
@@ -155,10 +185,110 @@ describe("Strix agent loop", () => {
 		} as unknown as PluginAiApi;
 		const { bridge } = stubBridge({ strix_sandbox_start: () => ({ running: true, sessionId: "s1" }) });
 
-		const agent = new StrixAgent({ ai, bridge, emit: () => undefined });
+		const agent = new StrixAgent({ ai, bridge, emit: () => undefined, local: stubLocal() });
 		const first = agent.start({ targets: ["example.com"], instruction: "" });
 		await expect(agent.start({ targets: ["example.com"], instruction: "" })).rejects.toThrow(/already running/);
 		release(reply({ text: "done" }));
 		await first;
+});
+});
+
+
+describe("plugin-side tools", () => {
+	it("records a thought without spending a bridge call", async () => {
+		const { ai } = scriptedAi([
+			reply({ stopReason: "toolUse", toolCalls: [{ id: "c1", name: "strix_think", arguments: { thought: "the cookie is not HttpOnly" } }] }),
+			reply({ text: "Noted." }),
+		]);
+		const { bridge, calls } = stubBridge({ strix_sandbox_start: () => ({ running: true, sessionId: "s1" }) });
+		const agent = new StrixAgent({ ai, bridge, emit: () => undefined, local: stubLocal() });
+
+		await agent.start({ targets: ["example.com"], instruction: "" });
+		expect(calls.map((call) => call.name)).toEqual(["strix_sandbox_start"]);
+	});
+
+	it("parks the loop until the operator answers", async () => {
+		let asked = "";
+		const { ai } = scriptedAi([
+			reply({ stopReason: "toolUse", toolCalls: [{ id: "c1", name: "strix_ask_user", arguments: { question: "Which tenant should I use?" } }] }),
+			reply({ text: "Using the staging tenant." }),
+		]);
+		const { bridge } = stubBridge({ strix_sandbox_start: () => ({ running: true, sessionId: "s1" }) });
+		const agent = new StrixAgent({
+			ai,
+			bridge,
+			emit: () => undefined,
+			local: stubLocal({
+				askUser: async (question) => {
+					asked = question;
+					return "tenant B";
+				},
+			}),
+		});
+
+		await agent.start({ targets: ["example.com"], instruction: "" });
+		expect(asked).toBe("Which tenant should I use?");
+	});
+
+	it("stops the loop when the agent calls finish", async () => {
+		const events: AgentEvent[] = [];
+		const finished: string[] = [];
+		const { ai, calls } = scriptedAi([
+			reply({
+				stopReason: "toolUse",
+				toolCalls: [{ id: "c1", name: "strix_finish", arguments: { executiveSummary: "Two issues, both fixed in staging." } }],
+			}),
+			// A reply that must never be consumed: finish ends the assessment.
+			reply({ text: "this turn should not happen" }),
+		]);
+		const { bridge } = stubBridge({ strix_sandbox_start: () => ({ running: true, sessionId: "s1" }) });
+		const agent = new StrixAgent({
+			ai,
+			bridge,
+			emit: (event) => events.push(event),
+			local: stubLocal({
+				finish: async ({ executiveSummary }) => {
+					finished.push(executiveSummary);
+				},
+			}),
+		});
+
+		await agent.start({ targets: ["example.com"], instruction: "" });
+		expect(finished).toEqual(["Two issues, both fixed in staging."]);
+		expect(calls).toHaveLength(1);
+		expect(events).toContainEqual({ type: "finished", summary: "Two issues, both fixed in staging." });
+	});
+
+	it("spawns a specialist that shares the sandbox and reports back", async () => {
+		const { ai } = responderAi((request) => {
+			const specialist = request.systemPrompt?.includes('You are the "') ?? false;
+			if (specialist) return reply({ text: "Auth flow is clean; session cookie is not HttpOnly." });
+			const turn = request.messages.filter((message) => message.role === "assistant").length;
+			if (turn === 0) {
+				return reply({
+					stopReason: "toolUse",
+					toolCalls: [
+						{ id: "c1", name: "strix_spawn_agent", arguments: { name: "auth-specialist", task: "Test the login flow" } },
+					],
+				});
+			}
+			return reply({
+				stopReason: "toolUse",
+				toolCalls: [{ id: "c2", name: "strix_wait_agents", arguments: {} }],
+			});
+		});
+		const { bridge } = stubBridge({ strix_sandbox_start: () => ({ running: true, sessionId: "s1" }) });
+		const events: AgentEvent[] = [];
+		const agent = new StrixAgent({ ai, bridge, emit: (event) => events.push(event), local: stubLocal() });
+
+		await agent.start({ targets: ["example.com"], instruction: "" });
+
+		const statuses = events.filter((event) => event.type === "agent").map((event) => event.agent.status);
+		expect(statuses).toContain("running");
+		expect(statuses).toContain("done");
+		expect(agent.childAgents).toHaveLength(1);
+		expect(agent.childAgents[0]?.result).toContain("not HttpOnly");
 	});
 });
+
+

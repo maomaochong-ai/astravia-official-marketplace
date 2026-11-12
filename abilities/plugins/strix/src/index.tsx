@@ -54,6 +54,12 @@ function StrixTabRoot({
 			environment={session.environment}
 			sandbox={session.sandbox}
 			findings={session.findings}
+			todos={session.todos}
+			notes={session.notes}
+			coverage={session.coverage}
+			agents={session.agents}
+			{...(session.question ? { question: session.question } : {})}
+			answer={session.answer}
 			trace={session.trace}
 			busy={session.busy}
 			start={session.start}

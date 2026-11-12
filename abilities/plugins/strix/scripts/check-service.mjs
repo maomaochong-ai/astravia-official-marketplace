@@ -1,6 +1,8 @@
-// Smoke-test the host-node service the way the host uses it: start the built
+﻿// Smoke-test the host-node service the way the host uses it: start the built
 // entry with node, wait on the readiness endpoint, then exercise MCP and state.
 import { spawn } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 // The service is a build artifact: `npm run build` produces dist/service/main.mjs.
@@ -8,8 +10,12 @@ const SERVICE = join(import.meta.dirname, "..", "dist", "service", "main.mjs");
 const PORT = 18777;
 const BASE = `http://127.0.0.1:${PORT}`;
 
+// Never write into the user's plugin data: the smoke test files real notes and
+// todos, and those would show up in their next assessment.
+const DATA_DIR = mkdtempSync(join(tmpdir(), "strix-service-check-"));
+
 const child = spawn(process.execPath, [SERVICE], {
-	env: { ...process.env, ASTRAVIA_SERVICE_PORT: String(PORT) },
+	env: { ...process.env, ASTRAVIA_SERVICE_PORT: String(PORT), ASTRAVIA_SERVICE_DATA_DIR: DATA_DIR },
 	stdio: ["ignore", "pipe", "pipe"],
 });
 let stderr = "";
@@ -56,12 +62,21 @@ try {
 		"strix_environment",
 		"strix_sandbox_start",
 		"strix_exec",
+		"strix_browser",
 		"strix_load_skills",
 		"strix_file_finding",
+		"strix_update_finding",
 		"strix_report",
+		"strix_note_create",
+		"strix_todo_create",
+		"strix_coverage_record",
+		"strix_threat_model",
 	]) {
 		assert(names.includes(expected), `missing tool ${expected}: ${names.join(",")}`);
 	}
+	// Plugin-side tools (think, ask, spawn, finish) must NOT appear here: the service
+	// cannot answer them, and advertising them over MCP would produce dead calls.
+	assert(!names.includes("strix_finish"), "service must not advertise plugin-side tools");
 
 	const env = await rpc("tools/call", { name: "strix_environment", arguments: {} });
 	const probe = JSON.parse(env.result.content[0].text);
@@ -90,13 +105,33 @@ try {
 	).json();
 	assert(toolFail.ok === false, "api/tool accepted an unknown tool");
 
+	// The working artefacts have to survive a round trip: the panel draws them from
+	// /api/state, and a broken store would leave the boxes permanently empty.
+	const call = async (name, args) =>
+		(await (await fetch(`${BASE}/api/tool`, {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ name, arguments: args }),
+		})).json());
+	const note = await call("strix_note_create", { title: "probe", content: "round trip" });
+	assert(note.ok === true && note.result.note.id, "note was not stored");
+	const todo = await call("strix_todo_create", { todos: [{ title: "probe todo" }] });
+	assert(todo.ok === true && todo.result.todos.length === 1, `todo was not stored: ${JSON.stringify(todo)}`);
+	const coverage = await call("strix_coverage_record", { surface: "GET /probe", outcome: "clean" });
+	assert(coverage.ok === true && coverage.result.byOutcome.clean === 1, "coverage was not stored");
+	const sarif = await call("strix_report", { format: "sarif" });
+	assert(sarif.ok === true && sarif.result.sarif.version === "2.1.0", "sarif export failed");
+
 	const state = await (await fetch(`${BASE}/api/state`)).json();
 	assert(state.environment && state.sandbox, "state is incomplete");
 	assert(Array.isArray(state.findings), "state has no findings array");
+	assert(state.notes.length === 1 && state.todos.length === 1 && state.coverage.length === 1, "state is missing artefacts");
 
 	console.log(
 		`service ok: tools=${names.length} docker=${probe.docker.ready} skills=${Boolean(probe.skills)}`,
 	);
 } finally {
 	child.kill();
+	rmSync(DATA_DIR, { recursive: true, force: true });
 }
+

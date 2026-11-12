@@ -2,9 +2,13 @@
  * The host-node service: MCP tool surface plus the panel's API.
  *
  * One process, one language. The tools hand a driver Strix's sandbox, its skill
- * library and a findings ledger. Two drivers exist and they share this registry:
- * the host agent (over MCP) and the plugin's own console, which runs the loop on
- * the host's model and calls the same tools over `/api/tool`.
+ * library, a findings ledger and the working artefacts around it (notes, todos,
+ * coverage, threat model). Two drivers exist and they share this registry: the host
+ * agent (over MCP) and the plugin's own console, which runs the loop on the host's
+ * model and calls the same tools over `/api/tool`.
+ *
+ * Names, descriptions and schemas come from `agent/strix-tools`: one catalogue, so a
+ * tool cannot be described one way to the console's model and another way to MCP.
  *
  * Readiness: /api/health/ready answers 200 as soon as the server listens and puts
  * the detail in the body. The host treats a non-2xx probe as a broken process and
@@ -12,13 +16,17 @@
  * crash loop.
  */
 
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { SERVICE_TOOL_NAMES, STRIX_TOOL_SPECS } from "../agent/strix-tools";
+import { CoverageStore } from "./coverage";
 import { dockerReady, imagePresent } from "./docker";
 import * as findings from "./findings";
-import { locateSkills, loadBodies, loadIndex } from "./skills";
+import { NoteStore } from "./notes";
 import { Sandbox, sandboxImage } from "./sandbox";
+import { locateSkills, loadBodies, loadIndex } from "./skills";
+import { TodoStore } from "./todo";
 
 const PORT = Number(process.env.ASTRAVIA_SERVICE_PORT || 0);
 const HOST = process.env.STRIX_BRIDGE_HOST || "127.0.0.1";
@@ -34,6 +42,9 @@ function record(payload: Record<string, unknown>): void {
 }
 
 const sandbox = new Sandbox(record, DATA_DIR);
+const notes = new NoteStore(DATA_DIR);
+const todos = new TodoStore(DATA_DIR);
+const coverage = new CoverageStore(DATA_DIR);
 
 /** The installer writes `.runtime.json` beside the entry; absent in a source checkout. */
 function readVersion(): string {
@@ -64,169 +75,77 @@ async function environment() {
 	};
 }
 
-const TOOLS: {
-	name: string;
-	description: string;
-	inputSchema: Record<string, unknown>;
-	handler: (args: Record<string, unknown>) => Promise<unknown>;
-}[] = [
-	{
-		name: "strix_environment",
-		description:
-			"Check whether this machine can run Strix tooling: the Docker sandbox and the Strix skill library. Call this before your first sandbox command.",
-		inputSchema: { type: "object", properties: {}, additionalProperties: false },
-		handler: () => environment(),
-	},
-	{
-		name: "strix_sandbox_start",
-		description:
-			"Start a Strix sandbox container for this assessment. It carries the full pentest toolchain: nmap, nuclei, ffuf, sqlmap, subfinder, naabu, Caido, agent-browser + chromium, trivy, gitleaks, trufflehog, jwt_tool. Local directories are mounted at /workspace/<name>. Start one session per assessment and keep using it.",
-		inputSchema: {
-			type: "object",
-			properties: {
-				targets: {
-					type: "array",
-					items: { type: "string" },
-					description: "URLs, domains, IPs or repository URLs you are authorised to test.",
-				},
-				localSources: {
-					type: "array",
-					description: "Host directories to expose inside the sandbox workspace.",
-					items: {
-						type: "object",
-						properties: {
-							path: { type: "string" },
-							subdir: { type: "string" },
-							readOnly: { type: "boolean" },
-						},
-						required: ["path"],
-						additionalProperties: false,
-					},
-				},
-				sessionId: { type: "string" },
-			},
-			additionalProperties: false,
-		},
-		handler: (args) => sandbox.start(args),
-	},
-	{
-		name: "strix_exec",
-		description:
-			"Run a shell command inside the Strix sandbox and return stdout, stderr and the exit code. Use it to drive the bundled toolchain, write scripts under /workspace and read their output. Commands are capped at 10 minutes: for anything longer, launch it in the background and poll with another call.",
-		inputSchema: {
-			type: "object",
-			properties: {
-				command: { type: "string", description: "Shell command, run with `sh -c`." },
-				workdir: { type: "string", description: "Working directory inside the sandbox, e.g. /workspace/repo." },
-				timeoutSec: { type: "number" },
-			},
-			required: ["command"],
-			additionalProperties: false,
-		},
-		handler: (args) => sandbox.exec(args),
-	},
-	{
-		name: "strix_sandbox_status",
-		description: "Current sandbox session: running, its targets, image and uptime.",
-		inputSchema: { type: "object", properties: {}, additionalProperties: false },
-		handler: async () => sandbox.status(),
-	},
-	{
-		name: "strix_sandbox_stop",
-		description: "Stop and remove the sandbox container. Call it when the assessment is finished.",
-		inputSchema: { type: "object", properties: {}, additionalProperties: false },
-		handler: () => sandbox.stop(),
-	},
-	{
-		name: "strix_list_skills",
-		description:
-			"List Strix's security knowledge packs, from the installed engine. Each entry has a name, a category and a one-line description.",
-		inputSchema: { type: "object", properties: {}, additionalProperties: false },
-		handler: async () => {
-			const skills = await locateSkills();
-			if (!skills) throw new Error("strix-agent is not installed; the skill library lives inside it");
-			const { entries, categories } = await loadIndex(skills);
-			return {
-				root: skills.root,
-				categories,
-				total: entries.length,
-				skills: entries.map(({ name, category, description, internal }) => ({
-					name,
-					category,
-					description,
-					internal,
-				})),
-			};
-		},
-	},
-	{
-		name: "strix_load_skills",
-		description:
-			"Load the full Markdown of one or more skills, by name or category/name. Load the skills that match the target before testing: they carry the technique, the payloads and the false-positive rules for that class of issue.",
-		inputSchema: {
-			type: "object",
-			properties: { names: { type: "array", items: { type: "string" }, minItems: 1 } },
-			required: ["names"],
-			additionalProperties: false,
-		},
-		handler: async (args) => {
-			const skills = await locateSkills();
-			if (!skills) throw new Error("strix-agent is not installed; the skill library lives inside it");
-			return loadBodies(skills, (args.names as string[] | undefined) ?? []);
-		},
-	},
-	{
-		name: "strix_file_finding",
-		description:
-			"Record a confirmed vulnerability. File one only with evidence you actually produced - a request/response, a payload and its effect, or a code path. Include cvss and cwe when you know them, and put the reproduction in `poc`.",
-		inputSchema: {
-			type: "object",
-			properties: {
-				title: { type: "string" },
-				severity: { type: "string", enum: [...findings.SEVERITIES] },
-				target: { type: "string" },
-				description: { type: "string" },
-				impact: { type: "string" },
-				technicalAnalysis: { type: "string" },
-				poc: { type: "string" },
-				evidence: { type: "string" },
-				remediation: { type: "string" },
-				cvss: { type: "number" },
-				cwe: { type: "string" },
-				cve: { type: "string" },
-				confidence: { type: "string", enum: ["high", "medium", "low"] },
-			},
-			required: ["title", "severity"],
-			additionalProperties: false,
-		},
-		handler: (args) => findings.add(sessionId(), args),
-	},
-	{
-		name: "strix_list_findings",
-		description: "Findings filed so far, ordered by severity, with a per-severity tally.",
-		inputSchema: {
-			type: "object",
-			properties: { severity: { type: "string", enum: [...findings.SEVERITIES] } },
-			additionalProperties: false,
-		},
-		handler: (args) => findings.list(sessionId(), args),
-	},
-	{
-		name: "strix_report",
-		description: "Render the Markdown penetration-test report from the findings filed so far.",
-		inputSchema: {
-			type: "object",
-			properties: { targets: { type: "array", items: { type: "string" } } },
-			additionalProperties: false,
-		},
-		handler: (args) => findings.report(sessionId(), args),
-	},
-];
-
 /** Findings are keyed by the sandbox session, so one assessment has one ledger. */
 function sessionId(): string {
 	return sandbox.status().sessionId ?? "default";
 }
+
+type Handler = (args: Record<string, unknown>) => Promise<unknown>;
+
+/**
+ * One handler per service tool, keyed by the name in the shared catalogue.
+ *
+ * Anything the plugin handles itself (`strix_think`, `strix_ask_user`, the agent
+ * graph) is absent here on purpose: those need the model or the UI, which the
+ * renderer owns.
+ */
+const HANDLERS: Record<string, Handler> = {
+	strix_environment: () => environment(),
+
+	strix_sandbox_start: (args) => sandbox.start(args),
+	strix_exec: (args) => sandbox.exec(args),
+	strix_sandbox_status: async () => sandbox.status(),
+	strix_sandbox_stop: () => sandbox.stop(),
+	strix_browser: (args) => sandbox.browser(args),
+
+	strix_list_skills: async () => {
+		const skills = await locateSkills();
+		if (!skills) throw new Error("strix-agent is not installed; the skill library lives inside it");
+		const { entries, categories } = await loadIndex(skills);
+		return {
+			root: skills.root,
+			categories,
+			total: entries.length,
+			skills: entries.map(({ name, category, description, internal }) => ({ name, category, description, internal })),
+		};
+	},
+	strix_load_skills: async (args) => {
+		const skills = await locateSkills();
+		if (!skills) throw new Error("strix-agent is not installed; the skill library lives inside it");
+		return loadBodies(skills, (args.names as string[] | undefined) ?? []);
+	},
+
+	strix_file_finding: (args) => findings.add(sessionId(), args),
+	strix_update_finding: (args) => findings.update(sessionId(), args),
+	strix_list_findings: (args) => findings.list(sessionId(), args),
+	strix_report: (args) => findings.report(sessionId(), args, { version }),
+
+	strix_note_create: (args) => notes.create(sessionId(), args),
+	strix_note_list: (args) => notes.list(sessionId(), args),
+	strix_note_get: (args) => notes.get(sessionId(), args),
+	strix_note_update: (args) => notes.update(sessionId(), args),
+	strix_note_delete: (args) => notes.delete(sessionId(), args),
+
+	strix_todo_create: (args) => todos.create(sessionId(), args),
+	strix_todo_update: (args) => todos.update(sessionId(), args),
+	strix_todo_list: () => todos.list(sessionId()),
+
+	strix_coverage_record: (args) => coverage.record(sessionId(), args),
+	strix_coverage_list: (args) => coverage.list(sessionId(), args),
+	strix_threat_model: (args) => coverage.threatModel(sessionId(), args),
+};
+
+/** The catalogue, narrowed to the tools this process answers - specs and handlers agree. */
+const TOOLS = STRIX_TOOL_SPECS.filter((spec) => spec.handler === "service").map((spec) => {
+	const handler = HANDLERS[spec.name];
+	if (!handler) throw new Error(`service tool ${spec.name} has no handler`);
+	return { name: spec.name, description: spec.description, inputSchema: spec.parameters, handler };
+});
+
+// A spec added without a handler (or the reverse) is a build-time defect, not a
+// runtime surprise: fail fast instead of serving a tool that 500s on first call.
+const missing = SERVICE_TOOL_NAMES.filter((name) => !TOOLS.some((tool) => tool.name === name));
+if (missing.length) throw new Error(`service tools declared but not wired: ${missing.join(", ")}`);
 
 async function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
 	const chunks: Buffer[] = [];
@@ -309,19 +228,28 @@ const server = createServer(async (req, res) => {
 			}
 		}
 		if (url.pathname === "/api/state") {
-			const [env, list] = await Promise.all([
+			const [env, list, noteList, todoList, cover, threat] = await Promise.all([
 				environment().catch((error) => ({ error: String(error) })),
 				findings.list(sessionId()).catch(() => ({ count: 0, bySeverity: {}, findings: [] })),
+				notes.list(sessionId()).catch(() => ({ count: 0, notes: [] })),
+				todos.list(sessionId()).catch(() => ({ count: 0, todos: [] })),
+				coverage.list(sessionId()).catch(() => ({ count: 0, byOutcome: {}, entries: [] })),
+				coverage.threatModel(sessionId()).catch(() => ({ content: "", targets: [], updated_at: null })),
 			]);
 			return json(res, 200, {
 				environment: env,
 				sandbox: sandbox.status(),
 				findings: (list as { findings?: unknown }).findings ?? [],
+				notes: (noteList as { notes?: unknown }).notes ?? [],
+				todos: (todoList as { todos?: unknown }).todos ?? [],
+				coverage: (cover as { entries?: unknown }).entries ?? [],
+				coverageTally: (cover as { byOutcome?: unknown }).byOutcome ?? {},
+				threatModel: threat,
 				logTail: log.slice(-40),
 			});
 		}
 		if (url.pathname === "/api/report") {
-			return json(res, 200, await findings.report(sessionId(), {}));
+			return json(res, 200, await findings.report(sessionId(), {}, { version }));
 		}
 		if (url.pathname === "/api/sandbox/stop" && req.method === "POST") {
 			return json(res, 200, await sandbox.stop());

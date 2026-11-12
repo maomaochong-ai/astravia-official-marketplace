@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { runArgs } from "../service/docker";
+import { tally as coverageTally } from "../service/coverage";
 import { bySeverity, normalizeSeverity, renderReport, tally, type Finding } from "../service/findings";
+import { toSarif } from "../service/sarif";
+import { sortTodos } from "../service/todo";
 import { parseFrontmatter } from "../service/skills";
 import { containerName, mountsFrom, quote, tail } from "../service/sandbox";
 
@@ -103,5 +106,43 @@ describe("findings", () => {
 
 	it("says so plainly when nothing was found", () => {
 		expect(renderReport([], [])).toContain("No findings were filed.");
+	});
+});
+
+describe("assessment artefacts", () => {
+	it("maps a finding to one SARIF rule and result, with severity as security-severity", () => {
+		const sarif = toSarif([finding({ code_locations: [{ file: "src/orders.py", start_line: 42 }] })], { version: "1.0.0" });
+		const run = sarif.runs[0]!;
+		expect(run.tool.driver.version).toBe("1.0.0");
+		expect(run.tool.driver.rules.map((rule) => rule.id)).toEqual(["CWE-639"]);
+		expect(run.results).toHaveLength(1);
+		expect(run.results[0]).toMatchObject({
+			ruleId: "CWE-639",
+			level: "error",
+			locations: [{ physicalLocation: { artifactLocation: { uri: "src/orders.py" }, region: { startLine: 42 } } }],
+		});
+	});
+
+	it("groups findings of the same class under one rule", () => {
+		const sarif = toSarif([finding({ id: "1" }), finding({ id: "2" })]);
+		expect(sarif.runs[0]!.tool.driver.rules).toHaveLength(1);
+		expect(sarif.runs[0]!.results).toHaveLength(2);
+	});
+
+	it("writes coverage as a tally, not prose", () => {
+		const tally = coverageTally([
+			{ id: "1", surface: "a", outcome: "clean", technique: "", evidence: "", note: "", created_at: "" },
+			{ id: "2", surface: "b", outcome: "vulnerable", technique: "", evidence: "", note: "", created_at: "" },
+		]);
+		expect(tally).toEqual({ vulnerable: 1, clean: 1, skipped: 0 });
+	});
+
+	it("sorts the plan the way the panel shows it: in progress, then pending, then done", () => {
+		const todos = sortTodos([
+			{ id: "1", title: "done", status: "done", priority: "normal", created_at: "", updated_at: "" },
+			{ id: "2", title: "pending", status: "pending", priority: "normal", created_at: "", updated_at: "" },
+			{ id: "3", title: "working", status: "in_progress", priority: "normal", created_at: "", updated_at: "" },
+		]);
+		expect(todos.map((todo) => todo.title)).toEqual(["working", "pending", "done"]);
 	});
 });

@@ -48,7 +48,8 @@ npm run check           # typecheck + test + 服务冒烟
 - **对话的模型优先**，即使它不在 `listModels()` 的文本模型列表里——宿主是权威，标签从 key 拆。
 - 聊天里换模型，插件顶部跟着换（`conversation-changed` → 重新解析）。
 - `ctx.ai.chat()` 是真 loop，在 `agent/strix-agent.ts`；`chat` 无状态，转写由插件持有并整轮重放。
-- 工具走桥接服务同一份注册表（`POST /api/tool`）；MCP 面（`/mcp`）仍在，宿主 agent 直接驱动同一套工具，两条路到达同一个沙箱。
+- 工具目录只有一份：`agent/strix-tools.ts` 的 `STRIX_TOOL_SPECS`。每个 spec 标明 `handler: "service" | "plugin"`，服务端只认领 `service` 那一半并在启动时校验 handler 齐备；插件侧（`think` / `ask_user` / `spawn` / `wait` / `view_agents` / `finish`）在 loop 里直接回答，因为它们要模型或要界面。
+- 宿主 agent 走 MCP 时看到的是同一批 `service` 工具；插件自己的 loop 走 `POST /api/tool`。两条路到达同一个沙箱与同一份发现台账。
 
 所以一次扫描不需要第二份凭据，也不会产生第二份对话。
 
@@ -72,7 +73,12 @@ npm run check           # typecheck + test + 服务冒烟
 | `src/service/sandbox.ts` | 容器生命周期与命令执行 |
 | `src/service/docker.ts` | docker CLI 封装（run/exec/rm/pull） |
 | `src/service/skills.ts` | 从已安装引擎读取技能库 Markdown |
-| `src/service/findings.ts` | 发现项台账与 Markdown 报告 |
+| `src/service/findings.ts` | 发现项台账、Markdown 报告、SARIF 导出 |
+| `src/service/notes.ts` | 评估笔记（增删改查） |
+| `src/service/todo.ts` | 计划清单，排序与面板一致 |
+| `src/service/coverage.ts` | 测试面覆盖记录 + 威胁模型 |
+| `src/service/sarif.ts` | SARIF 2.1.0（CI 里注解 PR） |
+| `src/service/paths.ts` | 唯一的数据目录解析：环境变量，否则 `~/.astravia/plugin-data/strix` |
 | `dist/service/main.mjs` | 上面这些的打包产物（生成物，随包发布，不进 Git） |
 | `agent/skills/` | 上游 9 个对外技能，原样拷贝 |
 
@@ -81,11 +87,12 @@ npm run check           # typecheck + test + 服务冒烟
 1. **全仓 TypeScript，生成物在 `dist/`。** 服务端没有 Python 层：沙箱走 docker CLI，技能从已安装的 `strix-agent` 包里读 Markdown。宿主只认 JavaScript 入口，`scripts/build-service.mjs` 用 esbuild 打成 `dist/service/main.mjs`，并拒绝产物目录出现 `.py`。
 2. **界面照抄，模型借用。** 复刻启动页与扫描页的排版、文案与配色（包括词标与 `enter launch scan` 这行提示），差异只有一处：模型那行显示的是宿主模型，而不是 `STRIX_LLM`。
 3. **agent loop 在插件里，不在服务里。** 服务是无状态的容器管理者；loop 需要模型，而模型只有渲染进程侧的 `ctx.ai` 有。loop 放渲染层还让"停止"能立刻中断下一次模型调用。
-4. **工具一次写路径。** `/api/tool` 与 `/mcp` 共用 `TOOLS` 注册表与同一批 handler，避免两套工具描述漂移。
+4. **工具目录只有一份。** `STRIX_TOOL_SPECS` 同时供给 MCP 面与 `/api/tool`，`handler` 字段决定由谁回答；服务端启动时校验“声明的都接上了”，缺一个 handler 直接起不来。
 5. **失败不终止。** 工具抛错变成 `isError` 的 tool result 回灌给模型继续；只有模型调用本身失败才结束本轮。
 6. **服务声明全部工件。** 宿主 `resolve()` 拒绝启动未经 `install()` 写入的运行时，`install()` 要求 payload 与 `platform.artifacts` 一一对应并校验 SHA-256。
 7. **就绪语义。** `/api/health/ready` 一旦监听就回 200，细节放 body：非 2xx 会被宿主当成进程坏掉并重启。
-8. **技能是插件内部实现。** `skillPresentation.defaultVisibility: "hidden"`：9 个技能仍随 `agent.skillPaths` 加载、agent 可调用，但能力中心、命令菜单与 Skill 选择器里只有 **Strix 的名字和图标**。
+8. **数据目录只有一个出口。** 所有存储走 `service/paths.ts`：宿主给了 `ASTRAVIA_SERVICE_DATA_DIR` 就用它，否则 `~/.astravia/plugin-data/strix`——绝不用进程 cwd（上一版在 checkout 里跑服务，把 `notes/`、`todos/` 写进了插件目录）。
+9. **技能是插件内部实现。** `skillPresentation.defaultVisibility: "hidden"`：9 个技能仍随 `agent.skillPaths` 加载、agent 可调用，但能力中心、命令菜单与 Skill 选择器里只有 **Strix 的名字和图标**。
 
 ## 改动时注意
 

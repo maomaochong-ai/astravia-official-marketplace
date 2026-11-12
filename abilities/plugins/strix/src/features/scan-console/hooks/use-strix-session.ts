@@ -20,11 +20,28 @@ import type { ConversationEvent, ConversationState, PluginAiApi, PluginAiModel }
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StrixAgent, type AgentEvent } from "../../../agent/strix-agent";
 import type { BridgeClient } from "../../../domain/bridge-client";
-import { normalizeFindings, normalizeProbe, normalizeSandbox } from "../../../domain/bridge-payloads";
+import {
+	normalizeCoverage,
+	normalizeFindings,
+	normalizeNotes,
+	normalizeProbe,
+	normalizeSandbox,
+	normalizeTodos,
+} from "../../../domain/bridge-payloads";
+import type { AgentStatus } from "../../../agent/strix-agent";
 import { hostToolCall, resolveModel, workspaceLabel } from "../../../domain/host-sync";
 import { parseLaunchPrompt } from "../../../domain/launch-request";
 import type { ModelChoice } from "../../../domain/model-label";
-import type { BridgeEvent, EnvironmentProbe, SandboxStatus, StrixFinding, TraceEntry } from "../../../runtime-contract";
+import type {
+	BridgeEvent,
+	CoverageOutcome,
+	EnvironmentProbe,
+	NoteSummary,
+	SandboxStatus,
+	StrixFinding,
+	TodoItem,
+	TraceEntry,
+} from "../../../runtime-contract";
 
 const TRACE_LIMIT = 400;
 const LOG_LIMIT = 6;
@@ -44,19 +61,29 @@ export interface StrixSessionModel {
 	sandbox: SandboxStatus;
 	findings: StrixFinding[];
 	trace: TraceEntry[];
+	/** The assessment plan, the notes it keeps and what it has covered. */
+	todos: TodoItem[];
+	notes: NoteSummary[];
+	coverage: CoverageOutcome[];
+	/** Specialist agents and their status, as reported by the loop. */
+	agents: AgentStatus[];
 	model?: ModelChoice;
 	/** True when the model is the one the active conversation runs on. */
 	modelFromConversation: boolean;
-	models: ModelChoice[];
 	/** Folder name of the conversation's workspace, shown in the status row. */
 	workspace?: string;
-	/** The host conversation is generating a turn right now. */
 	hostStreaming: boolean;
 	busy: boolean;
+	/** A question from `strix_ask_user` that is waiting for the operator. */
+	question?: { text: string; options?: string[] };
+	/** Set when the agent called `strix_finish`; the report is already written. */
+	finished?: { summary: string };
 	/** Start an assessment from the launch prompt. */
 	start: (prompt: string) => Promise<void>;
 	/** Continue the assessment from the scan composer. */
 	send: (text: string) => Promise<void>;
+	/** Answer a pending question; the composer submits through this while one is open. */
+	answer: (text: string) => Promise<void>;
 	/** Abort the loop and stop the container. */
 	stop: () => Promise<void>;
 	/** Re-read state after a failure. */
@@ -81,12 +108,20 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 	const [sandbox, setSandbox] = useState<SandboxStatus>({ running: false, targets: [] });
 	const [findings, setFindings] = useState<StrixFinding[]>([]);
 	const [trace, setTrace] = useState<TraceEntry[]>([]);
+	const [todos, setTodos] = useState<TodoItem[]>([]);
+	const [notes, setNotes] = useState<NoteSummary[]>([]);
+	const [coverage, setCoverage] = useState<CoverageOutcome[]>([]);
+	const [agents, setAgents] = useState<AgentStatus[]>([]);
+	const [question, setQuestion] = useState<StrixSessionModel["question"]>();
+	const [finished, setFinished] = useState<StrixSessionModel["finished"]>();
 	const [models, setModels] = useState<PluginAiModel[]>([]);
 	const [defaultModel, setDefaultModel] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
 
 	const seq = useRef(0);
 	const agentRef = useRef<StrixAgent | null>(null);
+	/** Resolver for the question currently on screen; `answer()` calls it. */
+	const answerRef = useRef<((text: string) => void) | null>(null);
 
 	// The conversation's model is the authority; recomputed on every conversation
 	// change so a model switch in the chat moves this panel with it.
@@ -119,6 +154,10 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 			const state = await client.state();
 			const probe = normalizeProbe(state?.environment);
 			setSandbox(normalizeSandbox(state?.sandbox));
+			setFindings(normalizeFindings(state?.findings));
+			setTodos(normalizeTodos(state?.todos));
+			setNotes(normalizeNotes(state?.notes));
+			setCoverage(normalizeCoverage(state?.coverage));
 			setFindings(normalizeFindings(state?.findings));
 			if (probe) {
 				setEnvironment(probe);
@@ -222,12 +261,65 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 						.then((list) => setFindings(normalizeFindings(list)))
 						.catch(() => undefined);
 					break;
+				case "agent":
+					setAgents((previous) => [...previous.filter((item) => item.name !== event.agent.name), event.agent]);
+					break;
+				case "question":
+					setQuestion({ text: event.question, ...(event.options ? { options: event.options } : {}) });
+					pushTrace({ kind: "note", label: event.question });
+					break;
+				case "finished":
+					setFinished({ summary: event.summary });
+					pushTrace({ kind: "note", label: event.summary });
+					break;
 			}
 		},
 		[client, pushTrace],
 	);
 
-	const agent = useMemo(() => new StrixAgent({ ai, bridge: client, emit: onAgentEvent }), [ai, client, onAgentEvent]);
+	/**
+	 * The operator's answer, and the report a `finish` writes.
+	 *
+	 * `askUser` parks the loop on a promise: the composer submits into `answer()`, which
+	 * resolves it. `finish` renders the report through the service so the artefact lands
+	 * next to the findings instead of living only in this tab.
+	 */
+	const local = useMemo(
+		() => ({
+			askUser: (questionText: string, options?: string[]) =>
+				new Promise<string>((resolve) => {
+					setQuestion({ text: questionText, ...(options ? { options } : {}) });
+					answerRef.current = (value: string) => {
+						setQuestion(undefined);
+						answerRef.current = null;
+						resolve(value);
+					};
+				}),
+			finish: async ({ executiveSummary, targets }: { executiveSummary: string; targets?: string[] }) => {
+				await client
+					.callTool("strix_report", {
+						executiveSummary,
+						...(targets?.length ? { targets } : {}),
+					})
+					.then(() => client.callTool("strix_report", { format: "sarif" }))
+					.catch(() => undefined);
+				setPhase("done");
+			},
+		}),
+		[client],
+	);
+
+	const answer = useCallback(async (text: string) => {
+		const resolve = answerRef.current;
+		if (!resolve) return;
+		pushTrace({ kind: "user", label: text });
+		resolve(text);
+	}, [pushTrace]);
+
+	const agent = useMemo(
+		() => new StrixAgent({ ai, bridge: client, emit: onAgentEvent, local }),
+		[ai, client, local, onAgentEvent],
+	);
 
 	// Ownership: aborting on unmount stops a loop whose tab has gone away, so a
 	// closed panel cannot keep spending model calls in the background.
@@ -355,7 +447,7 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 		setPhase((current) => (current === "scanning" ? "done" : current));
 	}, [client]);
 
-	return useMemo(
+return useMemo(
 		() => ({
 			phase,
 			log,
@@ -363,14 +455,20 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 			sandbox,
 			findings,
 			trace,
+			todos,
+			notes,
+			coverage,
+			agents,
+			question,
+			finished,
 			model: resolved.choice,
 			modelFromConversation: resolved.fromConversation,
-			models: models.map((item) => ({ modelKey: item.modelKey, name: item.name, provider: item.provider })),
 			workspace: workspaceLabel(conversation?.cwd),
 			hostStreaming: Boolean(conversation?.isStreaming),
 			busy,
 			start,
 			send,
+			answer,
 			stop,
 			refresh,
 		}),
@@ -381,6 +479,12 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 			sandbox,
 			findings,
 			trace,
+			todos,
+			notes,
+			coverage,
+			agents,
+			question,
+			finished,
 			resolved,
 			models,
 			conversation?.cwd,
@@ -388,6 +492,7 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 			busy,
 			start,
 			send,
+			answer,
 			stop,
 			refresh,
 		],

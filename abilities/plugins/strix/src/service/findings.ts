@@ -9,9 +9,11 @@
  * would put user data inside the shipped archive.
  */
 
+import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { resolveDataDir, sessionKey } from "./paths";
+import { toSarif } from "./sarif";
 
 export const SEVERITIES = ["critical", "high", "medium", "low", "info"] as const;
 export type Severity = (typeof SEVERITIES)[number];
@@ -31,6 +33,7 @@ export interface Finding {
 	cwe: string;
 	cve: string;
 	confidence: string;
+	code_locations?: { file: string; start_line?: number; end_line?: number }[];
 	created_at: string;
 }
 
@@ -41,13 +44,11 @@ export interface FindingsFile {
 }
 
 function dataDir(): string {
-	const base = process.env.ASTRAVIA_SERVICE_DATA_DIR || join(homedir(), ".astravia", "plugin-data", "strix");
-	return join(base, "findings");
+	return join(resolveDataDir(), "findings");
 }
 
 function fileFor(sessionId: string): string {
-	const safe = sessionId.replace(/[^A-Za-z0-9_-]/g, "") || "default";
-	return join(dataDir(), `${safe}.json`);
+	return join(dataDir(), `${sessionKey(sessionId)}.json`);
 }
 
 export async function read(sessionId: string): Promise<Finding[]> {
@@ -80,6 +81,35 @@ export function normalizeSeverity(value: unknown): Severity {
 	return (SEVERITIES as readonly string[]).includes(text) ? (text as Severity) : "info";
 }
 
+/** The mutable half of a finding: what an agent may revise after further proof. */
+const EDITABLE = [
+	"title",
+	"target",
+	"description",
+	"impact",
+	"technicalAnalysis",
+	"poc",
+	"evidence",
+	"remediation",
+	"cwe",
+	"cve",
+	"confidence",
+] as const;
+
+const FIELD_OF: Record<(typeof EDITABLE)[number], keyof Finding> = {
+	title: "title",
+	target: "target",
+	description: "description",
+	impact: "impact",
+	technicalAnalysis: "technical_analysis",
+	poc: "poc_description",
+	evidence: "evidence",
+	remediation: "remediation_steps",
+	cwe: "cwe",
+	cve: "cve",
+	confidence: "confidence",
+};
+
 export async function add(sessionId: string, params: Record<string, unknown>): Promise<{ finding: Finding } & FindingsFile> {
 	const title = String(params.title ?? "").trim();
 	if (!title) throw new Error("title is required");
@@ -88,8 +118,10 @@ export async function add(sessionId: string, params: Record<string, unknown>): P
 		throw new Error(`severity must be one of ${SEVERITIES.join(", ")}`);
 	}
 
+	// The id is ours: a caller-supplied one could collide with an existing finding or
+	// overwrite the report's links.
 	const finding: Finding = {
-		id: String(params.id ?? Math.random().toString(16).slice(2, 10)),
+		id: randomUUID().replace(/-/g, "").slice(0, 8),
 		title,
 		severity: raw as Severity,
 		target: String(params.target ?? ""),
@@ -103,6 +135,17 @@ export async function add(sessionId: string, params: Record<string, unknown>): P
 		cwe: String(params.cwe ?? ""),
 		cve: String(params.cve ?? ""),
 		confidence: String(params.confidence ?? ""),
+		...(Array.isArray(params.codeLocations)
+			? {
+					code_locations: (params.codeLocations as Record<string, unknown>[])
+						.filter((item) => typeof item.file === "string" && item.file)
+						.map((item) => ({
+							file: String(item.file),
+							...(typeof item.startLine === "number" ? { start_line: item.startLine } : {}),
+							...(typeof item.endLine === "number" ? { end_line: item.endLine } : {}),
+						})),
+				}
+				: {}),
 		created_at: new Date().toISOString(),
 	};
 
@@ -110,6 +153,27 @@ export async function add(sessionId: string, params: Record<string, unknown>): P
 	findings.push(finding);
 	await write(sessionId, findings);
 	return { finding, count: findings.length, bySeverity: tally(findings), findings: bySeverity(findings) };
+}
+
+/** Revise one finding by id, or by exact title when the caller does not have the id. */
+export async function update(sessionId: string, params: Record<string, unknown>): Promise<{ finding: Finding } & FindingsFile> {
+	const id = String(params.id ?? "").trim();
+	const title = String(params.title ?? "").trim();
+	if (!id && !title) throw new Error("id or title is required");
+
+	const findings = await read(sessionId);
+	const target = id ? findings.find((item) => item.id === id) : findings.find((item) => item.title === title);
+	if (!target) throw new Error(`no finding matched ${id || title}`);
+
+	for (const key of EDITABLE) {
+		const value = params[key];
+		if (typeof value === "string") (target[FIELD_OF[key]] as string) = value;
+	}
+	if (typeof params.cvss === "number") target.cvss = params.cvss;
+	if (typeof params.severity === "string") target.severity = normalizeSeverity(params.severity);
+
+	await write(sessionId, findings);
+	return { finding: target, count: findings.length, bySeverity: tally(findings), findings: bySeverity(findings) };
 }
 
 export async function list(sessionId: string, params: Record<string, unknown> = {}): Promise<FindingsFile> {
@@ -129,10 +193,15 @@ const SECTIONS: [string, keyof Finding][] = [
 ];
 
 /** Markdown report, laid out like the one Strix writes at the end of a scan. */
-export function renderReport(findings: readonly Finding[], targets: readonly string[]): string {
+export function renderReport(
+	findings: readonly Finding[],
+	targets: readonly string[],
+	executiveSummary = "",
+): string {
 	const ordered = bySeverity(findings);
 	const counts = tally(ordered);
 	const lines: string[] = ["# Penetration test report", ""];
+	if (executiveSummary.trim()) lines.push(executiveSummary.trim(), "");
 	if (targets.length) lines.push("## Targets", "", ...targets.map((target) => `- ${target}`), "");
 	lines.push(`## Findings (${ordered.length})`, "");
 	const summary = SEVERITIES.filter((name) => counts[name] > 0)
@@ -165,11 +234,20 @@ export function renderReport(findings: readonly Finding[], targets: readonly str
 export async function report(
 	sessionId: string,
 	params: Record<string, unknown> = {},
-): Promise<{ markdown: string; path: string; count: number; bySeverity: Record<Severity, number> }> {
+	options: { version?: string } = {},
+): Promise<{ markdown?: string; sarif?: unknown; path: string; count: number; bySeverity: Record<Severity, number> }> {
 	const findings = await read(sessionId);
 	const targets = Array.isArray(params.targets) ? params.targets.map(String) : [];
-	const markdown = renderReport(findings, targets);
 	await mkdir(dataDir(), { recursive: true });
+
+	if (params.format === "sarif") {
+		const sarif = toSarif(findings, { version: options.version ?? "0.0.0", targets });
+		const path = join(dataDir(), "findings.sarif");
+		await writeFile(path, `${JSON.stringify(sarif, null, 2)}\n`, "utf8");
+		return { sarif, path, count: findings.length, bySeverity: tally(findings) };
+	}
+
+	const markdown = renderReport(findings, targets, String(params.executiveSummary ?? ""));
 	const path = join(dataDir(), "report.md");
 	await writeFile(path, markdown, "utf8");
 	return { markdown, path, count: findings.length, bySeverity: tally(findings) };

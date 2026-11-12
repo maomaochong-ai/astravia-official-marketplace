@@ -111,11 +111,21 @@ const scanProps = {
 	sandbox: { running: true, sessionId: "s1", targets: ["example.com"] },
 	findings: [],
 	trace: [run()],
+	todos: [
+		{ id: "t1", title: "Test the auth boundary", status: "in_progress", priority: "high" },
+		{ id: "t2", title: "Fuzz the search endpoint", status: "done", priority: "normal" },
+	],
+	notes: [{ id: "n1", title: "Session cookie is not HttpOnly", category: "auth", updatedAt: "" }],
+	coverage: [
+		{ surface: "GET /api/orders", outcome: "vulnerable" as const },
+		{ surface: "POST /login", outcome: "clean" as const },
+	],
 	workspace: "strix",
 	hostStreaming: false,
 	busy: false,
 	onSend: () => undefined,
 	onStop: () => undefined,
+	agents: [{ name: "auth-specialist", status: "running" as const, task: "Test the login flow" }],
 };
 
 describe("scan screen", () => {

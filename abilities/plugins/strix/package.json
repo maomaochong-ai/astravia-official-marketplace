@@ -1,10 +1,10 @@
 {
   "name": "@astravia-marketplace/strix",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build && node scripts/build-service.mjs",
+    "build": "vite build && node scripts/build-service.mjs && node scripts/stamp-service.mjs",
     "build:service": "node scripts/build-service.mjs",
     "test": "vitest run",
     "check:service": "node scripts/check-service.mjs",

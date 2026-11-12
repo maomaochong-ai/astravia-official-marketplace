@@ -7,8 +7,17 @@
  * in a terminal.
  */
 
+import type { AgentStatus } from "../../../agent/strix-agent";
 import type { ModelChoice } from "../../../domain/model-label";
-import type { EnvironmentProbe, SandboxStatus, StrixFinding, TraceEntry } from "../../../runtime-contract";
+import type {
+	CoverageOutcome,
+	EnvironmentProbe,
+	NoteSummary,
+	SandboxStatus,
+	StrixFinding,
+	TodoItem,
+	TraceEntry,
+} from "../../../runtime-contract";
 import type { LogLine, SessionPhase } from "../hooks/use-strix-session";
 import { ConsoleBoundary } from "./console-boundary";
 import { LaunchScreen } from "./launch-screen";
@@ -28,6 +37,13 @@ export interface StrixTabProps {
 	sandbox: SandboxStatus;
 	findings: readonly StrixFinding[];
 	trace: readonly TraceEntry[];
+	todos: readonly TodoItem[];
+	notes: readonly NoteSummary[];
+	coverage: readonly CoverageOutcome[];
+	agents: readonly AgentStatus[];
+	question?: { text: string; options?: string[] };
+	/** Answers the pending question; the composer submits through this while one is open. */
+	answer: (text: string) => Promise<void>;
 	busy: boolean;
 	start: (prompt: string) => Promise<void>;
 	send: (text: string) => Promise<void>;
@@ -58,9 +74,14 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					environment={props.environment}
 					sandbox={props.sandbox}
 					findings={props.findings}
+					todos={props.todos}
+					notes={props.notes}
+					coverage={props.coverage}
+					agents={props.agents}
+					{...(props.question ? { question: props.question } : {})}
 					trace={props.trace}
 					busy={props.busy}
-					onSend={(value) => void props.send(value)}
+					onSend={(value) => void (props.question ? props.answer(value) : props.send(value))}
 					onStop={() => void props.stop()}
 				/>
 			) : (

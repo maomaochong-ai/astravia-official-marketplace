@@ -17,7 +17,9 @@ interface of the CLI and keeps Strix's sandbox and tradecraft; the model comes f
 | Input action `strix.activate` | One click opens the tab; while active, every prompt carries Strix's method (`decoratePrompt`). |
 | Agent loop | `src/agent/strix-agent.ts`: `ctx.ai.chat()` in a loop over the bridge's tools, with the transcript kept here. Stop aborts before the next model call. |
 | Host binding | `useActiveConversation()` (`agent.session.read`): the tab runs on **the conversation's model**, mounts **the conversation's folder** as the sandbox workspace, and mirrors the host agent's own `strix_*` tool calls into the trace. Switch model in the chat and the panel follows. |
-| MCP tools | `strix_environment`, `strix_sandbox_start`, `strix_exec`, `strix_sandbox_status`, `strix_sandbox_stop`, `strix_list_skills`, `strix_load_skills`, `strix_file_finding`, `strix_list_findings`, `strix_report` — the host agent can still drive the same sandbox over MCP. |
+| Tools | 23 of them, described once in `src/agent/strix-tools.ts` and served over both MCP and `/api/tool`: the sandbox (`strix_environment`, `strix_sandbox_start`, `strix_exec`, `strix_sandbox_status`, `strix_sandbox_stop`), the browser (`strix_browser`), skills, findings (`file`/`update`/`list`) and the report (Markdown or SARIF), the working artefacts (`strix_note_*`, `strix_todo_*`, `strix_coverage_*`, `strix_threat_model`), and the lifecycle calls the plugin answers itself (`strix_think`, `strix_ask_user`, `strix_spawn_agent`, `strix_wait_agents`, `strix_view_agents`, `strix_finish`). |
+| Multi-agent | The lead can spawn up to three named specialists (`strix_spawn_agent`), each with its own transcript but the **same** sandbox and findings ledger; their status and summaries appear in the Agents box. |
+| Operator in the loop | `strix_ask_user` parks the loop on a question; the scan composer becomes the answer box until it is answered. |
 | Skills | The nine upstream consumer skills ship in `agent/skills/` but are declared `hidden`: the capability page, slash menu and skill picker show **Strix** — name and icon — not nine lookalikes. The agent still loads them. |
 
 ## The screen
@@ -29,6 +31,7 @@ Two phases, traced from upstream's Go TUI:
 | `setup.go:setupBody` — wordmark, tagline, composer with the model line inside, feedback log, `enter launch scan / ctrl+c quit / vX` | `features/scan-console/components/launch-screen.tsx` |
 | `view.go:mainView` — bordered trace, status row, composer, sidebar boxes | `features/scan-console/components/scan-screen.tsx` |
 | `render/registry.go` — `→ Using tool <name>`, arguments, status glyph | `features/scan-console/components/trace-block.tsx` |
+| `todos` / `notes` / `coverage` / agents panels | `features/scan-console/components/artefact-panels.tsx` |
 | `render/styles.go` — the report palette | the `--sx-*` variables in `src/style.css` |
 
 The one line that differs is the model chip: upstream prints `STRIX_LLM`, this
@@ -38,6 +41,29 @@ Styling is deliberately fixed to the terminal's surface — black, monospace, St
 green — instead of host theme tokens, because a themed card no longer looks like the
 tool. Only `astra-strix-*` classes are defined.
 
+## What is aligned with upstream, and what is not
+
+Aligned: the screen, the tool catalogue (sandbox, browser, skills, findings, report in
+Markdown or SARIF, notes, todos, coverage, threat model, finish), the multi-agent
+split, an operator-in-the-loop question, and honest coverage in the report.
+
+Not aligned, on purpose:
+
+- **Caido proxy tools** (`list_requests`, `view_request`, `repeat_request`, `sitemap`).
+  Caido runs in the container; the agent drives it over `strix_exec`, but the
+  structured proxy API is not wrapped. Upstream's proxy tools assume it owns the Caido
+  client; here that client would be a second implementation of container state.
+- **`web_search`.** Upstream needs an Exa/Perplexity key of its own; those keys stay
+  out of a plugin whose whole premise is "no second credential".
+- **Python exploit runtime / `apply_patch` / `view_image`.** The container has them
+  and `strix_exec` reaches them; dedicated wrappers would add nothing the agent cannot
+  already do with one command.
+- **`strix view`.** The run viewer is a local web app in the CLI; here the tab *is* the
+  view, and `/api/state` already carries everything it renders.
+
+If you need one of the missing four, say which: the proxy wrapper is the only one
+that is real work rather than a synonym for `strix_exec`.
+
 ## Architecture
 
 ```text
@@ -45,6 +71,8 @@ src/index.tsx                 registration only (tab + input action)
 src/runtime.ts                strix-bridge lifecycle via ctx.services
 src/agent/                    the loop, its tools, its system prompt
 src/domain/bridge-client.ts   HTTP + SSE client
+src/domain/host-sync.ts       model / workspace / host tool-call mirroring
+src/domain/bridge-payloads.ts response narrowing for every artefact
 src/domain/launch-request.ts  prompt -> targets vs instruction (setup.go parity)
 src/domain/model-label.ts     provider/model split and default-model choice
 src/features/scan-console/    the two screens, the state machine
@@ -54,7 +82,12 @@ src/service/                  the same service, authored in TypeScript
   sandbox.ts                  container lifecycle and command execution
   docker.ts                   docker CLI plumbing (run/exec/rm/pull)
   skills.ts                   reads Strix's skill library from the installed engine
-  findings.ts                 findings ledger and Markdown report
+  findings.ts                 findings ledger, Markdown report, SARIF handoff
+  notes.ts                    assessment notes (create/list/get/update/delete)
+  todo.ts                     the plan, sorted the way the panel shows it
+  coverage.ts                 covered surfaces + the threat model
+  sarif.ts                    SARIF 2.1.0 for CI
+  paths.ts                    one data-directory resolver (env, else ~/.astravia)
 dist/service/main.mjs         bundled output of src/service (generated at build, shipped)
 agent/skills/                 nine upstream consumer skills, copied verbatim
 ```

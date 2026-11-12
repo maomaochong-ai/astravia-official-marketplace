@@ -153,6 +153,63 @@ export class Sandbox {
 		};
 	}
 
+	/**
+	 * The sandbox browser, through upstream's own CLI (`agent-browser`).
+	 *
+	 * Upstream exposes browser control as structured tools; the container ships the CLI
+	 * that does the same job, so one `strix_browser` call is a thin, predictable wrapper
+	 * over it instead of a second implementation of page state. Every action runs in the
+	 * container, so the session (cookies, tabs) is the assessment's.
+	 */
+	async browser(params: Record<string, unknown>): Promise<Record<string, unknown>> {
+		if (!this.container) throw new Error("no sandbox session; call strix_sandbox_start first");
+		const action = String(params.action ?? "").trim();
+		const target = String(params.target ?? "").trim();
+		const text = String(params.text ?? "");
+		const timeoutSec = Math.min(Number(params.timeoutSec) || 120, 600);
+
+		const argv: Record<string, string[]> = {
+			open: ["open", target],
+			click: ["click", target],
+			type: ["type", target, text],
+			text: ["text"],
+			html: ["html"],
+			screenshot: ["screenshot", target || "/tmp/strix-shot.png"],
+			eval: ["eval", text],
+			back: ["back"],
+			close: ["close"],
+		};
+		const args = argv[action];
+		if (!args) throw new Error(`action must be one of ${Object.keys(argv).join(", ")}`);
+		if ((action === "open" || action === "click") && !target) throw new Error(`${action} needs a target`);
+		if (action === "type" && !target) throw new Error("type needs a target selector");
+		if ((action === "eval" || action === "type") && !text) throw new Error(`${action} needs text`);
+
+		const command = `agent-browser ${args.map((part) => quote(part)).join(" ")}`;
+		this.emit({ event: "tool_start", tool: "browser", command, workdir: null });
+		const started = Date.now();
+		const result = await dockerApi.exec(this.container, command, timeoutSec * 1000);
+		const ok = result.code === 0;
+		this.emit({
+			event: "tool_end",
+			tool: "browser",
+			command,
+			ok,
+			exitCode: result.code,
+			durationMs: Date.now() - started,
+			output: tail(result.stdout || result.stderr),
+		});
+		return {
+			action,
+			target: target || null,
+			exitCode: result.code,
+			ok,
+			durationMs: Date.now() - started,
+			stdout: clip(result.stdout),
+			stderr: clip(result.stderr),
+		};
+	}
+
 	async stop(): Promise<{ stopped: boolean; sessionId?: string }> {
 		if (!this.container) return { stopped: false };
 		const sessionId = this.sessionId ?? undefined;
