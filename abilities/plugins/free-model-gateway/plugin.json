@@ -1,101 +1,101 @@
 {
-	"id": "free-model-gateway",
-	"name": "%plugin.name%",
-	"icon": "assets/icon.png",
-	"version": "0.0.8",
-	"defaultLocale": "zh",
-	"pluginApiVersion": "^2.0.0",
-	"entry": "dist/mf-manifest.json",
-	"moduleFederation": {
-		"remoteName": "freeModelGateway",
-		"expose": "./plugin"
-	},
-	"styles": [
-		"dist/style.css"
-	],
-	"permissions": [
-		"ui.slot.workspace-view",
-		"models.manage",
-		"storage.read",
-		"storage.write",
-		"shell.openExternal"
-	],
-	"providers": {
-		"services": [
-			{
-				"id": "ofm-gateway",
-				"runtime": {
-					"kind": "host-node",
-					"version": "2.1.0",
-					"entry": "server/boot.mjs",
-					"platforms": {
-						"win32-x64": {
-							"executable": "server/packages/standalone/cli.mjs",
-							"artifacts": [
-								{
-									"sha256": "7fba718242b57bcdd0853bf0905d8e186a85ec3462bd268e5b943023931481b5",
-									"archive": "zip",
-									"destination": "server"
-								}
-							]
-						},
-						"darwin-x64": {
-							"executable": "server/packages/standalone/cli.mjs",
-							"artifacts": [
-								{
-									"sha256": "7fba718242b57bcdd0853bf0905d8e186a85ec3462bd268e5b943023931481b5",
-									"archive": "zip",
-									"destination": "server"
-								}
-							]
-						},
-						"darwin-arm64": {
-							"executable": "server/packages/standalone/cli.mjs",
-							"artifacts": [
-								{
-									"sha256": "7fba718242b57bcdd0853bf0905d8e186a85ec3462bd268e5b943023931481b5",
-									"archive": "zip",
-									"destination": "server"
-								}
-							]
-						},
-						"linux-x64": {
-							"executable": "server/packages/standalone/cli.mjs",
-							"artifacts": [
-								{
-									"sha256": "7fba718242b57bcdd0853bf0905d8e186a85ec3462bd268e5b943023931481b5",
-									"archive": "zip",
-									"destination": "server"
-								}
-							]
-						},
-						"linux-arm64": {
-							"executable": "server/packages/standalone/cli.mjs",
-							"artifacts": [
-								{
-									"sha256": "7fba718242b57bcdd0853bf0905d8e186a85ec3462bd268e5b943023931481b5",
-									"archive": "zip",
-									"destination": "server"
-								}
-							]
-						}
-					}
-				},
-				"process": {
-					"args": [
-						"--port",
-						"${ASTRAVIA_SERVICE_PORT}",
-						"--data-dir",
-						"${ASTRAVIA_SERVICE_DATA_DIR}"
-					]
-				},
-				"health": {
-					"path": "/health",
-					"timeoutMs": 45000
-				}
-			}
-		]
-	},
-	"description": "%plugin.description%",
-	"author": "Astravia Community"
+  "id": "free-model-gateway",
+  "name": "%plugin.name%",
+  "icon": "assets/icon.png",
+  "version": "0.0.9",
+  "defaultLocale": "zh",
+  "pluginApiVersion": "^2.0.0",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "freeModelGateway",
+    "expose": "./plugin"
+  },
+  "styles": [
+    "dist/style.css"
+  ],
+  "permissions": [
+    "ui.slot.workspace-view",
+    "models.manage",
+    "storage.read",
+    "storage.write",
+    "shell.openExternal"
+  ],
+  "providers": {
+    "services": [
+      {
+        "id": "ofm-gateway",
+        "runtime": {
+          "kind": "host-node",
+          "version": "2.1.0",
+          "entry": "server/boot.mjs",
+          "platforms": {
+            "win32-x64": {
+              "executable": "server/packages/standalone/cli.mjs",
+              "artifacts": [
+                {
+                  "sha256": "7fba718242b57bcdd0853bf0905d8e186a85ec3462bd268e5b943023931481b5",
+                  "archive": "zip",
+                  "destination": "server"
+                }
+              ]
+            },
+            "darwin-x64": {
+              "executable": "server/packages/standalone/cli.mjs",
+              "artifacts": [
+                {
+                  "sha256": "7fba718242b57bcdd0853bf0905d8e186a85ec3462bd268e5b943023931481b5",
+                  "archive": "zip",
+                  "destination": "server"
+                }
+              ]
+            },
+            "darwin-arm64": {
+              "executable": "server/packages/standalone/cli.mjs",
+              "artifacts": [
+                {
+                  "sha256": "7fba718242b57bcdd0853bf0905d8e186a85ec3462bd268e5b943023931481b5",
+                  "archive": "zip",
+                  "destination": "server"
+                }
+              ]
+            },
+            "linux-x64": {
+              "executable": "server/packages/standalone/cli.mjs",
+              "artifacts": [
+                {
+                  "sha256": "7fba718242b57bcdd0853bf0905d8e186a85ec3462bd268e5b943023931481b5",
+                  "archive": "zip",
+                  "destination": "server"
+                }
+              ]
+            },
+            "linux-arm64": {
+              "executable": "server/packages/standalone/cli.mjs",
+              "artifacts": [
+                {
+                  "sha256": "7fba718242b57bcdd0853bf0905d8e186a85ec3462bd268e5b943023931481b5",
+                  "archive": "zip",
+                  "destination": "server"
+                }
+              ]
+            }
+          }
+        },
+        "process": {
+          "args": [
+            "--port",
+            "${ASTRAVIA_SERVICE_PORT}",
+            "--data-dir",
+            "${ASTRAVIA_SERVICE_DATA_DIR}"
+          ]
+        },
+        "health": {
+          "path": "/health",
+          "timeoutMs": 45000
+        }
+      }
+    ]
+  },
+  "description": "%plugin.description%",
+  "author": "Astravia Community"
 }

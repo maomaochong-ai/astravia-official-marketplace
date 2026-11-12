@@ -105,12 +105,19 @@ export async function reconcileProviders(
 	next: PluginModelProviderConfig,
 ): Promise<boolean> {
 	if ((next.models?.length ?? 0) === 0) return false;
-	const owned = await models.listOwnedProviders();
-	const existing = owned?.[PROVIDER_ID];
-	const snapshot = computeProviderSnapshot(existing, next);
-	if (!snapshot) return false;
-	await models.replaceOwnedProviders({ [PROVIDER_ID]: snapshot });
-	return true;
+	// 权限是宿主准准入式的：装了旧版再用新版代码，`models.manage` 可能还没授予，
+	// `listOwnedProviders()` 会直接抛。那不该把整个插件打成「启动失败」——
+	// 同步不上就是没同步，面板里如实显示即可。
+	try {
+		const owned = await models.listOwnedProviders();
+		const existing = owned?.[PROVIDER_ID];
+		const snapshot = computeProviderSnapshot(existing, next);
+		if (!snapshot) return false;
+		await models.replaceOwnedProviders({ [PROVIDER_ID]: snapshot });
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 /**
