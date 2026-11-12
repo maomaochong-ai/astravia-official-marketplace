@@ -1,5 +1,5 @@
 /**
- * 自动跑 `npx -y rea-agents@latest doctor --json`，把结果留给就绪面板解析。
+ * 自动跑 `npx -y rea-agents@6.7.0 doctor --json`，把结果留给就绪面板解析。
  *
  * 为什么要自动跑：用户不该为了「能看到缺什么」先手工执行一条命令。
  * 什么时候跑：

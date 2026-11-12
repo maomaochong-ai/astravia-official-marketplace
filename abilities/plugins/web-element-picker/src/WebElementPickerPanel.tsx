@@ -10,7 +10,6 @@ import {
 	IconEye,
 	IconEyeOff,
 	IconForward,
-	IconOpenInNew,
 	IconRefresh,
 	IconSend,
 	IconSpinner,
@@ -679,20 +678,6 @@ export function WebElementPickerPanel(): JSX.Element {
 						className="h-7 w-full rounded-md border border-transparent bg-transparent px-2.5 text-[12px] text-foreground outline-none transition-colors placeholder:text-foreground/30 focus:border-foreground/30 focus:bg-black/5 dark:focus:bg-white/10"
 					/>
 				</form>
-				<button
-					type="button"
-					title={t("panel.openExternal")}
-					disabled={!currentUrl || failed}
-					onClick={() => {
-						if (!currentUrl) return;
-						void ctx?.ui
-							.openExternal(currentUrl)
-							.catch(() => showToast(t("panel.openExternalFailed")));
-					}}
-					className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-foreground/60 transition-colors hover:bg-black/5 hover:text-foreground disabled:opacity-30 dark:hover:bg-white/10"
-				>
-					<IconOpenInNew className="h-4 w-4" />
-				</button>
 				{/* 选择按钮：激活态 = 实心黑背景 + 白色图标（最明显） */}
 				<button
 					type="button"

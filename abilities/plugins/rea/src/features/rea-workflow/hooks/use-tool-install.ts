@@ -59,7 +59,7 @@ export interface InstallProgress {
 }
 
 export interface ToolInstallDeps {
-	/** `npx -y rea-agents@latest <args>` 的长驻进程（REA 官方安装通道）。 */
+	/** `npx -y rea-agents@6.7.0 <args>` 的长驻进程（REA 官方安装通道）。 */
 	readonly spawnRea:
 		| ((args: readonly string[], options: { cwd?: string }) => Promise<PluginCommandSpawnHandle>)
 		| null;

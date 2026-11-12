@@ -7,7 +7,7 @@
  * npm exec 找不到名为 doctor 的包，回落到 shell，得到 `sh: doctor: command not found`。
  * 面板上表现为「检查没有返回任何项目」，而引擎其实完全正常。
  *
- * 收口点放在这里而不是每个调用方：`-y rea-agents@latest` 只拼一次，
+ * 收口点放在这里而不是每个调用方：`-y rea-agents@6.7.0` 只拼一次，
  * doctor / setup / 以及后续任何子命令都不会再各写一遍。
  */
 
@@ -21,15 +21,15 @@ import type {
 } from "@astravia-org/plugin-sdk";
 
 /** npx 需要的前缀：允许首次运行自动确认，并始终取最新发布的 CLI。 */
-export const REA_PACKAGE_ARGS: readonly string[] = ["-y", "rea-agents@latest"];
+export const REA_PACKAGE_ARGS: readonly string[] = ["-y", "rea-agents@6.7.0"];
 
 /**
  * 给 rea 子命令补上包名前缀。已经自带前缀时原样返回，避免二次调用叠成
- * `npx -y rea-agents@latest -y rea-agents@latest doctor`。
+ * `npx -y rea-agents@6.7.0 -y rea-agents@6.7.0 doctor`。
  */
 export function reaPackageArgs(args: readonly string[]): string[] {
-	if (args[0] === "-y" && args[1] === "rea-agents@latest") return [...args];
-	if (args[0] === "rea-agents@latest" || args[0] === "rea-agents") return [...REA_PACKAGE_ARGS, ...args.slice(1)];
+	if (args[0] === "-y" && args[1] === "rea-agents@6.7.0") return [...args];
+	if (args[0] === "rea-agents@6.7.0" || args[0] === "rea-agents") return [...REA_PACKAGE_ARGS, ...args.slice(1)];
 	return [...REA_PACKAGE_ARGS, ...args];
 }
 

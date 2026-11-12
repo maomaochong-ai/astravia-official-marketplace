@@ -98,7 +98,7 @@ describe("包名前缀", () => {
 
 	it("已带前缀时不重复叠加", () => {
 		expect(reaPackageArgs([...REA_PACKAGE_ARGS, "doctor", "--json"])).toEqual([...REA_PACKAGE_ARGS, "doctor", "--json"]);
-		expect(reaPackageArgs(["rea-agents@latest", "doctor", "--json"])).toEqual([...REA_PACKAGE_ARGS, "doctor", "--json"]);
+		expect(reaPackageArgs(["rea-agents@6.7.0", "doctor", "--json"])).toEqual([...REA_PACKAGE_ARGS, "doctor", "--json"]);
 	});
 
 	it("doctorArgs 只描述子命令与选项", () => {
