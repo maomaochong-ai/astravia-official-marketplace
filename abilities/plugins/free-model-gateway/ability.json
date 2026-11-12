@@ -1,26 +1,26 @@
 {
-	"schemaVersion": 1,
-	"type": "plugin",
-	"slug": "free-model-gateway",
-	"version": "0.0.8",
-	"icon": "assets/icon.png",
-	"detail": {
-		"format": "blocks",
-		"path": "detail.json",
-		"meta": [
-			{
-				"key": "repository",
-				"value": "https://github.com/Ebony-Vinyl/dsh-our-free-model"
-			},
-			{
-				"key": "license",
-				"value": "MIT"
-			}
-		],
-		"i18n": {
-			"zh": {
-				"path": "detail.zh.json"
-			}
-		}
-	}
+  "schemaVersion": 1,
+  "type": "plugin",
+  "slug": "free-model-gateway",
+  "version": "0.0.9",
+  "icon": "assets/icon.png",
+  "detail": {
+    "format": "blocks",
+    "path": "detail.json",
+    "meta": [
+      {
+        "key": "repository",
+        "value": "https://github.com/Ebony-Vinyl/dsh-our-free-model"
+      },
+      {
+        "key": "license",
+        "value": "MIT"
+      }
+    ],
+    "i18n": {
+      "zh": {
+        "path": "detail.zh.json"
+      }
+    }
+  }
 }
