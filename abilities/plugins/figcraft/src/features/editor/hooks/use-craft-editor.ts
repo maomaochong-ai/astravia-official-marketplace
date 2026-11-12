@@ -137,6 +137,20 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   }, [ctx]);
   const strings = editorStrings(locale);
   const uiLang: "zh" | "en" = /^zh/i.test(locale || "") ? "zh" : "en";
+  // The host keeps this document alive while its tab is hidden (display:none) so that
+  // unsaved work survives a tab switch. Nothing on this side spins at 60 fps for a
+  // page nobody is looking at: the bridge holds the app's next frame instead.
+  // `active` defaults to false when the host provides no context, so a build that
+  // predates the hook never pauses a live editor — we only pause after seeing active.
+  const tab = useActivityTab();
+  // The user's own toggle in the composer, not the panel's selection: see engagement.ts.
+  const engaged = useCraftEngaged();
+  const everActive = useRef(false);
+  /** `tab.active` is a value, not a getter: a scope registered once must read it live. */
+  const activeRef = useRef(false);
+  activeRef.current = tab.active === true;
+  if (tab.active) everActive.current = true;
+  const paused = everActive.current && !tab.active;
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
   const [iframeDoc, setIframeDoc] = useState<string | null>(null);
   const [phase, setPhase] = useState<EditorPhase>("starting");
