@@ -1,50 +1,60 @@
 /**
- * The Strix screen, in the terminal's own terms.
+ * The Strix panel: a workbench, themed by the host.
  *
- * This tab is not a host card: it is the `strix` interface in a tab, so it keeps the
- * terminal's surface - black, monospace, the palette upstream ships in
- * render/styles.go - and reproduces the launch column and the scan frame from
- * setup.go / view.go. Values are upstream's colours rather than host theme tokens
- * on purpose: a themed terminal stops looking like the tool.
+ * ADR strix-0004: this is a tab inside Astravia, not a terminal window. The surface,
+ * the text colours and the rules therefore come from the host theme, and the terminal
+ * palette is kept only for what it means — green ok, red failed, amber warning, blue
+ * the host's turn. The earlier full-black surface is why selected text read as a blank
+ * patch under the light theme.
  *
  * Only `astra-strix-*` classes are defined here; nothing outside the plugin root is
- * touched, and the surface paints its own background instead of inheriting one.
+ * touched.
  */
 
 @import "tailwindcss";
 
+/*
+ * Surface and text come from the host theme; the terminal palette is only used for
+ * tool semantics (green = ok, red = failed, amber = warning, blue = the host's turn).
+ * A tab is not a terminal window, so it does not paint its own black (ADR strix-0004):
+ * in the light theme that black was the reason selected text read as a blank patch.
+ */
 .astra-strix-term {
-	--sx-green: #22c55e;
-	--sx-green-bright: #4ade80;
-	--sx-blue: #3b82f6;
-	--sx-red: #ef4444;
-	--sx-amber: #d97706;
-	--sx-white: #fafaf9;
-	--sx-text: #d4d4d4;
-	--sx-dim: #737373;
-	--sx-placeholder: #525252;
-	--sx-dark: #333333;
-	--sx-rule: #1f1f1f;
+	--sx-green: #15803d;
+	--sx-green-bright: #16a34a;
+	--sx-blue: #1d4ed8;
+	--sx-red: #b91c1c;
+	--sx-amber: #b45309;
+	--sx-white: var(--foreground, #171717);
+	--sx-text: var(--foreground, #171717);
+	--sx-dim: var(--muted-foreground, #6b7280);
+	--sx-placeholder: color-mix(in srgb, var(--muted-foreground, #6b7280) 72%, transparent);
+	--sx-dark: var(--border, #e5e5e5);
+	--sx-rule: var(--border, #e5e5e5);
 	--sx-mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", "JetBrains Mono", Menlo, Consolas, monospace;
 
-/* Selecting text must stay legible on both host themes: without an explicit rule, the
-   host's light-theme default selection background lands under this plugin's light text
-   and the selected words read as a blank patch. */
-.astra-strix-term ::selection {
-	background: var(--sx-green);
-	color: #04140a;
-}
-
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-	min-height: 0;
-	background: #000;
+	background: var(--background, #ffffff);
 	color: var(--sx-text);
 	font-family: var(--sx-mono);
 	font-size: 13px;
 	line-height: 1.5;
 	-webkit-font-smoothing: antialiased;
+}
+
+/* Accents step up in the dark theme, where the readable-on-white shades go muddy. */
+.dark .astra-strix-term {
+	--sx-green: #4ade80;
+	--sx-green-bright: #86efac;
+	--sx-blue: #60a5fa;
+	--sx-red: #f87171;
+	--sx-amber: #fbbf24;
+}
+
+/* Selecting text must stay legible on both themes: without this rule the host's
+   default selection background lands under this text and the words vanish. */
+.astra-strix-term ::selection {
+	background: color-mix(in srgb, var(--sx-green) 28%, transparent);
+	color: var(--sx-text);
 }
 
 /* ---- launch column (setup.go:setupBody) ------------------------------ */
@@ -99,7 +109,7 @@
 	border: 1px solid var(--sx-dark);
 	border-radius: 10px;
 	padding: 10px 12px;
-	background: #000;
+	background: color-mix(in srgb, var(--foreground) 3%, transparent);
 	transition: border-color 120ms ease;
 }
 
@@ -614,6 +624,39 @@
 	color: var(--sx-placeholder);
 }
 
+/* Collapsed empty section: one dim line plus a small +/− button. */
+.astra-strix-section-note {
+	margin-left: auto;
+	font-size: 10.5px;
+	font-weight: 400;
+	letter-spacing: 0;
+	text-transform: none;
+	color: var(--sx-placeholder);
+}
+
+.astra-strix-section-toggle {
+	align-self: flex-start;
+	width: 20px;
+	height: 20px;
+	border: 1px solid var(--sx-rule);
+	border-radius: 5px;
+	background: transparent;
+	color: var(--sx-dim);
+	font: inherit;
+	font-size: 12px;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.astra-strix-section-toggle:hover {
+	border-color: var(--sx-dim);
+	color: var(--sx-text);
+}
+
+.astra-strix-section-collapsed-body {
+	padding-top: 2px;
+}
+
 .astra-strix-chip-live {
 	margin-left: auto;
 	font-size: 10px;
@@ -642,7 +685,7 @@
 	border: 1px solid var(--sx-dark);
 	border-radius: 10px;
 	overflow: hidden;
-	background: #000;
+	background: color-mix(in srgb, var(--foreground) 4%, transparent);
 }
 
 .astra-strix-box-focused {
@@ -840,7 +883,7 @@
 
 .astra-strix-panel-broken {
 	padding: 16px;
-	background: #000;
+	background: transparent;
 	color: var(--sx-text);
 	font-family: var(--sx-mono);
 }

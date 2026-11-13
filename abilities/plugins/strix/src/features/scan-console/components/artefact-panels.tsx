@@ -131,16 +131,24 @@ export function ArtefactPanels({
 	const done = todos.filter((todo) => todo.status === "done").length;
 	return (
 		<>
-			<PanelBox title={t("agents.title")} hint={agents.length ? String(agents.length) : undefined}>
+			<PanelBox
+				title={t("agents.title")}
+				hint={agents.length ? String(agents.length) : undefined}
+				emptyLabel={t("rail.empty")}
+			>
 				<AgentsPanel t={t} agents={agents} />
 			</PanelBox>
-			<PanelBox title={t("todos.title")} hint={todos.length ? `${done}/${todos.length}` : undefined}>
+			<PanelBox
+				title={t("todos.title")}
+				hint={todos.length ? `${done}/${todos.length}` : undefined}
+				emptyLabel={t("rail.empty")}
+			>
 				<TodoPanel t={t} todos={todos} />
 			</PanelBox>
-			<PanelBox title={t("coverage.title")} hint={String(coverage.length)}>
+			<PanelBox title={t("coverage.title")} hint={coverage.length ? String(coverage.length) : undefined} emptyLabel={t("rail.empty")}>
 				<CoveragePanel t={t} coverage={coverage} />
 			</PanelBox>
-			<PanelBox title={t("notes.title")} hint={String(notes.length)}>
+			<PanelBox title={t("notes.title")} hint={notes.length ? String(notes.length) : undefined} emptyLabel={t("rail.empty")}>
 				<NotesPanel t={t} notes={notes} />
 			</PanelBox>
 		</>

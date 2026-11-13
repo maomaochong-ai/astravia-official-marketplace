@@ -80,5 +80,6 @@
   "rail.title": "产出",
   "env.docker": "容器",
   "env.host": "本机（无容器）",
-  "env.unknown": "未确定"
+  "env.unknown": "未确定",
+  "rail.empty": "还没有记录"
 }
