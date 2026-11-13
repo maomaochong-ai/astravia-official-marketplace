@@ -1,6 +1,7 @@
 ---
 name: codebase-migration-refactor
-version: 1.0.6
+alias: 代码库迁移重构
+version: 1.0.7
 description: "Ship a change-everywhere-the-same-way edit as reviewable batches — write the transform as an exact rule, measure the blast radius, apply it with a codemod, verify one batch at a time, then sweep what the migration left behind. Use when the user asks for a framework or runtime upgrade (React 17 to 19, Node 18 to 22, Django 4 to 5), an API or symbol rename across a monorepo, a test-runner or bundler swap (jest to vitest, webpack to vite, eslint to biome), CommonJS to ESM, splitting a module into packages, or any bulk edit over dozens to hundreds of files — 批量改代码、全局改名、升级依赖、迁移测试框架、拆包重构. Do NOT use for a single-file edit, for reviewing whether an existing migration is correct, or for a rename whose only witness is grep while the symbol is generated or re-exported — that is a move-code refactor and needs characterization tests first."
 metadata:
   astravia:

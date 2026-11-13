@@ -16,8 +16,8 @@
       "type": "showcase",
       "showcase": {
         "template": "chat-thread",
-        "user_prompt": "把这个视频按 1080p 下载下来：https://www.bilibili.com/video/BV1GJ411x7h7",
-        "assistant_reply": "已解析该页面：共 4 个清晰度，1080p 为 42.6 MB，画面与声音是分开的两条流，保存前会用 ffmpeg 合并。任务已加入队列，完成后会放进你的下载文件夹。"
+        "user_prompt": "把这条视频按 1080p 存下来：b23.tv/Kq7dYh",
+        "assistant_reply": "已解析：4 个清晰度，1080p 为 42.6 MB，音画分开，保存前用 ffmpeg 合并。已入队。"
       }
     },
     {

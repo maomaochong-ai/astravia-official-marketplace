@@ -16,8 +16,8 @@
       "type": "showcase",
       "showcase": {
         "template": "chat-thread",
-        "user_prompt": "Download this in 1080p: https://www.bilibili.com/video/BV1GJ411x7h7",
-        "assistant_reply": "Probed the page — 4 renditions available, 1080p is 42.6 MB and arrives as separate video and audio tracks, so it is merged with ffmpeg before saving. The download is queued and will land in your download folder."
+        "user_prompt": "Download this in 1080p: b23.tv/Kq7dYh",
+        "assistant_reply": "4 renditions found; 1080p is 42.6 MB with split audio, merged by ffmpeg. Queued."
       }
     },
     {
