@@ -89,5 +89,11 @@
   "session.where": "Runs on",
   "session.imageNotUsed": "on this machine, no image",
   "scan.inputHint": "Enter to send · Shift+Enter for a newline · messages from the host chat land here too",
-  "stats.title": "Stats"
+  "stats.title": "Stats",
+  "mcp.title": "Connections",
+  "mcp.empty": "No MCP servers connected yet",
+  "rail.empty.agents": "Appears when the model splits a broad target",
+  "rail.empty.todos": "A scan starts by writing its plan here",
+  "rail.empty.coverage": "One row per surface, as it is finished",
+  "rail.empty.notes": "Payload lists and endpoint maps land here"
 }
