@@ -41,7 +41,8 @@ export default definePlugin({
     const tab = context.ui.registerActivityTab({
       id: ACTIVITY_TAB_ID,
       label: "%downloader.title%",
-      icon: createElement("span", { className: ICON_CLASS, "aria-hidden": "true" }),
+      // Inherit `plugin.json#icon` like the input action above: the tab picker wants the
+      // coloured brand mark, and an explicit lucide glyph replaced it with a mono default.
       component: panel,
       scope_use: ["conversation", "project"],
       // On the tab bar from the start, so the panel is discoverable without setup.
@@ -55,7 +56,9 @@ export default definePlugin({
       ? context.ui.registerInputAction({
           id: INPUT_ACTION_ID,
           label: "%action.download%",
-          icon: createElement("span", { className: ICON_CLASS, "aria-hidden": "true" }),
+          // No explicit icon: the host inherits `plugin.json#icon` (the coloured brand
+          // mark). A lucide glyph here overrode it, so the row entry and its capsule
+          // showed a mono default instead of the official icon.
           scope_use: ["conversation", "project"],
           onToggle(active) {
             if (active) {

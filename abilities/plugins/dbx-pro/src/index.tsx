@@ -158,7 +158,9 @@ export default definePlugin({
 			inputAction = ctx.ui.registerInputAction({
 				id: "dbx-pro-toggle",
 				label: "数据库",
-				icon: <span className="icon-[lucide--database] h-3.5 w-3.5" />,
+				// No explicit icon: the host inherits `plugin.json#icon` (assets/icon.png, the
+				// coloured dbx mark). A lucide glyph here overrode it and rendered the mono
+				// default in both the row entry and its capsule.
 				defaultActive: false,
 				scope_use: ["im-claw", "conversation", "project", "cli"],
 				onToggle(active) {
