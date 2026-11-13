@@ -55,6 +55,9 @@ export function normalizeProbe(raw: unknown): EnvironmentProbe | undefined {
 			detail: text(docker.detail),
 			image: text(docker.image),
 			...(imagePresent === true || imagePresent === false ? { imagePresent } : {}),
+		// Without this the panel cannot name the environment and falls back to "未确定"
+		// even when the service reported one (ADR strix-0001: the mode is part of the probe).
+		...(value.mode === "docker" || value.mode === "host" ? { mode: value.mode } : {}),
 		},
 		ready: flag(value.ready),
 	};

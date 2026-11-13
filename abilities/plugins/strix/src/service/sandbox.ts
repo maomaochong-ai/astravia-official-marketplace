@@ -139,6 +139,8 @@ export class Sandbox {
 	private scanMode: ScanMode = "standard";
 	/** Caido proxy tools are off unless the session asked for them. */
 	private proxyEnabled = false;
+	/** Why the container was not used, when a start fell back to this machine. */
+	private degradedReason: string | null = null;
 
 	constructor(
 		private readonly emit: (payload: Record<string, unknown>) => void,
@@ -180,35 +182,48 @@ export class Sandbox {
 		const targets = Array.isArray(params.targets) ? params.targets.map(String).filter(Boolean) : [];
 		const mounts = mountsFrom(Array.isArray(params.localSources) ? (params.localSources as MountInput[]) : []);
 
-		// Degraded path (ADR strix-0001): no daemon, so there is no /workspace to mount.
-		// The first mount becomes the working root and `exec` runs commands there.
-		if (this.mode === "host") {
-			this.hostRoot = mounts[0]?.host ?? this.dataDir ?? process.cwd();
-			this.targets = targets;
-			this.sessionId = sessionId;
-			this.startedAt = Date.now();
-			this.image = null;
-			this.emit({ event: "sandbox_ready", sessionId, status: this.status() });
-			return this.status();
-		}
+		// Host path (ADR strix-0001): no container, so there is no /workspace to mount. The
+		// first mount becomes the working root and `exec` runs commands there.
+		if (this.mode === "host") return this.beginHost({ sessionId, targets, mounts });
 
 		// A container left behind by a previous run under the same id would block the name.
 		await dockerApi.remove(container);
 
-		this.emit({ event: "sandbox_status", phase: "preparing image" });
-		if ((await imagePresent(image)) === false) {
-			this.emit({ event: "sandbox_status", phase: "pulling image" });
-			const pulled = await pullImage(image);
-			if (pulled.code !== 0) throw new Error(`pulling ${image} failed: ${pulled.stderr.trim().slice(-500)}`);
-		}
+		// The image is not guaranteed to be reachable: ghcr.io can be blocked, rate limited, or
+		// simply not published for this tag. A pull failure used to end the session even though
+		// the same tools run fine on the host (ADR strix-0001: Docker is an accelerator, not a
+		// prerequisite). So a failure here **degrades to host mode** and says why, instead of
+		const degraded = (reason: string): SandboxStatus => {
+			this.degradedReason = reason;
+			this.emit({ event: "sandbox_degraded", reason });
+			// `beginHost` rather than a second copy of the host path: one place decides what
+			// "run on this machine" means, and it cannot drift from the normal host start.
+			return this.beginHost({ sessionId, targets, mounts });
+		};
 
-		this.emit({ event: "sandbox_status", phase: "starting container" });
-		const spec: SandboxSpec = { name: container, image, mounts };
-		const started = await dockerApi.run(runArgs(spec), 300_000);
-		if (started.code !== 0) throw new Error(`docker run failed: ${started.stderr.trim().slice(-500)}`);
+		try {
+			this.emit({ event: "sandbox_status", phase: "preparing image" });
+			if ((await imagePresent(image)) === false) {
+				this.emit({ event: "sandbox_status", phase: "pulling image" });
+				const pulled = await pullImage(image);
+				if (pulled.code !== 0) {
+					return degraded(`image ${image} could not be pulled: ${pulled.stderr.trim().slice(-400)}`);
+				}
+			}
+
+			this.emit({ event: "sandbox_status", phase: "starting container" });
+			const spec: SandboxSpec = { name: container, image, mounts };
+			const started = await dockerApi.run(runArgs(spec), 300_000);
+			if (started.code !== 0) {
+				return degraded(`docker run failed: ${started.stderr.trim().slice(-400)}`);
+			}
+		} catch (cause) {
+			return degraded(`docker unavailable: ${cause instanceof Error ? cause.message : String(cause)}`);
+		}
 
 		this.container = container;
 		this.image = image;
+		this.degradedReason = null;
 		this.targets = targets;
 		this.sessionId = sessionId;
 		this.startedAt = Date.now();
@@ -217,6 +232,22 @@ export class Sandbox {
 		const listing = await dockerApi.exec(container, "printf 'workspace:%s\\n' \"$(ls -A /workspace | tr '\\n' ' ')\"", 30_000);
 		this.emit({ event: "sandbox_ready", sessionId, status: this.status() });
 		return { ...this.status(), ...(listing.code === 0 ? {} : {}) };
+	}
+
+	/** The single definition of "run in the user's own session". */
+	private beginHost(input: {
+		sessionId: string;
+		targets: string[];
+		mounts: readonly { host: string }[];
+	}): SandboxStatus {
+		this.mode = "host";
+		this.hostRoot = input.mounts[0]?.host ?? this.dataDir ?? process.cwd();
+		this.targets = input.targets;
+		this.sessionId = input.sessionId;
+		this.startedAt = Date.now();
+		this.image = null;
+		this.emit({ event: "sandbox_ready", sessionId: input.sessionId, status: this.status() });
+		return this.status();
 	}
 
 	async exec(params: Record<string, unknown>): Promise<Record<string, unknown>> {

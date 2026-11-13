@@ -30,10 +30,23 @@ export async function resolveEnvironment(image: string): Promise<ResolvedEnviron
 
 	if (probe.ready) {
 		const present = await imagePresent(image).catch(() => null);
+		if (present === true) {
+			return {
+				mode: "docker",
+				ready: true,
+				detail: "docker ready",
+				docker: { ready: true, detail: probe.detail, imagePresent: present },
+			};
+		}
+		// The daemon is up but the image is not local. Pulling it is a network operation
+		// against ghcr.io that fails on restricted networks (EOF / blocked), and failing it
+		// left the panel stuck on "sandbox failed" after a long wait. So the environment
+		// resolves to this machine up front: the tools run, the session starts, and the
+		// reason is stated instead of surfacing as a failure.
 		return {
-			mode: "docker",
+			mode: "host",
 			ready: true,
-			detail: present === false ? "docker ready, image not pulled yet" : "docker ready",
+			detail: `sandbox image ${image} is not present; running on this machine`,
 			docker: { ready: true, detail: probe.detail, imagePresent: present },
 		};
 	}

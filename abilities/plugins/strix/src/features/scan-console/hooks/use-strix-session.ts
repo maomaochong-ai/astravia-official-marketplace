@@ -232,6 +232,13 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 				if (event.event === "sandbox_status") {
 					pushTrace({ kind: "note", label: String((event as { phase?: string }).phase ?? "sandbox") });
 				}
+				if (event.event === "sandbox_degraded") {
+					// Say it in the trace and in the environment chip: a session that runs on this
+					// machine is usable, but the reader has to know the isolation is weaker.
+					const reason = String((event as { reason?: string }).reason ?? "");
+					pushTrace({ kind: "note", label: `${t("sandbox.degraded")}${reason ? `: ${reason}` : ""}` });
+					setEnvironment((current) => (current ? { ...current, mode: "host" } : current));
+				}
 				if (event.event === "sandbox_ready") {
 					setSandbox(normalizeSandbox((event as { status?: unknown }).status ?? { running: true }));
 				}
