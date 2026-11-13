@@ -1118,12 +1118,34 @@ function onClick(event: Event): void {
 	// 3. target=_blank 的 <a> → 宿主 main 进程 did-attach-webview 已做 setWindowOpenHandler
 	//    拦截并重定向到同一 webview（open-astravia/window-manager.ts:86），内核不再重复拦截
 	if (e.ctrlKey || e.metaKey || e.button === 1) return;
+
+/**
+ * 页面自己挂了动作的元素：放行给页面，而不是当成选中目标。
+ *
+ * 只认「浏览器或框架真的会因此导航/提交」的形态，不用启发式去猜：猜错一次就把
+ * 选择手势变成抖的。`a[href]` 单独在调用点处理（要区分 target/download）。
+ */
+function isPageActionControl(target: Element): boolean {
+	return (
+		target.closest(
+			'button, [role="link"], [role="button"], [role="tab"], [onclick], input[type="submit"], input[type="button"], input[type="image"], summary, label',
+		) !== null
+	);
+}
 	const anchor = target.closest("a[href]") as HTMLAnchorElement | null;
 	if (anchor && (anchor.target === "_blank" || anchor.hasAttribute("download"))) {
-		// 仅放行 target=_blank / download，普通 <a href> 仍做选择（最常见场景）
+		// target=_blank / download 已在宿主侧处理，内核不再插手。
 		return;
 	}
-
+	// ── 普通左键点链接 = 导航 ──
+	// 之前这里把 `preventDefault()` 用在所有左键上，于是未进入选元素状态时页面里的
+	// 链接/按钮一点就死，只有 Ctrl/⌘ 或中键（上面直接 return）能跳。 既然选择元素的
+	// 手势本来就支持 Shift 加选，就让「无修饰键的左键点链接」回到导航，Shift+左键
+	// 非链接但页面自己接了动作的元素（button / [role=link] / [onclick] / 表单控件…）同样直通：
+	// 这类元素点下去本来就是「跳转或提交」，拦住它等于把页面变成死页，只能靠修饰键救。
+	// 要选这类元素仍然可以：Shift+左键是选中手势（下面照旧走）。
+	if (!e.shiftKey && isPageActionControl(target)) return;
+	if (anchor && !e.shiftKey) return;
 	event.preventDefault();
 	event.stopPropagation();
 	if (e.shiftKey) {
@@ -1282,7 +1304,10 @@ function bindPanel(): void {
 // ─── 生命周期 ───
 
 function mount(options?: { lang?: string; bridge?: WepBridge }): void {
-	if (state) return;
+	// 幂等挂载：重复注入时把上一次的监听与 UI 拆干净，而不是直接 return。
+	// 直接 return 会让旧实例的 document 监听活着而面板已失去句柄，表现为
+	// 「面板已停止选择，页面却点不动」（孤儿监听器吞掉普通左键）。
+	if (state) destroy();
 	if (options?.bridge) bridge = options.bridge;
 	const lang: WepLang = options?.lang === "en" ? "en" : "zh";
 	let ui: WepUi;
@@ -1385,4 +1410,15 @@ function applySettings(settings: Partial<WepSettings>): void {
 }
 
 const api = { mount, destroy, applyLang, applySettings, getContext: buildSelectionContext };
+
+// 重新注入会新建一份模块作用域（包括新的 `state` 与新的 api 对象），
+// 旧实例的 document 监听不会随之消失，而 `window.__WEP__` 被覆盖后
+// 面板再也拿不到它的句柄——那批监听器就成了永久拦截页面点击的孤儿。
+// 所以在接管全局之前，先把上一份显式拆掉。
+try {
+	const previous = (window as unknown as { __WEP__?: { destroy?: () => void } }).__WEP__;
+	if (typeof previous?.destroy === "function") previous.destroy();
+} catch {
+	/* 旧实例拆除失败不阻断新实例接管。 */
+}
 Object.defineProperty(window, "__WEP__", { value: api, configurable: true });

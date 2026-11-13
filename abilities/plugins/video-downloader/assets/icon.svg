@@ -1,5 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
-  <rect x="1.5" y="1.5" width="21" height="21" rx="6" fill="currentColor" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" width="24" height="24">
+  <!-- 全彩图标：不使用 currentColor。作为 <img> 或 data URI 渲染时没有 CSS 上下文，
+       currentColor 会解析成黑色，标签页/行内条目/胶囊就都成了黑白默认图标。 -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#38bdf8" />
+      <stop offset="0.55" stop-color="#2563eb" />
+      <stop offset="1" stop-color="#7c3aed" />
+    </linearGradient>
+  </defs>
+  <rect x="1.5" y="1.5" width="21" height="21" rx="6" fill="url(#tile)" />
   <path d="M12 6.75v7.5m0 0 3-3m-3 3-3-3" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
   <path d="M7.5 16.75h9" stroke="#fff" stroke-width="1.6" stroke-linecap="round" />
 </svg>

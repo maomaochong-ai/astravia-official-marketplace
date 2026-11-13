@@ -3,7 +3,7 @@
   "name": "%name%",
   "description": "%description%",
   "icon": "assets/icon.svg",
-  "version": "2.7.1",
+  "version": "2.7.2",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "styles": [
@@ -16,7 +16,6 @@
   "permissions": [
     "agent.mcp.control",
     "ui.slot.ability-detail",
-    "ui.slot.workspace-view",
     "ui.slot.activity-tab",
     "ui.slot.input-action",
     "network.fetch",

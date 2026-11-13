@@ -6,12 +6,13 @@
  * 自持引擎客户端，绑定失败（宿主不支持 services）时保持 null，查询路由会自动降级 CLI。
  */
 
-import { Component, lazy, Suspense, type ComponentType, type ReactElement, type ReactNode } from "react";
+import { Component, createElement, lazy, Suspense, type ComponentType, type ReactElement, type ReactNode } from "react";
 import { definePlugin, type Disposable } from "@astravia-org/plugin-sdk";
 import { setRuntime, clearRuntime, isRuntimeActive } from "./runtime-contract";
 import { ensureEngineStarted, cancelEngineStartup } from "./runtime";
 import { bindEngineServices, type EngineServicesApi } from "./shared/services/engine-client";
 import { registerTools } from "./tools/register-tools";
+import { dbxBrandIcon } from "./brand-icon";
 // 样式按功能域拆分，避免单文件过大
 import "./style.css";
 import "./shared/styles/dbx-primitives.css";
@@ -132,11 +133,15 @@ export default definePlugin({
 		bindEngineServices(((ctx as { services?: unknown }).services ?? null) as EngineServicesApi | null);
 
 		// 注册主工作台 Activity Tab
+		// 显式传彩色图标节点，而不是依赖「省略 icon 就继承」：三处表面（tab 菜单 /
+		// 行内条目 / 胶囊）都直接从 contribution.icon 取，取不到才回落
+		// ctx.plugin.iconUrl；iconUrl 缺失时回落链就断了，各表面就会自己渲染成
+		// 主题默认的单色图标。dbxBrandIcon 内部优先用 iconUrl，缺了用内联矢量图。
+		const brandIcon = dbxBrandIcon(ctx.plugin.iconUrl);
 		const activityTab = ctx.ui.registerActivityTab({
 			id: "dbx-pro",
 			label: "dbx",
-			// 省略 icon：宿主解析 plugin.json#icon（官方 assets/icon.png）作为品牌图标，
-			// 随主题 mask / 缩放保持一致，插件端不另起一套资源。
+			icon: brandIcon,
 			component: DatabaseWorkspace,
 			scope_use: ["im-claw", "conversation", "project", "cli"],
 			retention: "pinned",
@@ -158,9 +163,9 @@ export default definePlugin({
 			inputAction = ctx.ui.registerInputAction({
 				id: "dbx-pro-toggle",
 				label: "数据库",
-				// No explicit icon: the host inherits `plugin.json#icon` (assets/icon.png, the
-				// coloured dbx mark). A lucide glyph here overrode it and rendered the mono
-				// default in both the row entry and its capsule.
+				// 与活动标签同一枚彩色品牌图标：行内条目与胶囊都直接从
+				// contribution.icon 取，这里给顶层就不存在「取不到再回落」的断点。
+				icon: brandIcon,
 				defaultActive: false,
 				scope_use: ["im-claw", "conversation", "project", "cli"],
 				onToggle(active) {

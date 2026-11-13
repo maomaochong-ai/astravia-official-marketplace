@@ -1,12 +1,6 @@
 import { definePlugin } from "@astravia-org/plugin-sdk";
 import { createElement } from "react";
-import {
-  ABILITY_ID,
-  ACTIVITY_TAB_ID,
-  DETAIL_SLOT_ID,
-  INPUT_ACTION_ID,
-  WORKSPACE_VIEW_ID,
-} from "./plugin-ids";
+import { ABILITY_ID, ACTIVITY_TAB_ID, DETAIL_SLOT_ID, INPUT_ACTION_ID } from "./plugin-ids";
 import { ensureServiceStarted } from "./runtime";
 import type { ManagedPluginContext } from "./runtime-contract";
 import { ServiceStatusSlot } from "./features/connection/components/service-status-slot";
@@ -14,13 +8,13 @@ import { DownloaderView } from "./features/downloader/components/downloader-view
 import { registerVideoResolveTool } from "./agent/video-resolve-tool";
 import "./style.css";
 
-const ICON_CLASS = "icon-[solar--download-minimalistic-linear]";
+// 不再需要单色图标常量：活动标签与输入动作都继承 plugin.json#icon 的全彩 SVG，
+// 传 iconify 类只会把品牌图标盖掉（宿主只在你没给 icon 时才回落）。
 
 export default definePlugin({
   async activate(ctx) {
     const context = ctx as ManagedPluginContext;
-    const page = () => createElement(DownloaderView, { ctx: context });
-    const panel = () => createElement(DownloaderView, { ctx: context, variant: "panel" });
+    const panel = () => createElement(DownloaderView, { ctx: context });
 
     const detail = context.ui.registerAbilityDetailSlot({
       id: DETAIL_SLOT_ID,
@@ -28,14 +22,8 @@ export default definePlugin({
       component: () => createElement(ServiceStatusSlot, { ctx: context }),
     });
 
-    // Sidebar surface: the download queue as a standalone page.
-    const view = context.ui.registerWorkspaceView({
-      id: WORKSPACE_VIEW_ID,
-      label: "%downloader.title%",
-      description: "%downloader.subtitle%",
-      icon: ICON_CLASS,
-      component: page,
-    });
+		// 侧边栏页面已彻底移除：队列只在活动标签里出现，一个入口一个形态。
+		// 标签与输入动作都不传 `icon`，让宿主继承 plugin.json#icon（现在已是全彩 SVG）。
 
     // Activity panel: the same queue next to the conversation, addable from the "+" picker.
     const tab = context.ui.registerActivityTab({
@@ -86,7 +74,6 @@ export default definePlugin({
       action?.dispose();
       resolveTool?.dispose();
       tab.dispose();
-      view.dispose();
       detail.dispose();
     };
   },

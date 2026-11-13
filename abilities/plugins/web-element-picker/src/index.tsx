@@ -1,24 +1,28 @@
 import { definePlugin } from "@astravia-org/plugin-sdk";
 import { WebElementPickerPanel } from "./WebElementPickerPanel";
+import { pickerBrandIcon } from "./brand-icon";
 import { pushPickerIntent, setRuntime } from "./runtime-contract";
 import "./style.css";
 
-// 地球图标（活动 Tab 与输入栏 action 共用）。注意：MF 插件共享依赖异步填充，
-// 模块顶层不能求值 JSX，用函数惰性构造，activate 内调用。
-const earthIcon = () => (
-	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-		<circle cx="12" cy="12" r="9" />
-		<path d="M3.5 12h17M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9Z" strokeLinecap="round" />
-	</svg>
-);
-
+/**
+ * Web Element Picker.
+ *
+ * 图标：三处表面（tab 菜单 / 行内条目 / 胶囊）共用同一枚彩色品牌图标，
+ * 由 `pickerBrandIcon()` 显式构造后传入。不再依赖「省略 icon 就继承」：
+ * 继承链上的 `ctx.plugin.iconUrl` 缺失时，三处会各自退化成主题默认单色图标。
+ * 此前两处内联的是 `stroke="currentColor"` 白色 SVG，在浅色胶囊上等于看不见。
+ *
+ * 注意：MF 插件共享依赖异步填充，模块顶层不能求值 JSX；去掉内联图标后这个约束
+ * 也随之消失（没有 JSX 需要惰性构造）。
+ */
 export default definePlugin({
 	activate(ctx) {
 		setRuntime(ctx);
+		const brandIcon = pickerBrandIcon(ctx.plugin.iconUrl);
 		ctx.ui.registerActivityTab({
 			id: "web-element-picker",
 			label: "%tab.label%",
-			icon: earthIcon(),
+			icon: brandIcon,
 			component: WebElementPickerPanel,
 			scope_use: ["conversation", "project", "cli"],
 			initiallyVisible: true,
@@ -26,7 +30,7 @@ export default definePlugin({
 		ctx.ui.registerInputAction({
 			id: "element-picker",
 			label: "%action.elementPicker.label%",
-			icon: earthIcon(),
+			icon: brandIcon,
 			scope_use: ["conversation", "project", "cli"],
 			onToggle: (active) => {
 				if (active) {

@@ -26,14 +26,7 @@ function apiFor(ctx: ManagedPluginContext): DownloaderApi {
 
 type ViewKey = "extract" | "adapters" | "settings";
 
-export function DownloaderView({
-  ctx,
-  variant = "page",
-}: {
-  ctx: ManagedPluginContext;
-  /** `panel` drops the page title: the activity tab already labels the surface. */
-  variant?: "page" | "panel";
-}) {
+export function DownloaderView({ ctx }: { ctx: ManagedPluginContext }) {
   const { t } = useTranslation();
   const api = apiFor(ctx);
   const gate = useServiceGate(ctx, api);
@@ -82,15 +75,11 @@ export function DownloaderView({
 
   return (
     <div className="h-full overflow-y-auto bg-background text-foreground">
-      <div className={variant === "panel" ? "mx-auto w-full max-w-2xl px-4 py-4" : "mx-auto w-full max-w-2xl px-6 py-7"}>
+      {/* 只剩活动标签一个表面，因此固定用 panel 内边距。 */}
+      <div className="mx-auto w-full max-w-2xl px-4 py-4">
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            {variant === "panel" ? null : (
-              <>
-                <h1 className="text-base font-medium text-foreground">{t("downloader.title")}</h1>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t("downloader.subtitle")}</p>
-              </>
-            )}
+            {/* 标签栏已经写着名字，这里不再重复标题与副标题。 */}
           </div>
           <span
             className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] ${
