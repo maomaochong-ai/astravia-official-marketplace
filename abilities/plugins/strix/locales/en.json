@@ -2,7 +2,7 @@
   "plugin.name": "Strix",
   "plugin.description": "The Strix pentest console in a tab: launch a scan against code or a live target and watch the sandbox work, running on your Astravia model.",
   "tab.label": "Strix",
-  "action.label": "Strix scan",
+  "action.label": "Strix",
   "launch.tagline": "Open-source AI hackers for your apps",
   "launch.label": "What should Strix test?",
   "launch.placeholder": "Describe what to test, or name a target",

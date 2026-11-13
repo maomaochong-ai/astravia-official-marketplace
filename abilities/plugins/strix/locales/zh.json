@@ -2,7 +2,7 @@
   "plugin.name": "Strix",
   "plugin.description": "标签页里的 Strix 渗透控制台：对着代码或线上目标发起扫描，看着沙箱干活，模型用你 Astravia 里已经配好的那个。",
   "tab.label": "Strix",
-  "action.label": "Strix 扫描",
+  "action.label": "Strix",
   "launch.tagline": "为你应用而生的 AI 黑客",
   "launch.label": "要让 Strix 测什么？",
   "launch.placeholder": "描述要测什么，或直接给出目标",

@@ -236,7 +236,7 @@
   "tab.target.mobile.label": "Mobile",
   "tab.target.mobile.hint": "Decompile Android APKs (jadx / apktool), inspect iOS bundles, attach with Frida over adb. Use when the target runs on a phone or tablet.",
   "tab.target.mobile.firstMove": "unpack the package: manifest and resources, then class-level decompilation.",
-  "action.openTab.label": "REA Workflow",
+  "action.openTab.label": "REA",
   "prompt.workflow.instructions": "REA workflow is active. Follow the 6-stage reverse-engineering process (connect → route → summary → plan → read → finish). Pick a target type (JavaScript / .NET / native / firmware / web / mobile) before running any analysis, and treat recentOutput as the source of truth for CLI status.",
   "tab.target.autoDetected": "Auto-detected from this conversation",
   "tab.target.noSignalHint": "No target detected yet. Send a message or type a path above and the type picks itself; you can also click a type.",
@@ -430,12 +430,10 @@
   "tool.status.label": "REA workflow status",
   "tool.doctor.label": "REA engine doctor",
   "tab.detail.agentDriven": "You do not run anything by hand here. Ask the agent to analyse the target in the conversation; it calls the tools below (or the equivalent rea CLI) as needed, and this panel only reports what actually happened.",
-
   "tab.panel.fullscreen": "Fill panel",
   "tab.panel.fullscreenHint": "Widen the activity panel to the whole window (it is panel width, not browser fullscreen)",
   "tab.panel.restore": "Restore width",
   "tab.panel.restoreHint": "Go back to the width the panel had before filling the window",
-
   "tab.examples.button": "Examples",
   "tab.examples.title": "Real usage examples",
   "tab.examples.hint": "Copy one of these prompts and send it in the chat. Replace the target if the box above is empty.",
