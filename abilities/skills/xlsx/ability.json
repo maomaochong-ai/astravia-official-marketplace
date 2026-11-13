@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "skill",
   "slug": "xlsx",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "icon": "assets/icon.png",
   "detail": {
     "format": "blocks",
@@ -19,7 +19,10 @@
       }
     ],
     "i18n": {
-      "zh": { "path": "detail.zh.json" }
+      "zh": {
+        "path": "detail.zh.json"
+      }
     }
-  }
+  },
+  "name": "xlsx"
 }
