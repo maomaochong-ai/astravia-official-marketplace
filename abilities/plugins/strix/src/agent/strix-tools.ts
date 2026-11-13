@@ -41,6 +41,14 @@ export const STRIX_TOOL_SPECS: readonly StrixToolSpec[] = [
 		parameters: {
 			type: "object",
 			properties: {
+				mode: {
+					type: "string",
+					enum: ["quick", "standard", "deep", "diff"],
+					description:
+						"How deep to go. quick: bounded first pass, short timeouts, breadth over depth. " +
+						"standard: the default full sweep. deep: standard plus a coverage gate before finishing. " +
+						"diff: only the changes in the mounted repository. Fixed for the life of the session.",
+				},
 				targets: {
 					type: "array",
 					items: { type: "string" },

@@ -1,16 +1,18 @@
 /**
- * Strix's skill library, read from the installed Python package.
+ * Strix's skill library: the tool knowledge that ships with this plugin, plus the
+ * fuller library inside the installed Python package when there is one.
  *
- * The content stays upstream's: we locate `strix/skills` inside the package the
- * user installed and read the Markdown as it ships. Keeping the files where they
- * are means an engine upgrade upgrades the skills, and nothing here rewrites a
- * pack.
+ * The packaged copy is not a fallback in the "nice to have" sense: without Docker
+ * there is no container to read skills from, so `host` mode would otherwise run
+ * with no tool knowledge at all (ADR strix-0002). The Python package's copy wins
+ * when present because an engine upgrade may carry newer text.
  */
 
 import { execFile } from "node:child_process";
 import { readFile, readdir } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 
 const run = promisify(execFile);
 
@@ -28,7 +30,7 @@ export interface SkillEntry {
 export interface SkillLocation {
 	root: string;
 	/** How it was found, for the panel's diagnostics. */
-	source: "python" | "env";
+	source: "python" | "env" | "bundled";
 }
 
 /** Ask the interpreter where the package lives; STRIX_SKILLS_DIR overrides for odd installs. */
@@ -49,7 +51,21 @@ export async function locateSkills(python = process.env.STRIX_PYTHON || "python"
 			/* try the next interpreter */
 		}
 	}
-	return undefined;
+	// No Python package: the packaged tool knowledge is what this build has.
+	return { root: packagedSkillsRoot(), source: "bundled" };
+}
+
+/**
+ * Where the tool knowledge shipped inside the plugin lives.
+ *
+ * `main.ts` is bundled to `dist/service/main.mjs`, so the package root is two levels
+ * up and the knowledge sits beside the plugin's own SKILL.md. It has to live under
+ * `agent/` rather than a top-level `assets/`: the packer takes `dist/` plus declared
+ * code directories, so anything outside them never reaches the installed package.
+ * working directory: the service is started by the host from anywhere.
+ */
+export function packagedSkillsRoot(): string {
+	return fileURLToPath(new URL("../../agent/skills/strix/", import.meta.url));
 }
 
 /** Parse YAML-ish frontmatter: the subset skill files use (flat scalars). */

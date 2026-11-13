@@ -41,20 +41,20 @@ describe("host sync", () => {
 		expect(resolved.choice).toEqual({ modelKey: "local/llama-4", name: "llama-4", provider: "local" });
 	});
 
-	it("falls back to the default when the conversation has no model", () => {
+	it("says nothing when the conversation has no model, instead of borrowing the default", () => {
+		// ADR strix-0003: the panel is not a second model picker. A host-wide default
+		// named here would claim a model the chat is not running.
 		const resolved = resolveModel({
 			conversationModel: null,
 			models: [model("openai/gpt-6", "GPT-6")],
 			defaultModel: "openai/gpt-6",
 		});
 		expect(resolved.fromConversation).toBe(false);
-		expect(resolved.choice?.name).toBe("GPT-6");
+		expect(resolved.choice).toBeUndefined();
 	});
 
-	it("takes the first listed model when nothing is configured at all", () => {
-		expect(resolveModel({ conversationModel: null, models: [model("openai/gpt-6")], defaultModel: null }).choice?.modelKey).toBe(
-			"openai/gpt-6",
-		);
+	it("never invents a choice from the list when nothing is configured", () => {
+		expect(resolveModel({ conversationModel: null, models: [model("openai/gpt-6")], defaultModel: null }).choice).toBeUndefined();
 	});
 
 	it("recognises the Strix tool behind whatever namespace the host applied", () => {

@@ -60,8 +60,11 @@ export function resolveModel(input: {
 		};
 	}
 
-	const fallback = match(defaultModel) ?? models[0];
-	return { choice: fallback ? toChoice(fallback) : undefined, fromConversation: false };
+	// No host-wide fallback (ADR strix-0003). The conversation is the only authority on
+	// which model runs: picking `defaultModel` here made the panel claim a model the
+	// chat was not using, and switching model in the chat did not reach the panel.
+	// Without one the panel says so (log.noModel) instead of inventing a choice.
+	return { choice: undefined, fromConversation: false };
 }
 
 /** The `strix_*` tool behind whatever namespace the host applied to it. */

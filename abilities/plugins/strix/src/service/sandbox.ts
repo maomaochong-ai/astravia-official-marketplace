@@ -21,6 +21,20 @@ const run = promisify(execFile);
 const NAME_PREFIX = "astravia-strix-";
 const DEFAULT_IMAGE = "ghcr.io/usestrix/strix-sandbox:1.4.0";
 
+/** Scan depth for one session; fixed at start (ADR strix-0002). */
+export type ScanMode = "quick" | "standard" | "deep" | "diff";
+
+const SCAN_MODES: readonly ScanMode[] = ["quick", "standard", "deep", "diff"];
+
+/** Per-mode command ceiling: a `quick` pass must not sit ten minutes on one command. */
+export function scanModeCapSeconds(mode: ScanMode): number {
+	return mode === "quick" ? 120 : 600;
+}
+
+export function asScanMode(value: unknown): ScanMode {
+	return SCAN_MODES.includes(value as ScanMode) ? (value as ScanMode) : "standard";
+}
+
 /**
  * Run one command in the user's own session. Same shape as the docker result so the
  * tool surface does not need to know which environment it got.
@@ -60,6 +74,8 @@ export interface SandboxStatus {
 	startedAt?: string | null;
 	/** Which environment this session runs in; `host` means no container. */
 	mode?: EnvironmentMode;
+	/** Scan depth chosen when the session started (ADR strix-0002). */
+	scanMode?: ScanMode;
 }
 
 export interface MountInput {
@@ -107,6 +123,8 @@ export class Sandbox {
 	/** `host` means no container: commands run in the user's session (ADR strix-0001). */
 	private mode: EnvironmentMode = "docker";
 	private hostRoot: string | null = null;
+	/** Scan depth for this session; fixed at start (ADR strix-0002). */
+	private scanMode: ScanMode = "standard";
 
 	constructor(
 		private readonly emit: (payload: Record<string, unknown>) => void,
@@ -124,6 +142,7 @@ export class Sandbox {
 			startedAt:
 				this.container !== null || this.hostRoot !== null ? new Date(this.startedAt).toISOString() : null,
 			mode: this.mode,
+			scanMode: this.scanMode,
 		};
 	}
 
@@ -133,6 +152,9 @@ export class Sandbox {
 		// Decided per start, not at process boot: a daemon that came up between two
 		// scans should be used by the second one (ADR strix-0001).
 		this.mode = (await resolveEnvironment(sandboxImage())).mode;
+		// Scan depth is snapshot here too: a step that changed the ceiling half-way
+		// through would make the report unexplainable (ADR strix-0002).
+		this.scanMode = asScanMode(params.mode);
 
 		const sessionId = String(params.sessionId ?? "").trim() || `s${Date.now().toString(36)}`;
 		const container = containerName(sessionId);
@@ -184,7 +206,7 @@ export class Sandbox {
 		const command = String(params.command ?? "").trim();
 		if (!command) throw new Error("command is required");
 		const workdir = String(params.workdir ?? "").trim();
-		const timeoutSec = Math.min(Number(params.timeoutSec) || 300, 600);
+		const timeoutSec = Math.min(Number(params.timeoutSec) || 300, scanModeCapSeconds(this.scanMode));
 		const script = workdir ? `cd ${quote(workdir)} && ${command}` : command;
 
 		this.emit({ event: "tool_start", tool: "exec_command", command, workdir: workdir || null });
