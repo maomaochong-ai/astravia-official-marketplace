@@ -5,8 +5,8 @@
       "type": "showcase",
       "showcase": {
         "template": "chat-thread",
-        "user_prompt": "我的测试机是 10.20.0.14，看看开了哪些端口，后台管理页有没有泄露信息",
-        "assistant_reply": "已经把 Kali 拉进本地容器，对 10.20.0.14 做了服务识别：22、80、8080 开着，8080 是 Jenkins 2.44。要不要我用 nikto 再往下挖一层？",
+        "user_prompt": "我的测试机 10.20.0.14，看下开了哪些端口",
+        "assistant_reply": "Kali 已在本地容器起好：22、80、8080 开着，8080 是 Jenkins。需要继续深挖吗？",
         "canvas": "generic",
         "brand_name": "Kali Linux",
         "brand_icon_url": "assets/composer-icon.png"

@@ -5,8 +5,8 @@
       "type": "showcase",
       "showcase": {
         "template": "chat-thread",
-        "user_prompt": "My staging box is 10.20.0.14 — check which ports are open and whether the admin panel leaks anything",
-        "assistant_reply": "Pulled Kali into a local container, ran a service scan on 10.20.0.14: 22, 80, 8080 open. 8080 answers as Jenkins 2.44 — I can go deeper with nikto, say the word.",
+        "user_prompt": "My staging box is 10.20.0.14 — which ports are open?",
+        "assistant_reply": "Kali is up locally: 22, 80, 8080 open; 8080 answers as Jenkins. Want nikto next?",
         "canvas": "generic",
         "brand_name": "Kali Linux",
         "brand_icon_url": "assets/composer-icon.png"

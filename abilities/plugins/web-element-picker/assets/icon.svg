@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!--
+    网页元素选择器品牌图标（全彩）。
+
+    箭头几何取自 Iconify 的 flat-color-icons:cursor（网络下载后重绘），
+    原图是灰阶光标，这里改成品牌渐变并与虚线选区框组合，表达「在页面里框住一个元素」。
+
+    刻意不使用 currentColor：图标会以 <img> / data URI 渲染，没有 CSS 上下文，
+    currentColor 会解析成黑色，标签页、行内条目与胶囊就都退回单色默认图标。
+  -->
+  <defs>
+    <linearGradient id="wep-tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#38bdf8" />
+      <stop offset="0.55" stop-color="#2563eb" />
+      <stop offset="1" stop-color="#7c3aed" />
+    </linearGradient>
+    <linearGradient id="wep-arrow" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="1" stop-color="#dbeafe" />
+    </linearGradient>
+  </defs>
+
+  <rect x="16" y="16" width="224" height="224" rx="56" fill="url(#wep-tile)" />
+  <rect
+    x="46" y="46" width="164" height="164" rx="20"
+    fill="#ffffff" fill-opacity="0.14"
+    stroke="#ffffff" stroke-opacity="0.9" stroke-width="9" stroke-dasharray="22 16" stroke-linecap="round"
+  />
+
+  <g transform="translate(74 66) scale(3.1)">
+    <path
+      d="M14 2.2c-.5 0-.9.3-1.1.7L3.1 25.4c-.2.5-.1 1.1.3 1.5c.4.4 1 .5 1.5.3l6.9-3.2l4 8.6c.2.4.6.7 1.1.7c.1 0 .2 0 .3-.1l3.6-1.5c.6-.3.9-1 .6-1.6l-3.9-8.4l7.6-.7c.5 0 1-.4 1.1-.9c.1-.5-.1-1.1-.5-1.4L15.2 2.6c-.3-.3-.8-.4-1.2-.4Z"
+      fill="url(#wep-arrow)" stroke="#1e3a8a" stroke-width="1.4" stroke-linejoin="round"
+    />
+  </g>
+</svg>
