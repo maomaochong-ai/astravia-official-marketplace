@@ -1,11 +1,22 @@
 import "./style.css";
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { definePlugin, useActiveConversation } from "@astravia-org/plugin-sdk";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { createBridgeClient } from "./domain/bridge-client";
 import { StrixTab } from "./features/scan-console/components/strix-tab";
 import { useStrixSession } from "./features/scan-console/hooks/use-strix-session";
 import { createServiceRuntime, type ServiceRuntime } from "./runtime";
+
+/**
+ * The tab's own keys, registered while the tab is the surface in front.
+ *
+ * ADR strix-0004: a panel that behaves like an app has to answer keys even when the
+ * focus sits in its own textarea — the launch screen's Ctrl+C previously worked only
+ * if the pointer had not moved focus elsewhere, which reads as "shortcuts do nothing".
+ * These go through the host's shortcut stack rather than a `document` listener, so the
+ * host keeps ownership of what wins when scopes overlap.
+ */
+let registerShortcutScope: PluginContext["ui"]["registerShortcutScope"] | null = null;
 
 const TAB_ID = "strix.console";
 const ACTION_ID = "strix.activate";
@@ -42,6 +53,34 @@ function StrixTabRoot({
 		t,
 	});
 
+	// Keys the panel answers wherever focus sits inside it. Registered imperatively through
+	// the host's stack (not a `document` listener, ADR strix-0004) and re-reading the live
+	// session through a ref, so the bindings do not need re-registering on every render.
+	// `when: "always"` on purpose: the composer is a textarea, and a scope that skipped
+	// editable targets would be dead exactly when the user is typing.
+	const live = useRef(session);
+	live.current = session;
+	useEffect(() => {
+		if (!registerShortcutScope) return;
+		const scope = registerShortcutScope({
+			id: "console",
+			kind: "surface",
+			bindings: () => [
+				{ key: "mod+k", when: "always", run: () => void live.current.refresh() },
+				{
+					// Stop the run, not the tab: leaving while a scan is live loses the session.
+					key: "escape",
+					when: "always",
+					run: () => {
+						if (live.current.phase === "scanning") void live.current.stop();
+					},
+				},
+				{ key: "mod+shift+c", when: "always", run: () => onQuit() },
+			],
+		});
+		return () => scope.dispose();
+	}, [onQuit]);
+
 	return (
 		<StrixTab
 			t={t}
@@ -74,6 +113,9 @@ function StrixTabRoot({
 export default definePlugin({
 	async activate(ctx: PluginContext): Promise<Disposable> {
 		const runtime = createServiceRuntime(ctx);
+		// Captured once: the React tree needs it to register the panel's own keys, the same
+		// pattern `notify` uses (a component cannot reach `ctx`).
+		registerShortcutScope = ctx.ui.registerShortcutScope?.bind(ctx.ui) ?? null;
 
 		const tab: Disposable = ctx.ui.registerActivityTab({
 			id: TAB_ID,

@@ -2,7 +2,7 @@
   "id": "strix",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.5.9",
+  "version": "0.5.10",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -21,7 +21,8 @@
     "agent.session.read",
     "agent.skills.control",
     "agent.mcp.control",
-    "shell.openExternal"
+    "shell.openExternal",
+    "ui.shortcuts.register"
   ],
   "providers": {
     "cli": [

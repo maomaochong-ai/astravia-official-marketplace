@@ -113,7 +113,10 @@ export function createServiceRuntime(ctx: PluginContext): ServiceRuntime {
 		if (!services) throw new Error("host does not expose the services API");
 
 		status = await services.getStatus(SERVICE_ID);
-		if (status.installed === false && !installAttempted) {
+		// `installed` is optional in the host's status; `=== false` skipped the install
+		// whenever it came back undefined, and start() then failed with "Service runtime is
+		// not installed by the plugin" — the exact message users reported.
+		if (status?.installed !== true && !installAttempted) {
 			// One attempt per activation: a failed install would otherwise spin forever, and the
 			// remedy is reinstalling the plugin, not retrying the same bytes.
 			installAttempted = true;
@@ -126,7 +129,17 @@ export function createServiceRuntime(ctx: PluginContext): ServiceRuntime {
 			}
 			await installRuntime(services);
 		}
-		if (status?.phase !== "ready") {
+		try {
+			if (status?.phase !== "ready") status = await services.start(SERVICE_ID);
+		} catch (cause) {
+			// Self-heal once: the host can lose the runtime marker (cleared cache, version
+			// switch) while reporting nothing about it. A single forced reinstall is cheaper
+			// than making the user delete and reinstall the plugin.
+			const message = cause instanceof Error ? cause.message : String(cause);
+			if (!/not installed by the plugin/i.test(message) || installAttempted) throw cause;
+			installAttempted = true;
+			status = await services.stop(SERVICE_ID).catch(() => status);
+			await installRuntime(services);
 			status = await services.start(SERVICE_ID);
 		}
 
