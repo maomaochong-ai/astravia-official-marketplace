@@ -192,7 +192,7 @@ export default definePlugin({
 		// 输入栏 toggle：on 时把面板上栏 + 打开；off 时下栏。
 		// decoratePrompt 注入 REA 工作流指令，让下一条 prompt 自动进入逆向流程。
 		// label 取短名：宿主 actions 行是单行 nowrap，chip 太长会把同一行的其它插件挤到可视区外。
-		const actionDisposable = ctx.ui.registerInputAction({ ...({ placement: "capsule" } as Record<string, unknown>),
+		const actionDisposable = ctx.ui.registerInputAction({
 			id: REA_ACTION_ID,
 			label: ctx.i18n.t("action.openTab.label"),
 			scope_use: ["conversation", "project"],

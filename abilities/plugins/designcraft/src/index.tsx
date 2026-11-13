@@ -70,7 +70,7 @@ export default definePlugin({
     // `ui.slot.input-action` throws when the manifest did not ask for it, so a host
     // build without that permission gets no toggle instead of a failed activation.
     const action = ctx.permissions.has("ui.slot.input-action")
-      ? ctx.ui.registerInputAction({ ...({ placement: "capsule" } as Record<string, unknown>),
+      ? ctx.ui.registerInputAction({
           id: `${APP.id}:editor`,
           label: APP.name,
           defaultActive: false,

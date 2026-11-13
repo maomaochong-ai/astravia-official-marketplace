@@ -155,7 +155,7 @@ export default definePlugin({
 		// 输入栏按钮
 		let inputAction: Disposable | null = null;
 		if (ctx.permissions.has("ui.slot.input-action")) {
-			inputAction = ctx.ui.registerInputAction({ ...({ placement: "capsule" } as Record<string, unknown>),
+			inputAction = ctx.ui.registerInputAction({
 				id: "dbx-pro-toggle",
 				label: "数据库",
 				icon: <span className="icon-[lucide--database] h-3.5 w-3.5" />,

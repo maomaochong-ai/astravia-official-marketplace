@@ -1,6 +1,6 @@
 {
   "name": "@astravia/plugin-effectcraft",
-  "version": "0.0.31",
+  "version": "0.0.30",
   "private": true,
   "type": "module",
   "scripts": {

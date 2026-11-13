@@ -20,7 +20,7 @@ import { ACTIVITY_TAB_ID, TOOL_IDS } from "../plugin-ids";
 export function registerBoardmixInputAction(ctx: PluginContext): Disposable | null {
 	if (!ctx.permissions.has("ui.slot.input-action")) return null;
 
-	return ctx.ui.registerInputAction({ ...({ placement: "capsule" } as Record<string, unknown>),
+	return ctx.ui.registerInputAction({
 		id: "boardmix-whiteboard",
 		label: "%input.label%",
 		// 与工具的 scope 一致：只在这两种会话里出现。

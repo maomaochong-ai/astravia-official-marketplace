@@ -2,7 +2,7 @@
   "id": "filmcraft",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.30",
+  "version": "0.0.29",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",

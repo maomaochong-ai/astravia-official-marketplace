@@ -23,7 +23,7 @@ export default definePlugin({
 			scope_use: ["conversation", "project", "cli"],
 			initiallyVisible: true,
 		});
-		ctx.ui.registerInputAction({ ...({ placement: "capsule" } as Record<string, unknown>),
+		ctx.ui.registerInputAction({
 			id: "element-picker",
 			label: "%action.elementPicker.label%",
 			icon: earthIcon(),

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "plugin",
   "slug": "texturecraft",
-  "version": "0.0.26",
+  "version": "0.0.25",
   "icon": "assets/icon.png",
   "detail": {
     "format": "blocks",
