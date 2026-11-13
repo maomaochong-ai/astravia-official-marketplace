@@ -5,6 +5,9 @@ license: Apache-2.0
 metadata:
   author: usestrix
   homepage: https://docs.strix.ai
+  astravia:
+    presentation:
+      icon: assets/icon.png
 ---
 
 # Run a Strix pentest

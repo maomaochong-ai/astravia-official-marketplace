@@ -2,7 +2,7 @@
   "id": "strix",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.5.17",
+  "version": "0.5.18",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -214,7 +214,8 @@
             "commandPalette": "visible",
             "skillPicker": "visible",
             "pluginDetail": "visible"
-          }
+          },
+          "displayName": "Strix"
         },
         "web-app-penetration-testing": {
           "defaultVisibility": "hidden",
