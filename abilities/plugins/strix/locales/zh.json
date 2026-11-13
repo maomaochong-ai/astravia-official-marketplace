@@ -83,5 +83,6 @@
   "env.unknown": "未确定",
   "rail.empty": "还没有记录",
   "boot.preparing": "正在准备环境（首次使用会下载工具链）",
-  "log.hostMode": "没有容器：直接在本机执行（隔离较弱）"
+  "log.hostMode": "没有容器：直接在本机执行（隔离较弱）",
+  "sandbox.degraded": "容器不可用，已在本机执行"
 }
