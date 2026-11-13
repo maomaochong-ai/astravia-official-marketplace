@@ -84,5 +84,10 @@
   "rail.empty": "还没有记录",
   "boot.preparing": "正在准备环境（首次使用会下载工具链）",
   "log.hostMode": "没有容器：直接在本机执行（隔离较弱）",
-  "sandbox.degraded": "容器不可用，已在本机执行"
+  "sandbox.degraded": "容器不可用，已在本机执行",
+  "scan.live": "仍在运行",
+  "session.where": "执行位置",
+  "session.imageNotUsed": "本机执行，未使用镜像",
+  "scan.inputHint": "Enter 发送 · Shift+Enter 换行 · 在宿主对话框里发送也会进入这里",
+  "stats.title": "统计"
 }
