@@ -102,6 +102,37 @@ export const STRIX_TOOL_SPECS: readonly StrixToolSpec[] = [
 	},
 	{
 		handler: "service",
+		name: "strix_proxy",
+		description:
+			"Query the assessment's Caido proxy: captured requests, one request in full, its sitemap, scope rules, or replay a request with modifications. Only available in a docker session that was started with proxy: true; it can make requests to any URL, so it stays off until the user enables it.",
+		parameters: {
+			type: "object",
+			properties: {
+				action: {
+					type: "string",
+					enum: ["list_requests", "view_request", "repeat_request", "list_sitemap", "view_sitemap_entry", "scope_rules"],
+					description:
+						"list_requests: what the proxy captured (filter with httpql_filter). view_request: one request/response by id. " +
+						"repeat_request: resend with optional modifications. list_sitemap / view_sitemap_entry: the discovered tree. scope_rules: the in-scope rules.",
+				},
+				httpql_filter: { type: "string", description: "HTTPQL expression, e.g. `resp.code.eq:200 AND req.path.cont:\"/api\"`." },
+				request_id: { type: "string", description: "Request id for view_request / repeat_request." },
+				entry_id: { type: "string", description: "Sitemap entry id for view_sitemap_entry." },
+				scope_id: { type: "string", description: "Restrict to one scope." },
+				parent_id: { type: "string", description: "Sitemap parent node id." },
+				depth: { type: "string", enum: ["DIRECT", "ALL"], description: "Sitemap depth. Defaults to DIRECT." },
+				page: { type: "number", description: "Sitemap page, 1-based." },
+				first: { type: "number", description: "How many requests to return (list_requests)." },
+				part: { type: "string", enum: ["request", "response"], description: "Which side of view_request to read." },
+				modifications: { type: "object", description: "repeat_request changes: method, path, headers, body." },
+				scope: { type: "object", description: "scope_rules payload for create / update." },
+			},
+			required: ["action"],
+			additionalProperties: false,
+		},
+	},
+	{
+		handler: "service",
 		name: "strix_browser",
 		description:
 			"Drive the sandbox's headless browser (agent-browser + chromium) with one command: open a URL, click or type on a selector, read the page text, take a screenshot, or run a script. Use it for pages that need a real browser - SPA routes, authenticated flows, canvas UIs - instead of curl.",

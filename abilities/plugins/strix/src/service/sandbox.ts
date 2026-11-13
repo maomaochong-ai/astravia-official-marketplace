@@ -16,6 +16,7 @@ import { promisify } from "node:util";
 import { dockerApi, imagePresent, pullImage, runArgs, type SandboxSpec } from "./docker";
 import { asScanMode, commandCapSeconds, type ScanMode } from "../domain/scan-mode";
 import { resolveEnvironment, type EnvironmentMode } from "./environment";
+import { asProxyAction, parseProxyOutput, PROXY_ACTIONS, proxyCommand, proxyUnavailable } from "./proxy";
 
 const run = promisify(execFile);
 
@@ -64,6 +65,8 @@ export interface SandboxStatus {
 	mode?: EnvironmentMode;
 	/** Scan depth chosen when the session started (ADR strix-0002). */
 	scanMode?: ScanMode;
+	/** Caido proxy tools were enabled for this session. */
+	proxy?: boolean;
 }
 
 export interface MountInput {
@@ -113,6 +116,8 @@ export class Sandbox {
 	private hostRoot: string | null = null;
 	/** Scan depth for this session; fixed at start (ADR strix-0002). */
 	private scanMode: ScanMode = "standard";
+	/** Caido proxy tools are off unless the session asked for them. */
+	private proxyEnabled = false;
 
 	constructor(
 		private readonly emit: (payload: Record<string, unknown>) => void,
@@ -131,6 +136,8 @@ export class Sandbox {
 				this.container !== null || this.hostRoot !== null ? new Date(this.startedAt).toISOString() : null,
 			mode: this.mode,
 			scanMode: this.scanMode,
+			/** Whether the Caido proxy surface was enabled for this session (ADR strix-0002). */
+			proxy: this.proxyEnabled,
 		};
 	}
 
@@ -143,6 +150,8 @@ export class Sandbox {
 		// Scan depth is snapshot here too: a step that changed the ceiling half-way
 		// through would make the report unexplainable (ADR strix-0002).
 		this.scanMode = asScanMode(params.mode);
+		// Opt-in: a tool that can make the model request any URL is an attack surface.
+		this.proxyEnabled = params.proxy === true;
 
 		const sessionId = String(params.sessionId ?? "").trim() || `s${Date.now().toString(36)}`;
 		const container = containerName(sessionId);
@@ -225,6 +234,36 @@ export class Sandbox {
 			stdout: clip(result.stdout),
 			stderr: clip(result.stderr),
 		};
+	}
+
+	/**
+	 * The Caido proxy, driven through the container's own Python module.
+	 *
+	 * Off unless the session enabled it, and only in a container — see `service/proxy.ts`
+	 * for why this delegates to upstream's `caido_api` instead of re-implementing it.
+	 */
+	async proxy(params: Record<string, unknown>): Promise<Record<string, unknown>> {
+		const action = asProxyAction(params.action);
+		if (!action) {
+			return { ok: false, error: `action must be one of ${PROXY_ACTIONS.join(", ")}` };
+		}
+		if (!this.container) return { ok: false, error: proxyUnavailable("no-container") };
+		if (!this.proxyEnabled) return { ok: false, error: proxyUnavailable("not-enabled") };
+
+		this.emit({ event: "tool_start", tool: "proxy", command: action });
+		const started = Date.now();
+		const result = await dockerApi.exec(this.container, proxyCommand(action, params), 120_000);
+		const parsed = parseProxyOutput(result);
+		this.emit({
+			event: "tool_end",
+			tool: "proxy",
+			command: action,
+			ok: parsed.ok,
+			durationMs: Date.now() - started,
+			output: parsed.ok ? "" : (parsed.error ?? ""),
+		});
+		if (!parsed.ok) return { ok: false, error: parsed.error ?? proxyUnavailable("not-installed") };
+		return { ok: true, action, data: parsed.data };
 	}
 
 	/**

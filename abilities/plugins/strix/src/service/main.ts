@@ -108,6 +108,7 @@ const HANDLERS: Record<string, Handler> = {
 	strix_sandbox_status: async () => sandbox.status(),
 	strix_sandbox_stop: () => sandbox.stop(),
 	strix_browser: (args) => sandbox.browser(args),
+	strix_proxy: (args) => sandbox.proxy(args),
 
 	strix_list_skills: async () => {
 		const skills = await locateSkills();
