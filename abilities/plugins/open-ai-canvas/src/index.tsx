@@ -56,29 +56,42 @@ export default definePlugin({
       },
     });
 
-    // 输入框开关：行内条目 + 激活后的胶囊。打开画布并让模型知道可以动画布——
-    // 画布自己的 MCP 服务（plugin.json#agent.mcpServers）已经提供节点级工具，
-    // 开关只负责「把这一轮挂上去」，不重建一套。
-    const action = ctx.permissions.has("ui.slot.input-action")
-      ? ctx.ui.registerInputAction({
-          id: "open-ai-canvas:canvas",
-          label: "Open AI Canvas",
-          defaultActive: false,
-          scope_use: ["conversation", "project"],
-          onToggle(active) {
-            setCanvasEngaged(active === true);
-            if (active !== true) return;
-            try {
-              ctx.ui.openWorkspaceView(VIEW_ID);
-            } catch {
-              // 旧宿主没有这个 API 时不影响开关本身。
-            }
-            void controller.ensureRunning().catch(() => undefined);
-          },
-          decoratePrompt: () =>
-            isCanvasEngaged() ? { instructions: [canvasInstruction("open-ai-canvas")] } : {},
-        })
-      : null;
+		// 输入框开关：行内条目 + 激活后的胶囊。
+		//
+		// 点它不是「去侧栏看控制面板」，而是直接把画布打开：侧栏那个视图是诊断/启动/模型
+		// 的控制台，不是画布本体，先跳过去再跳浏览器等于让用户多看一个与来意无关的页面。
+		// 所以这里只做两件事：把服务拉起来，把画布在浏览器打开。控制台仍然可从侧栏进入。
+		const action = ctx.permissions.has("ui.slot.input-action")
+			? ctx.ui.registerInputAction({
+					id: "open-ai-canvas:canvas",
+					label: "Open AI Canvas",
+					defaultActive: false,
+					scope_use: ["conversation", "project"],
+					onToggle(active) {
+						setCanvasEngaged(active === true);
+						if (active !== true) return;
+						// 先等后端就绪再开浏览器：没就绪时 openInBrowser() 拿不到 baseUrl，
+						// 会安静地什么都不做，看起来就像开关点了没反应。
+						void controller
+							.ensureRunning()
+							.then(() => controller.openInBrowser())
+							.catch(() => undefined);
+					},
+					decoratePrompt: () => {
+						if (!isCanvasEngaged()) return {};
+						const state = controller.getState();
+						return {
+							instructions: [
+								canvasInstruction({
+									ready: state.phase === "running",
+									...(state.origin ? { origin: state.origin } : {}),
+									...(state.detail ? { detail: state.detail } : {}),
+								}),
+							],
+						};
+					},
+				})
+			: null;
 
     // 放到下一个宏任务：激活本身处在一轮渲染里，同步触发的状态广播会让宿主
     // 在同一轮里再次进入渲染（React #185 的直接来源）。

@@ -437,7 +437,7 @@
       "slug": "codebase-migration-refactor",
       "name": "Codebase Migration and Refactoring",
       "description": "Run a large migration or multi-file refactor through a tracked pipeline — measure the blast radius, apply AST codemods, ship one reviewable batch at a time, and audit the dead config and leftover shims afterwards.",
-      "version": "1.0.6",
+      "version": "1.0.7",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia",
@@ -470,7 +470,8 @@
       },
       "source": {
         "path": "abilities/skills/codebase-migration-refactor"
-      }
+      },
+      "alias": "代码库迁移重构"
     },
     {
       "type": "plugin",
@@ -810,7 +811,7 @@
       "slug": "open-ai-canvas",
       "name": "Open AI Canvas",
       "description": "Run the open-source AI canvas locally and use the image and video models you configured there from the host. Text bridges one way, media models register as a host provider, MCP tools cover projects, canvases and tasks, the canvas's 73 built-in skills are readable from the agent, and the runtime updates itself in place when upstream ships a new build.",
-      "version": "0.1.17",
+      "version": "0.1.18",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
@@ -850,9 +851,9 @@
     {
       "type": "plugin",
       "slug": "rea",
-      "name": "REA Reverse Engineering",
-      "description": "Connect Astravia to REA so the agent can reverse engineer native binaries, JavaScript and Electron apps, .NET assemblies, firmware and website traffic — with evidence for every conclusion.",
-      "version": "0.4.15",
+      "name": "REA",
+      "description": "Connect Astravia to REA so the agent can take apart native binaries, .NET assemblies, Electron/JavaScript apps, firmware and browser targets with real debuggers and disassemblers: gather byte-level evidence first, recover the algorithm or protocol next, then prove the conclusion with a runnable reimplementation or patch. Every claim carries its evidence and its limits.",
+      "version": "0.4.16",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
@@ -872,8 +873,8 @@
       "detail": {
         "i18n": {
           "zh": {
-            "name": "rea逆向工程",
-            "description": "把 REA 接入 Astravia，让 Agent 逆向原生二进制、JavaScript 与 Electron 应用、.NET 程序集、固件以及网站流量——每条结论都附上证据与边界。",
+            "name": "REA",
+            "description": "把 REA 接入 Astravia：Agent 用真实的调试器与反汇编器拆开原生二进制、.NET 程序集、JavaScript/Electron 应用、固件与浏览器目标，先按字节取证、再还原算法与协议，最后用可运行的重实现或补丁验证结论。每一步都标注证据位置与分析边界，不把猜测写成结论。",
             "tags": [
               "逆向工程",
               "二进制",
@@ -936,7 +937,7 @@
       "slug": "video-downloader",
       "name": "Video Downloader",
       "description": "Paste a video link and download the highest quality locally — 1000+ sites supported, with progress, a queue and a shortcut to the finished file. The engine sets itself up, so there is nothing to install.",
-      "version": "2.7.2",
+      "version": "2.7.3",
       "configVersion": 2,
       "license": "MIT",
       "author": "Astravia",
@@ -1957,7 +1958,7 @@
       "slug": "mattpocock-skills",
       "name": "Matt Pocock Engineering Workflows",
       "description": "Run real-engineering loops with Matt Pocock's composable skill modules: TDD, code review, bug diagnosis, specs and tickets, triage, PRs, prototyping, research, grilling interviews, handoffs and more — 39 modules in one package.",
-      "version": "1.0.8",
+      "version": "1.0.9",
       "configVersion": 1,
       "license": "MIT",
       "author": "Matt Pocock",
@@ -1992,7 +1993,8 @@
       },
       "source": {
         "path": "abilities/skills/mattpocock-skills"
-      }
+      },
+      "alias": "Pocock 工程流"
     },
     {
       "type": "plugin",

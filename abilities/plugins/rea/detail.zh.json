@@ -5,7 +5,13 @@
       "type": "hero",
       "title": "用证据说话，逆向已发布的软件",
       "description": "REA 给 Agent 提供一套结构化工具，用来调查编译或打包后的应用。每条结论都附 Evidence 记录，列出背后的文件、偏移、哈希与已知边界。",
-      "badges": ["原生", "JavaScript / Electron", "托管代码 (.NET / JVM)", "固件", "网站流量"]
+      "badges": [
+        "原生",
+        "JavaScript / Electron",
+        "托管代码 (.NET / JVM)",
+        "固件",
+        "网站流量"
+      ]
     },
     {
       "type": "feature-grid",
@@ -36,8 +42,8 @@
       "type": "showcase",
       "showcase": {
         "template": "chat-thread",
-        "user_prompt": "我有一个闭源 Electron 应用在 /tmp/sample.app。2.3 比 2.2 多了哪些功能？",
-        "assistant_reply": "REA 映出两份 ASAR 模块视图并 diff IPC：2.3 新增 sync/v2、telemetry/v2，缓存换成密封索引。"
+        "user_prompt": "闭源 Electron 应用 /tmp/sample.app：2.3 比 2.2 多了什么？",
+        "assistant_reply": "REA 映出两份 ASAR 视图并 diff IPC：新增 sync/v2 与 telemetry/v2，缓存改密封索引。"
       }
     },
     {
@@ -74,9 +80,18 @@
     {
       "type": "links",
       "items": [
-        { "label": "REA 项目主页", "href": "https://rea.tools/" },
-        { "label": "REA GitHub 仓库", "href": "https://github.com/morluto/rea" },
-        { "label": "指南与工作流", "href": "https://rea.tools/guides/" }
+        {
+          "label": "REA 项目主页",
+          "href": "https://rea.tools/"
+        },
+        {
+          "label": "REA GitHub 仓库",
+          "href": "https://github.com/morluto/rea"
+        },
+        {
+          "label": "指南与工作流",
+          "href": "https://rea.tools/guides/"
+        }
       ]
     }
   ]
