@@ -28,8 +28,9 @@ describe("environment resolution", () => {
 	});
 
 	it("reports why the container was skipped", () => {
-		expect(sandbox).toContain("degradedReason");
-		expect(sandbox).toContain('event: "sandbox_degraded"');
+		// The reason travels to the panel as an event; it is not kept as dead state.
+		expect(sandbox).toContain("sandbox_degraded");
+		expect(sandbox).not.toContain("degradedReason");
 	});
 
 	it("passes the mode through so the panel can name the environment", () => {

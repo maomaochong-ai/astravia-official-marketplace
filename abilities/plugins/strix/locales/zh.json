@@ -89,5 +89,7 @@
   "session.where": "执行位置",
   "session.imageNotUsed": "本机执行，未使用镜像",
   "scan.inputHint": "Enter 发送 · Shift+Enter 换行 · 在宿主对话框里发送也会进入这里",
-  "stats.title": "统计"
+  "stats.title": "统计",
+  "mcp.title": "连接",
+  "mcp.empty": "还没有连接 MCP 服务"
 }

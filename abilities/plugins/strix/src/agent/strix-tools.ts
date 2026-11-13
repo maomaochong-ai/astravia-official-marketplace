@@ -35,6 +35,13 @@ export const STRIX_TOOL_SPECS: readonly StrixToolSpec[] = [
 	},
 	{
 		handler: "service",
+		name: "strix_mcp",
+		description:
+			"The MCP connections this run has: one row per server with provider, tool count and whether it is dead. Check it when a tool you expect is missing — a dead connection looks exactly like the model forgetting its tools.",
+		parameters: { ...OBJECT, properties: {} },
+	},
+	{
+		handler: "service",
 		name: "strix_sandbox_start",
 		description:
 			"Start the Strix sandbox container for this assessment. It carries the pentest toolchain: nmap, nuclei, ffuf, sqlmap, subfinder, naabu, Caido, agent-browser + chromium, trivy, gitleaks, trufflehog, jwt_tool. Local directories are mounted at /workspace/<name>. Start one session and keep using it.",

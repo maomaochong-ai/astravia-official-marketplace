@@ -132,6 +132,7 @@ const scanProps = {
 	onSend: () => undefined,
 	onStop: () => undefined,
 	agents: [{ name: "auth-specialist", status: "running" as const, task: "Test the login flow" }],
+	mcp: [{ name: "strix", provider: "service", toolCount: 32, dead: false }],
 };
 
 describe("scan screen", () => {

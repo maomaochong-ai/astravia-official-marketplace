@@ -22,6 +22,7 @@ import type { LogLine, SessionPhase } from "../hooks/use-strix-session";
 import { ConsoleBoundary } from "./console-boundary";
 import { LaunchScreen } from "./launch-screen";
 import { ScanScreen } from "./scan-screen";
+import type { McpConnection } from "../../../service/mcp-roster";
 
 export interface StrixTabProps {
 	t: (key: string) => string;
@@ -43,6 +44,7 @@ export interface StrixTabProps {
 	notes: readonly NoteSummary[];
 	coverage: readonly CoverageOutcome[];
 	agents: readonly AgentStatus[];
+	mcp: readonly McpConnection[];
 	question?: { text: string; options?: string[] };
 	/** Answers the pending question; the composer submits through this while one is open. */
 	answer: (text: string) => Promise<void>;
@@ -83,6 +85,7 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					notes={props.notes}
 					coverage={props.coverage}
 					agents={props.agents}
+					mcp={props.mcp}
 					{...(props.question ? { question: props.question } : {})}
 					trace={props.trace}
 					busy={props.busy}

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The Strix panel: a workbench, themed by the host.
  *
  * ADR strix-0004: this is a tab inside Astravia, not a terminal window. The surface,
@@ -1078,4 +1078,36 @@
 .astra-strix-chip:hover {
 	border-color: var(--sx-amber);
 	color: var(--sx-white);
+}
+
+.astra-strix-mcp {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.astra-strix-mcp li {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+}
+
+.astra-strix-mcp[data-dead] li[data-dead="yes"] .astra-strix-mcp-name {
+	text-decoration: line-through;
+	color: var(--sx-dim);
+}
+
+.astra-strix-mcp-name {
+	flex: 1 1 auto;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.astra-strix-mcp-count {
+	font-variant-numeric: tabular-nums;
 }

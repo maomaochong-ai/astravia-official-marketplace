@@ -140,7 +140,6 @@ export class Sandbox {
 	/** Caido proxy tools are off unless the session asked for them. */
 	private proxyEnabled = false;
 	/** Why the container was not used, when a start fell back to this machine. */
-	private degradedReason: string | null = null;
 
 	constructor(
 		private readonly emit: (payload: Record<string, unknown>) => void,
@@ -194,7 +193,6 @@ export class Sandbox {
 		// the same tools run fine on the host (ADR strix-0001: Docker is an accelerator, not a
 		// prerequisite). So a failure here **degrades to host mode** and says why, instead of
 		const degraded = (reason: string): SandboxStatus => {
-			this.degradedReason = reason;
 			this.emit({ event: "sandbox_degraded", reason });
 			// `beginHost` rather than a second copy of the host path: one place decides what
 			// "run on this machine" means, and it cannot drift from the normal host start.
@@ -223,7 +221,6 @@ export class Sandbox {
 
 		this.container = container;
 		this.image = image;
-		this.degradedReason = null;
 		this.targets = targets;
 		this.sessionId = sessionId;
 		this.startedAt = Date.now();
@@ -286,6 +283,31 @@ export class Sandbox {
 			stdout: clip(result.stdout),
 			stderr: clip(result.stderr),
 		};
+	}
+
+	/**
+	 * What MCP servers the current run has, as the report state records them.
+	 *
+	 * Read from the run's own record file inside the container: that is where upstream
+	 * writes `mcp_connections` as soon as a run connects, precisely so an interface can
+	 * attribute a tool call mid-run. In host mode there is no container and therefore no
+	 * roster — the caller merges the declared servers and says so.
+	 */
+	async mcpRoster(): Promise<unknown> {
+		if (!this.container) return null;
+		const script =
+			"python -c \"import json,glob,os;" +
+			"fs=sorted(glob.glob('/root/.strix/**/run.json',recursive=True),key=os.path.getmtime);" +
+			"d=json.load(open(fs[-1])) if fs else {};" +
+			"print(json.dumps(d.get('mcp_connection_status') or d.get('mcp_connections') or []))\"";
+		const result = await dockerApi.exec(this.container, script, 30_000);
+		if (result.code !== 0) return null;
+		const last = result.stdout.trim().split(/\r?\n/).filter(Boolean).pop() ?? "";
+		try {
+			return JSON.parse(last) as unknown;
+		} catch {
+			return null;
+		}
 	}
 
 	/**

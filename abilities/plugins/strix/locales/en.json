@@ -89,5 +89,7 @@
   "session.where": "Runs on",
   "session.imageNotUsed": "on this machine, no image",
   "scan.inputHint": "Enter to send · Shift+Enter for a newline · messages from the host chat land here too",
-  "stats.title": "Stats"
+  "stats.title": "Stats",
+  "mcp.title": "Connections",
+  "mcp.empty": "No MCP servers connected yet"
 }

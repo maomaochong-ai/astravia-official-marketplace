@@ -58,7 +58,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "9a3cbf12e0b8bd36130bd21108405b17e0ff8010b227d05cea661999b4dd512a",
+                  "sha256": "b59fc46438b3f7c218dd44555fdf7a402b147174229fd5d2450ca9b499ac4ef8",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -68,7 +68,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "9a3cbf12e0b8bd36130bd21108405b17e0ff8010b227d05cea661999b4dd512a",
+                  "sha256": "b59fc46438b3f7c218dd44555fdf7a402b147174229fd5d2450ca9b499ac4ef8",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -78,7 +78,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "9a3cbf12e0b8bd36130bd21108405b17e0ff8010b227d05cea661999b4dd512a",
+                  "sha256": "b59fc46438b3f7c218dd44555fdf7a402b147174229fd5d2450ca9b499ac4ef8",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -88,7 +88,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "9a3cbf12e0b8bd36130bd21108405b17e0ff8010b227d05cea661999b4dd512a",
+                  "sha256": "b59fc46438b3f7c218dd44555fdf7a402b147174229fd5d2450ca9b499ac4ef8",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -98,7 +98,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "9a3cbf12e0b8bd36130bd21108405b17e0ff8010b227d05cea661999b4dd512a",
+                  "sha256": "b59fc46438b3f7c218dd44555fdf7a402b147174229fd5d2450ca9b499ac4ef8",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }

@@ -25,6 +25,7 @@ import { FindingList } from "../../findings/components/finding-list";
 import { describeMode, type ScanMode } from "../../../domain/scan-mode";
 import type { SessionPhase } from "../hooks/use-strix-session";
 import { ArtefactPanels } from "./artefact-panels";
+import type { McpConnection } from "../../../service/mcp-roster";
 import { TraceBlock } from "./trace-block";
 
 export interface ScanScreenProps {
@@ -39,6 +40,7 @@ export interface ScanScreenProps {
 	notes: readonly NoteSummary[];
 	coverage: readonly CoverageOutcome[];
 	agents: readonly AgentStatus[];
+	mcp: readonly McpConnection[];
 	/** Folder name of the conversation workspace that is mounted. */
 	workspace?: string;
 	/** The host conversation is generating a turn right now. */
@@ -74,6 +76,7 @@ export function ScanScreen({
 	notes,
 	coverage,
 	agents,
+	mcp,
 	trace,
 	busy,
 	question,
@@ -264,6 +267,33 @@ export function ScanScreen({
 
 					<ArtefactPanels t={t} agents={agents} todos={todos} notes={notes} coverage={coverage} />
 
+					{/* Upstream docks the run's MCP connections as its own panel: a dead server looks
+					    exactly like the model forgetting its tools. */}
+					<section className="astra-strix-section" data-tone="mcp">
+						<h3 className="astra-strix-section-title">
+							{t("mcp.title")}
+							<span className="astra-strix-count" data-empty={mcp.length ? "no" : "yes"}>
+								{mcp.length}
+							</span>
+						</h3>
+						{mcp.length ? (
+							<ul className="astra-strix-mcp">
+								{mcp.map((server) => (
+									<li key={server.name} data-dead={server.dead ? "yes" : "no"}>
+										<span className={server.dead ? "astra-strix-red" : "astra-strix-green"} aria-hidden="true">
+											{server.dead ? "×" : "●"}
+										</span>
+										<span className="astra-strix-mcp-name" title={server.name}>
+											{server.name}
+										</span>
+										<span className="astra-strix-dim astra-strix-mcp-count">{server.toolCount}</span>
+									</li>
+								))}
+							</ul>
+						) : (
+							<p className="astra-strix-section-empty">{t("mcp.empty")}</p>
+						)}
+					</section>
 					{/* Upstream's sidebar ends in a Stats panel; without it the panel has no single
 					    place that answers "how is this run going". */}
 					<section className="astra-strix-section" data-tone="stats">

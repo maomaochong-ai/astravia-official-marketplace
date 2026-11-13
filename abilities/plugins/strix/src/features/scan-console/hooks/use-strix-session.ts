@@ -32,6 +32,8 @@ import type { AgentStatus } from "../../../agent/strix-agent";
 import { hostToolCall, resolveModel, workspaceLabel } from "../../../domain/host-sync";
 import { parseLaunchPrompt } from "../../../domain/launch-request";
 import type { ModelChoice } from "../../../domain/model-label";
+import { belongsTo, readSnapshot, writeSnapshot } from "../session-store";
+import { normalizeRoster, type McpConnection } from "../../../service/mcp-roster";
 import type {
 	BridgeEvent,
 	CoverageOutcome,
@@ -69,6 +71,8 @@ export interface StrixSessionModel {
 	coverage: CoverageOutcome[];
 	/** Specialist agents and their status, as reported by the loop. */
 	agents: AgentStatus[];
+	/** MCP connections as last reported; docked like upstream's Mcp panel. */
+	mcp: McpConnection[];
 	model?: ModelChoice;
 	/** True when the model is the one the active conversation runs on. */
 	modelFromConversation: boolean;
@@ -104,7 +108,10 @@ export interface StrixSessionOptions {
 }
 
 export function useStrixSession({ runtime, client, ai, conversation, subscribe, t }: StrixSessionOptions): StrixSessionModel {
-	const [phase, setPhase] = useState<SessionPhase>("booting");
+	// Read once, before the first paint: a remounted tab rehydrates instead of showing
+	// the launch column while its scan is still running behind it (session-store.ts).
+	const initial = useRef(readSnapshot(conversation?.id)).current;
+	const [phase, setPhase] = useState<SessionPhase>(initial?.phase ?? "booting");
 	const [log, setLog] = useState<LogLine[]>([]);
 	// Boot is a *state*, not a log entry (ADR strix-0004). Pushing "connecting" into
 	// the log left that line on screen forever: the reader could not tell whether the
@@ -113,19 +120,26 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 		state: "connecting",
 	});
 	const [environment, setEnvironment] = useState<EnvironmentProbe>();
-	const [sandbox, setSandbox] = useState<SandboxStatus>({ running: false, targets: [] });
-	const [findings, setFindings] = useState<StrixFinding[]>([]);
-	const [trace, setTrace] = useState<TraceEntry[]>([]);
-	const [todos, setTodos] = useState<TodoItem[]>([]);
-	const [notes, setNotes] = useState<NoteSummary[]>([]);
-	const [coverage, setCoverage] = useState<CoverageOutcome[]>([]);
-	const [agents, setAgents] = useState<AgentStatus[]>([]);
+	const [sandbox, setSandbox] = useState<SandboxStatus>(initial?.sandbox ?? { running: false, targets: [] });
+	const [findings, setFindings] = useState<StrixFinding[]>(initial?.findings ?? []);
+	const [trace, setTrace] = useState<TraceEntry[]>(initial?.trace ?? []);
+	const [todos, setTodos] = useState<TodoItem[]>(initial?.todos ?? []);
+	const [notes, setNotes] = useState<NoteSummary[]>(initial?.notes ?? []);
+	const [coverage, setCoverage] = useState<CoverageOutcome[]>(initial?.coverage ?? []);
+	const [agents, setAgents] = useState<AgentStatus[]>(initial?.agents ?? []);
+	const [mcp, setMcp] = useState<McpConnection[]>(initial?.mcp ?? []);
 	const [question, setQuestion] = useState<StrixSessionModel["question"]>();
 	const [finished, setFinished] = useState<StrixSessionModel["finished"]>();
 	const [models, setModels] = useState<PluginAiModel[]>([]);
 	const [defaultModel, setDefaultModel] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
 
+	// Scope and memory (see session-store.ts). `mountedIn` is the conversation this panel
+	// was opened in: events from any other conversation are ignored, so project A's chat
+	// cannot start a scan in project B's panel.
+	const mountedIn = useRef<string | null>(conversation?.id ?? null);
+	const conversationIdRef = useRef<string | undefined>(conversation?.id);
+	conversationIdRef.current = conversation?.id;
 	const seq = useRef(0);
 	const agentRef = useRef<StrixAgent | null>(null);
 	/** Resolver for the question currently on screen; `answer()` calls it. */
@@ -285,6 +299,10 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 						.findings()
 						.then((list) => setFindings(normalizeFindings(list)))
 						.catch(() => undefined);
+					void client
+						.callTool("strix_mcp")
+						.then((result) => setMcp(normalizeRoster(result)))
+						.catch(() => undefined);
 					break;
 				case "agent":
 					setAgents((previous) => [...previous.filter((item) => item.name !== event.agent.name), event.agent]);
@@ -361,7 +379,7 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 	 * findings they file land in the sidebar. One assessment, two windows.
 	 */
 	useEffect(() => {
-		if (!conversation?.id) return;
+		if (!belongsTo(mountedIn.current, conversationIdRef.current)) return;
 		const subscription = subscribe((event) => {
 			switch (event.type) {
 				case "tool-call-start": {
@@ -472,6 +490,24 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 		setPhase((current) => (current === "scanning" ? "done" : current));
 	}, [client]);
 
+	// Persist after every change so a remount resumes rather than restarts. Not a
+	// `useMemo`: the whole point is the write, and it has to happen while the tab is
+	// still alive — React does not run effects on unmount for this.
+	useEffect(() => {
+		writeSnapshot(conversation?.id, {
+			phase,
+			trace,
+			targets: sandbox.targets ?? [],
+			sandbox,
+			findings,
+			todos,
+			notes,
+			coverage,
+			agents,
+			mcp,
+		});
+	}, [conversation?.id, phase, trace, sandbox, findings, todos, notes, coverage, agents, mcp]);
+
 	// Host conversation → panel (ADR strix-0003). Declared after `start`/`send` so the
 	// effect can hold their latest identities without re-subscribing on every render:
 	// re-subscribing would drop a message that arrives while the panel re-renders.
@@ -483,6 +519,10 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 	sendRef.current = send;
 	useEffect(() => {
 		const subscription = subscribe((event) => {
+			// Only this panel's conversation: the host's event stream is not per-tab, so an
+			// unscoped listener would let project A's message start a scan in project B.
+			if (!belongsTo(mountedIn.current, conversationIdRef.current)) return;
+			if (event.type !== "message-added") return;
 			if (event.type !== "message-added") return;
 			const message = event.message;
 			const text = message.text.trim();
@@ -512,6 +552,7 @@ return useMemo(
 			notes,
 			coverage,
 			agents,
+			mcp,
 			question,
 			finished,
 			model: resolved.choice,
@@ -537,6 +578,7 @@ return useMemo(
 			notes,
 			coverage,
 			agents,
+			mcp,
 			question,
 			finished,
 			resolved,

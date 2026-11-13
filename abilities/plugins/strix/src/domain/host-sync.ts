@@ -40,9 +40,10 @@ export interface ModelResolution {
 export function resolveModel(input: {
 	conversationModel: string | null | undefined;
 	models: readonly PluginAiModel[];
-	defaultModel: string | null | undefined;
+	/** Kept out of the resolution on purpose (ADR strix-0003): the conversation decides. */
+	defaultModel?: string | null;
 }): ModelResolution {
-	const { conversationModel, models, defaultModel } = input;
+	const { conversationModel, models } = input;
 	const match = (key: string | null | undefined): PluginAiModel | undefined =>
 		key ? models.find((model) => model.modelKey === key) : undefined;
 

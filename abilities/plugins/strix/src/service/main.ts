@@ -28,6 +28,7 @@ import { NoteStore } from "./notes";
 import { Sandbox, sandboxImage } from "./sandbox";
 import { locateSkills, loadBodies, loadIndex } from "./skills";
 import { installHint, missingTools, probeToolchain } from "./toolchain";
+import { describeRoster, mergeRoster, normalizeRoster } from "./mcp-roster";
 import { TodoStore } from "./todo";
 
 const PORT = Number(process.env.ASTRAVIA_SERVICE_PORT || 0);
@@ -102,6 +103,16 @@ type Handler = (args: Record<string, unknown>) => Promise<unknown>;
  */
 const HANDLERS: Record<string, Handler> = {
 	strix_environment: () => environment(),
+
+	// The MCP roster upstream docks as its own panel. Declared servers come from the
+	// manifest, reported ones from the run; the merge keeps both and never invents a
+	// "dead" state for a server that simply has not connected yet (service/mcp-roster.ts).
+	strix_mcp: async () => {
+		const declared = [{ name: "strix" }];
+		const reported = normalizeRoster(await sandbox.mcpRoster().catch(() => null));
+		const connections = mergeRoster(declared, reported);
+		return { connections, summary: describeRoster(connections) };
+	},
 
 	strix_sandbox_start: (args) => sandbox.start(args),
 	strix_exec: (args) => sandbox.exec(args),

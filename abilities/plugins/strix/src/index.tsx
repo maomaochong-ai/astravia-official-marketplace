@@ -98,6 +98,7 @@ function StrixTabRoot({
 			notes={session.notes}
 			coverage={session.coverage}
 			agents={session.agents}
+			mcp={session.mcp}
 			{...(session.question ? { question: session.question } : {})}
 			answer={session.answer}
 			trace={session.trace}
