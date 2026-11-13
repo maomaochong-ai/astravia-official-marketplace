@@ -84,5 +84,10 @@
   "rail.empty": "Nothing recorded yet",
   "boot.preparing": "Preparing the environment (the first run downloads the toolchain)",
   "log.hostMode": "No container: running on this machine (weaker isolation)",
-  "sandbox.degraded": "Container unavailable; running on this machine"
+  "sandbox.degraded": "Container unavailable; running on this machine",
+  "scan.live": "still running",
+  "session.where": "Runs on",
+  "session.imageNotUsed": "on this machine, no image",
+  "scan.inputHint": "Enter to send · Shift+Enter for a newline · messages from the host chat land here too",
+  "stats.title": "Stats"
 }

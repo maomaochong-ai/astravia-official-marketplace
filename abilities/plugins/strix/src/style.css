@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The Strix panel: a workbench, themed by the host.
  *
  * ADR strix-0004: this is a tab inside Astravia, not a terminal window. The surface,
@@ -114,6 +114,62 @@
 	text-align: center;
 }
 
+/* The in-run composer: same box as the launch one, plus a hint row that stays visible. */
+.astra-strix-composer {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin: 0 20px 14px;
+	padding: 10px 12px;
+	border: 1px solid var(--sx-rule);
+	border-radius: 10px;
+	background: color-mix(in srgb, var(--foreground) 3%, transparent);
+	transition: border-color 120ms ease;
+}
+
+.astra-strix-composer:focus-within {
+	border-color: var(--sx-green);
+}
+
+.astra-strix-composer[data-busy="yes"] {
+	border-color: color-mix(in srgb, var(--sx-green) 45%, var(--sx-rule));
+}
+
+.astra-strix-prompt-hint {
+	margin: 0;
+	font-size: 11px;
+	color: var(--sx-placeholder);
+}
+
+/* A live caret at the end of the transcript. Without it a quiet minute looks like death;
+   with it the run is visibly still working. */
+.astra-strix-running {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0;
+	font-size: 12px;
+}
+
+.astra-strix-caret {
+	display: inline-block;
+	width: 7px;
+	height: 14px;
+	background: var(--sx-green);
+	animation: astra-strix-blink 1.05s steps(2, start) infinite;
+}
+
+@keyframes astra-strix-blink {
+	to {
+		visibility: hidden;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.astra-strix-caret {
+		animation: none;
+	}
+}
 .astra-strix-prompt {
 	display: flex;
 	flex-direction: column;
@@ -132,6 +188,11 @@
 .astra-strix-prompt[data-blocked="yes"]:focus-within {
 	border-color: var(--sx-amber);
 }
+
+.astra-strix-prompt:focus-within {
+	border-color: var(--sx-green);
+}
+
 
 .astra-strix-prompt-row {
 	display: flex;

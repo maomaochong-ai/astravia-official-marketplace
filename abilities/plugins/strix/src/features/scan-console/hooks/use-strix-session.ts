@@ -247,6 +247,8 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 		[client, pushTrace],
 	);
 
+
+
 	const onAgentEvent = useCallback(
 		(event: AgentEvent) => {
 			switch (event.type) {
@@ -470,6 +472,33 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 		setPhase((current) => (current === "scanning" ? "done" : current));
 	}, [client]);
 
+	// Host conversation → panel (ADR strix-0003). Declared after `start`/`send` so the
+	// effect can hold their latest identities without re-subscribing on every render:
+	// re-subscribing would drop a message that arrives while the panel re-renders.
+	const phaseRef = useRef<SessionPhase>(phase);
+	phaseRef.current = phase;
+	const startRef = useRef(start);
+	startRef.current = start;
+	const sendRef = useRef(send);
+	sendRef.current = send;
+	useEffect(() => {
+		const subscription = subscribe((event) => {
+			if (event.type !== "message-added") return;
+			const message = event.message;
+			const text = message.text.trim();
+			if (!text) return;
+			if (message.role === "user") {
+				// Echo the host turn into the transcript, then drive the scan with it: the
+				// panel is an observer of the conversation, not a second chat beside it.
+				pushTrace({ kind: "host", label: text });
+				if (phaseRef.current !== "scanning") void startRef.current(text);
+				else void sendRef.current(text);
+				return;
+			}
+			if (message.role === "assistant") pushTrace({ kind: "host-say", label: text });
+		});
+		return () => subscription.dispose();
+	}, [subscribe, pushTrace]);
 return useMemo(
 		() => ({
 			phase,

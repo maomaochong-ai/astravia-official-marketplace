@@ -9,7 +9,7 @@
  * terminal: the full-bleed black, the box borders, the counts as a row of zeroes.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ModelChoice } from "../../../domain/model-label";
 import type { AgentStatus } from "../../../agent/strix-agent";
 import type {
@@ -87,8 +87,20 @@ export function ScanScreen({
 	const [draft, setDraft] = useState("");
 
 	const mode: ScanMode = (sandbox.scanMode as ScanMode | undefined) ?? "standard";
+	// `sandbox.mode` is only set once a session exists; before that the probe knows. Falling
+	// back keeps the band from reading "未确定" while the environment is in fact known.
+	const envMode = sandbox.mode ?? environment?.mode;
 	const environmentLabel =
-		sandbox.mode === "host" ? t("env.host") : sandbox.mode === "docker" ? t("env.docker") : t("env.unknown");
+		envMode === "docker" ? t("env.docker") : t("env.host");
+	// Seconds since the session started, ticking only while a run is live.
+	const [elapsed, setElapsed] = useState(0);
+	useEffect(() => {
+		if (!scanning) return;
+		const started = Date.now();
+		const timer = setInterval(() => setElapsed(Math.round((Date.now() - started) / 1000)), 1_000);
+		return () => clearInterval(timer);
+	}, [scanning]);
+
 
 	// The one thing a new assessment should say: what to do, not what is missing.
 	const emptyHint = targets.length ? t("scan.emptyWithTargets") : t("scan.emptyNoTargets");
@@ -107,7 +119,7 @@ export function ScanScreen({
 				<Fact
 					label={t("scan.environment")}
 					value={environmentLabel}
-					tone={sandbox.mode === "host" ? "astra-strix-amber" : undefined}
+					tone={envMode === "docker" ? undefined : "astra-strix-amber"}
 				/>
 				{workspace ? <Fact label={t("session.workspace")} value={workspace} /> : null}
 				{model ? <Fact label={t("scan.model")} value={model.name} /> : null}
@@ -122,12 +134,22 @@ export function ScanScreen({
 
 			<div className="astra-strix-workbench-grid">
 				<section className="astra-strix-transcript">
-					<div className="astra-strix-transcript-body" role="log" aria-live="polite">
+					<div className="astra-strix-transcript-body" role="log" aria-live="polite" data-running={scanning ? "yes" : "no"}>
 						{trace.length ? (
 							trace.map((entry) => <TraceBlock key={entry.id} entry={entry} />)
 						) : (
 							<p className="astra-strix-empty">{emptyHint}</p>
 						)}
+						{/* A live caret: without it a quiet stretch reads as "the run died". The timer
+						    says the same thing in words for anyone who misses the blink. */}
+						{scanning ? (
+							<p className="astra-strix-running" role="status">
+								<span className="astra-strix-caret" aria-hidden="true" />
+								<span className="astra-strix-dim">
+									{t("scan.live")} · {elapsed}s
+								</span>
+							</p>
+						) : null}
 					</div>
 
 					{question ? (
@@ -150,8 +172,8 @@ export function ScanScreen({
 						</div>
 					) : null}
 
-					<div className="astra-strix-composer">
-						<label className="astra-strix-prompt-row">
+					<div className="astra-strix-composer" data-busy={busy ? "yes" : "no"}>
+						<div className="astra-strix-prompt-row">
 							<span className="astra-strix-prompt-caret" aria-hidden="true">
 								&gt;
 							</span>
@@ -159,7 +181,7 @@ export function ScanScreen({
 								className="astra-strix-prompt-input"
 								aria-label={t(question ? "scan.answer" : "scan.label")}
 								placeholder={t(question ? "scan.answer" : "scan.placeholder")}
-								rows={1}
+								rows={2}
 								spellCheck={false}
 								value={draft}
 								onChange={(event) => setDraft(event.target.value)}
@@ -172,7 +194,8 @@ export function ScanScreen({
 									}
 								}}
 							/>
-						</label>
+						</div>
+						<p className="astra-strix-prompt-hint">{t("scan.inputHint")}</p>
 					</div>
 				</section>
 
@@ -182,8 +205,12 @@ export function ScanScreen({
 							{t("session.title")}
 							{sandbox.running ? <span className="astra-strix-chip-live">{t("session.running")}</span> : null}
 						</h3>
-						{sandbox.sessionId || sandbox.image || sandbox.uptimeSec ? (
+						{sandbox.sessionId || sandbox.uptimeSec || envMode ? (
 							<dl className="astra-strix-kv">
+								<div>
+									<dt>{t("session.where")}</dt>
+									<dd className={envMode === "docker" ? undefined : "astra-strix-amber"}>{environmentLabel}</dd>
+								</div>
 								{sandbox.sessionId ? (
 									<div>
 										<dt>{t("session.id")}</dt>
@@ -196,16 +223,16 @@ export function ScanScreen({
 										<dd>{sandbox.uptimeSec}s</dd>
 									</div>
 								) : null}
-								{sandbox.image ? (
+								{envMode === "docker" && sandbox.image ? (
 									<div>
 										<dt>{t("session.image")}</dt>
 										<dd title={sandbox.image}>{sandbox.image}</dd>
 									</div>
 								) : null}
-								{environment?.docker.imagePresent === false ? (
+								{envMode === "docker" && environment?.docker.imagePresent === false ? (
 									<div>
 										<dt>{t("session.imageState")}</dt>
-										<dd className="astra-strix-amber">{t("session.imageMissing")}</dd>
+										<dd className="astra-strix-dim">{t("session.imageNotUsed")}</dd>
 									</div>
 								) : null}
 							</dl>
@@ -236,6 +263,40 @@ export function ScanScreen({
 					</section>
 
 					<ArtefactPanels t={t} agents={agents} todos={todos} notes={notes} coverage={coverage} />
+
+					{/* Upstream's sidebar ends in a Stats panel; without it the panel has no single
+					    place that answers "how is this run going". */}
+					<section className="astra-strix-section" data-tone="stats">
+						<h3 className="astra-strix-section-title">{t("stats.title")}</h3>
+						<dl className="astra-strix-kv">
+							<div>
+								<dt>{t("scan.mode")}</dt>
+								<dd>{mode}</dd>
+							</div>
+							<div>
+								<dt>{t("targets.title")}</dt>
+								<dd>{targets.length}</dd>
+							</div>
+							<div>
+								<dt>{t("scan.steps")}</dt>
+								<dd>{steps}</dd>
+							</div>
+							<div>
+								<dt>{t("findings.title")}</dt>
+								<dd>{findings.length}</dd>
+							</div>
+							<div>
+								<dt>{t("coverage.title")}</dt>
+								<dd>{coverage.length}</dd>
+							</div>
+							{model ? (
+								<div>
+									<dt>{t("scan.model")}</dt>
+									<dd title={model.name}>{model.name}</dd>
+								</div>
+							) : null}
+						</dl>
+					</section>
 
 					<section className="astra-strix-section" data-tone="findings">
 						<h3 className="astra-strix-section-title">

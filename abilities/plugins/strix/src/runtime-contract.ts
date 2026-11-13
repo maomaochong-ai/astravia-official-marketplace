@@ -152,7 +152,12 @@ export interface CoverageOutcome {
  */
 export interface TraceEntry {
 	id: string;
-	kind: "tool" | "say" | "user" | "note";
+	/**
+	 * `host` / `host-say` are turns typed and answered in Astravia's own composer: the
+	 * panel mirrors them so a scan driven from the conversation reads the same as one
+	 * driven from here (ADR strix-0003).
+	 */
+	kind: "tool" | "say" | "user" | "note" | "host" | "host-say";
 	/** For tools: the tool name. For chat: the message body. For notes: the line. */
 	label: string;
 	/** Arguments, exit code and duration, rendered under a tool name. */
