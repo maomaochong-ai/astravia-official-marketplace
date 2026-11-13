@@ -117,9 +117,16 @@ export function createServiceRuntime(ctx: PluginContext): ServiceRuntime {
 			// One attempt per activation: a failed install would otherwise spin forever, and the
 			// remedy is reinstalling the plugin, not retrying the same bytes.
 			installAttempted = true;
+			// The host refuses `install` while the service is up ("Stop the service before
+			// installing its runtime") — a previous activation can leave it running, which
+			// made the first open of a freshly updated version fail instead of installing.
+			// Stop first, then install, then start; each step is idempotent.
+			if (status?.phase !== "stopped" && status?.phase !== "idle") {
+				status = await services.stop(SERVICE_ID).catch(() => status);
+			}
 			await installRuntime(services);
 		}
-		if (status.phase !== "ready") {
+		if (status?.phase !== "ready") {
 			status = await services.start(SERVICE_ID);
 		}
 

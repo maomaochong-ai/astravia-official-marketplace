@@ -16,6 +16,7 @@ import { promisify } from "node:util";
 import { dockerApi, imagePresent, pullImage, runArgs, type SandboxSpec } from "./docker";
 import { asScanMode, commandCapSeconds, type ScanMode } from "../domain/scan-mode";
 import { resolveEnvironment, type EnvironmentMode } from "./environment";
+import { managedToolchainDir } from "./paths";
 import { asProxyAction, parseProxyOutput, PROXY_ACTIONS, proxyCommand, proxyUnavailable } from "./proxy";
 
 const run = promisify(execFile);
@@ -28,6 +29,23 @@ const DEFAULT_IMAGE = "ghcr.io/usestrix/strix-sandbox:1.4.0";
  * Run one command in the user's own session. Same shape as the docker result so the
  * tool surface does not need to know which environment it got.
  */
+
+/**
+ * Process env for a host-mode command: the managed toolchain directory first.
+ *
+ * Prepend, not replace: a tool the user installed themselves still resolves if the
+ * shipped bundle does not carry it (ADR strix-0005: bundled wins, user's PATH remains).
+ */
+function withManagedToolchain(): NodeJS.ProcessEnv {
+	const managed = managedToolchainDir();
+	if (!managed) return process.env;
+	const key = Object.keys(process.env).find((name) => name.toUpperCase() === "PATH") ?? "PATH";
+	const current = process.env[key] ?? "";
+	return { ...process.env, [key]: current ? `${managed}${delimiter}${current}` : managed };
+}
+
+const delimiter = process.platform === "win32" ? ";" : ":";
+
 async function runLocal(
 	command: string,
 	cwd: string,
@@ -41,6 +59,9 @@ async function runLocal(
 			timeout: timeoutMs,
 			maxBuffer: 16 * 1024 * 1024,
 			windowsHide: true,
+			// The toolchain shipped with the plugin comes first (ADR strix-0005): a machine
+			// with no package manager still runs the tools this build was tested against.
+			env: withManagedToolchain(),
 		});
 		return { code: 0, stdout: String(stdout), stderr: String(stderr) };
 	} catch (error) {

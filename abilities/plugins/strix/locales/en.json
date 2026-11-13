@@ -81,5 +81,6 @@
   "env.docker": "Container",
   "env.host": "This machine (no container)",
   "env.unknown": "Undetermined",
-  "rail.empty": "Nothing recorded yet"
+  "rail.empty": "Nothing recorded yet",
+  "boot.preparing": "Preparing the environment (the first run downloads the toolchain)"
 }

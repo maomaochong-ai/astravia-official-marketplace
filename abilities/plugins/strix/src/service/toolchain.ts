@@ -13,6 +13,9 @@
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { managedToolchainDir } from "./paths";
 
 const run = promisify(execFile);
 
@@ -41,6 +44,8 @@ export interface ToolProbe {
 	readonly found: boolean;
 	/** First line of the tool's own version output; empty when it printed nothing. */
 	readonly version: string;
+	/** `bundled` = the copy shipped with the plugin; `system` = whatever PATH had. */
+	readonly source: "bundled" | "system" | "missing";
 }
 
 const PROBE_TIMEOUT_MS = 4_000;
@@ -50,6 +55,22 @@ const BINARY: Record<string, string> = { nahttpx: "httpx" };
 
 async function probeOne(name: string): Promise<ToolProbe> {
 	const binary = BINARY[name] ?? name;
+	// The shipped copy wins over PATH (ADR strix-0005): it is the version this build was
+	// tested against, and it is the reason a machine with no package manager still works.
+	const managed = managedToolchainDir();
+	const managedBinary = managed ? join(managed, process.platform === "win32" ? `${binary}.exe` : binary) : null;
+	if (managedBinary && existsSync(managedBinary)) {
+		const probed = await runProbe(managedBinary);
+		return { name, found: true, version: probed ?? "", source: "bundled" };
+	}
+
+	const probed = await runProbe(binary);
+	if (probed !== null) return { name, found: true, version: probed, source: "system" };
+	return { name, found: false, version: "", source: "missing" };
+}
+
+/** Version line, or `null` when the binary is not on PATH at all. */
+async function runProbe(binary: string): Promise<string | null> {
 	for (const args of [["--version"], ["-version"], ["-V"], ["--help"]]) {
 		try {
 			const { stdout, stderr } = await run(binary, args, {
@@ -57,21 +78,20 @@ async function probeOne(name: string): Promise<ToolProbe> {
 				windowsHide: true,
 				maxBuffer: 256 * 1024,
 			});
-			const first = `${stdout || stderr}`.split(/\r?\n/).find((line) => line.trim().length > 0) ?? "";
-			return { name, found: true, version: first.trim().slice(0, 120) };
+			return firstLine(stdout || stderr);
 		} catch (error) {
 			const failure = error as { code?: string | number; stdout?: string; stderr?: string };
 			// A tool that ran but rejected the flag is still installed: ENOENT is the
 			// only answer that means "not on PATH".
-			if (failure.code !== "ENOENT" && failure.code !== 127) {
-				const first = `${failure.stdout ?? ""}`.split(/\r?\n/).find((line) => line.trim().length > 0) ?? "";
-				return { name, found: true, version: first.trim().slice(0, 120) };
-			}
+			if (failure.code !== "ENOENT" && failure.code !== 127) return firstLine(failure.stdout ?? "");
 		}
 	}
-	return { name, found: false, version: "" };
+	return null;
 }
 
+function firstLine(text: string): string {
+	return (text.split(/\r?\n/).find((line) => line.trim().length > 0) ?? "").trim().slice(0, 120);
+}
 /** All tools in parallel; bounded by the per-tool timeout, not by their sum. */
 export async function probeToolchain(): Promise<ToolProbe[]> {
 	return Promise.all(TOOLCHAIN.map((name) => probeOne(name)));

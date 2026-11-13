@@ -17,15 +17,15 @@ describe("toolchain probe", () => {
 
 	it("names exactly the tools that did not answer", () => {
 		const probes: ToolProbe[] = [
-			{ name: "nmap", found: true, version: "Nmap version 7.95" },
-			{ name: "sqlmap", found: false, version: "" },
-			{ name: "nuclei", found: true, version: "v3.1.0" },
+			{ name: "nmap", found: true, version: "Nmap version 7.95", source: "system" },
+			{ name: "sqlmap", found: false, version: "", source: "missing" },
+			{ name: "nuclei", found: true, version: "v3.1.0", source: "bundled" },
 		];
 		expect(missingTools(probes)).toEqual(["sqlmap"]);
 	});
 
 	it("reports nothing missing when everything answered", () => {
-		expect(missingTools(TOOLCHAIN.map((name) => ({ name, found: true, version: "x" })))).toEqual([]);
+		expect(missingTools(TOOLCHAIN.map((name) => ({ name, found: true, version: "x", source: "bundled" as const })))).toEqual([]);
 	});
 
 	it("gives a copyable install line per platform, never a guess", () => {
