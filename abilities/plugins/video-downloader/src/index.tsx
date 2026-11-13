@@ -52,7 +52,7 @@ export default definePlugin({
     // Composer chip: one click opens the panel for the current conversation.
     // registerInputAction throws when the permission is missing, so it is guarded separately.
     const action = context.permissions.has("ui.slot.input-action")
-      ? context.ui.registerInputAction({
+      ? context.ui.registerInputAction({ ...({ placement: "capsule" } as Record<string, unknown>),
           id: INPUT_ACTION_ID,
           label: "%action.download%",
           icon: createElement("span", { className: ICON_CLASS, "aria-hidden": "true" }),

@@ -2,7 +2,7 @@
   "id": "materialcraft",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.25",
+  "version": "0.0.26",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",

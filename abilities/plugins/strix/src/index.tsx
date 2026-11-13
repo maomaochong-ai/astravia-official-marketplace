@@ -137,7 +137,7 @@ export default definePlugin({
 			),
 		});
 
-		const action: Disposable = ctx.ui.registerInputAction({
+		const action: Disposable = ctx.ui.registerInputAction({ ...({ placement: "capsule" } as Record<string, unknown>),
 			id: ACTION_ID,
 			label: ctx.i18n.t("action.label"),
 			scope_use: ["conversation", "project"],
