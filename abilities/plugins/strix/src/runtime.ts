@@ -109,6 +109,30 @@ export function createServiceRuntime(ctx: PluginContext): ServiceRuntime {
 		return baseUrl;
 	}
 
+/**
+ * Install the runtime, making sure the old process is really gone first.
+ *
+ * The host refuses `install` while its child process exists — and `phase` is not a
+ * reliable proxy for that: a service started by an older plugin version leaves a live
+ * child while the status reads `stopped`. So: stop unconditionally, then install; if the
+ * host still says the service is up, stop again and retry once. Two attempts, then the
+ * error is surfaced as-is rather than looping.
+ */
+async function installWithStop(host: ServiceBridgeHost): Promise<void> {
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		try {
+			await host.stop(SERVICE_ID).catch(() => undefined);
+			await installRuntime(host);
+			return;
+		} catch (cause) {
+			const message = cause instanceof Error ? cause.message : String(cause);
+			const stillRunning = /stop the service before installing/i.test(message);
+			if (!stillRunning || attempt === 1) throw cause;
+			// Give the kill a moment to reap the child before asking again.
+			await new Promise((resolve) => setTimeout(resolve, 400));
+		}
+	}
+}
 	async function boot(): Promise<string> {
 		if (!services) throw new Error("host does not expose the services API");
 
@@ -117,17 +141,11 @@ export function createServiceRuntime(ctx: PluginContext): ServiceRuntime {
 		// whenever it came back undefined, and start() then failed with "Service runtime is
 		// not installed by the plugin" — the exact message users reported.
 		if (status?.installed !== true && !installAttempted) {
-			// One attempt per activation: a failed install would otherwise spin forever, and the
-			// remedy is reinstalling the plugin, not retrying the same bytes.
+			// One install per activation: retrying the same bytes forever is a loop, and the
+			// remedy for a real failure is reinstalling the plugin.
 			installAttempted = true;
-			// The host refuses `install` while the service is up ("Stop the service before
-			// installing its runtime") — a previous activation can leave it running, which
-			// made the first open of a freshly updated version fail instead of installing.
-			// Stop first, then install, then start; each step is idempotent.
-			if (status?.phase !== "stopped" && status?.phase !== "idle") {
-				status = await services.stop(SERVICE_ID).catch(() => status);
-			}
-			await installRuntime(services);
+			await installWithStop(services);
+			status = await services.getStatus(SERVICE_ID).catch(() => status);
 		}
 		try {
 			if (status?.phase !== "ready") status = await services.start(SERVICE_ID);

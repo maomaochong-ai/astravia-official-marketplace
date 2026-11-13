@@ -170,17 +170,22 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 			setFindings(normalizeFindings(state?.findings));
 			if (probe) {
 				setEnvironment(probe);
-				if (!probe.docker.ready) note(t("log.dockerDown"), "error");
+				// A missing daemon is the working state in `host` mode (ADR strix-0001), not an
+				// error: painting it red taught users the plugin was broken when it was ready.
+				const hostMode = probe.mode === "host";
+				if (!probe.docker.ready && !hostMode) note(t("log.dockerDown"), "error");
+				else if (!probe.docker.ready) note(t("log.hostMode"));
 				else if (probe.docker.imagePresent === false) note(t("log.imagePending"));
 			} else {
 				const detail = (state?.environment as { error?: unknown } | undefined)?.error;
-				note(`${t("log.bridgeError")}${typeof detail === "string" && detail ? `: ${detail}` : ""}`, "error");
+				if (typeof detail === "string" && detail) setBoot({ state: "failed", detail });
 			}
 			// No "ready" line either: the boot state already says it, and a log that keeps
 			// every status turns into the same noise the terminal had.
 		} catch (cause) {
 			setBoot({ state: "failed", detail: cause instanceof Error ? cause.message : String(cause) });
-			note(`${t("log.bridgeError")}: ${cause instanceof Error ? cause.message : String(cause)}`, "error");
+			// Not also pushed into the log: the boot strip shows the same sentence with the
+			// reason, and two copies of one error read as two failures (ADR strix-0004).
 		}
 
 		try {

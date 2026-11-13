@@ -39,6 +39,12 @@
 	font-size: 13px;
 	line-height: 1.5;
 	-webkit-font-smoothing: antialiased;
+	/* The panel is the surface: fill what the tab gives, never shrink to content. */
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	height: 100%;
+	min-height: 0;
 }
 
 /* Accents step up in the dark theme, where the readable-on-white shades go muddy. */
@@ -61,6 +67,12 @@
 
 .astra-strix-term.astra-strix-launch-surface {
 	display: flex;
+	/* Fill the tab, not the content: with `height: 100%` on a parent that sizes to its
+	   children, the launch column sat at the top of a short block and left the rest of
+	   the panel empty (ADR strix-0004: the surface is the panel, not a band in it). */
+	flex: 1 1 auto;
+	height: 100%;
+	min-height: 100%;
 	align-items: center;
 	justify-content: center;
 	padding: 24px 16px;
