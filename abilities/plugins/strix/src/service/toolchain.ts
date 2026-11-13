@@ -80,3 +80,46 @@ export async function probeToolchain(): Promise<ToolProbe[]> {
 export function missingTools(probes: readonly ToolProbe[]): string[] {
 	return probes.filter((probe) => !probe.found).map((probe) => probe.name);
 }
+
+/**
+ * How to install a missing tool on this platform, as a copyable command.
+ *
+ * The plugin does not install these itself: every package manager here needs
+ * privileges, network policy or licence terms that belong to the user (ADR strix-0002).
+ * What it can do is stop the user from guessing — a copyable line per tool is the
+ * difference between "nmap is missing" and "here is what to run".
+ */
+export function installHint(name: string, platform: NodeJS.Platform = process.platform): string {
+	const binary = BINARY[name] ?? name;
+	if (platform === "win32") {
+		const scoop: Record<string, string> = {
+			nmap: "scoop install nmap",
+			nuclei: "scoop install nuclei",
+			ffuf: "scoop install ffuf",
+			subfinder: "scoop install subfinder",
+			naabu: "scoop install naabu",
+			katana: "scoop install katana",
+			httpx: "scoop install httpx",
+			trivy: "scoop install trivy",
+			gitleaks: "scoop install gitleaks",
+			trufflehog: "scoop install trufflehog",
+			sqlmap: "pipx install sqlmap",
+			hurl: "scoop install hurl",
+			opengrep: "scoop install opengrep",
+		};
+		return scoop[binary] ?? `winget search ${binary}`;
+	}
+	if (platform === "darwin") {
+		const brew: Record<string, string> = {
+			trivy: "brew install trivy",
+			hurl: "brew install hurl",
+			gitleaks: "brew install gitleaks",
+			trufflehog: "brew install trufflehog",
+			sqlmap: "pipx install sqlmap",
+		};
+		return brew[binary] ?? `brew install ${binary}`;
+	}
+	if (binary === "sqlmap") return "pipx install sqlmap";
+	if (["trivy", "hurl", "gitleaks", "trufflehog"].includes(binary)) return `sudo apt install ${binary}`;
+	return `go install github.com/projectdiscovery/${binary}/cmd/${binary}@latest`;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { missingTools, TOOLCHAIN, type ToolProbe } from "../service/toolchain";
+import { installHint, missingTools, TOOLCHAIN, type ToolProbe } from "../service/toolchain";
 
 /**
  * The toolchain probe answers one question: can this step actually run here?
@@ -26,5 +26,19 @@ describe("toolchain probe", () => {
 
 	it("reports nothing missing when everything answered", () => {
 		expect(missingTools(TOOLCHAIN.map((name) => ({ name, found: true, version: "x" })))).toEqual([]);
+	});
+
+	it("gives a copyable install line per platform, never a guess", () => {
+		expect(installHint("trivy", "darwin")).toBe("brew install trivy");
+		expect(installHint("sqlmap", "linux")).toBe("pipx install sqlmap");
+		expect(installHint("nmap", "win32")).toBe("scoop install nmap");
+		// httpx's binary name is mapped, so the hint must not say "nahttpx".
+		expect(installHint("nahttpx", "win32")).toBe("scoop install httpx");
+		for (const platform of ["win32", "darwin", "linux"] as const) {
+			for (const name of TOOLCHAIN) {
+				expect(installHint(name, platform).length).toBeGreaterThan(0);
+				expect(installHint(name, platform)).not.toContain("nahttpx");
+			}
+		}
 	});
 });

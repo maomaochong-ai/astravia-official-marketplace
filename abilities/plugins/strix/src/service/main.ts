@@ -27,7 +27,7 @@ import * as findings from "./findings";
 import { NoteStore } from "./notes";
 import { Sandbox, sandboxImage } from "./sandbox";
 import { locateSkills, loadBodies, loadIndex } from "./skills";
-import { missingTools, probeToolchain } from "./toolchain";
+import { installHint, missingTools, probeToolchain } from "./toolchain";
 import { TodoStore } from "./todo";
 
 const PORT = Number(process.env.ASTRAVIA_SERVICE_PORT || 0);
@@ -78,7 +78,7 @@ async function environment() {
 		},
 		skills: skills ? { root: skills.root, source: skills.source } : null,
 		tools,
-		missingTools: missingTools(tools),
+		missingTools: missingTools(tools).map((name) => ({ name, install: installHint(name) })),
 		// Ready means "a scan can start here": with a daemon the container carries the
 		// tools; without one the user's session does, so only the skill library has to
 		// be there (ADR strix-0001).

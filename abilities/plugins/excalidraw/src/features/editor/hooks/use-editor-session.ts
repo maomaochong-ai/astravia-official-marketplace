@@ -48,7 +48,16 @@ export interface EditorSession {
  * button restarts the frame; nothing retries behind the user's back.
  */
 export function useEditorSession(ctx: PluginContext): EditorSession {
-  const strings = editorStrings(ctx.i18n.locale);
+  // Live locale: a panel mounted before the user switched language kept the strings
+  // it was first painted with, which is why the shell could read English inside a
+  // Chinese host. The editor's own language is separate and stays user-controlled.
+  const [locale, setLocale] = useState(ctx.i18n.locale);
+  useEffect(() => {
+    setLocale(ctx.i18n.locale);
+    const subscription = ctx.i18n.onChange((next) => setLocale(next));
+    return () => subscription.dispose();
+  }, [ctx]);
+  const strings = editorStrings(locale);
   // The host keeps this document alive while its tab is hidden (display:none) so that
   // unsaved work survives a tab switch. Nothing on this side spins at 60 fps for a
   // page nobody is looking at: the bridge holds the app's next frame instead.

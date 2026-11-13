@@ -84,7 +84,7 @@ const zh: EditorStrings = {
   saveFailed: "保存失败",
   openFailed: "读不到这个文件",
   noWorkspaceAccess: "没有获得工作区读取权限，暂时无法从资源管理器打开文件。",
-  editing: "此后有输入",
+  editing: "未保存",
   acting: "自动操作",
   actDone: "完成",
   stepReady: "等待编辑器就绪",
