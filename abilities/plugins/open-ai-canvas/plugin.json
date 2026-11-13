@@ -2,7 +2,7 @@
   "id": "open-ai-canvas",
   "name": "Open AI Canvas",
   "icon": "assets/icon.png",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "defaultLocale": "zh",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -22,7 +22,8 @@
     "ai.models.list",
     "ai.complete",
     "media.provider.register",
-    "agent.skills.control"
+    "agent.skills.control",
+    "ui.slot.input-action"
   ],
   "providers": {
     "services": [

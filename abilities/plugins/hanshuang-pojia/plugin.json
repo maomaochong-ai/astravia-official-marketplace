@@ -3,7 +3,7 @@
   "name": "%plugin.name%",
   "description": "%plugin.description%",
   "icon": "assets/icon.svg",
-  "version": "2.14.5",
+  "version": "2.14.6",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "styles": [
@@ -29,7 +29,8 @@
     "fs.read",
     "fs.write",
     "agent.command.run",
-    "network.fetch"
+    "network.fetch",
+    "ui.slot.input-action"
   ],
   "commands": [
     "r2",

@@ -3,6 +3,7 @@ import { definePlugin } from "@astravia-org/plugin-sdk";
 import type { Disposable } from "@astravia-org/plugin-sdk";
 import type { JSX } from "react";
 import { CanvasController } from "./runtime";
+import { canvasInstruction, isCanvasEngaged, setCanvasEngaged } from "./engagement";
 import { VIEW_ID } from "./runtime-contract";
 import { CanvasView } from "./features/canvas-workspace/components/canvas-view";
 
@@ -14,6 +15,8 @@ import { CanvasView } from "./features/canvas-workspace/components/canvas-view";
 interface Activation {
   controller: CanvasController;
   view: Disposable;
+  /** The composer chip. Released with the view so a reload leaves no orphan toggle. */
+  action: Disposable | null;
   timer: ReturnType<typeof setTimeout>;
   released: boolean;
 }
@@ -25,6 +28,8 @@ function release(activation: Activation): void {
   if (activation.released) return;
   activation.released = true;
   clearTimeout(activation.timer);
+  activation.action?.dispose();
+  setCanvasEngaged(false);
   activation.view.dispose();
   void activation.controller.dispose();
   if (current === activation) current = null;
@@ -51,6 +56,30 @@ export default definePlugin({
       },
     });
 
+    // 输入框开关：行内条目 + 激活后的胶囊。打开画布并让模型知道可以动画布——
+    // 画布自己的 MCP 服务（plugin.json#agent.mcpServers）已经提供节点级工具，
+    // 开关只负责「把这一轮挂上去」，不重建一套。
+    const action = ctx.permissions.has("ui.slot.input-action")
+      ? ctx.ui.registerInputAction({
+          id: "open-ai-canvas:canvas",
+          label: "Open AI Canvas",
+          defaultActive: false,
+          scope_use: ["conversation", "project"],
+          onToggle(active) {
+            setCanvasEngaged(active === true);
+            if (active !== true) return;
+            try {
+              ctx.ui.openWorkspaceView(VIEW_ID);
+            } catch {
+              // 旧宿主没有这个 API 时不影响开关本身。
+            }
+            void controller.ensureRunning().catch(() => undefined);
+          },
+          decoratePrompt: () =>
+            isCanvasEngaged() ? { instructions: [canvasInstruction("open-ai-canvas")] } : {},
+        })
+      : null;
+
     // 放到下一个宏任务：激活本身处在一轮渲染里，同步触发的状态广播会让宿主
     // 在同一轮里再次进入渲染（React #185 的直接来源）。
     const timer = setTimeout(() => {
@@ -58,7 +87,7 @@ export default definePlugin({
     }, 0);
 
     // 整套资源建好后才入册：中途抛错不会留下半份注册。
-    const activation: Activation = { controller, view, timer, released: false };
+    const activation: Activation = { controller, view, action, timer, released: false };
     current = activation;
 
     return () => release(activation);

@@ -765,5 +765,6 @@
   "selfcheck.item.host.cwd": "Workspace folder",
   "selfcheck.item.host.storage": "Plugin storage",
   "selfcheck.item.host.chat": "Conversation bridge",
-  "selfcheck.item.host.lab": "Lab mode"
+  "selfcheck.item.host.lab": "Lab mode",
+  "action.workbench": "Hanshuang Pojia"
 }

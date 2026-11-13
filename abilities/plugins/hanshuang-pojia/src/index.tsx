@@ -231,6 +231,33 @@ export default definePlugin({
 		const disposables = registerTools(ctx);
 		disposables.push(...registerRuntimeContributions(ctx));
 
+		// 输入框开关：行内条目 + 激活后的胶囊（与其它插件一致的形态）。职责只有一个：
+		// 把工作台标签叫到前台。工具与提示词贡献在 registerTools /
+		// registerRuntimeContributions 里已各自注册，不因这个开关重复或停用——
+		// 关掉开关只是收回入口，不卸载工具。
+		if (ctx.permissions.has("ui.slot.input-action")) {
+			try {
+				disposables.push(
+					ctx.ui.registerInputAction({
+						id: "hanshuang-pojia:workbench",
+						label: "%action.workbench%",
+						defaultActive: false,
+						scope_use: ["conversation", "project"],
+						onToggle(active) {
+							if (active !== true) return;
+							try {
+								ctx.ui.openActivityTab("hanshuang-pojia");
+							} catch (error) {
+								console.error("[hanshuang-pojia] open tab from composer failed", error);
+							}
+						},
+					}),
+				);
+			} catch (error) {
+				console.error("[hanshuang-pojia] input action registration failed", error);
+			}
+		}
+
 		try {
 			ctx.ui.registerActivityTab({
 				id: "hanshuang-pojia",
