@@ -20,6 +20,8 @@ export interface LaunchScreenProps {
 	t: (key: string) => string;
 	model?: ModelChoice;
 	log: readonly LogLine[];
+	/** Bridge boot state. A live line, not a log entry (ADR strix-0004). */
+	boot: { state: "connecting" | "ready" | "failed"; detail?: string };
 	version: string;
 	/** Why Enter cannot launch yet (no model, no Docker); empty when it can. */
 	blocked?: string;
@@ -34,6 +36,7 @@ export function LaunchScreen({
 	t,
 	model,
 	log,
+	boot,
 	version,
 	blocked,
 	busy,
@@ -135,6 +138,24 @@ export function LaunchScreen({
 					</span>
 					<span className="astra-strix-dim">v{version}</span>
 				</div>
+
+				{boot.state === "connecting" ? (
+					<p className="astra-strix-boot" role="status">
+						<span className="astra-strix-spinner" aria-hidden="true" />
+						<span>{t("boot.connecting")}</span>
+					</p>
+				) : boot.state === "failed" ? (
+					<p className="astra-strix-boot" data-state="failed" role="status">
+						<span className="astra-strix-amber" aria-hidden="true">!</span>
+						<span>{t("boot.failed")}</span>
+						{boot.detail ? <span className="astra-strix-dim"> — {boot.detail}</span> : null}
+					</p>
+				) : (
+					<p className="astra-strix-boot" data-state="ready" role="status">
+						<span className="astra-strix-green" aria-hidden="true">●</span>
+						<span>{t("boot.ready")}</span>
+					</p>
+				)}
 
 				{blocked ? <p className="astra-strix-launch-blocked">{blocked}</p> : null}
 			</div>

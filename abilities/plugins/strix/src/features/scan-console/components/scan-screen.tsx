@@ -1,11 +1,12 @@
 /**
- * The scan screen: upstream's main view (view.go:mainView) with the host's work in it.
+ * The scan workspace: one status band, one transcript, one artefact rail.
  *
- * Left column is the bordered trace with the status row and the composer under it;
- * the sidebar is the same set of rounded boxes upstream docks on the right. The one
- * structural difference is that the sidebar collapses by CSS at narrow widths
- * instead of by a terminal-width threshold - a tab can be dragged wide or narrow
- * while it is open.
+ * See `docs/adr/strix/strix-0004-panel-is-a-workbench.md`. The previous layout copied
+ * the terminal frame literally — an unbounded black pane with six bordered boxes of
+ * zeroes beside it — which in a tab reads as "nothing happened, and here are six
+ * reasons". This one keeps the things that carry meaning (monospace tool output, the
+ * green/red/amber tool semantics) and drops the things that only made sense in a
+ * terminal: the full-bleed black, the box borders, the counts as a row of zeroes.
  */
 
 import { useState } from "react";
@@ -20,8 +21,8 @@ import type {
 	TodoItem,
 	TraceEntry,
 } from "../../../runtime-contract";
-import { PanelBox } from "../../../shared/components/panel-box";
 import { FindingList } from "../../findings/components/finding-list";
+import { describeMode, type ScanMode } from "../../../domain/scan-mode";
 import type { SessionPhase } from "../hooks/use-strix-session";
 import { ArtefactPanels } from "./artefact-panels";
 import { TraceBlock } from "./trace-block";
@@ -48,30 +49,15 @@ export interface ScanScreenProps {
 	onStop: () => void;
 }
 
-function SessionBox({
-	t,
-	sandbox,
-	environment,
-	workspace,
-}: Pick<ScanScreenProps, "t" | "sandbox" | "environment" | "workspace">): React.ReactElement {
-	const rows: { label: string; value: string }[] = [];
-	if (sandbox.sessionId) rows.push({ label: t("session.id"), value: sandbox.sessionId });
-	if (workspace) rows.push({ label: t("session.workspace"), value: workspace });
-	if (sandbox.uptimeSec) rows.push({ label: t("session.uptime"), value: `${sandbox.uptimeSec}s` });
-	if (sandbox.image) rows.push({ label: t("session.image"), value: sandbox.image });
-	if (environment?.docker.imagePresent === false) {
-		rows.push({ label: t("session.imageState"), value: t("session.imageMissing") });
-	}
-	if (!rows.length) return <p className="astra-strix-dim">{t("session.noneYet")}</p>;
+/** One label/value pair in the status band; omitted entirely when there is no value. */
+function Fact({ label, value, tone }: { label: string; value: string; tone?: string }): React.ReactElement {
 	return (
-		<dl className="astra-strix-kv">
-			{rows.map((row) => (
-				<div key={row.label}>
-					<dt>{row.label}</dt>
-					<dd>{row.value}</dd>
-				</div>
-			))}
-		</dl>
+		<span className="astra-strix-fact">
+			<span className="astra-strix-fact-label">{label}</span>
+			<span className={`astra-strix-fact-value ${tone ?? ""}`.trim()} title={value}>
+				{value}
+			</span>
+		</span>
 	);
 }
 
@@ -97,32 +83,51 @@ export function ScanScreen({
 	const targets = sandbox.targets ?? [];
 	const scanning = phase === "scanning";
 	const critical = findings.filter((item) => item.severity === "critical").length;
+	const steps = trace.filter((entry) => entry.kind === "tool").length;
 	const [draft, setDraft] = useState("");
 
+	const mode: ScanMode = (sandbox.scanMode as ScanMode | undefined) ?? "standard";
+	const environmentLabel =
+		sandbox.mode === "host" ? t("env.host") : sandbox.mode === "docker" ? t("env.docker") : t("env.unknown");
+
+	// The one thing a new assessment should say: what to do, not what is missing.
+	const emptyHint = targets.length ? t("scan.emptyWithTargets") : t("scan.emptyNoTargets");
+
 	return (
-		<div className="astra-strix-term astra-strix-scan">
-			<div className="astra-strix-scan-grid">
-				<section className="astra-strix-chat" data-running={scanning ? "yes" : "no"}>
-					<div className="astra-strix-chat-body" role="log" aria-live="polite">
+		<div className="astra-strix-term astra-strix-workbench">
+			<header className="astra-strix-band">
+				<span className="astra-strix-band-state" data-state={scanning ? "running" : "idle"}>
+					{busy ? <span className="astra-strix-spinner" aria-hidden="true" /> : null}
+					<span className={scanning ? "astra-strix-green" : "astra-strix-dim"}>
+						{scanning ? t("scan.running") : t("scan.done")}
+					</span>
+				</span>
+				<Fact label={t("targets.title")} value={String(targets.length)} />
+				<Fact label={t("scan.mode")} value={describeMode(mode)} />
+				<Fact
+					label={t("scan.environment")}
+					value={environmentLabel}
+					tone={sandbox.mode === "host" ? "astra-strix-amber" : undefined}
+				/>
+				{workspace ? <Fact label={t("session.workspace")} value={workspace} /> : null}
+				{model ? <Fact label={t("scan.model")} value={model.name} /> : null}
+				{steps ? <Fact label={t("scan.steps")} value={String(steps)} /> : null}
+				{critical ? <Fact label={t("severity.critical")} value={String(critical)} tone="astra-strix-red" /> : null}
+				<span className="astra-strix-band-gap" />
+				{hostStreaming ? <span className="astra-strix-blue astra-strix-band-note">{t("scan.hostTurn")}</span> : null}
+				<button type="button" className="astra-strix-band-stop" onClick={onStop} disabled={!scanning}>
+					{t("scan.stop")}
+				</button>
+			</header>
+
+			<div className="astra-strix-workbench-grid">
+				<section className="astra-strix-transcript">
+					<div className="astra-strix-transcript-body" role="log" aria-live="polite">
 						{trace.length ? (
 							trace.map((entry) => <TraceBlock key={entry.id} entry={entry} />)
 						) : (
-							<p className="astra-strix-dim astra-strix-chat-empty">{t("scan.starting")}</p>
+							<p className="astra-strix-empty">{emptyHint}</p>
 						)}
-					</div>
-
-					<div className="astra-strix-statusline">
-						{busy ? <span className="astra-strix-spinner" aria-hidden="true" /> : null}
-						<span className={scanning ? "astra-strix-green" : "astra-strix-dim"}>
-							{scanning ? t("scan.running") : t("scan.done")}
-						</span>
-						<span className="astra-strix-dim"> · {t("scan.steps")} {trace.filter((entry) => entry.kind === "tool").length}</span>
-						{critical ? <span className="astra-strix-red"> · {t("severity.critical")} {critical}</span> : null}
-						{hostStreaming ? <span className="astra-strix-blue"> · {t("scan.hostTurn")}</span> : null}
-						{model ? <span className="astra-strix-dim"> · {model.name}</span> : null}
-						<button type="button" className="astra-strix-statusline-stop" onClick={onStop} disabled={!scanning}>
-							{t("scan.stop")}
-						</button>
 					</div>
 
 					{question ? (
@@ -145,7 +150,7 @@ export function ScanScreen({
 						</div>
 					) : null}
 
-					<div className="astra-strix-prompt">
+					<div className="astra-strix-composer">
 						<label className="astra-strix-prompt-row">
 							<span className="astra-strix-prompt-caret" aria-hidden="true">
 								&gt;
@@ -171,11 +176,51 @@ export function ScanScreen({
 					</div>
 				</section>
 
-				<aside className="astra-strix-side">
-					<PanelBox title={t("session.title")} hint={sandbox.running ? t("session.running") : undefined} focused={sandbox.running}>
-						<SessionBox t={t} sandbox={sandbox} environment={environment} workspace={workspace} />
-					</PanelBox>
-					<PanelBox title={t("targets.title")} hint={String(targets.length)}>
+				<aside className="astra-strix-rail" aria-label={t("rail.title")}>
+					<section className="astra-strix-section" data-tone="session">
+						<h3 className="astra-strix-section-title">
+							{t("session.title")}
+							{sandbox.running ? <span className="astra-strix-chip-live">{t("session.running")}</span> : null}
+						</h3>
+						{sandbox.sessionId || sandbox.image || sandbox.uptimeSec ? (
+							<dl className="astra-strix-kv">
+								{sandbox.sessionId ? (
+									<div>
+										<dt>{t("session.id")}</dt>
+										<dd>{sandbox.sessionId}</dd>
+									</div>
+								) : null}
+								{sandbox.uptimeSec ? (
+									<div>
+										<dt>{t("session.uptime")}</dt>
+										<dd>{sandbox.uptimeSec}s</dd>
+									</div>
+								) : null}
+								{sandbox.image ? (
+									<div>
+										<dt>{t("session.image")}</dt>
+										<dd title={sandbox.image}>{sandbox.image}</dd>
+									</div>
+								) : null}
+								{environment?.docker.imagePresent === false ? (
+									<div>
+										<dt>{t("session.imageState")}</dt>
+										<dd className="astra-strix-amber">{t("session.imageMissing")}</dd>
+									</div>
+								) : null}
+							</dl>
+						) : (
+							<p className="astra-strix-section-empty">{t("session.noneYet")}</p>
+						)}
+					</section>
+
+					<section className="astra-strix-section" data-tone="targets">
+						<h3 className="astra-strix-section-title">
+							{t("targets.title")}
+							<span className="astra-strix-count" data-empty={targets.length ? "no" : "yes"}>
+								{targets.length}
+							</span>
+						</h3>
 						{targets.length ? (
 							<ul className="astra-strix-targets">
 								{targets.map((target) => (
@@ -186,13 +231,21 @@ export function ScanScreen({
 								))}
 							</ul>
 						) : (
-							<p className="astra-strix-dim">{t("targets.empty")}</p>
+							<p className="astra-strix-section-empty">{t("targets.empty")}</p>
 						)}
-					</PanelBox>
+					</section>
+
 					<ArtefactPanels t={t} agents={agents} todos={todos} notes={notes} coverage={coverage} />
-					<PanelBox title={t("findings.title")} hint={String(findings.length)}>
+
+					<section className="astra-strix-section" data-tone="findings">
+						<h3 className="astra-strix-section-title">
+							{t("findings.title")}
+							<span className="astra-strix-count" data-empty={findings.length ? "no" : "yes"}>
+								{findings.length}
+							</span>
+						</h3>
 						<FindingList t={t} findings={findings} runStatus={scanning ? "running" : "completed"} />
-					</PanelBox>
+					</section>
 				</aside>
 			</div>
 		</div>

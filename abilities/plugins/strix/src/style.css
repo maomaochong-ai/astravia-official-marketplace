@@ -27,6 +27,14 @@
 	--sx-rule: #1f1f1f;
 	--sx-mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", "JetBrains Mono", Menlo, Consolas, monospace;
 
+/* Selecting text must stay legible on both host themes: without an explicit rule, the
+   host's light-theme default selection background lands under this plugin's light text
+   and the selected words read as a blank patch. */
+.astra-strix-term ::selection {
+	background: var(--sx-green);
+	color: #04140a;
+}
+
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -258,55 +266,135 @@
 	color: #0284c7;
 }
 
-/* ---- scan frame (view.go:mainView) ----------------------------------- */
+/* ---- workbench (ADR strix-0004) -------------------------------------- */
 
-.astra-strix-term.astra-strix-scan {
-	flex-direction: row;
+/* One status band, a transcript, a rail. The band wraps before it ever shrinks a
+   value to unreadable, because a status you cannot read is not a status. */
+.astra-strix-track,
+.astra-strix-workbench {
+	flex-direction: column;
+	gap: 0;
 }
 
-.astra-strix-scan-grid {
+.astra-strix-band {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 14px;
+	padding: 8px 14px;
+	border-bottom: 1px solid var(--sx-rule);
+	font-size: 12px;
+}
+
+.astra-strix-band-state {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 600;
+}
+
+.astra-strix-band-gap {
+	flex: 1 1 auto;
+}
+
+.astra-strix-band-note {
+	font-size: 11.5px;
+}
+
+.astra-strix-band-stop {
+	height: 22px;
+	padding: 0 10px;
+	border: 1px solid var(--sx-rule);
+	border-radius: 6px;
+	background: transparent;
+	color: var(--sx-text);
+	font: inherit;
+	font-size: 11.5px;
+	cursor: pointer;
+}
+
+.astra-strix-band-stop:hover:not(:disabled) {
+	border-color: var(--sx-red);
+	color: var(--sx-red);
+}
+
+.astra-strix-band-stop:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+
+.astra-strix-fact {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 6px;
+	min-width: 0;
+}
+
+.astra-strix-fact-label {
+	color: var(--sx-dim);
+	font-size: 11px;
+	letter-spacing: 0.02em;
+}
+
+.astra-strix-fact-value {
+	color: var(--sx-text);
+	max-width: 22ch;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.astra-strix-workbench-grid {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) 20rem;
-	gap: 10px;
+	grid-template-columns: minmax(0, 1fr) 19rem;
+	gap: 0;
 	flex: 1;
 	min-height: 0;
-	padding: 10px;
-	width: 100%;
 }
 
-.astra-strix-chat {
+@media (max-width: 860px) {
+	.astra-strix-workbench-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.astra-strix-rail {
+		display: none;
+	}
+}
+
+.astra-strix-transcript {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
 	min-height: 0;
 	min-width: 0;
 }
 
-.astra-strix-chat-body {
+/* Line length, not the window width, decides how wide the text runs: tool output is
+   long, prose is short, and a 1400 px line of either is unreadable. */
+.astra-strix-transcript-body {
 	flex: 1;
 	min-height: 0;
 	overflow-y: auto;
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
-	/* Upstream's chat border is near-black on focus-out; on a full-black tab that
-	   reads as no frame at all, so it keeps one visible step of the palette. */
-	border: 1px solid #171717;
-	border-radius: 10px;
-	padding: 10px 12px;
+	gap: 10px;
+	padding: 16px 20px 8px;
+	width: 100%;
+	max-width: 118ch;
+	margin: 0 auto;
 }
 
-.astra-strix-chat[data-running="yes"] .astra-strix-chat-body {
-	border-color: color-mix(in srgb, var(--sx-green) 55%, #171717);
+.astra-strix-transcript-body:focus-within {
+	outline: none;
 }
 
-.astra-strix-chat-body:focus-within {
-	border-color: var(--sx-green);
-}
-
-.astra-strix-chat-empty {
+.astra-strix-empty {
 	margin: 0;
+	padding: 2px 0;
 	font-size: 12.5px;
+	line-height: 1.7;
+	color: var(--sx-dim);
+	max-width: 62ch;
 }
 
 .astra-strix-statusline {
@@ -467,12 +555,84 @@
 
 /* ---- sidebar --------------------------------------------------------- */
 
-.astra-strix-side {
+/* The rail is a column of sections, not a stack of boxes: a border around every
+   group of two lines is ink spent on nothing (ADR strix-0004). */
+.astra-strix-rail {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
 	min-height: 0;
 	overflow-y: auto;
+	border-left: 1px solid var(--sx-rule);
+	background: color-mix(in srgb, var(--sx-white) 2%, transparent);
+}
+
+.astra-strix-section {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 12px 14px;
+	border-bottom: 1px solid var(--sx-rule);
+}
+
+.astra-strix-section:last-child {
+	border-bottom: 0;
+}
+
+.astra-strix-section-title {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--sx-dim);
+}
+
+/* A zero is not information; it is a hole with a border. */
+.astra-strix-count {
+	margin-left: auto;
+	min-width: 1.6em;
+	text-align: center;
+	border-radius: 999px;
+	padding: 0 6px;
+	font-size: 10.5px;
+	background: color-mix(in srgb, var(--sx-white) 8%, transparent);
+	color: var(--sx-text);
+}
+
+.astra-strix-count[data-empty="yes"] {
+	background: transparent;
+	color: var(--sx-placeholder);
+}
+
+.astra-strix-section-empty {
+	margin: 0;
+	font-size: 12px;
+	line-height: 1.6;
+	color: var(--sx-placeholder);
+}
+
+.astra-strix-chip-live {
+	margin-left: auto;
+	font-size: 10px;
+	text-transform: none;
+	letter-spacing: 0;
+	color: var(--sx-green);
+}
+
+.astra-strix-boot {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0;
+	font-size: 12px;
+	color: var(--sx-dim);
+}
+
+.astra-strix-boot[data-state="ready"] {
+	color: var(--sx-green);
 }
 
 .astra-strix-box {

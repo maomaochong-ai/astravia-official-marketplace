@@ -48,6 +48,7 @@ function StrixTabRoot({
 			version={ctx.plugin.version}
 			phase={session.phase}
 			log={session.log}
+			boot={session.boot}
 			model={session.model}
 			workspace={session.workspace}
 			hostStreaming={session.hostStreaming}

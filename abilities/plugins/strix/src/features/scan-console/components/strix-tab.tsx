@@ -28,6 +28,8 @@ export interface StrixTabProps {
 	version: string;
 	phase: SessionPhase;
 	log: readonly LogLine[];
+	/** Bridge boot state; a live line on the launch screen (ADR strix-0004). */
+	boot: { state: "connecting" | "ready" | "failed"; detail?: string };
 	model?: ModelChoice;
 	/** Folder name of the conversation workspace. */
 	workspace?: string;
@@ -95,6 +97,7 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					version={props.version}
 					blocked={blockedReason(t, props.model, props.environment)}
 					busy={props.busy}
+					boot={props.boot}
 					onSubmit={(value) => void props.start(value)}
 					onQuit={props.onQuit}
 				/>

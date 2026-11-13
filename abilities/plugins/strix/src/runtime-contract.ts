@@ -67,6 +67,12 @@ export interface SandboxStatus {
 	targets?: string[];
 	image?: string | null;
 	uptimeSec?: number;
+	/** Which environment this session runs in (ADR strix-0001). */
+	mode?: "docker" | "host";
+	/** Scan depth chosen at start (ADR strix-0002). */
+	scanMode?: string;
+	/** Caido proxy tools were enabled for this session. */
+	proxy?: boolean;
 }
 
 export interface StrixFinding {

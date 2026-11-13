@@ -57,6 +57,8 @@ export interface LogLine {
 export interface StrixSessionModel {
 	phase: SessionPhase;
 	log: LogLine[];
+	/** Bridge boot state: shown as a live line, never as log history (ADR strix-0004). */
+	boot: { state: "connecting" | "ready" | "failed"; detail?: string };
 	environment?: EnvironmentProbe;
 	sandbox: SandboxStatus;
 	findings: StrixFinding[];
@@ -104,6 +106,12 @@ export interface StrixSessionOptions {
 export function useStrixSession({ runtime, client, ai, conversation, subscribe, t }: StrixSessionOptions): StrixSessionModel {
 	const [phase, setPhase] = useState<SessionPhase>("booting");
 	const [log, setLog] = useState<LogLine[]>([]);
+	// Boot is a *state*, not a log entry (ADR strix-0004). Pushing "connecting" into
+	// the log left that line on screen forever: the reader could not tell whether the
+	// bridge was still coming up or the message was simply history.
+	const [boot, setBoot] = useState<{ state: "connecting" | "ready" | "failed"; detail?: string }>({
+		state: "connecting",
+	});
 	const [environment, setEnvironment] = useState<EnvironmentProbe>();
 	const [sandbox, setSandbox] = useState<SandboxStatus>({ running: false, targets: [] });
 	const [findings, setFindings] = useState<StrixFinding[]>([]);
@@ -148,9 +156,10 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 
 	/** Service + machine state, plus the model list the conversation model resolves against. */
 	const refresh = useCallback(async () => {
-		note(t("log.connecting"));
+		setBoot({ state: "connecting" });
 		try {
 			await runtime.ensureReady();
+			setBoot({ state: "ready" });
 			const state = await client.state();
 			const probe = normalizeProbe(state?.environment);
 			setSandbox(normalizeSandbox(state?.sandbox));
@@ -167,8 +176,10 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 				const detail = (state?.environment as { error?: unknown } | undefined)?.error;
 				note(`${t("log.bridgeError")}${typeof detail === "string" && detail ? `: ${detail}` : ""}`, "error");
 			}
-			note(t("log.ready"), "ok");
+			// No "ready" line either: the boot state already says it, and a log that keeps
+			// every status turns into the same noise the terminal had.
 		} catch (cause) {
+			setBoot({ state: "failed", detail: cause instanceof Error ? cause.message : String(cause) });
 			note(`${t("log.bridgeError")}: ${cause instanceof Error ? cause.message : String(cause)}`, "error");
 		}
 
@@ -451,6 +462,7 @@ return useMemo(
 		() => ({
 			phase,
 			log,
+			boot,
 			environment,
 			sandbox,
 			findings,
@@ -475,6 +487,7 @@ return useMemo(
 		[
 			phase,
 			log,
+			boot,
 			environment,
 			sandbox,
 			findings,
