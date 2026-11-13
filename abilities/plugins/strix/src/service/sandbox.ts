@@ -14,6 +14,7 @@ import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { dockerApi, imagePresent, pullImage, runArgs, type SandboxSpec } from "./docker";
+import { asScanMode, commandCapSeconds, type ScanMode } from "../domain/scan-mode";
 import { resolveEnvironment, type EnvironmentMode } from "./environment";
 
 const run = promisify(execFile);
@@ -21,19 +22,6 @@ const run = promisify(execFile);
 const NAME_PREFIX = "astravia-strix-";
 const DEFAULT_IMAGE = "ghcr.io/usestrix/strix-sandbox:1.4.0";
 
-/** Scan depth for one session; fixed at start (ADR strix-0002). */
-export type ScanMode = "quick" | "standard" | "deep" | "diff";
-
-const SCAN_MODES: readonly ScanMode[] = ["quick", "standard", "deep", "diff"];
-
-/** Per-mode command ceiling: a `quick` pass must not sit ten minutes on one command. */
-export function scanModeCapSeconds(mode: ScanMode): number {
-	return mode === "quick" ? 120 : 600;
-}
-
-export function asScanMode(value: unknown): ScanMode {
-	return SCAN_MODES.includes(value as ScanMode) ? (value as ScanMode) : "standard";
-}
 
 /**
  * Run one command in the user's own session. Same shape as the docker result so the
@@ -206,7 +194,7 @@ export class Sandbox {
 		const command = String(params.command ?? "").trim();
 		if (!command) throw new Error("command is required");
 		const workdir = String(params.workdir ?? "").trim();
-		const timeoutSec = Math.min(Number(params.timeoutSec) || 300, scanModeCapSeconds(this.scanMode));
+		const timeoutSec = Math.min(Number(params.timeoutSec) || 300, commandCapSeconds(this.scanMode));
 		const script = workdir ? `cd ${quote(workdir)} && ${command}` : command;
 
 		this.emit({ event: "tool_start", tool: "exec_command", command, workdir: workdir || null });

@@ -22,6 +22,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { SERVICE_TOOL_NAMES, STRIX_TOOL_SPECS } from "../agent/strix-tools";
 import { CoverageStore } from "./coverage";
 import { resolveEnvironment } from "./environment";
+import { finishGate } from "../domain/scan-mode";
 import * as findings from "./findings";
 import { NoteStore } from "./notes";
 import { Sandbox, sandboxImage } from "./sandbox";
@@ -128,7 +129,17 @@ const HANDLERS: Record<string, Handler> = {
 	strix_file_finding: (args) => findings.add(sessionId(), args),
 	strix_update_finding: (args) => findings.update(sessionId(), args),
 	strix_list_findings: (args) => findings.list(sessionId(), args),
-	strix_report: (args) => findings.report(sessionId(), args, { version }),
+	strix_report: async (args) => {
+		// `deep` promises more than a breadth pass; without a coverage gate the report
+		// would read the same as `standard` while the user waited longer (ADR strix-0002).
+		// Only the human summary form is gated: the SARIF export is a format, not a close-out.
+		if (!args.format) {
+			const recorded = await coverage.list(sessionId());
+			const gate = finishGate(sandbox.status().scanMode ?? "standard", recorded.entries);
+			if (!gate.allowed) return { ok: false, blocked: "coverage", reason: gate.reason };
+		}
+		return findings.report(sessionId(), args, { version });
+	},
 
 	strix_note_create: (args) => notes.create(sessionId(), args),
 	strix_note_list: (args) => notes.list(sessionId(), args),
