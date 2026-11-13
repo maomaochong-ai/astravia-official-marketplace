@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The working artefacts beside the findings: the specialists, the plan, the coverage,
  * the notes.
  *
@@ -134,23 +134,24 @@ export function ArtefactPanels({
 			<PanelBox
 				title={t("agents.title")}
 				hint={agents.length ? String(agents.length) : undefined}
-				emptyLabel={t("rail.empty")}
+				emptyLabel={t("rail.empty.agents")}
 			>
 				<AgentsPanel t={t} agents={agents} />
 			</PanelBox>
 			<PanelBox
 				title={t("todos.title")}
 				hint={todos.length ? `${done}/${todos.length}` : undefined}
-				emptyLabel={t("rail.empty")}
+				emptyLabel={t("rail.empty.todos")}
 			>
 				<TodoPanel t={t} todos={todos} />
 			</PanelBox>
-			<PanelBox title={t("coverage.title")} hint={coverage.length ? String(coverage.length) : undefined} emptyLabel={t("rail.empty")}>
+			<PanelBox title={t("coverage.title")} hint={coverage.length ? String(coverage.length) : undefined} emptyLabel={t("rail.empty.coverage")}>
 				<CoveragePanel t={t} coverage={coverage} />
 			</PanelBox>
-			<PanelBox title={t("notes.title")} hint={notes.length ? String(notes.length) : undefined} emptyLabel={t("rail.empty")}>
+			<PanelBox title={t("notes.title")} hint={notes.length ? String(notes.length) : undefined} emptyLabel={t("rail.empty.notes")}>
 				<NotesPanel t={t} notes={notes} />
 			</PanelBox>
 		</>
 	);
 }
+

@@ -91,5 +91,9 @@
   "scan.inputHint": "Enter 发送 · Shift+Enter 换行 · 在宿主对话框里发送也会进入这里",
   "stats.title": "统计",
   "mcp.title": "连接",
-  "mcp.empty": "还没有连接 MCP 服务"
+  "mcp.empty": "还没有连接 MCP 服务",
+  "rail.empty.agents": "宽目标时由模型派生专家后出现",
+  "rail.empty.todos": "扫描开始后模型会先写计划",
+  "rail.empty.coverage": "每测完一个面就记录一行",
+  "rail.empty.notes": "载荷与端点图存放在这里"
 }

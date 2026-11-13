@@ -15,10 +15,12 @@ const sandbox = readFileSync(resolve(process.cwd(), "src/service/sandbox.ts"), "
 const payloads = readFileSync(resolve(process.cwd(), "src/domain/bridge-payloads.ts"), "utf8");
 
 describe("environment resolution", () => {
-	it("runs on this machine when the image is not local, instead of pulling", () => {
-		expect(environment).toContain("is not present; running on this machine");
-		// A resolution that needs the image present keeps the network on the critical path.
-		expect(environment).not.toMatch(/present === false[\s\S]{0,120}mode: "docker"/);
+	it("still prefers the container when the daemon is up but the image is missing", () => {
+		// Giving up the container up front would throw away its toolchain; the pull is
+		// bounded and has a fallback, so docker stays the first choice.
+		expect(environment).toContain("is not pulled yet");
+		expect(sandbox).toContain("could not be pulled");
+		expect(sandbox).toContain("degraded(");
 	});
 
 	it("keeps a single definition of the host path", () => {

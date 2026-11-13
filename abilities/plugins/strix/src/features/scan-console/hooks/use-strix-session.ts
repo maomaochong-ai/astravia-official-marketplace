@@ -104,10 +104,12 @@ export interface StrixSessionOptions {
 	conversation: ConversationState | null;
 	/** `ctx.conversation.on`: the host's turn and tool events, so its Strix calls land in the trace. */
 	subscribe: (listener: (event: ConversationEvent) => void) => { dispose(): void };
+	/** Host conversation API: a prompt typed in the panel is delivered there (ADR 0003). */
+	sendPrompt: (text: string) => Promise<{ status: "sent" | "queued" | "failed" }>;
 	t: (key: string) => string;
 }
 
-export function useStrixSession({ runtime, client, ai, conversation, subscribe, t }: StrixSessionOptions): StrixSessionModel {
+export function useStrixSession({ runtime, client, ai, conversation, subscribe, sendPrompt, t }: StrixSessionOptions): StrixSessionModel {
 	// Read once, before the first paint: a remounted tab rehydrates instead of showing
 	// the launch column while its scan is still running behind it (session-store.ts).
 	const initial = useRef(readSnapshot(conversation?.id)).current;
@@ -140,6 +142,11 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 	const mountedIn = useRef<string | null>(conversation?.id ?? null);
 	const conversationIdRef = useRef<string | undefined>(conversation?.id);
 	conversationIdRef.current = conversation?.id;
+	/**
+	 * Prompts the panel itself just delivered to the conversation. The host echoes them
+	 * back as `message-added`, and that echo must not start a second run (ADR strix-0003).
+	 */
+	const suppressMirror = useRef<Set<string>>(new Set());
 	const seq = useRef(0);
 	const agentRef = useRef<StrixAgent | null>(null);
 	/** Resolver for the question currently on screen; `answer()` calls it. */
@@ -463,8 +470,21 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 	const send = useCallback(
 		async (text: string) => {
 			const value = text.trim();
-			if (!value || phase === "scanning") return;
+			if (!value) return;
 			pushTrace({ kind: "user", label: value });
+			// Typed here, delivered to the conversation: the host's own turn is the run, so
+			// the message also lands in the host transcript instead of existing only here
+			// (ADR strix-0003). Suppressed in the mirror so it cannot start a second run.
+			if (conversation?.id) {
+				suppressMirror.current.add(value);
+				const receipt = await sendPrompt(value).catch(() => undefined);
+				if (receipt && receipt.status !== "failed") {
+					if (phase !== "scanning") setPhase("scanning");
+					return;
+				}
+				suppressMirror.current.delete(value);
+			}
+			if (phase === "scanning") return;
 			setPhase("scanning");
 			setBusy(true);
 			try {
@@ -523,13 +543,16 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 			// unscoped listener would let project A's message start a scan in project B.
 			if (!belongsTo(mountedIn.current, conversationIdRef.current)) return;
 			if (event.type !== "message-added") return;
-			if (event.type !== "message-added") return;
 			const message = event.message;
 			const text = message.text.trim();
 			if (!text) return;
 			if (message.role === "user") {
-				// Echo the host turn into the transcript, then drive the scan with it: the
-				// panel is an observer of the conversation, not a second chat beside it.
+				// A prompt the panel just delivered comes back as this echo: show it once, and do
+				// not start a second run from it (ADR strix-0003).
+				if (suppressMirror.current.delete(text)) {
+					pushTrace({ kind: "host", label: text });
+					return;
+				}
 				pushTrace({ kind: "host", label: text });
 				if (phaseRef.current !== "scanning") void startRef.current(text);
 				else void sendRef.current(text);

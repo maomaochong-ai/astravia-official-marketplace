@@ -202,11 +202,15 @@ export class Sandbox {
 		try {
 			this.emit({ event: "sandbox_status", phase: "preparing image" });
 			if ((await imagePresent(image)) === false) {
+				// The image is the toolchain (ADR strix-0002), so it is worth one bounded attempt
+				// before falling back: on a network that can reach ghcr this is what makes the
+				// panel useful, and on one that cannot, the fallback below still runs the scan.
 				this.emit({ event: "sandbox_status", phase: "pulling image" });
 				const pulled = await pullImage(image);
 				if (pulled.code !== 0) {
 					return degraded(`image ${image} could not be pulled: ${pulled.stderr.trim().slice(-400)}`);
 				}
+				this.emit({ event: "sandbox_status", phase: "image ready" });
 			}
 
 			this.emit({ event: "sandbox_status", phase: "starting container" });

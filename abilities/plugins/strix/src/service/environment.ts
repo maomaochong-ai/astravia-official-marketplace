@@ -38,15 +38,14 @@ export async function resolveEnvironment(image: string): Promise<ResolvedEnviron
 				docker: { ready: true, detail: probe.detail, imagePresent: present },
 			};
 		}
-		// The daemon is up but the image is not local. Pulling it is a network operation
-		// against ghcr.io that fails on restricted networks (EOF / blocked), and failing it
-		// left the panel stuck on "sandbox failed" after a long wait. So the environment
-		// resolves to this machine up front: the tools run, the session starts, and the
-		// reason is stated instead of surfacing as a failure.
+		// Daemon up, image missing: still docker mode. The pull happens once, in `start()`,
+		// because that is where the user can see progress and where a failure has a sandbox
+		// to fall back to. Deciding host here would have silently given up the container's
+		// toolchain — which is exactly what the panel then had to apologise for.
 		return {
-			mode: "host",
+			mode: "docker",
 			ready: true,
-			detail: `sandbox image ${image} is not present; running on this machine`,
+			detail: `sandbox image ${image} is not pulled yet`,
 			docker: { ready: true, detail: probe.detail, imagePresent: present },
 		};
 	}

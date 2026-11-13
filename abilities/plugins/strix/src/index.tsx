@@ -50,6 +50,7 @@ function StrixTabRoot({
 		ai: ctx.ai,
 		conversation,
 		subscribe: (listener) => ctx.conversation.on(listener),
+		sendPrompt: (text) => ctx.conversation.sendPrompt(text),
 		t,
 	});
 

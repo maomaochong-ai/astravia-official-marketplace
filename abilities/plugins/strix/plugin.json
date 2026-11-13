@@ -2,7 +2,7 @@
   "id": "strix",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.5.15",
+  "version": "0.5.16",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -58,7 +58,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "b59fc46438b3f7c218dd44555fdf7a402b147174229fd5d2450ca9b499ac4ef8",
+                  "sha256": "f3a7dd3bca4acb807508a24a92c9ecad18d56c2ae9406a721e3c054238c38b04",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -68,7 +68,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "b59fc46438b3f7c218dd44555fdf7a402b147174229fd5d2450ca9b499ac4ef8",
+                  "sha256": "f3a7dd3bca4acb807508a24a92c9ecad18d56c2ae9406a721e3c054238c38b04",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -78,7 +78,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "b59fc46438b3f7c218dd44555fdf7a402b147174229fd5d2450ca9b499ac4ef8",
+                  "sha256": "f3a7dd3bca4acb807508a24a92c9ecad18d56c2ae9406a721e3c054238c38b04",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -88,7 +88,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "b59fc46438b3f7c218dd44555fdf7a402b147174229fd5d2450ca9b499ac4ef8",
+                  "sha256": "f3a7dd3bca4acb807508a24a92c9ecad18d56c2ae9406a721e3c054238c38b04",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -98,7 +98,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "b59fc46438b3f7c218dd44555fdf7a402b147174229fd5d2450ca9b499ac4ef8",
+                  "sha256": "f3a7dd3bca4acb807508a24a92c9ecad18d56c2ae9406a721e3c054238c38b04",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
