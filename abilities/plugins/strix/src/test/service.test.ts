@@ -27,7 +27,7 @@ const finding = (overrides: Partial<Finding> = {}): Finding => ({
 });
 
 describe("sandbox argv", () => {
-	it("mounts each source into /workspace and keeps the image entrypoint out of the way", () => {
+	it("mounts each source into /workspace, keeps the image entrypoint out of the way, and grants raw sockets", () => {
 		const args = runArgs({
 			name: "astravia-strix-s1",
 			image: "ghcr.io/usestrix/strix-sandbox:1.4.0",
@@ -38,6 +38,13 @@ describe("sandbox argv", () => {
 			"-d",
 			"--name",
 			"astravia-strix-s1",
+			// nmap -sS and naabu open raw sockets; without these they exit 1.
+			"--cap-add",
+			"NET_RAW",
+			"--cap-add",
+			"NET_ADMIN",
+			"--add-host",
+			"host.docker.internal:host-gateway",
 			"-v",
 			"D:/work/app:/workspace/app:ro",
 			"--entrypoint",

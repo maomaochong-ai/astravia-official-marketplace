@@ -10,6 +10,7 @@
 
 import { execFile } from "node:child_process";
 import { readFile, readdir } from "node:fs/promises";
+import { homedir } from "node:os";
 import { basename, extname, join } from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
@@ -29,16 +30,46 @@ export interface SkillEntry {
 
 export interface SkillLocation {
 	root: string;
-	/** How it was found, for the panel's diagnostics. */
-	source: "python" | "env" | "bundled";
+	/** `python` = a plain interpreter, `python-uv` = the uv tool venv, `bundled` = shipped docs. */
+	source: "python" | "python-uv" | "env" | "bundled";
 }
 
-/** Ask the interpreter where the package lives; STRIX_SKILLS_DIR overrides for odd installs. */
-export async function locateSkills(python = process.env.STRIX_PYTHON || "python"): Promise<SkillLocation | undefined> {
+/**
+ * Candidate interpreters, in the order worth trying.
+ *
+ * `uv tool install strix-agent` - the install our own README documents - puts the
+ * engine in its own venv, not on `PATH`, so a probe that only knows `python` finds
+ * nothing and silently degrades to the 13 bundled tool docs instead of the engine's
+ * 75 packs. The uv locations are therefore part of the search, not an extra.
+ */
+export function pythonCandidates(explicit = process.env.STRIX_PYTHON): string[] {
+	const list = explicit ? [explicit] : [];
+	list.push("python", "python3");
+	if (process.platform === "win32") list.push("py");
+	const uvRoots = process.env.UV_TOOL_DIR
+		? [process.env.UV_TOOL_DIR]
+		: [
+				process.env.APPDATA ? join(process.env.APPDATA, "uv", "tools") : "",
+				process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, "uv", "tools") : "",
+				join(homedir(), ".local", "share", "uv", "tools"),
+			].filter(Boolean);
+	for (const root of uvRoots) {
+		list.push(
+			process.platform === "win32"
+				? join(root, "strix-agent", "Scripts", "python.exe")
+				: join(root, "strix-agent", "bin", "python"),
+		);
+	}
+	return list;
+}
+
+/** Ask each interpreter where the package lives; STRIX_SKILLS_DIR overrides for odd installs. */
+export async function locateSkills(explicit = process.env.STRIX_PYTHON): Promise<SkillLocation | undefined> {
 	const override = process.env.STRIX_SKILLS_DIR;
 	if (override) return { root: override, source: "env" };
-	for (const candidate of [python, "python3", "py"]) {
-		const args = candidate === "py" ? ["-3", "-c"] : ["-c"];
+
+	for (const candidate of pythonCandidates(explicit)) {
+		const args = basename(candidate) === "py" ? ["-3", "-c"] : ["-c"];
 		try {
 			const { stdout } = await run(
 				candidate,
@@ -46,12 +77,12 @@ export async function locateSkills(python = process.env.STRIX_PYTHON || "python"
 				{ timeout: 20_000, windowsHide: true },
 			);
 			const root = stdout.trim();
-			if (root) return { root, source: "python" };
+			if (root) return { root, source: candidate === (explicit ?? "python") ? "python" : "python-uv" };
 		} catch {
 			/* try the next interpreter */
 		}
 	}
-	// No Python package: the packaged tool knowledge is what this build has.
+	// No engine anywhere: the packaged tool knowledge is what this build has.
 	return { root: packagedSkillsRoot(), source: "bundled" };
 }
 

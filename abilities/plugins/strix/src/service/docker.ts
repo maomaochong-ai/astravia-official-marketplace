@@ -66,9 +66,33 @@ export interface SandboxSpec {
 	network?: string;
 }
 
-/** Build `docker run` argv. Exported so the shape can be asserted without a daemon. */
+/**
+ * Build `docker run` argv.
+ *
+ * Two details are not optional, and both come from upstream
+ * (`strix/runtime/docker_client.py:14-17`):
+ *
+ * - `NET_RAW` / `NET_ADMIN`, because `nmap -sS`, `naabu` and the rest of the
+ *   toolchain open raw sockets. Without them the binaries start and then fail with
+ *   `Operation not permitted`, which reads as a broken image.
+ * - `host.docker.internal` → host-gateway, so a target served on the developer's
+ *   own machine is reachable from inside the sandbox.
+ *
+ * Exported so the shape can be asserted without a daemon.
+ */
 export function runArgs(spec: SandboxSpec): string[] {
-	const args = ["run", "-d", "--name", spec.name];
+	const args = [
+		"run",
+		"-d",
+		"--name",
+		spec.name,
+		"--cap-add",
+		"NET_RAW",
+		"--cap-add",
+		"NET_ADMIN",
+		"--add-host",
+		"host.docker.internal:host-gateway",
+	];
 	for (const mount of spec.mounts) {
 		args.push("-v", `${mount.host}:/workspace/${mount.name}${mount.readOnly ? ":ro" : ""}`);
 	}
