@@ -765,5 +765,6 @@
   "selfcheck.item.host.cwd": "工作区目录",
   "selfcheck.item.host.storage": "插件存储",
   "selfcheck.item.host.chat": "对话桥接",
-  "selfcheck.item.host.lab": "实验环境"
+  "selfcheck.item.host.lab": "实验环境",
+  "action.workbench": "寒霜破甲"
 }
