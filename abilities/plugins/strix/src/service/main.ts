@@ -26,6 +26,7 @@ import * as findings from "./findings";
 import { NoteStore } from "./notes";
 import { Sandbox, sandboxImage } from "./sandbox";
 import { locateSkills, loadBodies, loadIndex } from "./skills";
+import { missingTools, probeToolchain } from "./toolchain";
 import { TodoStore } from "./todo";
 
 const PORT = Number(process.env.ASTRAVIA_SERVICE_PORT || 0);
@@ -63,6 +64,8 @@ async function environment() {
 	const resolved = await resolveEnvironment(sandboxImage());
 	const docker = resolved.docker;
 	const skills = await locateSkills();
+	// Only meaningful in `host` mode: in a container the toolchain is the image's.
+	const tools = resolved.mode === "host" ? await probeToolchain() : [];
 	return {
 		mode: resolved.mode,
 		docker: { ready: docker.ready, detail: docker.detail, image: sandboxImage(), imagePresent: docker.imagePresent },
@@ -73,6 +76,8 @@ async function environment() {
 			detail: skills ? skills.root : "strix-agent is not installed in any Python on PATH",
 		},
 		skills: skills ? { root: skills.root, source: skills.source } : null,
+		tools,
+		missingTools: missingTools(tools),
 		// Ready means "a scan can start here": with a daemon the container carries the
 		// tools; without one the user's session does, so only the skill library has to
 		// be there (ADR strix-0001).

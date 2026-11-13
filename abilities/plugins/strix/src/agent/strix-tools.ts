@@ -30,7 +30,7 @@ export const STRIX_TOOL_SPECS: readonly StrixToolSpec[] = [
 		handler: "service",
 		name: "strix_environment",
 		description:
-			"Check whether this machine can run Strix tooling: the Docker sandbox and the skill library. Call it when a sandbox call failed and you want to know why.",
+			"Check whether this machine can run Strix tooling: the execution environment (docker or the user's session), the skill library, and in host mode which of the tools are actually installed. Call it when a sandbox call failed and you want to know why, or before planning a step that needs a specific tool.",
 		parameters: { ...OBJECT, properties: {} },
 	},
 	{
@@ -412,7 +412,7 @@ export const STRIX_TOOL_SPECS: readonly StrixToolSpec[] = [
 		handler: "plugin",
 		name: "strix_spawn_agent",
 		description:
-			"Start a specialist agent on a subtask, in parallel with your own work. Give it a name and a self-contained task; it shares this sandbox and the findings ledger, so its evidence lands where yours does. Up to three run at once.",
+			"Start a sandbox worker on a subtask, in parallel with your own work. Give it a name and a self-contained task; it shares this sandbox and the findings ledger, so its evidence lands where yours does. Up to three run at once. These workers live inside this assessment and are not host subagents — they do not appear in the host's own agent list.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -426,13 +426,13 @@ export const STRIX_TOOL_SPECS: readonly StrixToolSpec[] = [
 	{
 		handler: "plugin",
 		name: "strix_wait_agents",
-		description: "Wait for the agents you spawned and read their result summaries.",
+		description: "Wait for the sandbox workers you spawned and read their result summaries.",
 		parameters: { ...OBJECT, properties: {} },
 	},
 	{
 		handler: "plugin",
 		name: "strix_view_agents",
-		description: "The agent tree: every agent you started, its status and what it was asked to do.",
+		description: "The worker tree: every sandbox worker you started, its status and what it was asked to do.",
 		parameters: { ...OBJECT, properties: {} },
 	},
 	{
