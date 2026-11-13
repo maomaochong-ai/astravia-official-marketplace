@@ -80,5 +80,6 @@
   "rail.title": "Artefacts",
   "env.docker": "Container",
   "env.host": "This machine (no container)",
-  "env.unknown": "Undetermined"
+  "env.unknown": "Undetermined",
+  "rail.empty": "Nothing recorded yet"
 }
