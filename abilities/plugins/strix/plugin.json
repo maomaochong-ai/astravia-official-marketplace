@@ -2,7 +2,7 @@
   "id": "strix",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.5.16",
+  "version": "0.5.17",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -207,13 +207,13 @@
           }
         },
         "penetration-testing-with-strix": {
-          "defaultVisibility": "hidden",
+          "defaultVisibility": "visible",
           "surfaces": {
-            "abilityCatalog": "hidden",
-            "agentConfiguration": "hidden",
-            "commandPalette": "hidden",
-            "skillPicker": "hidden",
-            "pluginDetail": "hidden"
+            "abilityCatalog": "visible",
+            "agentConfiguration": "visible",
+            "commandPalette": "visible",
+            "skillPicker": "visible",
+            "pluginDetail": "visible"
           }
         },
         "web-app-penetration-testing": {

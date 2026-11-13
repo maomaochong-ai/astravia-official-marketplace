@@ -140,6 +140,10 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 	// was opened in: events from any other conversation are ignored, so project A's chat
 	// cannot start a scan in project B's panel.
 	const mountedIn = useRef<string | null>(conversation?.id ?? null);
+	// The host replays `conversation-changed` in a microtask, so a tab can mount before
+	// any id exists. Adopting the first real id is what stops the panel from ignoring
+	// every event for the rest of its life — which read as "the host chat does not sync".
+	if (mountedIn.current === null && conversation?.id) mountedIn.current = conversation.id;
 	const conversationIdRef = useRef<string | undefined>(conversation?.id);
 	conversationIdRef.current = conversation?.id;
 	/**
@@ -424,6 +428,20 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 	const start = useCallback(
 		async (prompt: string) => {
 			if (phase === "scanning") return;
+			const typed = prompt.trim();
+			// Same route as `send`: the host conversation is the run, so the panel does not
+			// start a second one beside it (ADR strix-0003). Suppressed in the mirror so the
+			// echo does not come back as a fresh prompt.
+			if (typed && conversation?.id) {
+				suppressMirror.current.add(typed);
+				const receipt = await sendPrompt(typed).catch(() => undefined);
+				if (receipt && receipt.status !== "failed") {
+					pushTrace({ kind: "user", label: typed });
+					setPhase("scanning");
+					return;
+				}
+				suppressMirror.current.delete(typed);
+			}
 			const request = parseLaunchPrompt(prompt);
 			if (!modelRef.current) {
 				note(t("log.noModel"), "error");
@@ -554,8 +572,10 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 					return;
 				}
 				pushTrace({ kind: "host", label: text });
-				if (phaseRef.current !== "scanning") void startRef.current(text);
-				else void sendRef.current(text);
+				// The host is already running this turn: mirror it, do not start a parallel
+				// loop of our own (ADR strix-0003). Its tool calls arrive as `tool-call-*`
+				// events and land in this same transcript.
+				if (phaseRef.current !== "scanning") setPhase("scanning");
 				return;
 			}
 			if (message.role === "assistant") pushTrace({ kind: "host-say", label: text });

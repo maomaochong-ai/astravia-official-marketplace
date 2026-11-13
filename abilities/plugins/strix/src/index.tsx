@@ -147,6 +147,16 @@ export default definePlugin({
 					return;
 				}
 				ctx.ui.setActivityTabVisible(TAB_ID, true);
+				// Enabling the chip is the moment the user expects the toolkit to exist. Install
+				// and start the bridge now, not when a tab happens to mount: a capsule that only
+				// sets a flag, while the service is not installed, does nothing at all.
+				void runtime.ensureReady().catch((cause: unknown) => {
+					ctx.ui.notify({
+						message: `${ctx.i18n.t("log.bridgeError")}: ${cause instanceof Error ? cause.message : String(cause)}`,
+						variant: "warning",
+						durationMs: 8_000,
+					});
+				});
 				ctx.ui.openActivityTab(TAB_ID, { width: "max" });
 			},
 			// The method travels with the prompt: the agent then knows which tools exist
