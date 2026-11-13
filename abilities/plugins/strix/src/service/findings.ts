@@ -176,6 +176,45 @@ export async function update(sessionId: string, params: Record<string, unknown>)
 	return { finding: target, count: findings.length, bySeverity: tally(findings), findings: bySeverity(findings) };
 }
 
+/**
+ * Merge one finding into another: the duplicate disappears, its evidence stays.
+ *
+ * Upstream collapses duplicates before writing the report (`strix/report/dedupe.py`).
+ * The decision of *what* is a duplicate belongs to the model, but the merge itself must
+ * be lossless and deterministic — an evidence line that only the duplicate carried is
+ * exactly the line a reader will want when they reproduce the finding.
+ */
+export async function merge(
+	sessionId: string,
+	params: Record<string, unknown>,
+): Promise<{ merged: { id: string; into: string }; count: number } & FindingsFile> {
+	const id = String(params.id ?? "").trim();
+	const into = String(params.into ?? "").trim();
+	if (!id || !into) throw new Error("id and into are required");
+	if (id === into) throw new Error("cannot merge a finding into itself");
+
+	const findings = await read(sessionId);
+	const duplicate = findings.find((item) => item.id === id);
+	const keeper = findings.find((item) => item.id === into);
+	if (!duplicate) throw new Error(`no finding matched ${id}`);
+	if (!keeper) throw new Error(`no finding matched ${into}`);
+
+	// Keep the higher severity: collapsing two reports must not downgrade the risk.
+	const order = ["critical", "high", "medium", "low", "info"] as const;
+	if (order.indexOf(duplicate.severity) < order.indexOf(keeper.severity)) keeper.severity = duplicate.severity;
+
+	const extraEvidence = (duplicate.evidence ?? "").trim();
+	if (extraEvidence && !(keeper.evidence ?? "").includes(extraEvidence)) {
+		keeper.evidence = [keeper.evidence?.trim(), extraEvidence].filter(Boolean).join("\n\n---\n\n");
+	}
+	const note = typeof params.reason === "string" && params.reason.trim() ? params.reason.trim() : "same root cause";
+	keeper.description = `${keeper.description ?? ""}${keeper.description ? "\n\n" : ""}(merged: ${note})`;
+
+	const remaining = findings.filter((item) => item.id !== id);
+	await write(sessionId, remaining);
+	return { merged: { id, into }, count: remaining.length, bySeverity: tally(remaining), findings: bySeverity(remaining) };
+}
+
 export async function list(sessionId: string, params: Record<string, unknown> = {}): Promise<FindingsFile> {
 	const filter = params.severity ? normalizeSeverity(params.severity) : undefined;
 	const findings = (await read(sessionId)).filter((item) => (filter ? item.severity === filter : true));

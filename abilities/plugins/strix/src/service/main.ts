@@ -130,6 +130,7 @@ const HANDLERS: Record<string, Handler> = {
 	strix_file_finding: (args) => findings.add(sessionId(), args),
 	strix_update_finding: (args) => findings.update(sessionId(), args),
 	strix_list_findings: (args) => findings.list(sessionId(), args),
+	strix_merge_findings: (args) => findings.merge(sessionId(), args),
 	strix_report: async (args) => {
 		// `deep` promises more than a breadth pass; without a coverage gate the report
 		// would read the same as `standard` while the user waited longer (ADR strix-0002).

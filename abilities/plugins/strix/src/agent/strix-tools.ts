@@ -248,6 +248,22 @@ export const STRIX_TOOL_SPECS: readonly StrixToolSpec[] = [
 	},
 	{
 		handler: "service",
+		name: "strix_merge_findings",
+		description:
+			"Collapse one finding into another when they are the same root cause at the same sink. The duplicate disappears; its evidence, and the higher severity, are kept on the survivor. Report the reason in one line.",
+		parameters: {
+			type: "object",
+			properties: {
+				id: { type: "string", description: "Id of the duplicate to fold away." },
+				into: { type: "string", description: "Id of the finding to keep." },
+				reason: { type: "string", description: "Why they are the same issue, e.g. same sink, different payload." },
+			},
+			required: ["id", "into"],
+			additionalProperties: false,
+		},
+	},
+	{
+		handler: "service",
 		name: "strix_report",
 		description:
 			"Render the penetration-test report from the findings filed so far. `format: sarif` writes the same findings as SARIF 2.1.0 for a CI pipeline; the Markdown report is the default.",
