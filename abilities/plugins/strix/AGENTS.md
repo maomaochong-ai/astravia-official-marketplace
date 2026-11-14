@@ -123,3 +123,7 @@ npm run check           # typecheck + test + 服务冒烟
 - `agent.mcpServers` 的 `type: "service"` 只有在服务就绪时才会物化成工具（`resolveServiceMcp` 返回 undefined 就跳过），所以 `activate()` 里必须先 `runtime.ensureReady()`；否则先建的会话永远看不到 `strix_*`。
 - 面板的屏幕由服务里的事实决定（`domain/assessment-presence.ts`），不是「组件看过消息没有」：宿主已经跑过一轮时面板必须直接进扫描屏。
 - **面板不画对话正文**（ADR 0007）：`TraceEntry.kind` 只有 `tool` / `say` / `note`，`message-*` 事件显式 return。要加回文字先读 0007——两个可滚区域就是用户抱怨的那份冗余。
+- **台账面板必须可检查**（ADR 0008）：一行只有标题就是装饰。笔记可展开取正文（`strix_note_get`），
+  覆盖超上限要写“还有 N 行”；计划/覆盖/笔记的**写入归 agent**，面板只读。
+- **运行记录永远贴在底部**（`features/scan-console/scroll-stick.ts`）：贴底时跟随新行；读者
+  往上滚了不抢回，只显示“N 条新消息”。改滚动行为前先读那两个文件，不要在组件里另写一套。

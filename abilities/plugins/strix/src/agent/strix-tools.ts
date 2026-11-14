@@ -401,6 +401,18 @@ export const STRIX_TOOL_SPECS: readonly StrixToolSpec[] = [
 	},
 	{
 		handler: "service",
+		name: "strix_todo_remove",
+		description:
+			"Drop plan items that no longer apply (a route turned out unreachable, a hypothesis was wrong). Deleting is honest; marking it done would claim work that never happened. Pair with strix_todo_list to get ids.",
+		parameters: {
+			type: "object",
+			properties: { ids: { type: "array", items: { type: "string" } } },
+			required: ["ids"],
+			additionalProperties: false,
+		},
+	},
+	{
+		handler: "service",
 		name: "strix_coverage_record",
 		description:
 			"Record an attack surface you tested and what came of it. Honest coverage matters more than a long list: `clean` for tested-and-nothing, `vulnerable` when a finding came out of it, `skipped` with a reason when you could not test it.",
@@ -424,6 +436,25 @@ export const STRIX_TOOL_SPECS: readonly StrixToolSpec[] = [
 		parameters: {
 			type: "object",
 			properties: { outcome: { type: "string", enum: ["vulnerable", "clean", "skipped"] } },
+			additionalProperties: false,
+		},
+	},
+	{
+		handler: "service",
+		name: "strix_coverage_update",
+		description:
+			"Correct an existing coverage entry. An outcome written before you knew better (`clean`, then an IDOR turns up on that surface) must be replaced, not duplicated — two contradicting rows make the report unreadable. Get ids from strix_coverage_list.",
+		parameters: {
+			type: "object",
+			properties: {
+				id: { type: "string" },
+				outcome: { type: "string", enum: ["vulnerable", "clean", "skipped"] },
+				surface: { type: "string" },
+				technique: { type: "string" },
+				evidence: { type: "string" },
+				note: { type: "string" },
+			},
+			required: ["id"],
 			additionalProperties: false,
 		},
 	},

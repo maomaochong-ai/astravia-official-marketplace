@@ -119,4 +119,22 @@ export class TodoStore {
 		const todos = sortTodos(await this.read(sessionId));
 		return { count: todos.length, todos };
 	}
+
+	/**
+	 * 删掉计划项（上游 `delete_todo`）。
+	 *
+	 * 为什么要这个：计划是会变的——一条“先试 /admin”在确认不可达之后不应继续占着面板，
+	 * 也不应该被改成 done 假装做过。只能 create/update 的话，唯一的清理方式是做完它，
+	 * 那会让计划与实际不符。
+	 */
+	async remove(sessionId: string, params: Record<string, unknown>): Promise<{ removed: string[]; count: number; todos: Todo[] }> {
+		const ids = Array.isArray(params.ids) ? params.ids.map(String) : [];
+		if (!ids.length) throw new Error("ids must list at least one todo");
+		const todos = await this.read(sessionId);
+		const removed = todos.filter((todo) => ids.includes(todo.id)).map((todo) => todo.id);
+		if (!removed.length) throw new Error(`no todo matched ${ids.join(", ")}`);
+		const kept = sortTodos(todos.filter((todo) => !removed.includes(todo.id)));
+		await this.write(sessionId, kept);
+		return { removed, count: kept.length, todos: kept };
+	}
 }

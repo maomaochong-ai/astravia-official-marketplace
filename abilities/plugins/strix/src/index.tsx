@@ -102,6 +102,8 @@ function StrixTabRoot({
 			coverage={session.coverage}
 			mcp={session.mcp}
 			trace={session.trace}
+			onOpenNote={session.onOpenNote}
+			{...(session.coverageTally ? { coverageTally: session.coverageTally } : {})}
 			busy={session.busy}
 			start={session.start}
 			send={session.send}

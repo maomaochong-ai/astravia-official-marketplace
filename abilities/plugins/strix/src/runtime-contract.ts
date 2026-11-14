@@ -136,6 +136,8 @@ export interface NoteSummary {
 	title: string;
 	category: string;
 	updatedAt: string;
+	/** 前 120 字符，由服务截断（`notes.list` 的 preview）。折叠时就能读一眼。 */
+	preview?: string;
 }
 
 /** One attack surface and what testing it produced. */

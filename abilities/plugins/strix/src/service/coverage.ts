@@ -27,6 +27,8 @@ export interface CoverageEntry {
 	evidence: string;
 	note: string;
 	created_at: string;
+	/** 改过的记录留下痕迹：报告里能看出哪些结论被修正过（对应上游 update_coverage）。 */
+	updated_at?: string;
 }
 
 export interface ThreatModel {
@@ -92,6 +94,33 @@ export class CoverageStore {
 		return { count: entries.length, byOutcome: tally(entries), entry };
 	}
 
+	/**
+	 * 改一条已有覆盖记录（上游 `update_coverage`）。
+	 *
+	 * 为什么要这个：第一次记录时的判断常常是错的——一个面先写成 `clean`，后来在它上面
+	 * 确认了越权。只能 record 的话，修正意味着再加一条相反的记录，台账里就同时存在
+	 * ”没问”和“有问题”；报告读者看到两个互相矛盾的结论。改一条比覆写一条诚实。
+	 */
+	async update(
+		sessionId: string,
+		params: Record<string, unknown>,
+	): Promise<{ count: number; byOutcome: Record<Outcome, number>; entry: CoverageEntry }> {
+		const id = String(params.id ?? "").trim();
+		if (!id) throw new Error("id is required");
+		const entries = await this.readCoverage(sessionId);
+		const target = entries.find((entry) => entry.id === id);
+		if (!target) throw new Error(`no coverage entry ${id}`);
+		if (params.outcome !== undefined) target.outcome = outcome(params.outcome);
+		for (const key of ["technique", "evidence", "note", "surface"] as const) {
+			if (params[key] === undefined) continue;
+			const value = String(params[key]).trim();
+			if (key === "surface" && !value) throw new Error("surface cannot be empty");
+			target[key] = value;
+		}
+		target.updated_at = new Date().toISOString();
+		await this.writeCoverage(sessionId, entries);
+		return { count: entries.length, byOutcome: tally(entries), entry: target };
+	}
 	async list(
 		sessionId: string,
 		params: Record<string, unknown> = {},

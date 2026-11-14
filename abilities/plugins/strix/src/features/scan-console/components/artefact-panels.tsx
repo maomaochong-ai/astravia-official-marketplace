@@ -1,21 +1,31 @@
 /**
- * The working artefacts beside the findings: the plan, the coverage, the notes.
+ * The three ledgers beside the findings: plan, coverage, notes.
  *
- * Upstream docks these as their own panels because a pentest is a process, not a list of
- * results: the operator wants to see what the lead meant to test and which surfaces have
- * actually been touched. The boxes are deliberately terse — one row per item, status
- * carried by a glyph and colour.
+ * Upstream docks these as their own TUI panels because a pentest is a process, not a list of
+ * results. Here they are the only place those artefacts exist — the chat shows that
+ * `strix_note_create` was called, never the note's body.
  *
- * The agents panel is gone with the plugin-side loop that fed it: there is no private
- * worker tree any more, and a box that can never fill is worse than no box.
+ * 所以这一栏的规则是**可展开**（ADR strix-0008）：一行只写标题的行，在面板里等于装饰——
+ * 读者看得到"有 3 条笔记"，却打不开任何一条，那能不能读到正文就只能回聊天区翻工具调用。
+ * 现在：
+ *
+ *  - 笔记：点一行展开正文（`strix_note_get`，只在点开时取，不预取全部内容）；
+ *  - 覆盖：标题上给按结果分的计数，行数超过上限时明说"还有 N 行"，而不是静默截断；
+ *  - 计划：标题给 `done/total`，行内保留优先级。
+ *
+ * 面板只读：写入属于 agent（它才有工具），这里不提供"帮我加一条"——那会变成第二个
+ * 决定计划的地方（ADR 0008 的职责表）。
  */
 
+import { useState } from "react";
 import type { CoverageOutcome, NoteSummary, TodoItem } from "../../../runtime-contract";
 import { PanelBox } from "../../../shared/components/panel-box";
 
 const TODO_STATUS_ORDER = ["in_progress", "pending", "done"];
+/** How many rows a panel shows before it says there are more. */
+const ROW_LIMIT = 8;
 
-function TodoPanel({ t, todos }: { t: (key: string) => string; todos: readonly TodoItem[] }): React.ReactElement {
+function TodoPanel({ t, todos }: { t: (key: string, params?: Record<string, string | number>) => string; todos: readonly TodoItem[] }): React.ReactElement {
 	if (!todos.length) return <p className="astra-strix-dim">{t("todos.empty")}</p>;
 	const ordered = [...todos].sort(
 		(left, right) => TODO_STATUS_ORDER.indexOf(left.status) - TODO_STATUS_ORDER.indexOf(right.status),
@@ -43,49 +53,103 @@ function CoveragePanel({
 	t,
 	coverage,
 }: {
-	t: (key: string) => string;
+	t: (key: string, params?: Record<string, string | number>) => string;
 	coverage: readonly CoverageOutcome[];
 }): React.ReactElement {
 	if (!coverage.length) return <p className="astra-strix-dim">{t("coverage.empty")}</p>;
-	const alive = coverage.slice(0, 8);
+	const shown = coverage.slice(0, ROW_LIMIT);
+	const hidden = coverage.length - shown.length;
 	return (
-		<ul className="astra-strix-list">
-			{alive.map((entry, index) => (
-				<li key={`${entry.surface}-${index}`} className="astra-strix-list-row" data-state={entry.outcome}>
-					<span
-						className={
-							entry.outcome === "vulnerable"
-								? "astra-strix-red"
-								: entry.outcome === "clean"
-									? "astra-strix-green"
-									: "astra-strix-dim"
-						}
-						aria-hidden="true"
-					>
-						{entry.outcome === "vulnerable" ? "✗" : entry.outcome === "clean" ? "✓" : "–"}
-					</span>
-					<span className="astra-strix-list-text" title={entry.surface}>
-						{entry.surface}
-					</span>
-				</li>
-			))}
-		</ul>
+		<>
+			<ul className="astra-strix-list">
+				{shown.map((entry, index) => (
+					<li key={`${entry.surface}-${index}`} className="astra-strix-list-row" data-state={entry.outcome}>
+						<span
+							className={
+								entry.outcome === "vulnerable"
+									? "astra-strix-red"
+									: entry.outcome === "clean"
+										? "astra-strix-green"
+										: "astra-strix-dim"
+							}
+							aria-hidden="true"
+						>
+							{entry.outcome === "vulnerable" ? "✗" : entry.outcome === "clean" ? "✓" : "–"}
+						</span>
+						<span className="astra-strix-list-text" title={`${entry.surface}${entry.note ? ` — ${entry.note}` : ""}`}>
+							{entry.surface}
+						</span>
+					</li>
+				))}
+			</ul>
+			{hidden > 0 ? <p className="astra-strix-list-more">{t("panels.moreRows", { count: hidden })}</p> : null}
+		</>
 	);
 }
 
-function NotesPanel({ t, notes }: { t: (key: string) => string; notes: readonly NoteSummary[] }): React.ReactElement {
+function NotesPanel({
+	t,
+	notes,
+	onOpen,
+}: {
+	t: (key: string, params?: Record<string, string | number>) => string;
+	notes: readonly NoteSummary[];
+	onOpen?: (id: string) => Promise<string>;
+}): React.ReactElement {
+	const [openId, setOpenId] = useState<string | null>(null);
+	const [body, setBody] = useState<string>("");
+	const [loading, setLoading] = useState(false);
+
 	if (!notes.length) return <p className="astra-strix-dim">{t("notes.empty")}</p>;
+
+	const toggle = (id: string): void => {
+		if (openId === id) {
+			setOpenId(null);
+			setBody("");
+			return;
+		}
+		setOpenId(id);
+		setBody("");
+		if (!onOpen) return;
+		setLoading(true);
+		void onOpen(id)
+			.then((text) => setBody(text))
+			.catch((cause: unknown) => setBody(cause instanceof Error ? cause.message : String(cause)))
+			.finally(() => setLoading(false));
+	};
+	const shown = notes.slice(0, ROW_LIMIT);
+	const hidden = notes.length - shown.length;
+
 	return (
-		<ul className="astra-strix-list">
-			{notes.slice(0, 8).map((note) => (
-				<li key={note.id} className="astra-strix-list-row">
-					<span className="astra-strix-mono astra-strix-micro astra-strix-dim">{note.id}</span>
-					<span className="astra-strix-list-text" title={`${note.title}${note.category ? ` · ${note.category}` : ""}`}>
-						{note.title}
-					</span>
-				</li>
-			))}
-		</ul>
+		<>
+			<ul className="astra-strix-list">
+				{shown.map((note) => (
+					<li key={note.id} className="astra-strix-list-row" data-open={openId === note.id ? "yes" : "no"}>
+						<button
+							type="button"
+							className="astra-strix-list-open"
+							onClick={() => toggle(note.id)}
+							aria-expanded={openId === note.id}
+							title={`${note.title}${note.category ? ` · ${note.category}` : ""}`}
+						>
+							<span className="astra-strix-mono astra-strix-micro astra-strix-dim">{note.id}</span>
+							<span className="astra-strix-list-text">
+								{note.title}
+								{note.preview ? <span className="astra-strix-note-preview">{note.preview}</span> : null}
+							</span>
+							<span className="astra-strix-dim astra-strix-micro">{openId === note.id ? "▾" : "▸"}</span>
+						</button>
+					</li>
+				))}
+			</ul>
+			{hidden > 0 ? <p className="astra-strix-list-more">{t("panels.moreRows", { count: hidden })}</p> : null}
+			{openId ? (
+				<div className="astra-strix-note-body">
+					{loading ? <p className="astra-strix-dim">{t("panels.loading")}</p> : null}
+					{body ? <pre>{body}</pre> : null}
+				</div>
+			) : null}
+		</>
 	);
 }
 
@@ -94,13 +158,22 @@ export function ArtefactPanels({
 	todos,
 	notes,
 	coverage,
+	coverageTally,
+	onOpenNote,
 }: {
-	t: (key: string) => string;
+	t: (key: string, params?: Record<string, string | number>) => string;
 	todos: readonly TodoItem[];
 	notes: readonly NoteSummary[];
 	coverage: readonly CoverageOutcome[];
+	/** Counts by outcome, from the service; shown on the coverage title. */
+	coverageTally?: Record<string, number>;
+	/** Fetches a note's body on demand (`strix_note_get`). */
+	onOpenNote?: (id: string) => Promise<string>;
 }): React.ReactElement {
 	const done = todos.filter((todo) => todo.status === "done").length;
+	const vulnerable = coverageTally?.vulnerable ?? coverage.filter((entry) => entry.outcome === "vulnerable").length;
+	const clean = coverageTally?.clean ?? coverage.filter((entry) => entry.outcome === "clean").length;
+
 	return (
 		<>
 			<PanelBox
@@ -110,11 +183,15 @@ export function ArtefactPanels({
 			>
 				<TodoPanel t={t} todos={todos} />
 			</PanelBox>
-			<PanelBox title={t("coverage.title")} hint={coverage.length ? String(coverage.length) : undefined} emptyLabel={t("rail.empty.coverage")}>
+			<PanelBox
+				title={t("coverage.title")}
+				hint={coverage.length ? `${vulnerable}/${clean}` : undefined}
+				emptyLabel={t("rail.empty.coverage")}
+			>
 				<CoveragePanel t={t} coverage={coverage} />
 			</PanelBox>
 			<PanelBox title={t("notes.title")} hint={notes.length ? String(notes.length) : undefined} emptyLabel={t("rail.empty.notes")}>
-				<NotesPanel t={t} notes={notes} />
+				<NotesPanel t={t} notes={notes} {...(onOpenNote ? { onOpen: onOpenNote } : {})} />
 			</PanelBox>
 		</>
 	);

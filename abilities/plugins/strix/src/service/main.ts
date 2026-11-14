@@ -285,9 +285,11 @@ const HANDLERS: Record<string, Handler> = {
 	strix_todo_create: (args) => todos.create(sessionId(), args),
 	strix_todo_update: (args) => todos.update(sessionId(), args),
 	strix_todo_list: () => todos.list(sessionId()),
+	strix_todo_remove: (args) => todos.remove(sessionId(), args),
 
 	strix_coverage_record: (args) => coverage.record(sessionId(), args),
 	strix_coverage_list: (args) => coverage.list(sessionId(), args),
+	strix_coverage_update: (args) => coverage.update(sessionId(), args),
 	strix_threat_model: (args) => coverage.threatModel(sessionId(), args),
 };
 

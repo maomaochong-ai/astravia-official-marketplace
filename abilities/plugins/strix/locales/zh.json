@@ -15,7 +15,7 @@
   "launch.blocked.model": "请先在 Astravia 设置里指定默认模型，或打开一个已配置模型的对话，否则无法开扫。",
   "launch.blocked.docker": "请启动 Docker Desktop：Strix 的所有工具都在它的沙箱容器里运行。",
   "log.workspaceMounted": "已挂载工作目录：{folder}",
-  "prompt.instructions": "用户在本轮启用了 Strix，工具来自本插件自带的 MCP 服务（server 名 strix），共 33 个。 环境：strix_environment、strix_mcp、strix_scope、strix_think。沙箱：strix_sandbox_start、strix_exec、strix_browser、strix_proxy、strix_sandbox_status、strix_sandbox_stop。 长任务用 strix_exec 的 background:true 留下会话，再 strix_shell_sessions / strix_write_stdin / strix_kill_session 读写与收尾——整段 nmap、fuzzer、msfconsole 都这样跑，不要靠加大超时。交互式程序（REPL、ssh、nc）加 tty:true。 改文件用 strix_patch（*** Begin Patch 格式），不要用 heredoc：引号、反斜杠、$ 都不会被 shell 吃掉。要看截图用 strix_view_image: 它把图本身交给你的视觉能力，别从 HTML 猜渲染结果。 记录：strix_file_finding、strix_update_finding、strix_list_findings、strix_merge_findings、strix_report、strix_note_*、strix_todo_*、strix_coverage_*、strix_threat_model。 顺序固定：先 strix_scope 声明本次允许触碰的范围，再 strix_environment 看这台机器能不能跑，然后 strix_sandbox_start 开一个会话，strix_list_skills + strix_load_skills 读匹配目标的技能，之后用 strix_exec 取证。先写计划再打，批次之间给结论；只有拿到自己产出的证据才 strix_file_finding，最后 strix_report 收尾（报告里会带范围）。 工具表里没有 strix_* 时：那是插件的本地服务还没就绪，不要用 shell 手搓 nmap 替代，也不要声称在扫描；用一句话告诉用户 Strix 工具当前不可用，请他再点一次输入框里的 Strix 胶囊，然后停下等指示。",
+  "prompt.instructions": "用户在本轮启用了 Strix，工具来自本插件自带的 MCP 服务（server 名 strix），共 33 个。 环境：strix_environment、strix_mcp、strix_scope、strix_think。沙箱：strix_sandbox_start、strix_exec、strix_browser、strix_proxy、strix_sandbox_status、strix_sandbox_stop。 长任务用 strix_exec 的 background:true 留下会话，再 strix_shell_sessions / strix_write_stdin / strix_kill_session 读写与收尾——整段 nmap、fuzzer、msfconsole 都这样跑，不要靠加大超时。交互式程序（REPL、ssh、nc）加 tty:true。 改文件用 strix_patch（*** Begin Patch 格式），不要用 heredoc：引号、反斜杠、$ 都不会被 shell 吃掉。要看截图用 strix_view_image: 它把图本身交给你的视觉能力，别从 HTML 猜渲染结果。 记录：strix_file_finding、strix_update_finding、strix_list_findings、strix_merge_findings、strix_report、strix_note_*、strix_todo_*、strix_coverage_*、strix_threat_model。 顺序固定：先 strix_scope 声明本次允许触碰的范围，再 strix_environment 看这台机器能不能跑，然后 strix_sandbox_start 开一个会话，strix_list_skills + strix_load_skills 读匹配目标的技能，之后用 strix_exec 取证。先写计划再打，批次之间给结论；只有拿到自己产出的证据才 strix_file_finding，最后 strix_report 收尾（报告里会带范围）。 工具表里没有 strix_* 时：那是插件的本地服务还没就绪，不要用 shell 手搓 nmap 替代，也不要声称在扫描；用一句话告诉用户 Strix 工具当前不可用，请他再点一次输入框里的 Strix 胶囊，然后停下等指示。 要求写计划、记录覆盖、笔记——把结论与证据放进台账，不要只写在回复里。计划会变：作废的项用 strix_todo_remove 删掉，不要标成 done；覆盖先记 clean 后来发现问题的，用 strix_coverage_update 改正那一条，不要再记一条相反的。",
   "log.ready": "就绪。",
   "log.bridgeError": "桥接服务不可用",
   "log.dockerDown": "Docker 未运行。",
@@ -107,5 +107,8 @@
   "log.noWorkspace": "先在宿主里打开一个工作目录，面板才能替你开一轮对话",
   "composer.resize": "拖动调整输入框高度（向上变大，也可用上下方向键）",
   "scan.traceTitle": "运行记录 · 命令与结果",
-  "scan.turnDivider": "第 {turn} 轮 · 这一轮说了什么在对话区"
+  "scan.turnDivider": "第 {turn} 轮 · 这一轮说了什么在对话区",
+  "panels.moreRows": "还有 {count} 行未显示（用工具带过滤条件取全量）",
+  "panels.loading": "正在取正文…",
+  "scan.newRows": "{count} 条新消息"
 }

@@ -50,6 +50,10 @@ export interface StrixTabProps {
 	busy: boolean;
 	start: (prompt: string) => Promise<void>;
 	send: (text: string) => Promise<void>;
+	/** Reads a note's body for the panel's expander (`strix_note_get`). */
+	onOpenNote: (id: string) => Promise<string>;
+	/** Counts by outcome from the service, for the coverage panel's title. */
+	coverageTally?: Record<string, number>;
 	stop: () => Promise<void>;
 	onQuit: () => void;
 }
@@ -85,6 +89,8 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					trace={props.trace}
 					busy={props.busy}
 					onSend={(value) => void props.send(value)}
+					onOpenNote={props.onOpenNote}
+					{...(props.coverageTally ? { coverageTally: props.coverageTally } : {})}
 					onStop={() => void props.stop()}
 				/>
 			) : (

@@ -100,6 +100,7 @@ export function normalizeNotes(raw: unknown): NoteSummary[] {
 			title: text(item.title),
 			category: text(item.category),
 			updatedAt: text(item.updated_at),
+			...(text(item.preview) ? { preview: text(item.preview) } : {}),
 		}))
 		.filter((note) => note.id && note.title);
 }

@@ -90,7 +90,7 @@ describe("the panel follows the host conversation", () => {
 		expect(session).toContain('event.type === "turn-start"');
 		expect(session).toContain("isStrixEngaged()");
 		// 离开首屏的同时只留一条轮次分隔行，不抄正文（ADR 0007）。
-		expect(session).toContain('t("scan.turnDivider")');
+		expect(session).toContain('t("scan.turnDivider", { turn: turnRef.current })');
 	});
 
 	it("reopens on the scan screen when the service already holds an assessment", () => {

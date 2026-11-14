@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from "react";
 import { useComposerHeight } from "../hooks/use-composer-height";
+import { useStickToBottom } from "../hooks/use-stick-to-bottom";
 import type { ModelChoice } from "../../../domain/model-label";
 import type {
 	CoverageOutcome,
@@ -31,7 +32,7 @@ import type { McpConnection } from "../../../service/mcp-roster";
 import { TraceBlock } from "./trace-block";
 
 export interface ScanScreenProps {
-	t: (key: string) => string;
+	t: (key: string, params?: Record<string, string | number>) => string;
 	phase: SessionPhase;
 	model?: ModelChoice;
 	environment?: EnvironmentProbe;
@@ -49,6 +50,10 @@ export interface ScanScreenProps {
 	busy: boolean;
 	onSend: (value: string) => void;
 	onStop: () => void;
+	/** Fetches a note's body on demand (`strix_note_get`) — the panel is the only place it can be read. */
+	onOpenNote?: (id: string) => Promise<string>;
+	/** Counts by outcome from the service, so the coverage title is the ledger's own numbers. */
+	coverageTally?: Record<string, number>;
 }
 
 /** One label/value pair in the status band; omitted entirely when there is no value. */
@@ -79,6 +84,8 @@ export function ScanScreen({
 	trace,
 	busy,
 	onSend,
+	coverageTally,
+	onOpenNote,
 	onStop,
 }: ScanScreenProps): React.ReactElement {
 	const targets = sandbox.targets ?? [];
@@ -90,6 +97,8 @@ export function ScanScreen({
 	const [draft, setDraft] = useState("");
 	// 高度与拖拽方向：两个屏共用一份状态（composer-height.ts），否则一边对一边错。
 	const composer = useComposerHeight();
+	// 运行记录永远停在最新一行；读者自己往上滚时不抢回（use-stick-to-bottom.ts）。
+	const stick = useStickToBottom(`${trace.length}:${trace[trace.length - 1]?.ok ?? ""}`, trace.length);
 
 	const mode: ScanMode = (sandbox.scanMode as ScanMode | undefined) ?? "standard";
 	const envMode = sandbox.mode ?? environment?.mode;
@@ -137,13 +146,25 @@ export function ScanScreen({
 				<section className="astra-strix-transcript">
 					{/* 标题说清这一栏是什么：运行记录，不是第二份对话。 */}
 					<h2 className="astra-strix-transcript-title">{t("scan.traceTitle")}</h2>
-					<div className="astra-strix-transcript-body" role="log" aria-live="polite" data-running={running ? "yes" : "no"}>
+					<div
+						className="astra-strix-transcript-body"
+						role="log"
+						aria-live="polite"
+						data-running={running ? "yes" : "no"}
+						ref={stick.ref}
+						onScroll={stick.onScroll}
+					>
 						{trace.length ? (
 							trace.map((entry) => <TraceBlock key={entry.id} entry={entry} />)
 						) : (
 							<p className="astra-strix-empty">{emptyHint}</p>
 						)}
-						{/* 这里不再画 agent 的回复：它在对话区，而且是带 markdown 的那份。 */}
+						{/* 读者自己往上滚了：不抢回来，只告诉他有多少新行。 */}
+						{stick.pending > 0 ? (
+							<button type="button" className="astra-strix-new-rows" onClick={stick.jumpToBottom}>
+								{t("scan.newRows", { count: stick.pending })} ↓
+							</button>
+						) : null}
 						{/* A live caret: without it a quiet stretch reads as "the run died". The timer
 						    says the same thing in words for anyone who misses the blink. */}
 						{running ? (
@@ -260,7 +281,14 @@ export function ScanScreen({
 						)}
 					</section>
 
-					<ArtefactPanels t={t} todos={todos} notes={notes} coverage={coverage} />
+					<ArtefactPanels
+						t={t}
+						todos={todos}
+						notes={notes}
+						coverage={coverage}
+						{...coverageTally ? { coverageTally } : {}}
+						{...onOpenNote ? { onOpenNote } : {}}
+					/>
 
 					{/* Upstream docks the run's MCP connections as its own panel: a dead server looks
 					    exactly like the model forgetting its tools. */}

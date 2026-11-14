@@ -95,6 +95,10 @@ export interface StrixSessionModel {
 	stop: () => Promise<void>;
 	/** Re-read state after a failure. */
 	refresh: () => Promise<void>;
+	/** 打开一条笔记的正文（`strix_note_get`）。面板是唯一能读到它的地方。 */
+	onOpenNote: (id: string) => Promise<string>;
+	/** 服务给的分结果计数，不要用面板前 8 行自己算。 */
+	coverageTally?: Record<string, number>;
 }
 
 export interface StrixSessionOptions {
@@ -110,7 +114,7 @@ export interface StrixSessionOptions {
 	createSession: (cwd: string) => Promise<ConversationState>;
 	/** Aborts the host turn; `stop()` calls it before stopping the sandbox. */
 	abort: () => Promise<void>;
-	t: (key: string) => string;
+	t: (key: string, params?: Record<string, string | number>) => string;
 }
 
 export function useStrixSession({
@@ -139,6 +143,8 @@ export function useStrixSession({
 	const [notes, setNotes] = useState<NoteSummary[]>(initial?.notes ?? []);
 	const [coverage, setCoverage] = useState<CoverageOutcome[]>(initial?.coverage ?? []);
 	const [mcp, setMcp] = useState<McpConnection[]>(initial?.mcp ?? []);
+	/** 覆盖台账的分结果计数，来自服务（`/api/state` 的 coverageTally）。 */
+	const [tally, setTally] = useState<Record<string, number> | undefined>(undefined);
 	const [hostStreaming, setHostStreaming] = useState<boolean>(Boolean(conversation?.isStreaming));
 	const [submitting, setSubmitting] = useState(false);
 	/** 接续已有评估只提示一次：refresh 会被轮次反复叫到。 */
@@ -200,8 +206,7 @@ export function useStrixSession({
 		},
 		[],
 	);
-
-	/** Service + machine state: the assessment's own facts, re-read rather than inferred. */
+/** Service + machine state: the assessment's own facts, re-read rather than inferred. */
 	const refresh = useCallback(async () => {
 		setBoot({ state: "connecting" });
 		// 让后面的阶段判定能用上同一份快照：`state` 本来只活在 try 块里。
@@ -352,7 +357,7 @@ export function useStrixSession({
 				// 胶囊开着说明用户把这一轮交给了 Strix：宿主一开始跑，面板就离开首屏跟上去。
 				if (isStrixEngaged() && phaseRef.current !== "scanning") setPhase("scanning");
 				// 一条分隔行说清“这是第几轮、说明在对话里”，而不是把回复再抄一遍。
-				pushTrace(turnDivider(turnRef.current, t("scan.turnDivider")));
+				pushTrace(turnDivider(turnRef.current, t("scan.turnDivider", { turn: turnRef.current })));
 				setHostStreaming(true);
 				return;
 			}
@@ -476,6 +481,13 @@ export function useStrixSession({
 			send,
 			stop,
 			refresh,
+			onOpenNote: async (id: string) => {
+				const result = (await client.callTool("strix_note_get", { id })) as
+					| { note?: { content?: string } }
+					| undefined;
+				return result?.note?.content ?? "";
+			},
+			...(tally ? { coverageTally: tally } : {}),
 		}),
 		[
 			phase,
