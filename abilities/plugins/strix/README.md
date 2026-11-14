@@ -44,6 +44,17 @@ tool. Only `astra-strix-*` classes are defined.
 
 ## What is aligned with upstream, and what is not
 
+## Interface baseline
+
+The panel is designed against upstream's TUI (`strix/interface/tui`), as ADR 0009 records: tool rows are **family-rendered** (14 families over 35 tools, glyphs and colours taken from `internal/render/*`), the status band replaces upstream's sweep and key hints, and the composer keeps upstream's one-narrow-column reading rhythm. Two numbers are reproducible, not impressions:
+
+```bash
+node tools/ui-parity.mjs          # interface surfaces, weighted  → 85.4%
+node tools/capability-parity.mjs  # capability families, weighted  → 84.7% in scope
+```
+
+The side-by-side prototype (upstream TUI vs this panel, same events) is at `docs/prototypes/strix-panel-vs-tui.html`, with a rendered PNG beside it.
+
 Aligned with upstream in 0.7.0: the screen, and the tool surface the host agent actually drives —
 including kept shell sessions (`exec_command(background/tty)` + `write_stdin`), `patch`, `view_image`,
 `think` and `scope`. See ADR `strix-0006` for the item-by-item table.
