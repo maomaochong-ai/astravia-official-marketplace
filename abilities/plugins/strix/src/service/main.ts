@@ -30,6 +30,7 @@ import { applyPatch, parsePatch } from "./patch";
 import { toImagePayload } from "./images";
 import { describeScope, outOfScopeHosts, ScopeStore } from "./scope";
 import { ShellSessions } from "./shell-sessions";
+import { dockerInstallCommand, readPreferences, writePreferences } from "./preferences";
 import { locateSkills, loadBodies, loadIndex } from "./skills";
 import { installHint, missingTools, probeToolchain } from "./toolchain";
 import { describeRoster, mergeRoster, normalizeRoster } from "./mcp-roster";
@@ -196,7 +197,16 @@ const HANDLERS: Record<string, Handler> = {
 		return { connections, summary: describeRoster(connections) };
 	},
 
-	strix_sandbox_start: (args) => sandbox.start(args),
+	strix_sandbox_start: async (args) => {
+		// 没指定 mode 就用面板选的偏好：面板显示"容器"，这里就必须真的跑在容器里（ADR 0013）。
+		if (args.environment === undefined) {
+			const preference = await readPreferences(DATA_DIR);
+			const chosen = preference.environmentMode === "auto" ? undefined : preference.environmentMode;
+			// 注意：绝不能把它塞进 `mode`——那是扫描深度（ADR 0013）。
+			if (chosen) return sandbox.start({ ...args, environment: chosen });
+		}
+		return sandbox.start(args);
+	},
 	// 一条命令的两种形态：等它跑完（默认），或留下一个会话（background）。
 	strix_exec: (args) => execWithSessions(args),
 	strix_shell_sessions: async (args) => {
@@ -242,21 +252,19 @@ const HANDLERS: Record<string, Handler> = {
 	strix_proxy: (args) => sandbox.proxy(args),
 
 	strix_list_skills: async () => {
-		const skills = await locateSkills();
-		if (!skills) throw new Error("strix-agent is not installed; the skill library lives inside it");
+		// 库已经随包（ADR 0012），不再有"上游没装"这种失败——只有包坏了才会空。
+		const skills = locateSkills();
 		const { entries, categories } = await loadIndex(skills);
 		return {
 			root: skills.root,
+			/** `bundled` = 随包副本；`env` = 运维用 STRIX_SKILLS_DIR 指过去（排查用）。 */
+			source: skills.source,
 			categories,
 			total: entries.length,
 			skills: entries.map(({ name, category, description, internal }) => ({ name, category, description, internal })),
 		};
 	},
-	strix_load_skills: async (args) => {
-		const skills = await locateSkills();
-		if (!skills) throw new Error("strix-agent is not installed; the skill library lives inside it");
-		return loadBodies(skills, (args.names as string[] | undefined) ?? []);
-	},
+	strix_load_skills: async (args) => loadBodies(locateSkills(), (args.names as string[] | undefined) ?? []),
 
 	strix_file_finding: (args) => findings.add(sessionId(), args),
 	strix_update_finding: (args) => findings.update(sessionId(), args),
@@ -305,6 +313,23 @@ const TOOLS = STRIX_TOOL_SPECS.filter((spec) => spec.handler === "service").map(
 // runtime surprise: fail fast instead of serving a tool that 500s on first call.
 const missing = SERVICE_TOOL_NAMES.filter((name) => !TOOLS.some((tool) => tool.name === name));
 if (missing.length) throw new Error(`service tools declared but not wired: ${missing.join(", ")}`);
+
+
+/**
+ * 跑一条宿主侧命令（安装 Docker 用）。
+ *
+ * 不用 shell 拼接：argv 已经是一个完整参数向量，路径与空格不会变成解析问题。
+ * 超时给得很长（安装器会下载几百 MB），但一定会结束——不结束的进程比超时更难查。
+ */
+async function runHost(command: string, argv: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
+	const { execFile } = await import("node:child_process");
+	return await new Promise((resolve) => {
+		execFile(command, argv, { timeout: 30 * 60_000, windowsHide: true, maxBuffer: 8 * 1024 * 1024 }, (error, stdout, stderr) => {
+			const code = error && typeof (error as { code?: unknown }).code === "number" ? (error as { code: number }).code : error ? 1 : 0;
+			resolve({ code, stdout: String(stdout ?? ""), stderr: String(stderr ?? "") });
+		});
+	});
+}
 
 async function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
 	const chunks: Buffer[] = [];
@@ -415,6 +440,28 @@ const server = createServer(async (req, res) => {
 				return json(res, 200, { ok: false, error: error instanceof Error ? error.message : String(error) });
 			}
 		}
+		if (url.pathname === "/api/preferences") {
+			if (req.method === "POST") {
+				const body = (await readBody(req).catch(() => ({}))) as Record<string, unknown>;
+				if (body.install === true) {
+					// 面板代跑安装命令：记录结果，好在 UI 上说清"刚才那条命令成没成"。
+					try {
+						const { command, argv } = dockerInstallCommand();
+						const result = await runHost(command, argv);
+						const ok = result.code === 0;
+						const next = await writePreferences(DATA_DIR, {
+							lastInstall: { command: `${command} ${argv.join(" ")}`, at: new Date().toISOString(), ok, ...(ok ? {} : { detail: result.stderr.slice(-400) }) },
+						});
+						return json(res, 200, { ...next, installed: ok });
+					} catch (error) {
+						return json(res, 200, { ...(await readPreferences(DATA_DIR)), installed: false, error: String(error) });
+					}
+				}
+				const next = await writePreferences(DATA_DIR, { environmentMode: body.environmentMode as never });
+				return json(res, 200, next);
+			}
+			return json(res, 200, await readPreferences(DATA_DIR));
+		}
 		if (url.pathname === "/api/state") {
 			const [env, list, noteList, todoList, cover, threat] = await Promise.all([
 				environment().catch((error) => ({ error: String(error) })),
@@ -433,6 +480,7 @@ const server = createServer(async (req, res) => {
 				coverage: (cover as { entries?: unknown }).entries ?? [],
 				coverageTally: (cover as { byOutcome?: unknown }).byOutcome ?? {},
 				threatModel: threat,
+				preferences: await readPreferences(DATA_DIR),
 				// 工作单元：保留的 shell 会话（上游 agents 面板在本插件的诚实等价物，ADR 0010）。
 				sessions: sessions.list().map(({ id, command, running, uptimeSec, tty }) => ({ id, command, running, uptimeSec, tty })),
 				logTail: log.slice(-40),

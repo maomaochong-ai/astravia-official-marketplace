@@ -17,6 +17,11 @@ export interface BridgeClient {
 	findings(): Promise<StrixFinding[]>;
 	report(): Promise<{ markdown: string; count: number }>;
 	stopSandbox(): Promise<{ stopped: boolean }>;
+	/** 面板选择的执行环境（host/docker/auto）与上次安装尝试（ADR 0013）。 */
+	preferences(): Promise<{ environmentMode: "auto" | "host" | "docker"; lastInstall?: { command: string; at: string; ok: boolean; detail?: string } }>;
+	setPreferences(patch: { environmentMode?: "auto" | "host" | "docker" }): Promise<{ environmentMode: "auto" | "host" | "docker" }>;
+	/** 让服务代跑 docker 安装命令；返回是否成功与它跑的是哪条。 */
+	installDocker(): Promise<{ installed: boolean; lastInstall?: { command: string; at: string; ok: boolean; detail?: string }; error?: string }>;
 	/** Run one bridge tool by name; throws on an unknown name or a tool failure. */
 	callTool(name: string, args?: Record<string, unknown>): Promise<unknown>;
 	events(onEvent: (event: BridgeEvent) => void): () => void;
@@ -28,6 +33,21 @@ async function readJson<T>(response: Response): Promise<T> {
 		throw new Error(detail || `bridge responded ${response.status}`);
 	}
 	return (await response.json()) as T;
+}
+
+async function getJson(url: string): Promise<unknown> {
+	const response = await fetch(url);
+	if (!response.ok) throw new Error(`${response.status} ${url}`);
+	return await response.json();
+}
+
+async function postJson(url: string, body: unknown): Promise<never> {
+	const response = await fetch(url, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify(body),
+	});
+	return (await response.json()) as never;
 }
 
 export function createBridgeClient(baseUrl: () => Promise<string>): BridgeClient {
@@ -45,7 +65,31 @@ export function createBridgeClient(baseUrl: () => Promise<string>): BridgeClient
 			const base = await baseUrl();
 			return readJson(await fetch(`${base}/api/report`));
 		},
-		async stopSandbox() {
+		async preferences() {
+			const base = await baseUrl();
+			return readJson<{ environmentMode: "auto" | "host" | "docker" }>(await fetch(`${base}/api/preferences`, { cache: "no-store" }));
+		},
+		async setPreferences(patch: { environmentMode?: "auto" | "host" | "docker" }) {
+			const base = await baseUrl();
+			return readJson<{ environmentMode: "auto" | "host" | "docker" }>(
+				await fetch(`${base}/api/preferences`, {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify(patch),
+				}),
+			);
+		},
+		async installDocker() {
+			const base = await baseUrl();
+			return readJson<{ installed: boolean; lastInstall?: { command: string; at: string; ok: boolean } }>(
+				await fetch(`${base}/api/preferences`, {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ install: true }),
+				}),
+			);
+		},
+	async stopSandbox() {
 			const base = await baseUrl();
 			return readJson(await fetch(`${base}/api/sandbox/stop`, { method: "POST" }));
 		},

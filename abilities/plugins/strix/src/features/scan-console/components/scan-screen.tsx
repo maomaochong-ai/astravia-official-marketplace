@@ -52,6 +52,10 @@ export interface ScanScreenProps {
 	hostStreaming: boolean;
 	busy: boolean;
 	onSend: (value: string) => void;
+	/** 回到首屏看配置（ADR 0014：不被自动跟屏锁死）。 */
+	onOpenLaunch?: () => void;
+	/** 在当前项目下新开会话。 */
+	onNewSession?: () => void;
 	onStop: () => void;
 	/** Fetches a note's body on demand (`strix_note_get`) — the panel is the only place it can be read. */
 	onOpenNote?: (id: string) => Promise<string>;
@@ -88,6 +92,8 @@ export function ScanScreen({
 	trace,
 	busy,
 	onSend,
+	onOpenLaunch,
+	onNewSession,
 	coverageTally,
 	onOpenNote,
 	onStop,
@@ -145,6 +151,16 @@ export function ScanScreen({
 				{steps ? <Fact label={t("scan.steps")} value={String(steps)} /> : null}
 				{critical ? <Fact label={t("severity.critical")} value={String(critical)} tone="astra-strix-red" /> : null}
 				<span className="astra-strix-band-gap" />
+				{onOpenLaunch ? (
+					<button type="button" className="astra-strix-band-button" onClick={onOpenLaunch}>
+						{t("nav.launch")}
+					</button>
+				) : null}
+				{onNewSession ? (
+					<button type="button" className="astra-strix-band-button" onClick={onNewSession}>
+						{t("nav.newSession")}
+					</button>
+				) : null}
 				{hostStreaming ? <span className="astra-strix-blue astra-strix-band-note">{t("scan.hostTurn")}</span> : null}
 				<button type="button" className="astra-strix-band-stop" onClick={onStop} disabled={!hostStreaming}>
 					{t("scan.stop")}

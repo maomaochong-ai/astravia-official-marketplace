@@ -58,8 +58,17 @@ export interface StrixTabProps {
 	coverageTally?: Record<string, number>;
 	stop: () => Promise<void>;
 	onQuit: () => void;
+	/** 面板选的执行环境（ADR 0013）。 */
+	environmentMode: "auto" | "host" | "docker";
+	environmentReady: boolean;
+	onEnvironmentMode: (mode: "auto" | "host" | "docker") => void;
+	onInstallDocker: () => void;
+	onRefreshEnvironment: () => void;
+	/** 用户按了「返回首屏」：即使有评估在进行也先显示首屏（ADR 0014）。 */
+	forceLaunch: boolean;
+	onOpenLaunch: () => void;
+	onNewSession: () => void;
 }
-
 /** Why Enter cannot launch yet, in the order the user would fix them. */
 function blockedReason(t: (key: string) => string, model: ModelChoice | undefined, environment: EnvironmentProbe | undefined): string | undefined {
 	if (!model) return t("launch.blocked.model");
@@ -71,7 +80,7 @@ function blockedReason(t: (key: string) => string, model: ModelChoice | undefine
 }
 export function StrixTab(props: StrixTabProps): React.ReactElement {
 	const { t, phase } = props;
-	const scanning = phase === "scanning" || phase === "done";
+	const scanning = !props.forceLaunch && (phase === "scanning" || phase === "done");
 	return (
 		<ConsoleBoundary t={t}>
 			{scanning ? (
@@ -95,6 +104,8 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					onOpenNote={props.onOpenNote}
 					{...(props.coverageTally ? { coverageTally: props.coverageTally } : {})}
 					onStop={() => void props.stop()}
+					onOpenLaunch={props.onOpenLaunch}
+					onNewSession={props.onNewSession}
 				/>
 			) : (
 				<LaunchScreen
@@ -107,6 +118,11 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					boot={props.boot}
 					onSubmit={(value) => void props.start(value)}
 					onQuit={props.onQuit}
+					environmentMode={props.environmentMode}
+					environmentReady={props.environmentReady}
+					onEnvironmentMode={props.onEnvironmentMode}
+					onInstallDocker={props.onInstallDocker}
+					onRefreshEnvironment={props.onRefreshEnvironment}
 				/>
 			)}
 		</ConsoleBoundary>

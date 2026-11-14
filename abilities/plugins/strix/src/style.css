@@ -1541,3 +1541,70 @@
 	width: 3px;
 	height: 3px;
 }
+
+/* 环境下拉（ADR 0013）：一行，左标签 + 选择器 + 动作按钮。
+   docker 不可用时整行转琥珀，并把安装动作摆在旁边——不藏在一个设置页里。 */
+.astra-strix-env {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+	font-size: 11.5px;
+}
+
+.astra-strix-env[data-docker="missing"] {
+	color: var(--sx-amber);
+}
+
+.astra-strix-env-select {
+	appearance: none;
+	padding: 2px 22px 2px 8px;
+	border: 1px solid var(--sx-rule);
+	border-radius: 6px;
+	background: transparent;
+	color: var(--sx-text);
+	font: inherit;
+	cursor: pointer;
+	background-image: linear-gradient(45deg, transparent 50%, var(--sx-dim) 50%),
+		linear-gradient(135deg, var(--sx-dim) 50%, transparent 50%);
+	background-position: calc(100% - 12px) 52%, calc(100% - 8px) 52%;
+	background-size: 4px 4px, 4px 4px;
+	background-repeat: no-repeat;
+}
+
+.astra-strix-env-select:focus-visible {
+	outline: 1px solid var(--sx-green);
+	outline-offset: 1px;
+}
+
+.astra-strix-env-action {
+	padding: 2px 8px;
+	border: 1px solid var(--sx-rule);
+	border-radius: 6px;
+	background: transparent;
+	color: var(--sx-green);
+	font: inherit;
+	font-size: 11px;
+	cursor: pointer;
+}
+
+.astra-strix-env-action:hover {
+	border-color: var(--sx-green);
+}
+
+/* 状态带的两个导航按钮：首屏 / 新会话（ADR 0014）。 */
+.astra-strix-band-button {
+	padding: 1px 8px;
+	border: 1px solid var(--sx-rule);
+	border-radius: 999px;
+	background: transparent;
+	color: var(--sx-dim);
+	font: inherit;
+	font-size: 11px;
+	cursor: pointer;
+}
+
+.astra-strix-band-button:hover {
+	color: var(--sx-green);
+	border-color: var(--sx-green);
+}

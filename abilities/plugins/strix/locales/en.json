@@ -78,7 +78,7 @@
   "scan.emptyNoTargets": "Write what to test into the box above — a URL, a domain, a repository or a local folder — then press Enter.",
   "scan.emptyWithTargets": "The scan is running. Tool calls and conclusions stream in here; targets, coverage and findings are on the right.",
   "rail.title": "Artefacts",
-  "env.docker": "Container",
+  "env.docker": "Container (docker)",
   "env.host": "This machine (no container)",
   "env.unknown": "Undetermined",
   "rail.empty": "Nothing recorded yet",
@@ -113,5 +113,14 @@
   "scan.newRows": "{count} new",
   "sessions.title": "Units",
   "sessions.empty": "No parallel session yet.",
-  "rail.empty.sessions": "long jobs run as background sessions"
+  "rail.empty.sessions": "long jobs run as background sessions",
+  "log.dockerInstalled": "install command finished — press Refresh environment",
+  "log.dockerInstallFailed": "install command failed — see the output below",
+  "env.choice": "Environment",
+  "env.auto": "Auto",
+  "env.install": "Let the host install docker",
+  "env.refresh": "Refresh environment",
+  "env.dockerMissing": "docker is not up: the host runs this command, then press refresh",
+  "nav.launch": "Launch",
+  "nav.newSession": "New session"
 }

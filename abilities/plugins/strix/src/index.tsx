@@ -40,7 +40,9 @@ function StrixTabRoot({
 	runtime: ServiceRuntime;
 	onQuit: () => void;
 }): React.ReactElement {
-	const t = (key: string) => ctx.i18n.t(key);
+	// 必须把 params 转发下去：`t("scan.newRows", { count })` 若丢掉第二个参数，
+	// 界面就会直接显示 `{count} 条新消息`——真机截图里的那个 bug。
+	const t = (key: string, params?: Record<string, string | number>) => ctx.i18n.t(key, params);
 	const conversation = useActiveConversation();
 	// One client per mounted tab: rebuilding it during render would hand the hook a new
 	// identity on every paint, and its effects would re-run the boot sequence forever.
@@ -104,6 +106,14 @@ function StrixTabRoot({
 			mcp={session.mcp}
 			trace={session.trace}
 			onOpenNote={session.onOpenNote}
+			environmentMode={session.environmentMode}
+			environmentReady={session.environment?.docker?.ready !== false}
+			onEnvironmentMode={(mode) => void session.setEnvironmentMode(mode)}
+			onInstallDocker={() => void session.installDocker()}
+			onRefreshEnvironment={() => void session.refresh()}
+			forceLaunch={session.showLaunch}
+			onOpenLaunch={session.openLaunch}
+			onNewSession={() => void session.newSession()}
 			{...(session.coverageTally ? { coverageTally: session.coverageTally } : {})}
 			busy={session.busy}
 			start={session.start}

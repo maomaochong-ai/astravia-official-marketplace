@@ -26,6 +26,13 @@ export interface LaunchScreenProps {
 	version: string;
 	/** Why Enter cannot launch yet (no model, no Docker); empty when it can. */
 	blocked?: string;
+	/** 面板选的执行环境（ADR 0013）。 */
+	environmentMode?: "auto" | "host" | "docker";
+	/** docker 是否就绪——决定「容器」选项能不能选、「安装」按钮要不要出来。 */
+	environmentReady?: boolean;
+	onEnvironmentMode?: (mode: "auto" | "host" | "docker") => void;
+	onInstallDocker?: () => void;
+	onRefreshEnvironment?: () => void;
 	busy: boolean;
 	onSubmit: (value: string) => void;
 	onQuit: () => void;
@@ -46,11 +53,19 @@ export function LaunchScreen({
 	boot,
 	version,
 	blocked,
+	environmentMode: environmentModeProp,
+	environmentReady,
+	onEnvironmentMode,
+	onInstallDocker,
+	onRefreshEnvironment,
 	busy,
 	onSubmit,
 	onQuit,
 }: LaunchScreenProps): React.ReactElement {
 	const [value, setValue] = useState("");
+	// 环境选择只影响「下一次」sandbox 启动（ADR 0013）：已经在跑的扫描不中途换环境。
+	const environmentMode = environmentModeProp ?? "host";
+	const dockerReady = environmentReady !== false;
 	// 同一个高度状态，两个屏共用：启动页与扫描屏的输入框行为必须一致。
 	const composer = useComposerHeight();
 
@@ -153,6 +168,31 @@ export function LaunchScreen({
 					</div>
 				) : null}
 
+				{/* 执行环境：本机 / 容器。选了容器但 docker 没起来时，把安装命令交给宿主（ADR 0013）。 */}
+				<div className="astra-strix-env" data-docker={dockerReady ? "ready" : "missing"}>
+					<span className="astra-strix-dim">{t("env.choice")}</span>
+					<select
+						className="astra-strix-env-select"
+						value={environmentMode}
+						onChange={(event) => onEnvironmentMode?.(event.target.value as "auto" | "host" | "docker")}
+						aria-label={t("env.choice")}
+					>
+						<option value="host">{t("env.host")}</option>
+						<option value="docker">{t("env.docker")}</option>
+						<option value="auto">{t("env.auto")}</option>
+					</select>
+					{dockerReady ? null : (
+						<>
+							<span className="astra-strix-amber astra-strix-micro">{t("env.dockerMissing")}</span>
+							<button type="button" className="astra-strix-env-action" onClick={() => onInstallDocker?.()}>
+								{t("env.install")}
+							</button>
+						</>
+					)}
+					<button type="button" className="astra-strix-env-action" onClick={() => onRefreshEnvironment?.()}>
+						{t("env.refresh")}
+					</button>
+				</div>
 				<div className="astra-strix-hints">
 					<span className="astra-strix-hints-left">
 						<span className="astra-strix-hint">

@@ -100,6 +100,16 @@ export interface StrixSessionModel {
 	stop: () => Promise<void>;
 	/** Re-read state after a failure. */
 	refresh: () => Promise<void>;
+	/** 面板选的执行环境（ADR 0013）。 */
+	environmentMode: "auto" | "host" | "docker";
+	setEnvironmentMode: (mode: "auto" | "host" | "docker") => Promise<void>;
+	/** 让服务代跑 docker 安装命令；装完再 refresh() 就能看到新环境。 */
+	installDocker: () => Promise<void>;
+	/** 首屏 / 工作台：用户可以随时回去看一眼配置，不被"自动跟屏"锁住。 */
+	showLaunch: boolean;
+	openLaunch: () => void;
+	/** 在当前项目下新开一个会话（面板会跟过去）。 */
+	newSession: () => Promise<void>;
 	/** 打开一条笔记的正文（`strix_note_get`）。面板是唯一能读到它的地方。 */
 	onOpenNote: (id: string) => Promise<string>;
 	/** 服务给的分结果计数，不要用面板前 8 行自己算。 */
@@ -153,6 +163,9 @@ export function useStrixSession({
 	const [tally, setTally] = useState<Record<string, number> | undefined>(undefined);
 	const [hostStreaming, setHostStreaming] = useState<boolean>(Boolean(conversation?.isStreaming));
 	const [submitting, setSubmitting] = useState(false);
+	const [environmentMode, setEnvironmentModeState] = useState<"auto" | "host" | "docker">("host");
+	/** 用户手动回到首屏：此时不再被"宿主流一转就跳工作台"拽走（ADR 0014）。 */
+	const [showLaunch, setShowLaunch] = useState(false);
 	/** 接续已有评估只提示一次：refresh 会被轮次反复叫到。 */
 	const resumed = useRef(false);
 	/**
@@ -174,6 +187,8 @@ export function useStrixSession({
 	conversationIdRef.current = conversation?.id;
 	/** 轮次计数：面板只用它给分隔行编号，不取正文。 */
 	const turnRef = useRef(0);
+	/** 用户按了「返回首屏」：不要被下一轮自动拽回工作台。 */
+	const launchPinned = useRef(false);
 	/**
 	 * 事件序号的起点：接续快照时从已有 id 的最大值继续。
 	 *
@@ -388,7 +403,7 @@ export function useStrixSession({
 			if (event.type === "turn-start") {
 				turnRef.current += 1;
 				// 胶囊开着说明用户把这一轮交给了 Strix：宿主一开始跑，面板就离开首屏跟上去。
-				if (isStrixEngaged() && phaseRef.current !== "scanning") setPhase("scanning");
+				if (isStrixEngaged() && phaseRef.current !== "scanning" && !launchPinned.current) setPhase("scanning");
 				// 一条分隔行说清“这是第几轮、说明在对话里”，而不是把回复再抄一遍。
 				pushTrace(turnDivider(turnRef.current, t("scan.turnDivider", { turn: turnRef.current })));
 				setHostStreaming(true);
@@ -464,6 +479,44 @@ export function useStrixSession({
 		[createSession, note, pushTrace, sendPrompt, t],
 	);
 
+	const setEnvironmentMode = useCallback(async (mode: "auto" | "host" | "docker") => {
+		setEnvironmentModeState(mode);
+		await client.setPreferences({ environmentMode: mode }).catch(() => undefined);
+	}, [client]);
+
+	const installDocker = useCallback(async () => {
+		setSubmitting(true);
+		try {
+			const result = await client.installDocker();
+			note(result.installed ? t("log.dockerInstalled") : t("log.dockerInstallFailed"), result.installed ? "ok" : "error");
+			await refresh();
+		} catch (cause) {
+			note(cause instanceof Error ? cause.message : String(cause), "error");
+		} finally {
+			setSubmitting(false);
+		}
+	}, [client, note, refresh, t]);
+
+	const openLaunch = useCallback(() => {
+		launchPinned.current = true;
+		setShowLaunch(true);
+	}, []);
+
+	/** 新会话：在当前 cwd 建一个，面板跟过去（多开的最小可行形态，ADR 0014）。 */
+	const newSession = useCallback(async () => {
+		const cwd = cwdRef.current;
+		if (!cwd) {
+			note(t("log.noWorkspace"), "error");
+			return;
+		}
+		try {
+			await createSession(cwd);
+			setShowLaunch(false);
+		} catch (cause) {
+			note(cause instanceof Error ? cause.message : String(cause), "error");
+		}
+	}, [createSession, note, t]);
+
 	const start = useCallback(async (prompt: string) => void deliver(prompt), [deliver]);
 	const send = useCallback(async (text: string) => void deliver(text), [deliver]);
 
@@ -515,6 +568,12 @@ export function useStrixSession({
 			send,
 			stop,
 			refresh,
+			environmentMode,
+			setEnvironmentMode,
+			installDocker,
+			showLaunch,
+			openLaunch,
+			newSession,
 			onOpenNote: async (id: string) => {
 				const result = (await client.callTool("strix_note_get", { id })) as
 					| { note?: { content?: string } }

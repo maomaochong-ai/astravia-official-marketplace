@@ -56,6 +56,12 @@ export const STRIX_TOOL_SPECS: readonly StrixToolSpec[] = [
 						"standard: the default full sweep. deep: standard plus a coverage gate before finishing. " +
 						"diff: only the changes in the mounted repository. Fixed for the life of the session.",
 				},
+				environment: {
+					type: "string",
+					enum: ["host", "docker"],
+					description:
+						"Where the tools run. host: this machine, no container isolation. docker: inside the sandbox image (needs a docker daemon). Defaults to the environment the operator picked in the panel; pass it only to override that for this session.",
+				},
 				targets: {
 					type: "array",
 					items: { type: "string" },
