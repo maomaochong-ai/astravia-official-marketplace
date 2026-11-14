@@ -90,5 +90,7 @@
   "runtime.diagnosis.endpoint": "Probed address",
   "runtime.noShell": "Neither sh nor powershell exists on this machine, so the plugin cannot run any command.",
   "runtime.noShellHint": "On Windows this usually means PowerShell was removed or PATH is broken; on macOS/Linux it means /bin/sh is unavailable.",
-  "runtime.deniedHint": "Allow sh (macOS/Linux) or powershell (Windows) under Settings → Plugins → Magpie → Commands."
+  "runtime.deniedHint": "Allow sh (macOS/Linux) or powershell (Windows) under Settings → Plugins → Magpie → Commands.",
+  "runtime.progress.downloadedOnly": "{size} downloaded",
+  "runtime.progress.noTotal": "This release of the vendor feed does not publish a file size, so there is no percentage — the downloaded figure above is real."
 }
