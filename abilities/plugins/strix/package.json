@@ -1,6 +1,6 @@
 {
   "name": "@astravia-marketplace/strix",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,7 +10,8 @@
     "check:service": "node scripts/check-service.mjs",
     "stamp-service": "node scripts/stamp-service.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "check": "npm run typecheck && npm test && npm run check:service"
+    "check": "npm run typecheck && npm test && npm run check:service",
+    "check:browser": "node tests/browser/launch-centering.mjs"
   },
   "devDependencies": {
     "@astravia-org/plugin-sdk": "^0.3.2",

@@ -88,9 +88,10 @@
 	flex-direction: column;
 	gap: clamp(12px, 2.4vh, 18px);
 	width: min(72ch, 100%);
-	min-height: 100%;
-	/* Safe centering: auto margins centre when there is room and collapse to 0 when
-	   there is not, so a short panel scrolls from the top instead of hiding its head. */
+	/* 垂直/水平居中靠 auto 外边距，**不能**再给 min-height: 100%。
+	   子项一旦被抬到和容器一样高，自由空间就是 0，auto 外边距无处可分配，
+	   于是内容贴在顶部、下面留一大片空——0.6.2 截图里就是这个样子。
+	   高度交给内容：有余量 → auto 把两侧吃掉居中；溢出 → 归 0，从顶部开始滚。 */
 	margin: auto;
 }
 

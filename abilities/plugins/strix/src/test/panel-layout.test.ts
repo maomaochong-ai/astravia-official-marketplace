@@ -101,10 +101,12 @@ describe("the first screen adapts instead of hiding its own head", () => {
 		expect(surface).toContain("overflow: auto");
 	});
 
-	it("centres with auto margins instead, so overflow scrolls from the top", () => {
+	it("centres with auto margins and never pins the column to full height", () => {
 		const column = /\.astra-strix-launch\s*\{([^}]*)\}/s.exec(rules)?.[1] ?? "";
 		expect(column).toContain("margin: auto");
-		expect(column).toContain("min-height: 100%");
+		// `min-height: 100%` 自己把居中抵消掉：子项和容器一样高 → 自由空间 0 →
+		// auto 外边距无处可分配，内容贴顶、下方留白。0.6.2 的截图就是这个。
+		expect(column).not.toMatch(/min-height:\s*100%/);
 	});
 
 	it("sizes the ASCII wordmark by viewport width, not only by font size", () => {
