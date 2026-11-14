@@ -49,7 +49,9 @@ A gateway started by the plugin is a child process, so it does not survive an As
 
 `baseUrl` defaults to `http://127.0.0.1:3425`. Requests go through `ctx.network` (main process), so no renderer CORS applies; `plugin.json` declares `network.allowedHosts` for `127.0.0.1`, `localhost` and `usemagpie.ai`, and the host matches hostnames only, never ports.
 
-The install and start actions go through `ctx.command`: `plugin.json` declares the single bare command name `sh`, and every action is a fixed script passed to `sh -c` — the only interpolated values are the release URL (must start with `https://github.com/yetone/magpie-releases/releases/download/`) and a 64-character lowercase hex checksum from the feed.
+Install and start go through `ctx.command` with two execution surfaces (`src/platform-shell.ts`): POSIX hands a fixed script to `sh -c`, Windows hands it to `powershell -EncodedCommand` (one argument, no concatenated command text). Those are the two bare command names `plugin.json` declares. The only interpolated values are the release URL (must be on the vendor's host), a 64-character lowercase hex checksum, and an optional byte count.
+
+Windows installs to `%LOCALAPPDATA%\magpie\bin\magpie.exe` and verifies with `Get-FileHash -Algorithm SHA256`; POSIX installs to `~/.local/bin/magpie` and verifies with `shasum -a 256` or `sha256sum`. Both scripts emit the same line protocol (`path=` / `version=` / `progress N M` / `verifying` / `installed <path>`), so there is exactly one parser.
 
 ## Development
 

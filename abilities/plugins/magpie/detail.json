@@ -3,75 +3,71 @@
   "blocks": [
     {
       "type": "hero",
-      "eyebrow": "Models",
-      "title": "One gateway for every model you already pay for",
-      "description": "Magpie runs one local gateway in front of every provider you have configured — subscription, API key or local runtime. This plugin connects that gateway to Astravia so its models appear next to the built-in ones.",
+      "eyebrow": "Local gateway",
+      "title": "Wire your local magpie into Astravia, installed and started in one click",
+      "description": "The panel reads the vendor's release feed, verifies the published SHA-256, installs into your user directory per platform, then starts the gateway as a plugin child process — PowerShell into %LOCALAPPDATA% on Windows, sh into ~/.local/bin on macOS and Linux. No terminal, no administrator rights.",
       "badges": [
-        "Local only",
-        "Runs on your machine"
+        "No terminal",
+        "Verified digest",
+        "Dies with the host"
       ]
     },
     {
       "type": "showcase",
       "showcase": {
         "template": "chat-thread",
-        "user_prompt": "Pick the longest-context model here.",
-        "assistant_reply": "14 models. Longest: claude-sonnet-4."
+        "canvas": "generic",
+        "brand_name": "magpie",
+        "user_prompt": "Start my local magpie and use its models.",
+        "assistant_reply": "Gateway up; 37 models published to Astravia."
       }
     },
     {
       "type": "feature-grid",
-      "title": "What it gives you",
       "items": [
         {
-          "title": "Your real catalog, not a guess",
-          "description": "The panel reads /v1/models from the gateway, so what you see is what magpie can serve right now — with provider, context window, image input and reasoning support.",
-          "icon": "solar:list-check-bold"
+          "title": "Install and start, one button",
+          "description": "The panel finds an execution surface itself: powershell on Windows, sh on macOS/Linux. When neither runs, it reports what it tried instead of claiming the platform is unsupported.",
+          "icon": "solar:play-circle-bold"
         },
         {
-          "title": "One click into the model picker",
-          "description": "Publishing writes the catalog into Astravia's own model registry as an OpenAI-compatible provider. Nothing is written until you press the button, and removing it is one press too.",
-          "icon": "solar:routing-2-bold"
+          "title": "The digest decides",
+          "description": "Download hosts are restricted to the vendor's, and bytes are verified against the feed's SHA-256 (Get-FileHash on Windows, shasum/sha256sum elsewhere). A mismatch never lands.",
+          "icon": "solar:shield-check-bold"
         },
         {
-          "title": "Agent tools that read the gateway",
-          "description": "Two read-only tools, magpie_status and magpie_models, let the assistant check whether the gateway is up and which models exist instead of answering from memory.",
-          "icon": "solar:magnifer-bold"
+          "title": "Follows the host theme",
+          "description": "Every surface uses host theme tokens (card / border / muted / primary), so light, dark and theme packs need no code changes.",
+          "icon": "solar:pallete-2-bold"
         },
         {
-          "title": "Keys stay in magpie",
-          "description": "Your provider credentials live in magpie's own configuration on this computer. The plugin never shows them and never stores them.",
-          "icon": "solar:lock-keyhole-minimalistic-bold"
-        },
-        {
-          "title": "It installs magpie for you",
-          "description": "No terminal and no manual download: the panel reads the official release feed, verifies the published SHA-256, installs `~/.local/bin/magpie` and starts the gateway as a child process of the plugin. If your system has no `sh`, or you decline the permission, it says so and offers the official installer instead.",
-          "icon": "solar:download-square-bold"
+          "title": "Models land in Astravia",
+          "description": "One click publishes the gateway's current catalogue as a host provider; disconnecting removes only the entry this plugin wrote.",
+          "icon": "solar:database-bold"
         }
       ]
     },
     {
       "type": "steps",
-      "title": "Get started",
       "items": [
         {
-          "title": "Open Magpie Gateway and press Install and start",
-          "description": "If magpie is not on this computer yet, the panel fetches the official build (about 70 MB), checks the checksum published in the release feed, installs it as `~/.local/bin/magpie` and starts the gateway. Nothing to type, no sudo. If magpie is already somewhere on your PATH, it starts that copy instead of downloading. Astravia asks you once to allow the `sh` command for this plugin."
+          "title": "Read the state",
+          "description": "Opening the panel probes /api/version and reads back whether a binary exists."
         },
         {
-          "title": "Add at least one provider in magpie",
-          "description": "The gateway only serves what magpie itself has configured. Use the panel's Open magpie button for that page — that is where the models come from."
+          "title": "Install and start",
+          "description": "Without a binary the button becomes Install and start; with one it runs serve on the same port the panel probes."
         },
         {
-          "title": "Press Publish models to Astravia",
-          "description": "The panel confirms the version and shows the catalog. Publishing adds those models to your model picker; the button next to it removes them again."
+          "title": "Publish models",
+          "description": "Once the gateway answers, one click writes its catalogue into the host model registry."
         }
       ]
     },
     {
       "type": "callout",
       "tone": "info",
-      "content": "The gateway this plugin starts is a child process: it stops when Astravia quits, and it leaves no service behind. For a gateway that survives a reboot, install magpie's own service once with `magpie daemon install`. Without a gateway the panel cannot read a catalog — it says which of refused, timed out, not magpie and HTTP error happened."
+      "content": "The gateway is a child process of this plugin and stops with Astravia. For a boot-time daemon, run magpie daemon install once after installing."
     }
   ]
 }

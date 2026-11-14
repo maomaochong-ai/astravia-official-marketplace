@@ -49,7 +49,9 @@ magpie serve          # 或打开 App；网关默认 127.0.0.1:3425
 
 `baseUrl` 默认 `http://127.0.0.1:3425`。请求经 `ctx.network`（主进程发起），不受 renderer 的 CORS 限制；`plugin.json` 声明了 `network.allowedHosts` 的 `127.0.0.1`、`localhost` 与 `usemagpie.ai`，宿主只按主机名匹配，端口不参与。
 
-安装与启动走 `ctx.command`：`plugin.json` 只声明一个裸命令名 `sh`，每个动作都是交给 `sh -c` 的固定脚本——唯一会被插值的只有发布 URL（必须以 `https://github.com/yetone/magpie-releases/releases/download/` 开头）和 feed 里那个 64 位小写十六进制校验和。
+安装与启动走 `ctx.command`，两条执行面（`src/platform-shell.ts`）：POSIX 交给 `sh -c`，Windows 交给 `powershell -EncodedCommand`（一个参数、不拼接命令文本）。`plugin.json` 声明的就是这两个裸命令名。脚本里唯一被插值的只有发布 URL（必须属于厂商域名）、64 位小写十六进制校验和，以及可选的字节数。
+
+Windows 装到 `%LOCALAPPDATA%\magpie\bin\magpie.exe`，用 `Get-FileHash -Algorithm SHA256` 校验；POSIX 装到 `~/.local/bin/magpie`，用 `shasum -a 256` 或 `sha256sum`。两套脚本输出同一套行协议（`path=` / `version=` / `progress N M` / `verifying` / `installed <path>`），所以解析器只有一份。
 
 ## 开发
 
