@@ -14,7 +14,7 @@
   "launch.hint.quit": "quit",
   "launch.blocked.model": "Set a default model in Astravia settings, or open a conversation that has one, to run a scan.",
   "launch.blocked.docker": "Start Docker Desktop: Strix runs every tool inside its sandbox container.",
-  "prompt.instructions": "The user is working in the Strix plugin, whose console pane is open. Strix tools are available: strix_environment, strix_sandbox_start, strix_exec, strix_sandbox_status, strix_sandbox_stop, strix_list_skills, strix_load_skills, strix_file_finding, strix_list_findings, strix_report. Work like a pentester: check the environment, start one sandbox session for the assessment, load the skills that match the target before testing, run the bundled toolchain through strix_exec, and file a finding only with evidence you actually produced.",
+  "prompt.instructions": "The user enabled Strix for this turn. Its tools come from this plugin's own MCP service (server name `strix`). Environment: strix_environment, strix_mcp. Sandbox: strix_sandbox_start, strix_exec, strix_browser, strix_proxy, strix_sandbox_status, strix_sandbox_stop. Skills: strix_list_skills, strix_load_skills. Records: strix_file_finding, strix_update_finding, strix_list_findings, strix_merge_findings, strix_report, strix_note_create/list/get/update/delete, strix_todo_create/update/list, strix_coverage_record/list, strix_threat_model. Keep this order: strix_environment first (docker or host mode, which tool is missing), then strix_sandbox_start once for the whole assessment with every target named, then load the skills that match the target through strix_list_skills plus strix_load_skills, then produce evidence with the bundled toolchain through strix_exec (nmap, nuclei, ffuf, sqlmap, httpx, subfinder, katana, opengrep, trivy, gitleaks). Write the plan before you probe and state conclusions between batches; file a finding only with evidence you produced, and close with strix_report. If your tool roster has no strix_* tool at all, the plugin's local service is not ready: do not hand-roll nmap in a shell and do not claim you are scanning. Say in one sentence that the Strix tools are unavailable, ask the user to toggle the Strix capsule in the composer once more (the service comes up in seconds), and stop.",
   "log.workspaceMounted": "Workspace mounted: {folder}",
   "log.ready": "Ready.",
   "log.bridgeError": "Bridge unavailable",
@@ -95,5 +95,11 @@
   "rail.empty.agents": "Appears when the model splits a broad target",
   "rail.empty.todos": "A scan starts by writing its plan here",
   "rail.empty.coverage": "One row per surface, as it is finished",
-  "rail.empty.notes": "Payload lists and endpoint maps land here"
+  "rail.empty.notes": "Payload lists and endpoint maps land here",
+  "prompt.instructionsStarting": "The user enabled Strix for this turn, but the plugin's local service may still be starting. Call strix_environment first. If your tool roster has no strix_* tool, say in one sentence that the Strix tools are not ready, ask the user to toggle the Strix capsule in the composer once more, and stop. When the tools are there, work in this order: strix_environment → strix_sandbox_start → strix_list_skills with strix_load_skills → evidence through strix_exec → strix_file_finding → strix_report. Do not hand-roll replacements for a missing toolchain, and do not record a finding without evidence.",
+  "trace.host": "Host chat",
+  "trace.hostSay": "Host agent",
+  "scan.followingHost": "following the host turn",
+  "scan.resumed": "resumed the open assessment",
+  "skill.entry.description": "Drive the sandbox and its 26 pentest tools straight from the chat: evidence first, findings after."
 }
