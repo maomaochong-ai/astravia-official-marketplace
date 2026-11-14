@@ -896,7 +896,7 @@
       "slug": "strix",
       "name": "Strix",
       "description": "Run an autonomous penetration test from the conversation: Strix agents probe your code, APIs and running apps, then report exploitable findings with proof and fixes.",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "usestrix",

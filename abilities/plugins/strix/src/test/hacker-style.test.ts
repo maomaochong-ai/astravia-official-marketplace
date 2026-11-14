@@ -17,15 +17,39 @@ const launch = readFileSync(resolve(plugin, "src/features/scan-console/component
 const scan = readFileSync(resolve(plugin, "src/features/scan-console/components/scan-screen.tsx"), "utf8");
 const trace = readFileSync(resolve(plugin, "src/features/scan-console/components/trace-block.tsx"), "utf8");
 const panels = readFileSync(resolve(plugin, "src/features/scan-console/components/artefact-panels.tsx"), "utf8");
+const rain = readFileSync(resolve(plugin, "src/features/scan-console/components/hacker-rain.tsx"), "utf8");
 
 describe("data rain on the first screen", () => {
 	it("renders decorative columns with a fixed glyph set", () => {
-		expect(launch).toContain("astra-strix-rain");
-		expect(launch).toContain("aria-hidden=\"true\"");
+		expect(rain).toContain("astra-strix-rain");
+		expect(rain).toContain("aria-hidden=\"true\"");
 		// 固定字符集：随机会让截图与测试不可复现。
-		expect(launch).toContain("RAIN_GLYPHS");
-		expect(launch).toContain("RAIN_COLUMNS");
-		expect(launch).not.toMatch(/Math\.random\(\)/);
+		expect(rain).toContain("GLYPHS");
+		// 注释里写着"不用 Math.random"，所以先剥注释再断言。
+		expect(rain.replace(/\/\*[\s\S]*?\*\//g, "")).not.toMatch(/Math\.random/);
+		// 首屏用它
+		expect(launch).toContain("HackerRain");
+	});
+
+	it("is dense enough to read as code rain, not as scattered glyphs", () => {
+		// 用户反馈「不够密集」。列数与每列字数都在组件里，这里钉住下限。
+		const columns = /splash: (\d+)/.exec(rain)?.[1];
+		const workbench = /workbench: (\d+)/.exec(rain)?.[1];
+		const rows = /const ROWS = (\d+)/.exec(rain)?.[1];
+		expect(Number(columns)).toBeGreaterThanOrEqual(40);
+		expect(Number(workbench)).toBeGreaterThan(Number(columns));
+		expect(Number(rows)).toBeGreaterThanOrEqual(30);
+		// 两档不透明度：工作台必须比首屏淡（它后面是要读的文本）
+		expect(css).toMatch(/\.astra-strix-rain\[data-density="workbench"\][^}]*opacity:\s*0\.0\d/s);
+	});
+
+	it("also sits behind the workbench", () => {
+		expect(scan).toContain("HackerRain");
+		expect(scan).toContain('density="workbench"');
+		// 内容层必须压在雨之上
+		expect(css).toMatch(/\.astra-strix-workbench > \*:not\(\.astra-strix-rain\)[^}]*z-index:\s*1/s);
+		// 雨是绝对定位的，需要一个定位祖先并裁掉溢出
+		expect(css).toMatch(/\.astra-strix-term \{[\s\S]{0,900}?position: relative;[\s\S]{0,200}?overflow: hidden;/);
 	});
 
 	it("stops moving when the reader asks for reduced motion", () => {

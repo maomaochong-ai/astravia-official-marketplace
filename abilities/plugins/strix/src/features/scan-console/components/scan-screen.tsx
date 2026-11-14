@@ -14,6 +14,7 @@
 import { useEffect, useState } from "react";
 import { useComposerHeight } from "../hooks/use-composer-height";
 import { useStickToBottom } from "../hooks/use-stick-to-bottom";
+import { HackerRain } from "./hacker-rain";
 import type { ModelChoice } from "../../../domain/model-label";
 import type {
 	CoverageOutcome,
@@ -127,6 +128,8 @@ export function ScanScreen({
 
 	return (
 		<div className="astra-strix-term astra-strix-phosphor astra-strix-workbench">
+			{/* 工作台也铺数据流（用户要求）：更密、更淡，永远压在所有内容之下。 */}
+			<HackerRain density="workbench" />
 			<header className="astra-strix-band">
 				<span className="astra-strix-band-state" data-state={running ? "running" : "idle"}>
 					{/* 上游状态行的扫光：6 个方块，一个绿色波来回扫；idle 时静止在暗档。 */}

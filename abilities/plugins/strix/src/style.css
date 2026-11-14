@@ -39,6 +39,10 @@
 	font-size: 13px;
 	line-height: 1.5;
 	-webkit-font-smoothing: antialiased;
+	/* 雨与磷光扫描线都是绝对定位的背景层：需要定位祖先，并裁掉溢出，
+	   否则雨会铺到标签页外面。 */
+	position: relative;
+	overflow: hidden;
 	/* The panel is the surface: fill what the tab gives, never shrink to content. */
 	display: flex;
 	flex-direction: column;
@@ -1468,48 +1472,62 @@
 	z-index: 0;
 }
 
-.astra-strix-term.astra-strix-phosphor > * {
+.astra-strix-term.astra-strix-phosphor > *:not(.astra-strix-rain) {
 	position: relative;
 	z-index: 1;
 }
 
-/* ---- 首屏数据流背景（用户选定） -------------------------------------------
-   上游的 splash 是静态 wordmark；这里在它后面放一列列下落的绿字。
-   纯 CSS：每列是一串字，靠 translateY 动画下落，不与滚动/resize 抢帧。
-   对比度压到很低（opacity .12），内容区永远在上层。 */
+/* ---- 数据流背景（ADR 0011，1.0.2 加密并铺到工作台） ---------------------
+   列数与字数在 components/hacker-rain.tsx 里（首屏 46 列 / 工作台 58 列，各 34 字）。
+   这里只控制"看起来多密"：字号更小、行高更紧、列间距去掉，于是同样的宽度能塞下更多列。
+   两档不透明度：首屏是主角，工作台永远压在命令与输出之下。 */
 .astra-strix-rain {
 	position: absolute;
 	inset: 0;
 	display: flex;
 	justify-content: space-between;
+	gap: 0;
 	overflow: hidden;
 	pointer-events: none;
 	color: #22c55e;
 	font-family: var(--sx-mono);
-	font-size: 11px;
-	line-height: 1.15;
-	opacity: 0.12;
+	font-size: 10px;
+	line-height: 1.02;
+	letter-spacing: 0;
 	z-index: 0;
 	user-select: none;
+	opacity: 0.16;
+}
+
+.astra-strix-rain[data-density="workbench"] {
+	/* 工作台：更密更淡——它后面是本该被读的文本。 */
+	font-size: 9.5px;
+	opacity: 0.07;
 }
 
 .astra-strix-rain > span {
 	writing-mode: vertical-rl;
 	text-orientation: upright;
-	letter-spacing: 0.35em;
+	letter-spacing: 0.12em;
 	animation: astra-strix-rain-fall 9s linear infinite;
 	white-space: nowrap;
 }
 
 .astra-strix-rain > span:nth-child(2n) {
 	animation-duration: 12s;
-	opacity: 0.7;
+	opacity: 0.72;
 }
 
 .astra-strix-rain > span:nth-child(3n) {
 	animation-duration: 15s;
-	opacity: 0.45;
+	opacity: 0.48;
 	animation-delay: -4s;
+}
+
+.astra-strix-rain > span:nth-child(5n) {
+	animation-duration: 7s;
+	opacity: 0.9;
+	animation-delay: -2s;
 }
 
 @keyframes astra-strix-rain-fall {
@@ -1607,4 +1625,10 @@
 .astra-strix-band-button:hover {
 	color: var(--sx-green);
 	border-color: var(--sx-green);
+}
+
+/* 工作台里所有内容层压在雨之上（雨是 term 的第一个子元素）。 */
+.astra-strix-term.astra-strix-workbench > *:not(.astra-strix-rain) {
+	position: relative;
+	z-index: 1;
 }
