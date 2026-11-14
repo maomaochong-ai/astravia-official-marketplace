@@ -236,12 +236,16 @@ export function renderReport(
 	findings: readonly Finding[],
 	targets: readonly string[],
 	executiveSummary = "",
+	/** The scope block the service assembled from the declared engagement scope. */
+	scope = "",
 ): string {
 	const ordered = bySeverity(findings);
 	const counts = tally(ordered);
 	const lines: string[] = ["# Penetration test report", ""];
 	if (executiveSummary.trim()) lines.push(executiveSummary.trim(), "");
 	if (targets.length) lines.push("## Targets", "", ...targets.map((target) => `- ${target}`), "");
+	// 范围放在 findings 之前：读者先知道“允许测什么”，再看“测出了什么”。
+	if (scope.trim()) lines.push("## Scope", "", scope.trim(), "");
 	lines.push(`## Findings (${ordered.length})`, "");
 	const summary = SEVERITIES.filter((name) => counts[name] > 0)
 		.map((name) => `${name}: ${counts[name]}`)
@@ -286,7 +290,12 @@ export async function report(
 		return { sarif, path, count: findings.length, bySeverity: tally(findings) };
 	}
 
-	const markdown = renderReport(findings, targets, String(params.executiveSummary ?? ""));
+	const markdown = renderReport(
+		findings,
+		targets,
+		String(params.executiveSummary ?? ""),
+		String(params.scope ?? ""),
+	);
 	const path = join(dataDir(), "report.md");
 	await writeFile(path, markdown, "utf8");
 	return { markdown, path, count: findings.length, bySeverity: tally(findings) };

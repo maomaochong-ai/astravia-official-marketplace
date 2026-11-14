@@ -50,6 +50,8 @@ async function runLocal(
 	command: string,
 	cwd: string,
 	timeoutMs: number,
+	/** Fed to the shell's stdin; only `writeFile` uses it. */
+	input?: string,
 ): Promise<{ code: number; stdout: string; stderr: string }> {
 	const shell = process.platform === "win32" ? "cmd.exe" : "/bin/sh";
 	const flag = process.platform === "win32" ? "/c" : "-c";
@@ -57,6 +59,7 @@ async function runLocal(
 		const { stdout, stderr } = await run(shell, [flag, command], {
 			cwd,
 			timeout: timeoutMs,
+			...(input === undefined ? {} : { input }),
 			maxBuffer: 16 * 1024 * 1024,
 			windowsHide: true,
 			// The toolchain shipped with the plugin comes first (ADR strix-0005): a machine
@@ -405,6 +408,89 @@ export class Sandbox {
 		};
 	}
 
+	/* ---- files --------------------------------------------------------- */
+
+	/**
+	 * Read a file out of the sandbox as bytes.
+	 *
+	 * Base64 rather than text: the caller may be after a screenshot, and decoding here keeps
+	 * one place that knows how the two environments differ. A missing file is
+	 * `{ exists: false }`, not an exception — "the screenshot was never written" is a fact
+	 * about the scan, not a crash.
+	 */
+	async readFile(path: string, maxBytes = 4 * 1024 * 1024): Promise<{ exists: boolean; bytes: Uint8Array }> {
+		if (!this.container && !this.hostRoot) throw new Error("no sandbox session; call strix_sandbox_start first");
+		const target = path.trim();
+		if (!target) throw new Error("path is required");
+
+		const script = `if [ -f ${quote(target)} ]; then base64 < ${quote(target)} | tr -d '\\n'; else printf __MISSING__; fi`;
+		const result =
+			this.mode === "host"
+				? await runLocal(script, this.hostRoot ?? "", 60_000)
+				: await dockerApi.exec(this.container as string, script, 60_000);
+		const out = result.stdout.trim();
+		if (!out || out === "__MISSING__") return { exists: false, bytes: new Uint8Array() };
+		const bytes = new Uint8Array(Buffer.from(out, "base64"));
+		return { exists: true, bytes: bytes.length > maxBytes ? bytes.subarray(0, maxBytes) : bytes };
+	}
+
+	/**
+	 * Write text into the sandbox through stdin.
+	 *
+	 * stdin, not a heredoc in the command string: a patch or a file body full of quotes is
+	 * exactly what a shell mangles, and this path never involves shell parsing.
+	 */
+	async writeFile(path: string, content: string): Promise<{ ok: boolean; bytes: number }> {
+		if (!this.container && !this.hostRoot) throw new Error("no sandbox session; call strix_sandbox_start first");
+		const target = path.trim();
+		if (!target) throw new Error("path is required");
+		const makeDirs = `mkdir -p $(dirname ${quote(target)})`;
+		const bytes = Buffer.byteLength(content, "utf8");
+
+		if (this.mode === "host") {
+			await runLocal(makeDirs, this.hostRoot ?? "", 60_000);
+			const written = await runLocal(`cat > ${quote(target)}`, this.hostRoot ?? "", 60_000, content);
+			return { ok: written.code === 0, bytes };
+		}
+		await dockerApi.exec(this.container as string, makeDirs, 60_000);
+		const written = await dockerApi.execInput(this.container as string, `cat > ${quote(target)}`, content, 120_000);
+		return { ok: written.code === 0, bytes };
+	}
+
+	/** Delete a file (the "delete" arm of a patch). Idempotent: absent counts as done. */
+	async deleteFile(path: string): Promise<{ ok: boolean }> {
+		if (!this.container && !this.hostRoot) throw new Error("no sandbox session; call strix_sandbox_start first");
+		const script = `rm -f ${quote(path.trim())}`;
+		const result =
+			this.mode === "host"
+				? await runLocal(script, this.hostRoot ?? "", 60_000)
+				: await dockerApi.exec(this.container as string, script, 60_000);
+		return { ok: result.code === 0 };
+	}
+
+	/** The argv that runs one command in this environment, for a kept shell session. */
+	sessionArgv(command: string, workdir: string | undefined, tty: boolean): string[] {
+		if (this.mode === "host") {
+			const shell = process.platform === "win32" ? ["cmd.exe", "/c"] : ["/bin/sh", "-c"];
+			return [...shell, workdir ? `cd ${quote(workdir)} && ${command}` : command];
+		}
+		const args = ["exec", "-i"];
+		// `-t` gives the process a PTY: that is what makes REPLs, ssh and Ctrl-C work.
+		if (tty) args.push("-t");
+		if (workdir) args.push("-w", workdir);
+		args.push(this.container as string, "sh", "-c", command);
+		return [process.platform === "win32" ? "docker.exe" : "docker", ...args];
+	}
+
+	/** Where a host-mode session starts: the mounted workspace root. */
+	sessionCwd(): string | undefined {
+		return this.mode === "host" ? (this.hostRoot ?? undefined) : undefined;
+	}
+
+	/** Whether a kept session can run here at all. */
+	canHostSession(): boolean {
+		return Boolean(this.container) || this.hostRoot !== null;
+	}
 	async stop(): Promise<{ stopped: boolean; sessionId?: string }> {
 		if (!this.container) return { stopped: false };
 		const sessionId = this.sessionId ?? undefined;

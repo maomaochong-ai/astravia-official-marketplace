@@ -57,8 +57,14 @@ npm run check           # typecheck + test + 服务冒烟
   都不叫（权限已移除）。
 - **工作目录来自 `conversation.cwd`**：它就是宿主 agent 在干活的目录，也是沙箱挂的目录。
 - **没有插件侧子智能体**：需要并行分工就用宿主自己的 subagent，共享同一个沙箱与台账。
-- 工具目录只有一份：`agent/strix-tools.ts` 的 `STRIX_TOOL_SPECS`，全部是 `handler: "service"`；
-  服务端启动时校验 handler 齐备。
+- 工具目录只有一份：`agent/strix-tools.ts` 的 `STRIX_TOOL_SPECS`（33 个，全部 `handler: "service"`）；
+  服务端启动时校验 handler 齐备。与上游的逐项对照写在 ADR `strix-0006`：
+  - 已补齐：`strix_exec` 的 `background`/`tty`、`strix_write_stdin`、`strix_shell_sessions`、
+    `strix_kill_session`、`strix_patch`、`strix_view_image`、`strix_think`、`strix_scope`。
+  - 有意不补：`agents_graph`（子智能体需要有人跑模型——那是宿主）、`web_search`（宿主有）、
+    `wait_for_user`（宿主就是那个等待）、Caido 专用読み（统一走 `strix_proxy` action）。
+- **改文件用 `strix_patch`，不要用 heredoc**：引号、`$`、反斜杠会被 shell 吃掉。
+  锚点（`@@`）在文件里不唯一时**报错而不是猜**，宁可让模型重试，不能改错函数。
 
 所以一次扫描不需要第二份凭据，也没有第二份对话。
 

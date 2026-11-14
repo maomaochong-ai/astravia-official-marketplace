@@ -18,7 +18,42 @@ export interface DockerResult {
 	stderr: string;
 }
 
+/**
+ * Same as `docker`, but the script's stdin is a provided string.
+ *
+ * Needed by `writeFile`: a file body full of quotes must never be concatenated into a
+ * shell command. `execFile` cannot feed stdin, so this uses `spawn` and writes the buffer.
+ */
+async function dockerWithInput(args: string[], input: string, timeoutMs = 60_000): Promise<DockerResult> {
+	const { spawn } = await import("node:child_process");
+	return await new Promise((resolve) => {
+		const child = spawn("docker", args, { windowsHide: true });
+		let stdout = "";
+		let stderr = "";
+		const timer = setTimeout(() => child.kill("SIGKILL"), timeoutMs);
+		child.stdout.on("data", (chunk: Buffer) => {
+			stdout += chunk.toString("utf8");
+		});
+		child.stderr.on("data", (chunk: Buffer) => {
+			stderr += chunk.toString("utf8");
+		});
+		child.on("error", (error) => {
+			clearTimeout(timer);
+			resolve({ code: 1, stdout, stderr: error.message });
+		});
+		child.on("close", (code) => {
+			clearTimeout(timer);
+			resolve({ code: code ?? 1, stdout, stderr });
+		});
+		child.stdin.end(input);
+	});
+}
+
+/**
+ * Run one docker CLI invocation and normalise its failure shape.
+ */
 async function docker(args: string[], timeoutMs = 30_000): Promise<DockerResult> {
+
 	try {
 		const { stdout, stderr } = await run("docker", args, {
 			timeout: timeoutMs,
@@ -107,4 +142,7 @@ export const dockerApi = {
 	exec: (name: string, script: string, timeoutMs: number) =>
 		docker(["exec", "-i", name, "sh", "-c", script], timeoutMs),
 	remove: (name: string) => docker(["rm", "-f", name], 60_000),
+	/** `exec` with stdin — used to write files without ever building a shell string. */
+	execInput: (name: string, script: string, input: string, timeoutMs = 60_000) =>
+		dockerWithInput(["exec", "-i", name, "sh", "-c", script], input, timeoutMs),
 };

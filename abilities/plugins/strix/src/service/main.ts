@@ -26,6 +26,10 @@ import { finishGate } from "../domain/scan-mode";
 import * as findings from "./findings";
 import { NoteStore } from "./notes";
 import { Sandbox, sandboxImage } from "./sandbox";
+import { applyPatch, parsePatch } from "./patch";
+import { toImagePayload } from "./images";
+import { describeScope, outOfScopeHosts, ScopeStore } from "./scope";
+import { ShellSessions } from "./shell-sessions";
 import { locateSkills, loadBodies, loadIndex } from "./skills";
 import { installHint, missingTools, probeToolchain } from "./toolchain";
 import { describeRoster, mergeRoster, normalizeRoster } from "./mcp-roster";
@@ -48,6 +52,84 @@ const sandbox = new Sandbox(record, DATA_DIR);
 const notes = new NoteStore(DATA_DIR);
 const todos = new TodoStore(DATA_DIR);
 const coverage = new CoverageStore(DATA_DIR);
+const scope = new ScopeStore(DATA_DIR);
+/** Long-running shells the agent chose not to wait for (service/shell-sessions.ts). */
+const sessions = new ShellSessions(record);
+
+/**
+ * `exec`, plus the two shapes a long command needs.
+ *
+ * `background: true` hands the command to a kept session and returns immediately; that is
+ * how upstream's `exec_command` behaves, and it is the only way to run a full nmap sweep or
+ * an interactive tool without losing it to a timeout. Without the flag this is exactly the
+ * old blocking call, so nothing that already worked changes.
+ *
+ * 附带一条范围提示：命令里出现声明范围之外的主机时，结果里会多一个 `outOfScope`
+ * 字段并写进轨迹。它不拦命令（拦不住，也不该由正则拦），但让漂移可见。
+ */
+async function execWithSessions(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+	const command = String(args.command ?? "").trim();
+	if (!command) throw new Error("command is required");
+
+	const advisory = await scopeAdvisory(command);
+	if (args.background === true) {
+		if (!sandbox.canHostSession()) throw new Error("no sandbox session; call strix_sandbox_start first");
+		const workdir = String(args.workdir ?? "").trim() || undefined;
+		const tty = args.tty === true;
+		const view = sessions.start({
+			command,
+			commandDisplay: command,
+			argv: sandbox.sessionArgv(command, workdir, tty),
+			tty,
+			...(sandbox.sessionCwd() ? { cwd: sandbox.sessionCwd() } : {}),
+		});
+		return { background: true, sessionId: view.id, command, tty, ...advisory };
+	}
+
+	const result = await sandbox.exec(args);
+	return { ...result, ...advisory };
+}
+
+/** Hosts mentioned by a command that the declared scope does not cover. */
+async function scopeAdvisory(command: string): Promise<{ outOfScope?: string[] }> {
+	const snapshot = await scope.snapshot().catch(() => undefined);
+	if (!snapshot || snapshot.entries.length === 0) return {};
+	const outside = outOfScopeHosts(command, snapshot.entries);
+	if (outside.length === 0) return {};
+	record({ event: "scope_advisory", hosts: outside, command });
+	return { outOfScope: outside };
+}
+
+/** `strix_patch`: parse → read → apply → write, in that order, refusing on any doubt. */
+async function applyPatchInSandbox(document: string): Promise<Record<string, unknown>> {
+	const parsed = parsePatch(document);
+	if (parsed.errors.length) return { ok: false, errors: parsed.errors };
+
+	const contents = new Map<string, string | undefined>();
+	for (const operation of parsed.operations) {
+		if (contents.has(operation.path)) continue;
+		const file = await sandbox.readFile(operation.path, 8 * 1024 * 1024).catch(() => ({ exists: false, bytes: new Uint8Array() }));
+		contents.set(operation.path, file.exists ? Buffer.from(file.bytes).toString("utf8") : undefined);
+	}
+
+	const applied = applyPatch(parsed, (path) => contents.get(path));
+	if (applied.errors.length) return { ok: false, errors: applied.errors };
+
+	const written: Array<{ path: string; action: "added" | "updated" | "deleted" }> = [];
+	for (const file of applied.files) {
+		if (file.content === null) {
+			await sandbox.deleteFile(file.path);
+			written.push({ path: file.path, action: "deleted" });
+			continue;
+		}
+		const result = await sandbox.writeFile(file.path, file.content);
+		if (!result.ok) return { ok: false, errors: [`${file.path}: write failed`], written };
+		written.push({ path: file.path, action: contents.get(file.path) === undefined ? "added" : "updated" });
+	}
+
+	record({ event: "patch_applied", files: written });
+	return { ok: true, written };
+}
 
 /** The installer writes `.runtime.json` beside the entry; absent in a source checkout. */
 function readVersion(): string {
@@ -115,7 +197,45 @@ const HANDLERS: Record<string, Handler> = {
 	},
 
 	strix_sandbox_start: (args) => sandbox.start(args),
-	strix_exec: (args) => sandbox.exec(args),
+	// 一条命令的两种形态：等它跑完（默认），或留下一个会话（background）。
+	strix_exec: (args) => execWithSessions(args),
+	strix_shell_sessions: async (args) => {
+		const id = typeof args.sessionId === "string" ? args.sessionId.trim() : "";
+		if (id) {
+			const one = sessions.find(id);
+			if (!one) throw new Error(`no session ${id}`);
+			return one;
+		}
+		return { sessions: sessions.list() };
+	},
+	strix_write_stdin: async (args) => sessions.write(String(args.sessionId ?? ""), String(args.chars ?? "")),
+	strix_kill_session: async (args) => sessions.kill(String(args.sessionId ?? "")),
+
+	// 文件：上游用 SDK 的 patch / view_image，这里用同一份协议对同一个沙箱动手。
+	strix_patch: async (args) => applyPatchInSandbox(String(args.patch ?? "")),
+	strix_view_image: async (args) => {
+		const path = String(args.path ?? "").trim();
+		if (!path) throw new Error("path is required");
+		const file = await sandbox.readFile(path);
+		if (!file.exists) return { ok: false, path, error: "no such file in the sandbox" };
+		return toImagePayload(path, file.bytes);
+	},
+
+	strix_think: async (args) => {
+		const thought = String(args.thought ?? "").trim();
+		if (!thought) throw new Error("thought is required");
+		// 无副作用：只进日志流，面板的轨迹会把它当一行说明显示。
+		record({ event: "think", thought });
+		return { ok: true, recorded: thought.length };
+	},
+
+	strix_scope: async (args) => {
+		const action = typeof args.action === "string" ? args.action : "";
+		if (action === "add") return scope.add(args);
+		if (action === "remove") return scope.remove(args);
+		if (action === "rules") return scope.setRules(args);
+		return scope.snapshot();
+	},
 	strix_sandbox_status: async () => sandbox.status(),
 	strix_sandbox_stop: () => sandbox.stop(),
 	strix_browser: (args) => sandbox.browser(args),
@@ -151,7 +271,9 @@ const HANDLERS: Record<string, Handler> = {
 			const gate = finishGate(sandbox.status().scanMode ?? "standard", recorded.entries);
 			if (!gate.allowed) return { ok: false, blocked: "coverage", reason: gate.reason };
 		}
-		return findings.report(sessionId(), args, { version });
+		// 范围写进报告：读者要能判断证据是否在约定边界内取得（上游 finish_scan 的结构）。
+		const snapshot = await scope.snapshot();
+		return findings.report(sessionId(), { ...args, scope: describeScope(snapshot) }, { version });
 	},
 
 	strix_note_create: (args) => notes.create(sessionId(), args),
@@ -197,6 +319,24 @@ function json(res: ServerResponse, status: number, payload: unknown): void {
 	res.end(JSON.stringify(payload));
 }
 
+/** An image payload from `strix_view_image`, if that is what the handler returned. */
+function asImageContent(
+	result: unknown,
+): { path: string; base64: string; mimeType: string; bytes: number } | undefined {
+	if (!result || typeof result !== "object") return undefined;
+	const value = result as Record<string, unknown>;
+	if (value.ok !== true) return undefined;
+	if (typeof value.dataUri !== "string" || typeof value.base64 !== "string" || typeof value.mimeType !== "string") {
+		return undefined;
+	}
+	return {
+		path: typeof value.path === "string" ? value.path : "image",
+		base64: value.base64,
+		mimeType: value.mimeType,
+		bytes: typeof value.bytes === "number" ? value.bytes : 0,
+	};
+}
+
 async function handleMcp(req: IncomingMessage, res: ServerResponse): Promise<void> {
 	const body = await readBody(req);
 	const id = body.id ?? null;
@@ -223,6 +363,17 @@ async function handleMcp(req: IncomingMessage, res: ServerResponse): Promise<voi
 			if (!tool) return fail(-32601, `unknown tool: ${params.name}`);
 			try {
 				const result = await tool.handler(params.arguments ?? {});
+				// `strix_view_image` 的载荷带着 dataUri：把它换成真正的 image content block，
+				// 否则宿主模型只拿到一串 base64 文本，等于白调。其余工具仍是文本。
+				const image = asImageContent(result);
+				if (image) {
+					return reply({
+						content: [
+							{ type: "image", data: image.base64, mimeType: image.mimeType },
+							{ type: "text", text: `image ${image.path} · ${image.mimeType} · ${image.bytes} bytes` },
+						],
+					});
+				}
 				return reply({ content: [{ type: "text", text: JSON.stringify(result, null, 2) }] });
 			} catch (error) {
 				return reply({
@@ -318,8 +469,11 @@ server.listen(PORT, HOST, () => {
 });
 
 const shutdown = () => {
-	server.close(() => process.exit(0));
-	setTimeout(() => process.exit(0), 1500).unref();
+	// 先收掉会话：一个被遗留的 nmap 比一个没退干净的进程更难处理。
+	void sessions.dispose().finally(() => {
+		server.close(() => process.exit(0));
+	});
+	setTimeout(() => process.exit(0), 2000).unref();
 };
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);

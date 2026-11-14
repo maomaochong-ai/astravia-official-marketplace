@@ -83,13 +83,21 @@ export const STRIX_TOOL_SPECS: readonly StrixToolSpec[] = [
 		handler: "service",
 		name: "strix_exec",
 		description:
-			"Run a shell command inside the sandbox and return stdout, stderr and the exit code. Use it to drive the bundled toolchain, write scripts under /workspace and read their output. Commands are capped at 10 minutes: launch anything longer in the background and poll it with another call.",
+			"Run a shell command inside the sandbox and return stdout, stderr and the exit code. Use it to drive the bundled toolchain, write scripts under /workspace and read their output. Commands are capped at 10 minutes. Pass background: true for anything long-running (a full nmap sweep, a fuzzer, msfconsole): it returns a sessionId immediately and you read or talk to it with strix_shell_sessions / strix_write_stdin. Pass tty: true when the program is interactive and needs a terminal.",
 		parameters: {
 			type: "object",
 			properties: {
 				command: { type: "string", description: "Shell command, run with `sh -c`." },
 				workdir: { type: "string", description: "Working directory inside the sandbox, e.g. /workspace/repo." },
 				timeoutSec: { type: "number" },
+				background: {
+					type: "boolean",
+					description: "Leave the command running and return its sessionId instead of waiting for the exit code.",
+				},
+				tty: {
+					type: "boolean",
+					description: "Allocate a terminal (background sessions only). Needed for REPLs, ssh, nc and Ctrl-C.",
+				},
 			},
 			required: ["command"],
 			additionalProperties: false,
@@ -433,6 +441,106 @@ export const STRIX_TOOL_SPECS: readonly StrixToolSpec[] = [
 			additionalProperties: false,
 		},
 	},
+
+	// ---- kept shell sessions (upstream: exec_command background/tty + write_stdin) ----
+	{
+		handler: "service",
+		name: "strix_shell_sessions",
+		description:
+			"List the shell sessions you left running (started with strix_exec background: true): id, command, uptime, whether it is still alive and its recent output. Read this before starting another long scan so you do not end up with three nmap runs on one target.",
+		parameters: {
+			type: "object",
+			properties: { sessionId: { type: "string", description: "Return one session instead of all of them." } },
+			additionalProperties: false,
+		},
+	},
+	{
+		handler: "service",
+		name: "strix_write_stdin",
+		description:
+			"Send input to a running session. Use it to answer an interactive prompt, drive a REPL (python3, msfconsole), or send Ctrl-C as \"\\u0003\" to stop a scan without killing the session. Only works while the process is alive.",
+		parameters: {
+			type: "object",
+			properties: {
+				sessionId: { type: "string" },
+				chars: { type: "string", description: "Exact characters, e.g. \"n\\n\" or \"\\u0003\" for Ctrl-C." },
+			},
+			required: ["sessionId", "chars"],
+			additionalProperties: false,
+		},
+	},
+	{
+		handler: "service",
+		name: "strix_kill_session",
+		description: "Stop a running session (SIGTERM, then SIGKILL). Output up to that point stays readable.",
+		parameters: {
+			type: "object",
+			properties: { sessionId: { type: "string" } },
+			required: ["sessionId"],
+			additionalProperties: false,
+		},
+	},
+
+	// ---- files (upstream: patch + view_image) -------------------------------
+	{
+		handler: "service",
+		name: "strix_patch",
+		description:
+			"Edit files in the sandbox with a patch instead of a shell heredoc: quotes, backslashes and $ signs survive verbatim, and the change is reviewable. Format: *** Begin Patch / *** Add File: path (+lines) / *** Update File: path (@@ optional anchor, -old, +new) / *** Delete File: path / *** End Patch. Prefer this over strix_exec for writing exploits, PoCs and notes to /workspace.",
+		parameters: {
+			type: "object",
+			properties: { patch: { type: "string", description: "The whole patch document, including *** Begin Patch and *** End Patch." } },
+			required: ["patch"],
+			additionalProperties: false,
+		},
+	},
+	{
+		handler: "service",
+		name: "strix_view_image",
+		description:
+			"Look at an image file in the sandbox — typically a screenshot from agent-browser (/workspace/.agent-browser-screenshots/…) or a rendered chart. Returns the picture itself for a vision-capable model; over MCP it comes back as an image content block. Use it to verify what a page actually shows instead of inferring from HTML.",
+		parameters: {
+			type: "object",
+			properties: {
+				path: { type: "string", description: "Absolute path inside the sandbox, e.g. /workspace/.agent-browser-screenshots/shot.png" },
+			},
+			required: ["path"],
+			additionalProperties: false,
+		},
+	},
+
+	// ---- reasoning + scope --------------------------------------------------
+	{
+		handler: "service",
+		name: "strix_think",
+		description:
+			"Record a reasoning note with no side effects: what you know, what you suspect, what you will try next. It lands in the panel's trace so the operator can follow a decision that was not obvious. Not an output channel — write conclusions as plain text.",
+		parameters: {
+			type: "object",
+			properties: { thought: { type: "string" } },
+			required: ["thought"],
+			additionalProperties: false,
+		},
+	},
+	{
+		handler: "service",
+		name: "strix_scope",
+		description:
+			"Declare, read or change what this assessment is allowed to touch. Call with no action to read the current scope; action=add with targets to declare hosts; action=remove to drop them; action=rules to record agreed boundaries (ports, hours, forbidden techniques). The scope is printed in the report, and strix_exec warns when a command names a host outside it — the warning is advisory, the boundary is still yours to hold.",
+		parameters: {
+			type: "object",
+			properties: {
+				action: { type: "string", enum: ["add", "remove", "rules"] },
+				targets: { type: "array", items: { type: "string" }, description: "Hosts, URLs, IPs or CIDRs to declare." },
+				kind: { type: "string", enum: ["domain", "ip", "cidr", "url"] },
+				note: { type: "string" },
+				ids: { type: "array", items: { type: "string" }, description: "Scope entry ids to remove." },
+				ports: { type: "array", items: { type: "string" } },
+				notes: { type: "array", items: { type: "string" }, description: "Agreed boundaries: rate limits, windows, off-limits techniques." },
+			},
+			additionalProperties: false,
+		},
+	},
 ];
 
 /**
@@ -452,6 +560,18 @@ export const SERVICE_TOOL_NAMES: readonly string[] = STRIX_TOOL_SPECS.filter((to
 export function describeToolCall(name: string, args: Record<string, unknown>): string | undefined {
 	const pick = (key: string): string | undefined => (typeof args[key] === "string" ? (args[key] as string) : undefined);
 	switch (name) {
+		case "strix_patch":
+			// A patch's identity is its first file header, not its whole body.
+			return /\*\*\* (?:Add|Update|Delete) File: (.+)/.exec(pick("patch") ?? "")?.[1]?.trim();
+		case "strix_view_image":
+			return pick("path");
+		case "strix_kill_session":
+		case "strix_write_stdin":
+			return pick("sessionId");
+		case "strix_scope":
+			return Array.isArray(args.targets) ? args.targets.map(String).join(" ") : (pick("action") ?? undefined);
+		case "strix_think":
+			return pick("thought");
 		case "strix_exec":
 			return pick("command");
 		case "strix_sandbox_start":

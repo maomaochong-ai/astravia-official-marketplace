@@ -44,7 +44,9 @@ tool. Only `astra-strix-*` classes are defined.
 
 ## What is aligned with upstream, and what is not
 
-Aligned: the screen, the tool catalogue (sandbox, browser, skills, findings, report in
+Aligned with upstream in 0.7.0: the screen, and the tool surface the host agent actually drives —
+including kept shell sessions (`exec_command(background/tty)` + `write_stdin`), `patch`, `view_image`,
+`think` and `scope`. See ADR `strix-0006` for the item-by-item table.
 Markdown or SARIF, notes, todos, coverage, threat model), and honest coverage in the
 report.
 
