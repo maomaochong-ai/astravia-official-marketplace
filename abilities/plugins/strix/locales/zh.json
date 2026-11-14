@@ -78,7 +78,7 @@
   "scan.emptyNoTargets": "在上面的输入框里写下要测的目标（URL、域名、仓库或本机目录），Enter 开始。",
   "scan.emptyWithTargets": "扫描已开始。工具调用与结论会一条条出现在这里；右侧记录目标、覆盖与发现。",
   "rail.title": "产出",
-  "env.docker": "容器",
+  "env.docker": "容器（docker）",
   "env.host": "本机（无容器）",
   "env.unknown": "未确定",
   "rail.empty": "还没有记录",
@@ -113,5 +113,14 @@
   "scan.newRows": "{count} 条新消息",
   "sessions.title": "工作单元",
   "sessions.empty": "还没有并行会话。",
-  "rail.empty.sessions": "长任务会用 background 起会话"
+  "rail.empty.sessions": "长任务会用 background 起会话",
+  "log.dockerInstalled": "docker 安装命令已执行完成，点「刷新环境」确认",
+  "log.dockerInstallFailed": "docker 安装命令失败，看下面的输出",
+  "env.choice": "执行环境",
+  "env.auto": "自动",
+  "env.install": "让宿主安装 docker",
+  "env.refresh": "刷新环境",
+  "env.dockerMissing": "docker 没起来：下面这条命令由宿主执行，装完点刷新",
+  "nav.launch": "首屏",
+  "nav.newSession": "新会话"
 }
