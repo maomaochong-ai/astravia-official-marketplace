@@ -122,5 +122,13 @@
   "env.refresh": "Refresh environment",
   "env.dockerMissing": "docker is not up: the host runs this command, then press refresh",
   "nav.launch": "Launch",
-  "nav.newSession": "New session"
+  "nav.newSession": "New session",
+  "env.statusHost": "this machine · no container isolation",
+  "env.statusNoDocker": "no docker found — install, then press refresh",
+  "env.statusNoImage": "docker ready · sandbox image not pulled yet",
+  "env.statusReady": "ready · docker and image present",
+  "env.pull": "Pull image",
+  "log.imagePulled": "image pulled — the container environment is ready",
+  "log.imagePullFailed": "image pull failed — see the output below",
+  "launch.modelScope": "this conversation"
 }
