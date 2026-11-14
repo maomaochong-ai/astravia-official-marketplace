@@ -235,10 +235,9 @@ describe("plugin activation", () => {
 		await disposeOf(disposable);
 	});
 
-	it("renders the host turn itself: the capsule starts it and the answer streams in", async () => {
+	it("follows the host turn but renders no prose of its own (ADR 0007)", async () => {
 		const host = fakeHost();
-		// The bridge is unreachable here; that only affects the environment probe, which
-		// must not stop the panel from rendering what the host tells it.
+		// The bridge is unreachable here; that only affects the environment probe.
 		const disposable = await plugin.activate(host.ctx);
 		render(host.tab()!.component());
 
@@ -252,13 +251,12 @@ describe("plugin activation", () => {
 			host.emit({ type: "message-updated", delta: "; one IDOR filed." });
 		});
 
-		// The panel left the launch column and is showing the host's words as they arrive:
-		// this is the plugin producing output from the conversation, not a second model.
-		expect(await screen.findByText(/Four renditions found/)).toBeTruthy();
-		expect(screen.getByText(/one IDOR filed/)).toBeTruthy();
+		// The panel left the launch column, but the words are not here: they are in the chat,
+		// rendered better there. Rendering them twice is the redundancy this change removes.
 		expect(screen.queryByText("launch.tagline")).toBeNull();
+		expect(screen.queryByText(/Four renditions found/)).toBeNull();
 
-		// 3. The finished message replaces the streamed text with one row, not two.
+		// 3. The finished message changes nothing on the panel either.
 		await act(async () => {
 			host.emit({
 				type: "message-added",
@@ -267,7 +265,8 @@ describe("plugin activation", () => {
 			host.emit({ type: "turn-end", stopReason: "stop" });
 		});
 
-		expect(screen.getAllByText(/Four renditions found/).length).toBe(1);
+		expect(screen.queryByText(/Four renditions found/)).toBeNull();
+		// State still follows the turn: running while it runs, idle after it ends.
 		expect(screen.getByText("scan.idle")).toBeTruthy();
 
 		await disposeOf(disposable);

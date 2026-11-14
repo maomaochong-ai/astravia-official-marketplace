@@ -157,12 +157,11 @@ describe("scan screen", () => {
 		expect((screen.getByRole("button", { name: "scan.stop" }) as HTMLButtonElement).disabled).toBe(true);
 	});
 
-	it("shows the operator's message as a You line", () => {
-		render(
-			<ScanScreen {...scanProps} trace={[run({ kind: "user", label: "check the admin panel", detail: undefined })]} />,
-		);
-		expect(screen.getByText("You:")).toBeTruthy();
-		expect(screen.getByText(/check the admin panel/)).toBeTruthy();
+	it("has no You: row — the operator's words live in the chat", () => {
+		// 这一行曾经存在，和聊天区重复（ADR 0007）。轨迹只剩工具、说明、结论。
+		render(<ScanScreen {...scanProps} trace={[run({ kind: "note", label: "turn 1 · the words are in the chat" })]} />);
+		expect(screen.queryByText("You:")).toBeNull();
+		expect(screen.getByText(/turn 1/)).toBeTruthy();
 	});
 
 	it("lists the assessment targets in the sidebar", () => {

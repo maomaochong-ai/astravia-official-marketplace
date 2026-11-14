@@ -34,17 +34,20 @@ describe("scan screen truthfulness", () => {
 		expect(css).toContain("prefers-reduced-motion: reduce");
 	});
 
-	it("lets the host conversation drive the same run", () => {
-		expect(session).toContain('"message-added"');
-		expect(session).toContain("hostRowFor");
-		// The host turn is the run: render it, never start a second loop beside it.
+	it("follows the host turn without copying its prose", () => {
+		// 宿主的那一轮就是本次运行：面板跟状态，不跟文字（ADR 0007）。
+		expect(session).toContain('event.type === "turn-start"');
+		expect(session).toContain("scan.turnDivider");
+		// 文字事件显式忽略：不渲染是决定，不是遗漏。
+		expect(session).toContain('event.type === "message-added" || event.type === "message-updated"');
 		expect(session).not.toContain("ai.chat(");
 		expect(session).not.toContain("StrixAgent");
 	});
 
-	it("renders the host agent's answer while it is still arriving", () => {
-		expect(session).toContain('"message-updated"');
-		expect(screen).toContain("astra-strix-streaming");
+	it("no longer renders streamed answer text of its own", () => {
+		// 这一栏曾经有一条流式正文，和聊天区逐字同步；现在它只画命令与结果。
+		expect(screen).not.toContain("astra-strix-streaming");
+		expect(session).not.toContain("setStreaming(");
 	});
 
 	it("keeps upstream's Stats panel", () => {

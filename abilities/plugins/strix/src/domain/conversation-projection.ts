@@ -123,15 +123,15 @@ export function evidenceRow(
 }
 
 /**
- * A conversation message as a trace row.
+ * A turn boundary: the panel says *which* turn it is, and where the words are.
  *
- * The panel draws the operator's own words and the host agent's answer; a compaction
- * marker is kept as a dim note, and an empty message is noise.
+ * 这里曾经是 `hostRowFor`：把 `message-added` 的正文（用户的句子与 agent 的回复）抄成
+ * 轨迹行。那是本插件最明显的一处冗余——宿主聊天区已经把同样的话渲染完了，而且更好
+ *（markdown、可复制、可回滚）；面板再画一遍只是把同一段字变成两个可滚区域。
+ *
+ * 现在这里只产出分隔行：编号 + 一句「说明在对话里」。它给现场一个时间锚点，
+ * 不复制任何内容（ADR strix-0007）。
  */
-export function hostRowFor(message: ConversationMessage): Omit<TraceEntry, "id" | "at"> | undefined {
-	const text = message.text.trim();
-	if (!text) return undefined;
-	if (message.role === "assistant") return { kind: "host-say", label: text };
-	if (message.role === "user") return { kind: "host", label: text };
-	return { kind: "note", label: text };
+export function turnDivider(turn: number, label: string): Omit<TraceEntry, "id" | "at"> {
+	return { kind: "note", label: label.replace("{turn}", String(turn)) };
 }

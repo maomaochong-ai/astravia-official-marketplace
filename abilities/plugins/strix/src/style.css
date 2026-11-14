@@ -502,6 +502,17 @@
 }
 
 .astra-strix-transcript {
+
+/* 这一栏的标题：它说清自己是运行记录，不是第二份对话。 */
+.astra-strix-transcript-title {
+	margin: 0;
+	padding: 10px clamp(10px, 2.4vw, 20px) 0;
+	color: var(--sx-dim);
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
 	display: flex;
 	flex-direction: column;
 	min-height: 0;

@@ -101,7 +101,6 @@ function StrixTabRoot({
 			notes={session.notes}
 			coverage={session.coverage}
 			mcp={session.mcp}
-			{...(session.streaming ? { streaming: session.streaming } : {})}
 			trace={session.trace}
 			busy={session.busy}
 			start={session.start}

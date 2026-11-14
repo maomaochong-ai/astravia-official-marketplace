@@ -41,10 +41,11 @@ describe("composer hands the prompt to the conversation", () => {
 		expect(session).toContain("createSession(cwd)");
 	});
 
-	it("feeds the same prompt into the transcript once", () => {
-		// One row per typed message: the panel draws what it sent, and the host's own
-		// `message-added` echo is not a second row because delivery is the only writer.
-		expect(session).toContain('pushTrace({ kind: "user", label: value })');
+	it("does not echo what it sent into the panel", () => {
+		// 面板把话交给对话，自己不再画一份。之前它 push 一条 `kind: "user"`，
+		// 于是同一句话在聊天区和面板各出现一次——就是用户说的冗余（ADR 0007）。
+		expect(session).not.toContain('pushTrace({ kind: "user"');
+		expect(session).toContain("await sendPrompt(value)");
 	});
 
 	it("says so, and does nothing else, when sending fails", () => {

@@ -88,7 +88,7 @@
   "scan.live": "仍在运行",
   "session.where": "执行位置",
   "session.imageNotUsed": "本机执行，未使用镜像",
-  "scan.inputHint": "Enter 发送 · Shift+Enter 换行 · 在宿主对话框里发送也会进入这里",
+  "scan.inputHint": "从这里发出也会进对话区；面板不重复显示文字，只记命令与结果。",
   "stats.title": "统计",
   "mcp.title": "连接",
   "mcp.empty": "还没有连接 MCP 服务",
@@ -105,5 +105,7 @@
   "scan.idle": "待命",
   "log.sendFailed": "没能把指令交给宿主对话",
   "log.noWorkspace": "先在宿主里打开一个工作目录，面板才能替你开一轮对话",
-  "composer.resize": "拖动调整输入框高度（向上变大，也可用上下方向键）"
+  "composer.resize": "拖动调整输入框高度（向上变大，也可用上下方向键）",
+  "scan.traceTitle": "运行记录 · 命令与结果",
+  "scan.turnDivider": "第 {turn} 轮 · 这一轮说了什么在对话区"
 }

@@ -88,7 +88,7 @@
   "scan.live": "still running",
   "session.where": "Runs on",
   "session.imageNotUsed": "on this machine, no image",
-  "scan.inputHint": "Enter to send · Shift+Enter for a newline · messages from the host chat land here too",
+  "scan.inputHint": "Sent from here, it lands in the chat too; the panel shows commands and results, not prose.",
   "stats.title": "Stats",
   "mcp.title": "Connections",
   "mcp.empty": "No MCP servers connected yet",
@@ -105,5 +105,7 @@
   "scan.idle": "idle",
   "log.sendFailed": "could not hand that to the host conversation",
   "log.noWorkspace": "open a workspace folder in the host first, so this panel has a conversation to start",
-  "composer.resize": "Drag to resize the prompt box (up makes it taller; arrow keys work too)"
+  "composer.resize": "Drag to resize the prompt box (up makes it taller; arrow keys work too)",
+  "scan.traceTitle": "Run log · commands and results",
+  "scan.turnDivider": "turn {turn} · what was said lives in the chat"
 }

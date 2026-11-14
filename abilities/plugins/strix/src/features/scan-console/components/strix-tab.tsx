@@ -47,8 +47,6 @@ export interface StrixTabProps {
 	notes: readonly NoteSummary[];
 	coverage: readonly CoverageOutcome[];
 	mcp: readonly McpConnection[];
-	/** The host agent's answer arriving token by token. */
-	streaming?: string;
 	busy: boolean;
 	start: (prompt: string) => Promise<void>;
 	send: (text: string) => Promise<void>;
@@ -65,11 +63,9 @@ function blockedReason(t: (key: string) => string, model: ModelChoice | undefine
 	if (environment && environment.ready === false) return t("launch.blocked.docker");
 	return undefined;
 }
-
 export function StrixTab(props: StrixTabProps): React.ReactElement {
 	const { t, phase } = props;
 	const scanning = phase === "scanning" || phase === "done";
-
 	return (
 		<ConsoleBoundary t={t}>
 			{scanning ? (
@@ -86,7 +82,6 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					notes={props.notes}
 					coverage={props.coverage}
 					mcp={props.mcp}
-					{...(props.streaming ? { streaming: props.streaming } : {})}
 					trace={props.trace}
 					busy={props.busy}
 					onSend={(value) => void props.send(value)}

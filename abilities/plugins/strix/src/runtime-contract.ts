@@ -153,11 +153,13 @@ export interface CoverageOutcome {
 export interface TraceEntry {
 	id: string;
 	/**
-	 * `host` / `host-say` are turns typed and answered in Astravia's own composer: the
-	 * panel mirrors them so a scan driven from the conversation reads the same as one
-	 * driven from here (ADR strix-0003).
+	 * 只有三种：工具（命令与结果）、agent 的说明（`note`）、它自己写的结论（`say`）。
+	 *
+	 * 曾经还有 `host` / `host-say` / `user`：把宿主对话里的用户发言与 agent 回复抄进面板。
+	 * 那正是“两处回复一模一样”的来源，0.7.1 删除（ADR strix-0007）。现在即使想抄也
+	 * 抄不了：类型里没有这几个名字。
 	 */
-	kind: "tool" | "say" | "user" | "note" | "host" | "host-say";
+	kind: "tool" | "say" | "note";
 	/** For tools: the tool name. For chat: the message body. For notes: the line. */
 	label: string;
 	/** Arguments, exit code and duration, rendered under a tool name. */

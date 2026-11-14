@@ -39,7 +39,7 @@ npm run check           # typecheck + test + 服务冒烟
 | 方向 | 来源 | 用法 |
 |---|---|---|
 | **输入** | `ctx.conversation.sendPrompt` / `createSession` | 启动列与输入框的每句话都交给宿主会话（没有活跃会话时先按当前 cwd 建一个）；发不出去就 `log.sendFailed`，不自己开工 |
-| **输出：会话侧** | `ctx.conversation.on(...)` | `turn-start` / `message-added` / `message-updated`（流式正文）/ `tool-call-*`（哪个 `strix_*` 被调） |
+| **输出：会话侧** | `ctx.conversation.on(...)` | 只接 `turn-start` / `turn-end`（running/idle 与轮次分隔）与 `tool-call-*`（哪个 `strix_*` 被调）。**`message-*` 的文字不进面板**（ADR 0007） |
 | **输出：服务侧** | `/api/events`（`client.events`） | `strix_exec` 的命令、退出码、耗时、输出尾巴——只有持有容器的一侧知道 |
 | **事实** | `GET /api/state` | 每次工具结束/轮次结束重读 findings、计划、覆盖、笔记、沙箱 |
 
@@ -122,3 +122,4 @@ npm run check           # typecheck + test + 服务冒烟
 - 清单里**不要再写 `providers.cli`**：宿主 `arePluginCliProvidersReady()` 一旦不满足就会丢掉这整条 agent 贡献（技能 + MCP 服务器一起丢），而命令行不是本插件的依赖——技能库有 `agent/skills/strix/tooling/` 的随包副本。
 - `agent.mcpServers` 的 `type: "service"` 只有在服务就绪时才会物化成工具（`resolveServiceMcp` 返回 undefined 就跳过），所以 `activate()` 里必须先 `runtime.ensureReady()`；否则先建的会话永远看不到 `strix_*`。
 - 面板的屏幕由服务里的事实决定（`domain/assessment-presence.ts`），不是「组件看过消息没有」：宿主已经跑过一轮时面板必须直接进扫描屏。
+- **面板不画对话正文**（ADR 0007）：`TraceEntry.kind` 只有 `tool` / `say` / `note`，`message-*` 事件显式 return。要加回文字先读 0007——两个可滚区域就是用户抱怨的那份冗余。

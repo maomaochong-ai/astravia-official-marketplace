@@ -44,10 +44,8 @@ export interface ScanScreenProps {
 	mcp: readonly McpConnection[];
 	/** Folder name of the conversation workspace. */
 	workspace?: string;
-	/** The host conversation is generating a turn right now. */
+	/** The host conversation is generating a turn right now — drives running/idle only. */
 	hostStreaming: boolean;
-	/** The host agent's answer arriving token by token. */
-	streaming?: string;
 	busy: boolean;
 	onSend: (value: string) => void;
 	onStop: () => void;
@@ -80,7 +78,6 @@ export function ScanScreen({
 	mcp,
 	trace,
 	busy,
-	streaming,
 	onSend,
 	onStop,
 }: ScanScreenProps): React.ReactElement {
@@ -138,22 +135,15 @@ export function ScanScreen({
 
 			<div className="astra-strix-workbench-grid">
 				<section className="astra-strix-transcript">
+					{/* 标题说清这一栏是什么：运行记录，不是第二份对话。 */}
+					<h2 className="astra-strix-transcript-title">{t("scan.traceTitle")}</h2>
 					<div className="astra-strix-transcript-body" role="log" aria-live="polite" data-running={running ? "yes" : "no"}>
 						{trace.length ? (
-							trace.map((entry) => (
-								<TraceBlock
-									key={entry.id}
-									entry={entry}
-									hostLabel={t("trace.host")}
-									hostSayLabel={t("trace.hostSay")}
-								/>
-							))
+							trace.map((entry) => <TraceBlock key={entry.id} entry={entry} />)
 						) : (
 							<p className="astra-strix-empty">{emptyHint}</p>
 						)}
-						{/* The host agent's answer as it arrives: the panel's own output is this
-						    text, so it has to be visible while it is being written. */}
-						{streaming ? <p className="astra-strix-say astra-strix-streaming">{streaming}</p> : null}
+						{/* 这里不再画 agent 的回复：它在对话区，而且是带 markdown 的那份。 */}
 						{/* A live caret: without it a quiet stretch reads as "the run died". The timer
 						    says the same thing in words for anyone who misses the blink. */}
 						{running ? (

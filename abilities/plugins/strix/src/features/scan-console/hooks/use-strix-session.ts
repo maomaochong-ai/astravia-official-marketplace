@@ -21,12 +21,11 @@
  * and the plugin's job is to show the assessment as it happens and to hand the operator's
  * words to the only agent that can act on them.
  */
-
+import { evidenceRow, isServiceNarrated, toolRow, turnDivider } from "../../../domain/conversation-projection";
 import type { ConversationEvent, ConversationState } from "@astravia-org/plugin-sdk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BridgeClient } from "../../../domain/bridge-client";
 import { hasOpenAssessment } from "../../../domain/assessment-presence";
-import { evidenceRow, hostRowFor, isServiceNarrated, toolRow } from "../../../domain/conversation-projection";
 import { resolveModel, workspaceLabel } from "../../../domain/host-sync";
 import { isStrixEngaged } from "../../../domain/engagement";
 import { writeSnapshot, belongsTo, readSnapshot } from "../session-store";
@@ -140,7 +139,6 @@ export function useStrixSession({
 	const [notes, setNotes] = useState<NoteSummary[]>(initial?.notes ?? []);
 	const [coverage, setCoverage] = useState<CoverageOutcome[]>(initial?.coverage ?? []);
 	const [mcp, setMcp] = useState<McpConnection[]>(initial?.mcp ?? []);
-	const [streaming, setStreaming] = useState<string>("");
 	const [hostStreaming, setHostStreaming] = useState<boolean>(Boolean(conversation?.isStreaming));
 	const [submitting, setSubmitting] = useState(false);
 	/** 接续已有评估只提示一次：refresh 会被轮次反复叫到。 */
@@ -152,7 +150,6 @@ export function useStrixSession({
 	 */
 	const phaseRef = useRef<SessionPhase>(phase);
 	phaseRef.current = phase;
-
 	// Scope and memory (see session-store.ts). `mountedIn` is the conversation this panel
 	// was opened in: events from any other conversation are ignored, so project A's chat
 	// cannot drive project B's panel.
@@ -163,7 +160,8 @@ export function useStrixSession({
 	if (mountedIn.current === null && conversation?.id) mountedIn.current = conversation.id;
 	const conversationIdRef = useRef<string | undefined>(conversation?.id);
 	conversationIdRef.current = conversation?.id;
-	const streamingRef = useRef("");
+	/** 轮次计数：面板只用它给分隔行编号，不取正文。 */
+	const turnRef = useRef(0);
 	const seq = useRef(0);
 
 	// The conversation's model is the authority; recomputed on every conversation change
@@ -333,11 +331,16 @@ export function useStrixSession({
 	);
 
 	/**
-	 * The host conversation → this panel.
+	 * The host conversation → this panel, evidence only.
 	 *
-	 * One subscription, four kinds of event, and the rule for each is "show what the
-	 * agent is doing, do not react to it": the panel never starts a run of its own, which
-	 * is what used to make two agents race for one sandbox (ADR strix-0003).
+	 * 分界（ADR strix-0007）：**对话是说话的地方，面板是看现场的地方**。宿主聊天区已经
+	 * 把用户的话与 agent 的回复渲染完了（markdown、可复制、可滚回去），面板再把同一段文字
+	 * 画一遍就是第二份同样内容的渲染——用户看到的「冗余」正是这个。
+	 *
+	 * 所以这里只接两类事件：
+	 *  - `tool-call-*`：哪一步在跑、成没成——且只对“服务不负责叙述”的工具画；
+	 *  - `turn-start/end`：轮次边界与 running/idle 状态（不取正文）。
+	 * `message-*` 里的文字一律不进面板：它属于对话，归属宿主。
 	 */
 	useEffect(() => {
 		const subscription = subscribe((event) => {
@@ -345,47 +348,24 @@ export function useStrixSession({
 			if (!belongsTo(mountedIn.current, conversationIdRef.current)) return;
 
 			if (event.type === "turn-start") {
+				turnRef.current += 1;
 				// 胶囊开着说明用户把这一轮交给了 Strix：宿主一开始跑，面板就离开首屏跟上去。
-				if (isStrixEngaged() && phaseRef.current !== "scanning") {
-					setPhase("scanning");
-					pushTrace({ kind: "note", label: t("scan.followingHost") });
-				}
+				if (isStrixEngaged() && phaseRef.current !== "scanning") setPhase("scanning");
+				// 一条分隔行说清“这是第几轮、说明在对话里”，而不是把回复再抄一遍。
+				pushTrace(turnDivider(turnRef.current, t("scan.turnDivider")));
 				setHostStreaming(true);
 				return;
 			}
 
 			if (event.type === "turn-end") {
-				// A turn that ended with streamed text but no `message-added` still has a
-				// conclusion worth keeping; an aborted turn leaves nothing to keep.
-				const pending = streamingRef.current.trim();
-				if (pending) {
-					pushTrace({ kind: "host-say", label: streamingRef.current });
-					streamingRef.current = "";
-					setStreaming("");
-				}
 				setHostStreaming(false);
 				void refresh();
 				return;
 			}
 
-			if (event.type === "message-updated") {
-				// Token-by-token: this is the panel producing output as the host AI does.
-				streamingRef.current += event.delta;
-				setStreaming(streamingRef.current);
-				return;
-			}
-
-			if (event.type === "message-added") {
-				const row = hostRowFor(event.message);
-				if (!row) return;
-				if (row.kind === "host-say") {
-					// The final text supersedes whatever streamed; one row, not two.
-					streamingRef.current = "";
-					setStreaming("");
-				}
-				pushTrace(row);
-				return;
-			}
+			// 文字属于对话，不属于面板。显式忽略而不是默默不处理：读到这里的人要知道
+			// 不渲染是决定，不是遗漏。
+			if (event.type === "message-added" || event.type === "message-updated") return;
 
 			if (event.type === "tool-call-start") {
 				// `strix_exec` is narrated by the service, which has the output. Drawing it
@@ -432,7 +412,7 @@ export function useStrixSession({
 					note(t("log.sendFailed"), "error");
 					return false;
 				}
-				pushTrace({ kind: "user", label: value });
+				// 不在面板里回显这句：宿主对话已经渲染了它，面板再画一次就是冗余（ADR 0007）。
 				if (phaseRef.current !== "scanning") setPhase("scanning");
 				return true;
 			} catch (cause) {
@@ -491,7 +471,6 @@ export function useStrixSession({
 			modelFromConversation: resolved.fromConversation,
 			workspace: workspaceLabel(conversation?.cwd),
 			hostStreaming,
-			...(streaming ? { streaming } : {}),
 			busy: submitting || hostStreaming,
 			start,
 			send,
@@ -513,7 +492,6 @@ export function useStrixSession({
 			resolved,
 			conversation?.cwd,
 			hostStreaming,
-			streaming,
 			submitting,
 			start,
 			send,

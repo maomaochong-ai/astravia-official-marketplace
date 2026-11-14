@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
+import * as projection from "../domain/conversation-projection";
 import {
 	evidenceRow,
-	hostRowFor,
 	isServiceNarrated,
 	strixToolName,
 	toolRow,
+	turnDivider,
 } from "../domain/conversation-projection";
 
 /**
@@ -75,16 +76,19 @@ describe("rows", () => {
 		expect(evidenceRow({ event: "tool_end", tool: "strix_report", ok: true })).toBeUndefined();
 	});
 
-	it("labels the conversation's own messages", () => {
-		expect(hostRowFor({ id: "1", role: "user", text: "scan a.test" })).toEqual({ kind: "host", label: "scan a.test" });
-		expect(hostRowFor({ id: "2", role: "assistant", text: "one IDOR filed" })).toEqual({
-			kind: "host-say",
-			label: "one IDOR filed",
-		});
-		expect(hostRowFor({ id: "3", role: "compaction", text: "context compacted" })).toEqual({
+	it("never turns conversation prose into a row (ADR 0007)", () => {
+		// 面板不画用户的话与 agent 的回复：宿主聊天区已经渲染了它们，再画一遍就是
+		// 用户看到的那份「冗余」。这里断言的是“没有这个出口”。
+		expect(Object.keys(projection)).not.toContain("hostRowFor");
+		// 事件层也不再为这两类文字产出任何东西。
+		expect(projection.toolRow({ tool: "read_file", args: { path: "/etc/hosts" } })).toBeUndefined();
+	});
+
+	it("gives every turn one divider that points at the chat", () => {
+		expect(turnDivider(1, "turn {turn} · the words are in the chat")).toEqual({
 			kind: "note",
-			label: "context compacted",
+			label: "turn 1 · the words are in the chat",
 		});
-		expect(hostRowFor({ id: "4", role: "assistant", text: "   " })).toBeUndefined();
+		expect(turnDivider(7, "第 {turn} 轮").label).toBe("第 7 轮");
 	});
 });

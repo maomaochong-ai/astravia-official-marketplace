@@ -89,7 +89,8 @@ describe("the panel follows the host conversation", () => {
 	it("leaves the launch screen when the host turn starts with the capsule on", () => {
 		expect(session).toContain('event.type === "turn-start"');
 		expect(session).toContain("isStrixEngaged()");
-		expect(session).toContain('t("scan.followingHost")');
+		// 离开首屏的同时只留一条轮次分隔行，不抄正文（ADR 0007）。
+		expect(session).toContain('t("scan.turnDivider")');
 	});
 
 	it("reopens on the scan screen when the service already holds an assessment", () => {
@@ -117,9 +118,11 @@ describe("the panel follows the host conversation", () => {
 });
 
 describe("the transcript reads as a report, not a dump", () => {
-	it("labels host rows instead of rendering them as anonymous text", () => {
-		expect(trace).toContain("hostSayLabel");
-		expect(trace).toContain("astra-strix-host");
+	it("renders no host rows at all (ADR 0007)", () => {
+		// 面板不再画用户发言与 agent 回复：宿主聊天区已经画了。这里断言的是“没有这个出口”，
+		// 而不是把标签换了个名字。
+		expect(trace).not.toContain("hostSayLabel");
+		expect(trace).not.toContain("astra-strix-host");
 	});
 
 	it("splits prose into paragraphs and caps collapsed tool output", () => {
