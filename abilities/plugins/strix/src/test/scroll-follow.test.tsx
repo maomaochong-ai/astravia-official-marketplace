@@ -1,5 +1,5 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 import { nextFollow } from "../features/scan-console/scroll-stick";
 
 const conversationState = {
@@ -18,6 +18,21 @@ vi.mock("@astravia-org/plugin-sdk", async (importOriginal) => {
 import plugin from "../index";
 
 afterEach(cleanup);
+
+// rAF 同步化：这些测试断言的是滚动位置，不是帧时序；并行负载下等帧会偶发超时。
+const realRaf = globalThis.requestAnimationFrame;
+const realCancel = globalThis.cancelAnimationFrame;
+beforeEach(() => {
+	globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+		callback(0);
+		return 0;
+	}) as typeof requestAnimationFrame;
+	globalThis.cancelAnimationFrame = (() => undefined) as typeof cancelAnimationFrame;
+});
+afterEach(() => {
+	globalThis.requestAnimationFrame = realRaf;
+	globalThis.cancelAnimationFrame = realCancel;
+});
 
 /**
  * 「流式输出时内容往上跑，永远看到开头」——必现 bug。

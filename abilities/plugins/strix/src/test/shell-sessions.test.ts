@@ -10,7 +10,8 @@ import { ShellSessions } from "../service/shell-sessions";
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function waitFor(check: () => boolean, timeoutMs = 4000): Promise<void> {
+/** 并行跑时 spawn 一个 node 进程可能要几秒：给够时间，别把 CPU 负载当成逻辑失败。 */
+async function waitFor(check: () => boolean, timeoutMs = 20_000): Promise<void> {
 	const deadline = Date.now() + timeoutMs;
 	while (Date.now() < deadline) {
 		if (check()) return;

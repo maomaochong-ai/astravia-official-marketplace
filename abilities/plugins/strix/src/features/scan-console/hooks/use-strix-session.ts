@@ -169,7 +169,18 @@ export function useStrixSession({
 	conversationIdRef.current = conversation?.id;
 	/** 轮次计数：面板只用它给分隔行编号，不取正文。 */
 	const turnRef = useRef(0);
-	const seq = useRef(0);
+	/**
+	 * 事件序号的起点：接续快照时从已有 id 的最大值继续。
+	 *
+	 * 不接续就会生成重复 key（`e1` 已经在水合的轨迹里，新行又从 `e1` 开始）——React 会警告
+	 * 并可能丢行。真机上切标签页回来就走到这条路径。
+	 */
+	const seq = useRef(
+		(initial?.trace ?? []).reduce((max, entry) => {
+			const value = Number.parseInt(String(entry.id).replace(/^e/, ""), 10);
+			return Number.isFinite(value) && value > max ? value : max;
+		}, 0),
+	);
 
 	// The conversation's model is the authority; recomputed on every conversation change
 	// so a model switch in the chat moves this panel with it.

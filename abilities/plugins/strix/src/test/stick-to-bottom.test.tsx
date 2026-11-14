@@ -1,5 +1,5 @@
 import { act, fireEvent, render } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, beforeEach } from "vitest";
 import { useStickToBottom } from "../features/scan-console/hooks/use-stick-to-bottom";
 import { nextFollow } from "../features/scan-console/scroll-stick";
 
