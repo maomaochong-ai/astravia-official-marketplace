@@ -104,7 +104,6 @@
   "skill.entry.description": "Drive the sandbox and its 26 pentest tools straight from the chat: evidence first, findings after.",
   "scan.idle": "idle",
   "log.sendFailed": "could not hand that to the host conversation",
-  "log.noWorkspace": "open a workspace folder in the host first, so this panel has a conversation to start",
   "composer.resize": "Drag to resize the prompt box (up makes it taller; arrow keys work too)",
   "scan.traceTitle": "Run log · commands and results",
   "scan.turnDivider": "turn {turn} · what was said lives in the chat",
@@ -131,5 +130,6 @@
   "log.imagePulled": "image pulled — the container environment is ready",
   "log.imagePullFailed": "image pull failed — see the output below",
   "launch.modelScope": "this conversation",
-  "log.handedToHost": "handed to the host composer — press Enter and the host opens the session in its own folder"
+  "log.handedToHost": "handed to the host composer — press Enter and the host opens the session in its own folder",
+  "log.newSessionNoFolder": "No folder yet: write your first line above and the host creates the conversation in the current folder"
 }

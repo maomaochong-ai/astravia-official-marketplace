@@ -50,9 +50,10 @@ describe("composer hands the prompt to the conversation", () => {
 
 	it("says so, and does nothing else, when sending fails", () => {
 		expect(session).toContain('note(t("log.sendFailed"), "error")');
-		expect(session).toContain('note(t("log.noWorkspace"), "error")');
+		// 没有目录不是失败：话交给宿主输入框，由宿主按当前目录建会话（1.0.4/1.0.6）。
+		expect(session).toContain('note(t("log.handedToHost"), "ok")');
 		expect(zh["log.sendFailed"]).toBeTruthy();
-		expect(zh["log.noWorkspace"]).toBeTruthy();
+		expect(zh["log.handedToHost"]).toBeTruthy();
 	});
 });
 

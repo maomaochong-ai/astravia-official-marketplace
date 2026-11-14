@@ -4,7 +4,8 @@
  * Shape and wording are upstream's (setup.go:setupBody): wordmark, tagline, the
  * composer with its model line inside the panel, the feedback log under it, and
  * the key hints closed by the version. What differs is who the model is: the chip
- * shows the host's model, because the loop runs on `ctx.ai`.
+ * shows the host conversation's model. There is no model call in this plugin — the host
+ * agent owns the loop and reaches us through the `strix_*` MCP tools (ADR strix-0003).
  *
  * The panel is a terminal surface - black, monospace, green accents - rather than
  * a host-themed card. That is the point of this tab: it looks like `strix` opening

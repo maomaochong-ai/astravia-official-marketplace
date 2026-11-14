@@ -26,6 +26,7 @@ import { foldTrace, type TraceDraft } from "../../../domain/trace-log";
 import type { ConversationEvent, ConversationState } from "@astravia-org/plugin-sdk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BridgeClient } from "../../../domain/bridge-client";
+import { isStrixEngaged, markPanelSeen } from "../../../domain/engagement";
 import { hasOpenAssessment } from "../../../domain/assessment-presence";
 import { resolveModel, workspaceLabel } from "../../../domain/host-sync";
 import { writeSnapshot, belongsTo, readSnapshot } from "../session-store";
@@ -159,7 +160,15 @@ export function useStrixSession({
 	// Read once, before the first paint: a remounted tab rehydrates instead of showing
 	// the launch column while its assessment is still open behind it (session-store.ts).
 	const initial = useRef(readSnapshot(conversation?.id)).current;
-	const [phase, setPhase] = useState<SessionPhase>(initial?.phase ?? "booting");
+	// 面板至少在这个会话里出现过一次：activate() 的抢焦点订阅靠它排除
+	// “在 A 会话开着的胶囊把 B 会话的面板拽出来”（engagement.ts）。
+	markPanelSeen(conversation?.id);
+	// 宿主正在跑这一轮的时候挂载：首屏是给“还没开始”的，不是给“正在跑”的。
+	// 快照里第一轮往往还是 `setup`（agent 还没有任何 finding/todo 可查），只信快照会把
+	// 正在跑的评估画成首屏——用户把那看成“没跳过去”（1.0.6）。
+	const [phase, setPhase] = useState<SessionPhase>(
+		conversation?.isStreaming ? "scanning" : initial?.phase ?? "booting",
+	);
 	const [log, setLog] = useState<LogLine[]>([]);
 	const [boot, setBoot] = useState<{ state: "connecting" | "ready" | "failed"; detail?: string }>({
 		state: "connecting",
@@ -423,8 +432,10 @@ export function useStrixSession({
 				// 打字）面板就停在首屏，用户看到的就是「发出去了，面板没动」。面板挂在本对话上、
 				// 这一轮又是本对话在跑，两个事实合起来就够了，与胶囊无关。
 				//
-				// 唯一例外是「返回首屏」那颗按钮（ADR 0014）：pin 立着就不拓。它是用户点出来的
-				// 一次查看，所以只要没点过它，自动跟屏就不该被其他条件拦住。
+				// 例外是「返回首屏」那颗按钮（ADR 0014）：pin 立着就不拓。但 pin 只算一次查看，
+				// 而胶囊开着意味着用户把这一轮交给了 Strix——那份“先看一眼”的意图到此为止，
+				// 否则会出现“面板被带到前面、却还画着首屏”这种自相矛盾的落地。
+				if (isStrixEngaged()) launchPinned.current = false;
 				if (!launchPinned.current) {
 					setShowLaunch(false);
 					if (phaseRef.current !== "scanning") setPhase("scanning");
@@ -523,7 +534,7 @@ export function useStrixSession({
 				setSubmitting(false);
 			}
 		},
-		[createSession, note, pushTrace, sendPrompt, t],
+		[createSession, insertText, note, pushTrace, sendPrompt, t, workspaceRoot],
 	);
 
 	const setEnvironmentMode = useCallback(
@@ -575,7 +586,11 @@ export function useStrixSession({
 	const newSession = useCallback(async () => {
 		const cwd = cwdRef.current ?? workspaceRoot?.() ?? null;
 		if (!cwd) {
-			note(t("log.noWorkspace"), "error");
+			// 拿不到目录不是错误，也不是用户的问题：宿主自己的“新会话页”不需要预先知道
+			// 目录——第一句话发出去它才建会话。所以这里不报错，也不假装建好了：
+			// 把面板放回首屏（那里能直接写第一句话），并说清楚接下来会怎样。
+			setShowLaunch(true);
+			note(t("log.newSessionNoFolder"), "ok");
 			return;
 		}
 		try {

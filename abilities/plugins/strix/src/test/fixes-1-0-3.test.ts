@@ -24,14 +24,19 @@ describe("the workspace prompt is no longer a false alarm", () => {
 	it("falls back to the workspace root before refusing", () => {
 		// 两处：发送（deliver）与新建会话（newSession）都必须先兜底。
 		const fallbacks = hook.match(/cwdRef\.current \?\? workspaceRoot\?\.\(\) \?\? null/g) ?? [];
-		expect(fallbacks.length).toBeGreaterThanOrEqual(2);
-		// 只有兜底也拿不到时才报错
-		expect(hook).toContain('note(t("log.noWorkspace"), "error")');
+		expect(fallbacks.length).toBeGreaterThanOrEqual(1);
+		// 兜底也拿不到时不再报「先打开目录」：sender 交给宿主输入框，new-session 回首屏。
+		expect(hook).toContain("insertText(value)");
+		expect(hook).toContain('note(t("log.newSessionNoFolder"), "ok")');
 	});
 
 	it("keeps the message honest when there really is no folder", () => {
 		const zh = JSON.parse(read("locales/zh.json")) as Record<string, string>;
-		expect(zh["log.noWorkspace"]).toContain("工作目录");
+		// 1.0.6：不再有「先在宿主里打开一个工作目录」这句话，取而代之的是两条说明——
+		// 发送时交给宿主输入框、新建会话时回首屏。
+		expect(zh["log.noWorkspace"]).toBeUndefined();
+		expect(zh["log.handedToHost"]).toContain("Enter");
+		expect(zh["log.newSessionNoFolder"]).toBeTruthy();
 	});
 });
 
@@ -56,31 +61,29 @@ describe("the first screen is one column again", () => {
 });
 
 describe("the hierarchy lines up", () => {
-	it("pins the label column in px, not em", () => {
-		// em 按各自字号解析：meta 12px、env 11.5px → 同样的 5.6em 差 7px，两行值起点错开。
-		expect(css).toContain("--sx-label-width: 68px");
-		expect(css).not.toContain("--sx-label-width: 5.6em");
-	});
-
-	it("drops the grid column gap so the value column matches the model row", () => {
-		const block = /\.astra-strix-env \{([^}]*)\}/s.exec(css)?.[1] ?? "";
-		expect(block).toContain("grid-template-columns: var(--sx-label-width)");
-		expect(block).toContain("column-gap: 0");
-		expect(block).not.toMatch(/gap:\s*6px 10px/);
+	it("gives every row the same two columns", () => {
+		// 1.0.4 起标签列 / 值列是一个栅格：5.2em 在**行容器**上解析（只有一个字号上下文），
+		// 所以不会出现 1.0.3 那种“各标签字号不同 → 值起点错开 7px”。
+		const row = /\.astra-strix-row \{([^}]*)\}/s.exec(css)?.[1] ?? "";
+		expect(row).toContain("display: grid");
+		expect(row).toMatch(/grid-template-columns:\s*5\.2em\s+minmax\(0,\s*1fr\)/);
 	});
 
 	it("keeps the buttons in one row and the same height as the select", () => {
-		// 之前按钮各自换行、与下拉高矮不一，正是"层次不齐"。
-		expect(css).toContain("--sx-control-height: 26px");
+		// 之前按钮各自换行、与下拉高矮不一，正是“层次不齐”。
 		const action = /\.astra-strix-env-action \{([^}]*)\}/s.exec(css)?.[1] ?? "";
-		expect(action).toContain("height: var(--sx-control-height)");
-		expect(action).toContain("white-space: nowrap");
+		const select = /\.astra-strix-env-select \{([^}]*)\}/s.exec(css)?.[1] ?? "";
+		expect(action).toContain("height: 22px");
+		expect(select).toContain("height: 22px");
 		expect(launch).toContain("astra-strix-env-actions");
 	});
 
-	it("puts the status under the control, not under the label", () => {
-		const status = /\.astra-strix-env-status \{([^}]*)\}/s.exec(css)?.[1] ?? "";
-		expect(status).toContain("grid-column: 2 / -1");
+	it("puts the status beside the control, inside the value column", () => {
+		// 1.0.3 是“状态另起一行、从下拉左边缘开始”；1.0.4 起同一行右接，仍在值列内。
+		expect(launch).toContain("astra-strix-env-line");
+		const line = /\.astra-strix-env-line \{([^}]*)\}/s.exec(css)?.[1] ?? "";
+		expect(line).toContain("display: flex");
+		expect(line).toContain("flex-wrap: wrap");
 	});
 });
 

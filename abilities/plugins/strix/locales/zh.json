@@ -104,7 +104,6 @@
   "skill.entry.description": "在对话里直接驱动沙箱与 26 个渗透工具：先取证，再记录问题。",
   "scan.idle": "待命",
   "log.sendFailed": "没能把指令交给宿主对话",
-  "log.noWorkspace": "先在宿主里打开一个工作目录，面板才能替你开一轮对话",
   "composer.resize": "拖动调整输入框高度（向上变大，也可用上下方向键）",
   "scan.traceTitle": "运行记录 · 命令与结果",
   "scan.turnDivider": "第 {turn} 轮 · 这一轮说了什么在对话区",
@@ -131,5 +130,6 @@
   "log.imagePulled": "镜像已拉取，可以切到容器了",
   "log.imagePullFailed": "拉取镜像失败，看下面的输出",
   "launch.modelScope": "当前对话",
-  "log.handedToHost": "已放进宿主输入框：按 Enter 就开始（宿主会按当前目录建会话）"
+  "log.handedToHost": "已放进宿主输入框：按 Enter 就开始（宿主会按当前目录建会话）",
+  "log.newSessionNoFolder": "还没有可用的目录：在上面的输入框里写下第一句话，宿主会按当前目录建会话"
 }

@@ -140,9 +140,17 @@ npm run check           # typecheck + test + 服务冒烟
 - **行首不要挂装饰圆点**（1.0.5）：`●` / `○` 只给状态（桥接就绪、工具进行中、todo 状态）。
   模型名、环境名前不加点。文案里也不要用括号补充说明（`容器（docker）` → `容器`），
   括号里的信息要么单独成为标签，要么放进状态行。
-- **切屏条件不要掺胶囊状态**（1.0.5）：`turn-start` 只问一句“用户按过返回首屏吗”。
-  旧实现还要 `isStrixEngaged()`，胶囊没开就停在首屏，看起来像“发出去了面板没反应”。
-  `deliver` 成功自己也切屏并销 pin——用户按的是“开始”，不是“继续看首屏”。
+- **“面板画什么”不要掺胶囊状态，“抢不抢焦点”必须掺**（1.0.5 / 1.0.6）。两件事常被当成一件：
+  - `phase`（画首屏还是工作台）：只问“用户按过返回首屏吗”。旧实现还要 `isStrixEngaged()`，
+    胶囊没开就停在首屏，看起来像“发出去了面板没反应”。`deliver` 成功自己也切屏并销 pin。
+  - 把标签卡带到前面（`openActivityTab`）：只在胶囊开着时做——那是“这一轮交给我”。
+    但还要多一道 `hasPanelBeenSeen(conversationId)`：胶囊在状态机里也是模块级布尔，
+    不然在 A 会话开着胶囊会让 **B 会话**的面板被拽出来。
+  - 抢焦点的订阅必须在 `activate()` 里，不在组件里：docked 面板关着时插件子树整体不挂载
+    （`ActivityPanelView` 的 `renderDockedPanel = model.isOpen`），组件根本收不到事件。
+  - 调 `openActivityTab` 时要传 `cwd`：宿主在没有活动工作区时是**静默跳过**的
+    （`resolveActivityTabScopeKey` 返回 null → `no-activity-workspace`）。不要传 `width`，
+    那是把用户手动拖的宽度每轮覆掉，不叫“跳过去”。
 - **环境下拉要有自己的底色**：它压在磷光绿背景上，透明背景会让字看不清；`option` 也要单独设色。
 - **工具行必须家族化**（ADR 0009）：新增工具要在 `features/scan-console/tool-presentation.ts` 登记字形/色调/是否可展开；未登记落到 generic（上游同名回落），`tool-presentation.test.ts` 守着覆盖率。不要再回到“一个通用块画 35 个工具”——那是上一轮与上游最大的界面差距。
 - **外观口径（ADR 0011）**：磷光是 `.astra-strix-term.astra-strix-phosphor` 的变量覆盖，不要直接把背景写成黑色；

@@ -3,7 +3,7 @@ import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { definePlugin, useActiveConversation } from "@astravia-org/plugin-sdk";
 import { useEffect, useRef } from "react";
 import { createBridgeClient } from "./domain/bridge-client";
-import { setStrixEngaged } from "./domain/engagement";
+import { hasPanelBeenSeen, isStrixEngaged, setStrixEngaged } from "./domain/engagement";
 import { StrixTab } from "./features/scan-console/components/strix-tab";
 import { useStrixSession } from "./features/scan-console/hooks/use-strix-session";
 import { createServiceRuntime, type ServiceRuntime } from "./runtime";
@@ -167,6 +167,40 @@ export default definePlugin({
 			),
 		});
 
+		/**
+		 * 轮次一开始就把面板带到前面（1.0.6）。
+		 *
+		 * 订阅挂在这里而不是组件里：宿主的 docked 面板关着时整棵子树是不挂载的
+		 * （ActivityPanelView `renderDockedPanel = model.isOpen`），面板根本收不到事件，
+		 * 也就无法自己跳出来。
+		 *
+		 * 三道门（1.0.6 审查后）：
+		 *  1. 胶囊开着——这一轮交给了 Strix；没开就不是插件的活，抢焦点就是骚扰。
+		 *  2. `hasPanelBeenSeen`——这个会话里面板确实开过。胶囊在状态机里也是个模块级布尔，
+		 *     不然在 A 会话开着的胶囊会让 B 会话的面板被拽出来。
+		 *  3. 传当前会话的 cwd——宿主在“没有活动工作区”时是**静默跳过**的
+		 *     （plugin-ui-context: resolveActivityTabScopeKey 返回 null → no-activity-workspace），
+		 *     不传 cwd 就只能在已有工作区的会话里生效，新会话页永远跳不过去。
+		 *
+		 * 不带 `width`：`openActivityTab` 已经把“上栏 + 激活 + 展开”做完了，再指定 max
+		 * 等于每轮把用户手动拖的宽度覆掉，那不是“跳过去”。
+		 */
+		let activeConversation: { id: string | null; cwd: string | null } = { id: null, cwd: null };
+		const turnFocus: Disposable = ctx.conversation.on((event) => {
+			if (event.type === "conversation-changed") {
+				activeConversation = { id: event.conversation.id, cwd: event.conversation.cwd };
+				return;
+			}
+			if (event.type !== "turn-start") return;
+			if (!isStrixEngaged()) return;
+			if (!hasPanelBeenSeen(activeConversation.id)) return;
+			try {
+				ctx.ui.openActivityTab(TAB_ID, activeConversation.cwd ? { cwd: activeConversation.cwd } : undefined);
+			} catch {
+				// 老宿主没有这个方法：拿不到焦点不影响评估本身，不报错。
+			}
+		});
+
 		const action: Disposable = ctx.ui.registerInputAction({
 			id: ACTION_ID,
 			label: ctx.i18n.t("action.label"),
@@ -200,6 +234,7 @@ export default definePlugin({
 		return {
 			dispose(): void {
 				setStrixEngaged(false);
+				turnFocus.dispose();
 				action.dispose();
 				tab.dispose();
 				runtime.dispose();

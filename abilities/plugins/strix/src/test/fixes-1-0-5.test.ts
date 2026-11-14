@@ -22,7 +22,8 @@ const en = JSON.parse(read("locales/en.json")) as Record<string, string>;
 describe("the launch column is centred, not stretched", () => {
 	it("caps the whole block in pixels instead of ch", () => {
 		// ch 跟着字体走：CJK 等宽下 1ch ≈ 13px，72ch 就快一屏了。
-		const rule = /\.astra-strix-term\.astra-strix-launch-surface > \.astra-strix-launch\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+		// 宽度的 px 上限在基规则上（1.0.6 把两条合成一条）：不再有单独覆盖块。
+		const rule = /\.astra-strix-launch \{([\s\S]*?)\n\}/.exec(css)?.[1] ?? "";
 		expect(rule).toMatch(/width:\s*min\(\s*\d+px\s*,\s*100%\s*\)/);
 		expect(rule).toMatch(/margin:\s*auto/);
 	});

@@ -99,7 +99,9 @@ describe("navigation and instances (ADR 0014)", () => {
 	it("creates a new conversation in the current folder instead of guessing one", () => {
 		const hook = readFileSync(join(plugin, "src/features/scan-console/hooks/use-strix-session.ts"), "utf8");
 		expect(hook).toContain("const newSession");
-		expect(hook).toContain('note(t("log.noWorkspace"), "error")');
+		expect(hook).toContain("await createSession(cwd)");
+		// 拿不到目录时不报错（1.0.6）：回首屏，第一句话由宿主建会话。
+		expect(hook).toContain('note(t("log.newSessionNoFolder"), "ok")');
 	});
 
 	it("renders both navigation buttons on the workbench band", () => {

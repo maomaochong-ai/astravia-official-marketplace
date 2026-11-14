@@ -91,7 +91,10 @@
 	display: flex;
 	flex-direction: column;
 	gap: clamp(12px, 2.4vh, 18px);
-	width: min(72ch, 100%);
+	/* 宽度给 px 上限，不要用 ch：CJK 等宽字体下 1ch ≈ 13px，72ch ≈ 940px，
+	   一整列几乎占满面板，两侧只剩几十像素——看起来就是"没居中"（1.0.5）。
+	   行为 72ch 的可读性上限留在正文行上（.astra-strix-rows），整块只给 px。 */
+	width: min(680px, 100%);
 	/* 垂直/水平居中靠 auto 外边距，**不能**再给 min-height: 100%。
 	   子项一旦被抬到和容器一样高，自由空间就是 0，auto 外边距无处可分配，
 	   于是内容贴在顶部、下面留一大片空——0.6.2 截图里就是这个样子。
@@ -1595,13 +1598,6 @@
 	color: var(--sx-amber);
 }
 
-/* 标签列宽与环境下拉的标签列共用一个变量：两行的值起点才会在一条竖线上。 */
-.astra-strix-meta-label {
-	display: inline-block;
-	min-width: var(--sx-label-width, 68px);
-	color: var(--sx-dim);
-}
-
 .astra-strix-meta-name {
 	color: var(--sx-text);
 	font-weight: 600;
@@ -1620,116 +1616,6 @@
 	font-size: 11.5px;
 	color: var(--sx-green);
 }
-
-/* ---- 环境下拉：三态（host / 缺 docker / 缺镜像 / 就绪） ----------------------
-   排布改成两行网格，而不是一条会换行的 flex：
-     「执行环境  [容器（docker）]        [拉取镜像] [刷新环境]」
-     「          docker 已就绪 · 沙箱镜像未拉取                」
-   为什么：flex 换行时"刷新环境"会掉到下一行、按钮与下拉高矮不一，看起来层次不齐（真机截图）。
-   标签列用固定宽度，与上面"模型"那一行的值起点对齐。 */
-.astra-strix-launch {
-	/* 用 px 而不是 em：em 按各自字号解析，两个标签的字号不同会错开 7px。 */
-	--sx-label-width: 68px;
-	--sx-control-height: 26px;
-}
-
-.astra-strix-meta-label,
-.astra-strix-env-label {
-	display: inline-block;
-	min-width: var(--sx-label-width);
-	color: var(--sx-dim);
-}
-
-.astra-strix-env {
-	display: grid;
-	grid-template-columns: var(--sx-label-width) auto minmax(0, 1fr);
-	align-items: center;
-	/* 列间距必须为 0：否则 68px 标签列 + 10px gap = 78px，比模型行的 68px 多出一截。 */
-	column-gap: 0;
-	row-gap: 6px;
-	font-size: 11.5px;
-}
-
-.astra-strix-env-label {
-	margin: 0;
-}
-
-.astra-strix-env-select {
-	appearance: none;
-	height: var(--sx-control-height);
-	padding: 0 24px 0 9px;
-	border: 1px solid color-mix(in srgb, var(--sx-green) 45%, transparent);
-	border-radius: 6px;
-	background-color: color-mix(in srgb, #04120a 88%, transparent);
-	color: var(--sx-white, #d1fae5);
-	font: inherit;
-	font-size: 11.5px;
-	line-height: 1;
-	cursor: pointer;
-	background-image: linear-gradient(45deg, transparent 50%, var(--sx-green) 50%),
-		linear-gradient(135deg, var(--sx-green) 50%, transparent 50%);
-	background-position: calc(100% - 13px) 54%, calc(100% - 9px) 54%;
-	background-size: 4px 4px, 4px 4px;
-	background-repeat: no-repeat;
-}
-
-.astra-strix-env-select option {
-	background-color: #04120a;
-	color: #d1fae5;
-}
-
-.astra-strix-env-select:focus-visible {
-	outline: 1px solid var(--sx-green);
-	outline-offset: 1px;
-}
-
-.astra-strix-env-actions {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 6px;
-	justify-self: start;
-	margin-left: 10px;
-}
-
-.astra-strix-env-status {
-	/* 第二行：从下拉框的起点开始，与控件左边缘对齐，而不是从标签列开始。 */
-	grid-column: 2 / -1;
-	color: var(--sx-dim);
-	font-size: 11px;
-	line-height: 1.5;
-}
-
-.astra-strix-env[data-state="noDocker"] .astra-strix-env-status,
-.astra-strix-env[data-state="noImage"] .astra-strix-env-status {
-	color: var(--sx-amber);
-}
-
-.astra-strix-env[data-state="ready"] .astra-strix-env-status {
-	color: var(--sx-green);
-}
-
-.astra-strix-env-action {
-	display: inline-flex;
-	align-items: center;
-	height: var(--sx-control-height);
-	padding: 0 10px;
-	border: 1px solid color-mix(in srgb, var(--sx-green) 45%, transparent);
-	border-radius: 6px;
-	background: transparent;
-	color: var(--sx-green);
-	font: inherit;
-	font-size: 11px;
-	line-height: 1;
-	cursor: pointer;
-	white-space: nowrap;
-}
-
-.astra-strix-env-action:hover {
-	border-color: var(--sx-green);
-	background: color-mix(in srgb, var(--sx-green) 12%, transparent);
-}
-
 
 /* 拖拽手柄默认几乎不可见：它占 8px 命中区，但视觉上只在 hover/focus 时出现，
    否则会像一条悬在输入框上方的绿线（真机截图里就是这样）。 */
@@ -1775,7 +1661,8 @@
 	color: var(--sx-text);
 }
 
-.astra-strix-fact[data-missing="yes"] .astra-strix-row-value {
+/* 模型行缺模型时整行转琥珀：data-missing 在 row 上（1.0.4 起）。 */
+.astra-strix-row[data-missing="yes"] .astra-strix-row-value {
 	color: var(--sx-amber);
 }
 
@@ -1889,16 +1776,6 @@
 	align-items: center;
 	gap: 6px;
 	font-size: 11.5px;
-}
-
-/* ---- 首屏列宽（1.0.5） ------------------------------------------------------
-   之前用 `min(72ch, 100%)`：在 CJK 等宽字体里 1ch ≈ 13px，72ch ≈ 940px，
-   于是这一列几乎占满面板、两侧只各剩几十像素，看起来就是"没居中"。
-   行为 72ch（可读性上限）保留在正文行宽上，但**整块**给一个 px 上限，
-   两侧留白才会相等。 */
-.astra-strix-term.astra-strix-launch-surface > .astra-strix-launch {
-	width: min(680px, 100%);
-	margin: auto;
 }
 
 /* 正文行宽仍按 72ch 收，长命令不横穿整块。 */
