@@ -61,6 +61,9 @@ export interface StrixTabProps {
 	/** 面板选的执行环境（ADR 0013）。 */
 	environmentMode: "auto" | "host" | "docker";
 	environmentReady: boolean;
+	/** 环境检测结果（docker / 镜像）。 */
+	docker: { ready: boolean; detail?: string; imagePresent: boolean | null } | null;
+	onPullImage: () => Promise<void>;
 	onEnvironmentMode: (mode: "auto" | "host" | "docker") => void;
 	onInstallDocker: () => void;
 	onRefreshEnvironment: () => void;
@@ -120,6 +123,8 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					onQuit={props.onQuit}
 					environmentMode={props.environmentMode}
 					environmentReady={props.environmentReady}
+					docker={props.docker}
+					onPullImage={props.onPullImage}
 					onEnvironmentMode={props.onEnvironmentMode}
 					onInstallDocker={props.onInstallDocker}
 					onRefreshEnvironment={props.onRefreshEnvironment}

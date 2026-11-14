@@ -22,6 +22,16 @@ export interface BridgeClient {
 	setPreferences(patch: { environmentMode?: "auto" | "host" | "docker" }): Promise<{ environmentMode: "auto" | "host" | "docker" }>;
 	/** 让服务代跑 docker 安装命令；返回是否成功与它跑的是哪条。 */
 	installDocker(): Promise<{ installed: boolean; lastInstall?: { command: string; at: string; ok: boolean; detail?: string }; error?: string }>;
+	/** 环境检测：docker 是否可用、沙箱镜像是否已在本地（ADR 0013）。 */
+	probeEnvironment(): Promise<{
+		mode: "host" | "docker";
+		ready: boolean;
+		detail: string;
+		docker: { ready: boolean; detail?: string; imagePresent: boolean | null };
+		preference: "auto" | "host" | "docker";
+	}>;
+	/** 让宿主执行 docker pull，返回结果与最新环境探测。 */
+	pullImage(): Promise<{ ok: boolean; image?: string; tail?: string[]; error?: string }>;
 	/** Run one bridge tool by name; throws on an unknown name or a tool failure. */
 	callTool(name: string, args?: Record<string, unknown>): Promise<unknown>;
 	events(onEvent: (event: BridgeEvent) => void): () => void;
@@ -68,6 +78,16 @@ export function createBridgeClient(baseUrl: () => Promise<string>): BridgeClient
 		async preferences() {
 			const base = await baseUrl();
 			return readJson<{ environmentMode: "auto" | "host" | "docker" }>(await fetch(`${base}/api/preferences`, { cache: "no-store" }));
+		},
+		async probeEnvironment() {
+			const base = await baseUrl();
+			return readJson(await fetch(`${base}/api/environment`, { cache: "no-store" }));
+		},
+		async pullImage() {
+			const base = await baseUrl();
+			return readJson(
+				await fetch(`${base}/api/environment/pull`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }),
+			);
 		},
 		async setPreferences(patch: { environmentMode?: "auto" | "host" | "docker" }) {
 			const base = await baseUrl();

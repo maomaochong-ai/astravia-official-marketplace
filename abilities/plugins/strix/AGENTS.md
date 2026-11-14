@@ -127,6 +127,11 @@ npm run check           # typecheck + test + 服务冒烟
   覆盖超上限要写“还有 N 行”；计划/覆盖/笔记的**写入归 agent**，面板只读。
 - **运行记录永远贴在底部**（`features/scan-console/scroll-stick.ts`）：贴底时跟随新行；读者
   往上滚了不抢回，只显示“N 条新消息”。改滚动行为前先读那两个文件，不要在组件里另写一套。
+- **会话目录要兜底**（1.0.3）：发送/新建会话时用 `conversation.cwd ?? ctx.fileExplorer.getWorkspaceRoots()[0]?.path`。
+  只认 conversation.cwd 会误报"先在宿主里打开一个工作目录"，而用户明明已经打开了（需要 `workspace.read`）。
+- **首屏输入框以下是一列**：模型行、环境下拉、快捷键、桥接状态共用一条左边缘（`padding-left: 2px`），
+  不要在单行上加自己的缩进；模型只画一次。
+- **环境下拉要有自己的底色**：它压在磷光绿背景上，透明背景会让字看不清；`option` 也要单独设色。
 - **工具行必须家族化**（ADR 0009）：新增工具要在 `features/scan-console/tool-presentation.ts` 登记字形/色调/是否可展开；未登记落到 generic（上游同名回落），`tool-presentation.test.ts` 守着覆盖率。不要再回到“一个通用块画 35 个工具”——那是上一轮与上游最大的界面差距。
 - **外观口径（ADR 0011）**：磷光是 `.astra-strix-term.astra-strix-phosphor` 的变量覆盖，不要直接把背景写成黑色；
   `--sx-red` 只给失败、`--sx-amber` 只给进行中，其余一律绿。首屏数据流用固定字符集（禁止 `Math.random()`），

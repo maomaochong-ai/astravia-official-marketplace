@@ -55,6 +55,15 @@ function StrixTabRoot({
 		sendPrompt: (text) => ctx.conversation.sendPrompt(text),
 		createSession: (cwd) => ctx.conversation.createSession(cwd),
 		abort: () => ctx.conversation.abort(),
+		// 宿主打开的工作目录：会话没有 cwd 时（新会话页、刚切目录）用它，而不是报"先打开目录"。
+		workspaceRoot: () => {
+			try {
+				return ctx.fileExplorer.getWorkspaceRoots()[0]?.path;
+			} catch {
+				// 老宿主没有 workspace.read，或用户没打开目录：交给上层报错。
+				return undefined;
+			}
+		},
 		t,
 	});
 
@@ -108,6 +117,8 @@ function StrixTabRoot({
 			onOpenNote={session.onOpenNote}
 			environmentMode={session.environmentMode}
 			environmentReady={session.environment?.docker?.ready !== false}
+			docker={session.docker}
+			onPullImage={session.pullImage}
 			onEnvironmentMode={(mode) => void session.setEnvironmentMode(mode)}
 			onInstallDocker={() => void session.installDocker()}
 			onRefreshEnvironment={() => void session.refresh()}

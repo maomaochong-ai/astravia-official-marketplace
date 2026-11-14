@@ -1560,55 +1560,6 @@
 	height: 3px;
 }
 
-/* 环境下拉（ADR 0013）：一行，左标签 + 选择器 + 动作按钮。
-   docker 不可用时整行转琥珀，并把安装动作摆在旁边——不藏在一个设置页里。 */
-.astra-strix-env {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	flex-wrap: wrap;
-	font-size: 11.5px;
-}
-
-.astra-strix-env[data-docker="missing"] {
-	color: var(--sx-amber);
-}
-
-.astra-strix-env-select {
-	appearance: none;
-	padding: 2px 22px 2px 8px;
-	border: 1px solid var(--sx-rule);
-	border-radius: 6px;
-	background: transparent;
-	color: var(--sx-text);
-	font: inherit;
-	cursor: pointer;
-	background-image: linear-gradient(45deg, transparent 50%, var(--sx-dim) 50%),
-		linear-gradient(135deg, var(--sx-dim) 50%, transparent 50%);
-	background-position: calc(100% - 12px) 52%, calc(100% - 8px) 52%;
-	background-size: 4px 4px, 4px 4px;
-	background-repeat: no-repeat;
-}
-
-.astra-strix-env-select:focus-visible {
-	outline: 1px solid var(--sx-green);
-	outline-offset: 1px;
-}
-
-.astra-strix-env-action {
-	padding: 2px 8px;
-	border: 1px solid var(--sx-rule);
-	border-radius: 6px;
-	background: transparent;
-	color: var(--sx-green);
-	font: inherit;
-	font-size: 11px;
-	cursor: pointer;
-}
-
-.astra-strix-env-action:hover {
-	border-color: var(--sx-green);
-}
 
 /* 状态带的两个导航按钮：首屏 / 新会话（ADR 0014）。 */
 .astra-strix-band-button {
@@ -1631,4 +1582,147 @@
 .astra-strix-term.astra-strix-workbench > *:not(.astra-strix-rain) {
 	position: relative;
 	z-index: 1;
+}
+
+/* ---- 首屏输入框以下：一条左边缘（1.0.3） -----------------------------------
+   之前 model / env / hints / boot 各自带不同缩进，看起来像四段没对齐的文字。
+   现在只定义一次 gutter，所有行都从它开始；行的内部间距由 gap 控制。 */
+.astra-strix-launch > * {
+	padding-left: 0;
+	padding-right: 0;
+}
+
+.astra-strix-meta,
+.astra-strix-env,
+.astra-strix-hints,
+.astra-strix-boot,
+.astra-strix-launch-log {
+	margin: 0;
+	padding-left: 2px;
+	line-height: 1.6;
+}
+
+.astra-strix-meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0;
+	font-size: 12px;
+	color: var(--sx-text);
+}
+
+.astra-strix-meta[data-missing="yes"] {
+	color: var(--sx-amber);
+}
+
+.astra-strix-meta-label {
+	color: var(--sx-dim);
+	margin-right: 6px;
+}
+
+.astra-strix-meta-name {
+	color: var(--sx-text);
+	font-weight: 600;
+}
+
+.astra-strix-hints {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 4px 18px;
+	font-size: 11.5px;
+	color: var(--sx-dim);
+}
+
+.astra-strix-boot {
+	font-size: 11.5px;
+	color: var(--sx-green);
+}
+
+/* ---- 环境下拉：三态（host / 缺 docker / 缺镜像 / 就绪） ----------------------
+   之前 select 背景透明压在绿色上，字看不清。现在给它自己的深色底与亮字，
+   原生下拉列表也用同一套色（option 单独设，否则展开后是系统白底深字）。 */
+.astra-strix-env {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 10px;
+	font-size: 11.5px;
+}
+
+.astra-strix-env-label {
+	color: var(--sx-dim);
+	margin-right: 2px;
+}
+
+.astra-strix-env-select {
+	appearance: none;
+	padding: 3px 24px 3px 9px;
+	border: 1px solid color-mix(in srgb, var(--sx-green) 45%, transparent);
+	border-radius: 6px;
+	background-color: color-mix(in srgb, #04120a 88%, transparent);
+	color: var(--sx-white, #d1fae5);
+	font: inherit;
+	font-size: 11.5px;
+	cursor: pointer;
+	background-image: linear-gradient(45deg, transparent 50%, var(--sx-green) 50%),
+		linear-gradient(135deg, var(--sx-green) 50%, transparent 50%);
+	background-position: calc(100% - 13px) 54%, calc(100% - 9px) 54%;
+	background-size: 4px 4px, 4px 4px;
+	background-repeat: no-repeat;
+}
+
+.astra-strix-env-select option {
+	background-color: #04120a;
+	color: #d1fae5;
+}
+
+.astra-strix-env-select:focus-visible {
+	outline: 1px solid var(--sx-green);
+	outline-offset: 1px;
+}
+
+.astra-strix-env-status {
+	color: var(--sx-dim);
+}
+
+.astra-strix-env[data-state="noDocker"] .astra-strix-env-status {
+	color: var(--sx-amber);
+}
+
+.astra-strix-env[data-state="noImage"] .astra-strix-env-status {
+	color: var(--sx-amber);
+}
+
+.astra-strix-env[data-state="ready"] .astra-strix-env-status {
+	color: var(--sx-green);
+}
+
+.astra-strix-env-action {
+	padding: 2px 9px;
+	border: 1px solid color-mix(in srgb, var(--sx-green) 45%, transparent);
+	border-radius: 6px;
+	background: transparent;
+	color: var(--sx-green);
+	font: inherit;
+	font-size: 11px;
+	cursor: pointer;
+}
+
+.astra-strix-env-action:hover {
+	border-color: var(--sx-green);
+	background: color-mix(in srgb, var(--sx-green) 12%, transparent);
+}
+
+/* 拖拽手柄默认几乎不可见：它占 8px 命中区，但视觉上只在 hover/focus 时出现，
+   否则会像一条悬在输入框上方的绿线（真机截图里就是这样）。 */
+.astra-strix-resize-handle::before {
+	opacity: 0;
+}
+
+.astra-strix-prompt:hover .astra-strix-resize-handle::before,
+.astra-strix-prompt:focus-within .astra-strix-resize-handle::before,
+.astra-strix-composer:hover .astra-strix-resize-handle::before,
+.astra-strix-composer:focus-within .astra-strix-resize-handle::before {
+	opacity: 1;
 }

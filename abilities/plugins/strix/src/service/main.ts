@@ -440,6 +440,29 @@ const server = createServer(async (req, res) => {
 				return json(res, 200, { ok: false, error: error instanceof Error ? error.message : String(error) });
 			}
 		}
+		if (url.pathname === "/api/environment") {
+			// 环境检测（ADR 0013）：面板切换环境后要能立刻知道"有没有 docker / 镜像在不在"。
+			const preference = await readPreferences(DATA_DIR);
+			const resolved = await resolveEnvironment(sandboxImage(), preference.environmentMode);
+			return json(res, 200, { ...resolved, preference: preference.environmentMode });
+		}
+		if (url.pathname === "/api/environment/pull" && req.method === "POST") {
+			// 拉镜像交给宿主执行：docker pull 可能要几分钟、几百 MB，面板只等结果。
+			const image = sandboxImage();
+			try {
+				const docker = process.platform === "win32" ? "docker.exe" : "docker";
+				const result = await runHost(docker, ["pull", image]);
+				const resolved = await resolveEnvironment(image, "docker");
+				return json(res, 200, {
+					ok: result.code === 0,
+					image,
+					tail: (result.code === 0 ? result.stdout : result.stderr).split(/\r?\n/).filter(Boolean).slice(-3),
+					environment: resolved,
+				});
+			} catch (error) {
+				return json(res, 200, { ok: false, image, error: String(error) });
+			}
+		}
 		if (url.pathname === "/api/preferences") {
 			if (req.method === "POST") {
 				const body = (await readBody(req).catch(() => ({}))) as Record<string, unknown>;

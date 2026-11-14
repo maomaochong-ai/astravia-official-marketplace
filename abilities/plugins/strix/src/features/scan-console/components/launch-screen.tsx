@@ -31,6 +31,9 @@ export interface LaunchScreenProps {
 	environmentMode?: "auto" | "host" | "docker";
 	/** docker 是否就绪——决定「容器」选项能不能选、「安装」按钮要不要出来。 */
 	environmentReady?: boolean;
+	/** 环境检测结果：docker 可用性与镜像是否已在本地（ADR 0013）。 */
+	docker?: { ready: boolean; detail?: string; imagePresent: boolean | null } | null;
+	onPullImage?: () => Promise<void>;
 	onEnvironmentMode?: (mode: "auto" | "host" | "docker") => void;
 	onInstallDocker?: () => void;
 	onRefreshEnvironment?: () => void;
@@ -50,6 +53,8 @@ export function LaunchScreen({
 	blocked,
 	environmentMode: environmentModeProp,
 	environmentReady,
+	docker,
+	onPullImage,
 	onEnvironmentMode,
 	onInstallDocker,
 	onRefreshEnvironment,
@@ -60,7 +65,15 @@ export function LaunchScreen({
 	const [value, setValue] = useState("");
 	// 环境选择只影响「下一次」sandbox 启动（ADR 0013）：已经在跑的扫描不中途换环境。
 	const environmentMode = environmentModeProp ?? "host";
-	const dockerReady = environmentReady !== false;
+	// 三态：本机 / docker 缺失 / docker 就绪但镜像未拉 / 全就绪。
+	const envState: "host" | "noDocker" | "noImage" | "ready" =
+		environmentMode === "host"
+			? "host"
+			: environmentMode === "docker" && (docker ? !docker.ready : environmentReady === false)
+				? "noDocker"
+				: docker?.imagePresent === false
+					? "noImage"
+					: "ready";
 	// 同一个高度状态，两个屏共用：启动页与扫描屏的输入框行为必须一致。
 	const composer = useComposerHeight();
 
@@ -127,26 +140,28 @@ export function LaunchScreen({
 						/>
 					</label>
 
-					<p className="astra-strix-meta">
-						{model ? (
-							<>
-								<span className="astra-strix-meta-dot" aria-hidden="true">
-									●
-								</span>
-								<span className="astra-strix-meta-name">{model.name}</span>
-								{model.provider ? <span className="astra-strix-dim"> · {model.provider}</span> : null}
-							</>
-						) : (
-							<>
-								<span className="astra-strix-amber" aria-hidden="true">
-									○
-								</span>
-								<span className="astra-strix-amber">{t("launch.noModel")}</span>
-								<span className="astra-strix-dim"> · {t("launch.noModelHint")}</span>
-							</>
-						)}
-					</p>
+
 				</div>
+
+				{/* 模型行：只此一处。有模型说清名字与归属，没有则警告（Enter 会变成无操作）。 */}
+				<p className="astra-strix-meta" data-missing={model ? "no" : "yes"}>
+					{model ? (
+						<>
+							<span className="astra-strix-meta-dot" aria-hidden="true">
+								●
+							</span>
+							<span className="astra-strix-meta-label">{t("scan.model")}</span>
+							<span className="astra-strix-meta-name">{model.name}</span>
+							{model.provider ? <span className="astra-strix-dim"> · {model.provider}</span> : null}
+							<span className="astra-strix-dim"> · {t("launch.modelScope")}</span>
+						</>
+					) : (
+						<>
+							<span aria-hidden="true">○</span> {t("launch.noModel")}
+							<span className="astra-strix-dim"> · {t("launch.noModelHint")}</span>
+						</>
+					)}
+				</p>
 
 				{log.length ? (
 					<div className="astra-strix-launch-log" role="status">
@@ -158,9 +173,13 @@ export function LaunchScreen({
 					</div>
 				) : null}
 
-				{/* 执行环境：本机 / 容器。选了容器但 docker 没起来时，把安装命令交给宿主（ADR 0013）。 */}
-				<div className="astra-strix-env" data-docker={dockerReady ? "ready" : "missing"}>
-					<span className="astra-strix-dim">{t("env.choice")}</span>
+				{/* 执行环境（ADR 0013）：三态检测。
+				    host       → 不检测 docker，直接说"本机执行，无容器隔离"
+				    docker 缺失 → 把安装命令交给宿主执行（这是"具备性"问题）
+				    镜像缺失    → 提示并给一个「拉取镜像」按钮（这是"就绪性"问题）
+				    全部就绪    → 说清"已就绪"与镜像状态，不再给多余按钮 */}
+				<div className="astra-strix-env" data-state={envState}>
+					<span className="astra-strix-env-label">{t("env.choice")}</span>
 					<select
 						className="astra-strix-env-select"
 						value={environmentMode}
@@ -171,14 +190,22 @@ export function LaunchScreen({
 						<option value="docker">{t("env.docker")}</option>
 						<option value="auto">{t("env.auto")}</option>
 					</select>
-					{dockerReady ? null : (
-						<>
-							<span className="astra-strix-amber astra-strix-micro">{t("env.dockerMissing")}</span>
-							<button type="button" className="astra-strix-env-action" onClick={() => onInstallDocker?.()}>
-								{t("env.install")}
-							</button>
-						</>
-					)}
+					<span className="astra-strix-env-status">
+						{envState === "host" ? t("env.statusHost") : null}
+						{envState === "noDocker" ? t("env.statusNoDocker") : null}
+						{envState === "noImage" ? t("env.statusNoImage") : null}
+						{envState === "ready" ? t("env.statusReady") : null}
+					</span>
+					{envState === "noDocker" ? (
+						<button type="button" className="astra-strix-env-action" onClick={() => onInstallDocker?.()}>
+							{t("env.install")}
+						</button>
+					) : null}
+					{envState === "noImage" && onPullImage ? (
+						<button type="button" className="astra-strix-env-action" onClick={() => onPullImage()}>
+							{t("env.pull")}
+						</button>
+					) : null}
 					<button type="button" className="astra-strix-env-action" onClick={() => onRefreshEnvironment?.()}>
 						{t("env.refresh")}
 					</button>

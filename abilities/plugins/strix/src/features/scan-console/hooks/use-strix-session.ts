@@ -105,6 +105,10 @@ export interface StrixSessionModel {
 	setEnvironmentMode: (mode: "auto" | "host" | "docker") => Promise<void>;
 	/** 让服务代跑 docker 安装命令；装完再 refresh() 就能看到新环境。 */
 	installDocker: () => Promise<void>;
+	/** 环境检测结果（docker 可用性 / 镜像是否已拉取）；切换环境后自动重探。 */
+	docker: { ready: boolean; detail?: string; imagePresent: boolean | null } | null;
+	/** 让宿主执行 docker pull（镜像缺失时面板上的「拉取镜像」）。 */
+	pullImage: () => Promise<void>;
 	/** 首屏 / 工作台：用户可以随时回去看一眼配置，不被"自动跟屏"锁住。 */
 	showLaunch: boolean;
 	openLaunch: () => void;
@@ -125,13 +129,20 @@ export interface StrixSessionOptions {
 	subscribe: (listener: (event: ConversationEvent) => void) => { dispose(): void };
 	/** Host conversation API: the only path by which this panel speaks. */
 	sendPrompt: (text: string) => Promise<{ status: "sent" | "queued" | "failed" }>;
+	/**
+	 * 宿主当前打开的工作目录（`ctx.fileExplorer.getWorkspaceRoots()`，需要 workspace.read）。
+	 *
+	 * 为什么需要它：用户在宿主里打开了目录，但当前会话可能还没有 cwd（新会话页、刚切目录、
+	 * 或 conversation 上下文还没带过来）。只认 conversation.cwd 就会误报"先打开一个工作目录"，
+	 * 而用户明明已经打开了。这里把它作为兜底。
+	 */
+	workspaceRoot?: () => string | undefined;
 	/** Creates a conversation when the user is still on the new-session page. */
 	createSession: (cwd: string) => Promise<ConversationState>;
 	/** Aborts the host turn; `stop()` calls it before stopping the sandbox. */
 	abort: () => Promise<void>;
 	t: (key: string, params?: Record<string, string | number>) => string;
 }
-
 export function useStrixSession({
 	runtime,
 	client,
@@ -140,6 +151,7 @@ export function useStrixSession({
 	sendPrompt,
 	createSession,
 	abort,
+	workspaceRoot,
 	t,
 }: StrixSessionOptions): StrixSessionModel {
 	// Read once, before the first paint: a remounted tab rehydrates instead of showing
@@ -166,6 +178,7 @@ export function useStrixSession({
 	const [environmentMode, setEnvironmentModeState] = useState<"auto" | "host" | "docker">("host");
 	/** 用户手动回到首屏：此时不再被"宿主流一转就跳工作台"拽走（ADR 0014）。 */
 	const [showLaunch, setShowLaunch] = useState(false);
+	const [docker, setDocker] = useState<{ ready: boolean; detail?: string; imagePresent: boolean | null } | null>(null);
 	/** 接续已有评估只提示一次：refresh 会被轮次反复叫到。 */
 	const resumed = useRef(false);
 	/**
@@ -452,7 +465,8 @@ export function useStrixSession({
 			setSubmitting(true);
 			try {
 				if (!conversationIdRef.current) {
-					const cwd = cwdRef.current;
+					// 先看当前会话的 cwd；没有就看宿主打开的工作目录——用户已经打开目录时不该报错。
+					const cwd = cwdRef.current ?? workspaceRoot?.() ?? null;
 					if (!cwd) {
 						note(t("log.noWorkspace"), "error");
 						return false;
@@ -479,10 +493,32 @@ export function useStrixSession({
 		[createSession, note, pushTrace, sendPrompt, t],
 	);
 
-	const setEnvironmentMode = useCallback(async (mode: "auto" | "host" | "docker") => {
-		setEnvironmentModeState(mode);
-		await client.setPreferences({ environmentMode: mode }).catch(() => undefined);
-	}, [client]);
+	const setEnvironmentMode = useCallback(
+		async (mode: "auto" | "host" | "docker") => {
+			setEnvironmentModeState(mode);
+			await client.setPreferences({ environmentMode: mode }).catch(() => undefined);
+			// 切换即检测：用户选了容器，立刻要知道这台机器有没有 docker、镜像是拉过。
+			await client
+				.probeEnvironment()
+				.then((probe) => setDocker(probe.docker))
+				.catch(() => undefined);
+		},
+		[client],
+	);
+
+	const pullImage = useCallback(async () => {
+		setSubmitting(true);
+		try {
+			const result = await client.pullImage();
+			note(result.ok ? t("log.imagePulled") : t("log.imagePullFailed"), result.ok ? "ok" : "error");
+			const probe = await client.probeEnvironment().catch(() => undefined);
+			if (probe) setDocker(probe.docker);
+		} catch (cause) {
+			note(cause instanceof Error ? cause.message : String(cause), "error");
+		} finally {
+			setSubmitting(false);
+		}
+	}, [client, note, t]);
 
 	const installDocker = useCallback(async () => {
 		setSubmitting(true);
@@ -504,7 +540,7 @@ export function useStrixSession({
 
 	/** 新会话：在当前 cwd 建一个，面板跟过去（多开的最小可行形态，ADR 0014）。 */
 	const newSession = useCallback(async () => {
-		const cwd = cwdRef.current;
+		const cwd = cwdRef.current ?? workspaceRoot?.() ?? null;
 		if (!cwd) {
 			note(t("log.noWorkspace"), "error");
 			return;
@@ -515,7 +551,7 @@ export function useStrixSession({
 		} catch (cause) {
 			note(cause instanceof Error ? cause.message : String(cause), "error");
 		}
-	}, [createSession, note, t]);
+	}, [createSession, note, t, workspaceRoot]);
 
 	const start = useCallback(async (prompt: string) => void deliver(prompt), [deliver]);
 	const send = useCallback(async (text: string) => void deliver(text), [deliver]);
@@ -571,6 +607,8 @@ export function useStrixSession({
 			environmentMode,
 			setEnvironmentMode,
 			installDocker,
+			docker,
+			pullImage,
 			showLaunch,
 			openLaunch,
 			newSession,

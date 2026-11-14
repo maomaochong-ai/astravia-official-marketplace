@@ -2,7 +2,7 @@
   "id": "strix",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -20,7 +20,8 @@
     "agent.session.read",
     "agent.session.write",
     "agent.skills.control",
-    "agent.mcp.control"
+    "agent.mcp.control",
+    "workspace.read"
   ],
   "providers": {
     "services": [
@@ -35,7 +36,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "b43e0b7ade1b5ff6385ffd32d083af6f99717cc6f363818d14d8ef1809134082",
+                  "sha256": "02b184870255e3ed5e57436337a7a87fc78a55b8f6d51d8b7f801bf2ef3ef6be",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -45,7 +46,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "b43e0b7ade1b5ff6385ffd32d083af6f99717cc6f363818d14d8ef1809134082",
+                  "sha256": "02b184870255e3ed5e57436337a7a87fc78a55b8f6d51d8b7f801bf2ef3ef6be",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -55,7 +56,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "b43e0b7ade1b5ff6385ffd32d083af6f99717cc6f363818d14d8ef1809134082",
+                  "sha256": "02b184870255e3ed5e57436337a7a87fc78a55b8f6d51d8b7f801bf2ef3ef6be",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -65,7 +66,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "b43e0b7ade1b5ff6385ffd32d083af6f99717cc6f363818d14d8ef1809134082",
+                  "sha256": "02b184870255e3ed5e57436337a7a87fc78a55b8f6d51d8b7f801bf2ef3ef6be",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -75,7 +76,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "b43e0b7ade1b5ff6385ffd32d083af6f99717cc6f363818d14d8ef1809134082",
+                  "sha256": "02b184870255e3ed5e57436337a7a87fc78a55b8f6d51d8b7f801bf2ef3ef6be",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
