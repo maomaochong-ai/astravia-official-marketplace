@@ -14,6 +14,13 @@ import type { BridgeEvent, BridgeState, StrixFinding } from "../runtime-contract
 
 export interface BridgeClient {
 	state(): Promise<BridgeState>;
+	/**
+	 * 告诉服务“现在活跃的是哪个会话”（1.0.7）。
+	 *
+	 * 一个服务进程只有一个沙箱，而台账 / 状态需要按会话读：宿主的工具调用不带会话 id，
+	 * 面板是唯一知道的人。宿主同一时刻只有一个活动轮次，所以这是诚实的归属依据。
+	 */
+	setConversation(conversationId: string | null): Promise<{ conversation: string | null }>;
 	findings(): Promise<StrixFinding[]>;
 	report(): Promise<{ markdown: string; count: number }>;
 	stopSandbox(): Promise<{ stopped: boolean }>;
@@ -62,6 +69,16 @@ async function postJson(url: string, body: unknown): Promise<never> {
 
 export function createBridgeClient(baseUrl: () => Promise<string>): BridgeClient {
 	return {
+		async setConversation(conversationId) {
+			const base = await baseUrl();
+			return readJson<{ conversation: string | null }>(
+				await fetch(`${base}/api/conversation`, {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ conversationId }),
+				}),
+			);
+		},
 		async state() {
 			const base = await baseUrl();
 			return readJson<BridgeState>(await fetch(`${base}/api/state`, { cache: "no-store" }));

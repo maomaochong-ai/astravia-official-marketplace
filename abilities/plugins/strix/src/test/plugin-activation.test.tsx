@@ -135,10 +135,10 @@ describe("plugin activation", () => {
 		const host = fakeHost();
 		const disposable = await plugin.activate(host.ctx);
 		render(host.tab()!.component());
-		// The conversation runs claude-opus-5-5; the chip carries that name and the launch
-		// log says where it came from. Nothing here asks the host for a model list.
+		// The conversation runs claude-opus-5-5 and the launch facts table says so.
+		// 1.0.7：出处不再写进日志——事实表里已经有这一行，日志只放事件。
 		expect(await screen.findByText("claude-opus-5-5")).toBeTruthy();
-		expect(await screen.findByText(/log.modelFromConversation/)).toBeTruthy();
+		expect(screen.queryByText(/log\.modelFromConversation/)).toBeNull();
 		await disposeOf(disposable);
 	});
 
@@ -146,7 +146,9 @@ describe("plugin activation", () => {
 		const host = fakeHost();
 		const disposable = await plugin.activate(host.ctx);
 		render(host.tab()!.component());
-		expect(await screen.findByText(/log.workspaceMounted/)).toBeTruthy();
+		// 目录是事实表里的一行（launch.folder），不是日志里的一行。
+		expect(screen.getByText(/launch\.folder/)).toBeTruthy();
+		expect(screen.queryByText(/log\.workspaceMounted/)).toBeNull();
 		await disposeOf(disposable);
 	});
 

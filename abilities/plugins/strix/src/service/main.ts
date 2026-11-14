@@ -170,9 +170,23 @@ async function environment() {
 	};
 }
 
-/** Findings are keyed by the sandbox session, so one assessment has one ledger. */
+/**
+ * 台账的键（1.0.7）。
+ *
+ * 之前只用 `sandbox.status().sessionId`：一个服务进程只有一个沙箱，于是在 A 会话开了沙箱之后，
+ * B 会话里 `strix_file_finding` 会写进 **A 的台账**，B 的面板也从 `/api/state` 读到 A 的容器。
+ * 用户看到的“数据串会话”就是这个，不是前端缓存。
+ *
+ * 现在优先用**面板注册的当前会话**：宿主同一时刻只有一个活动轮次，所以“当前会话”是一个诚实
+ * 的归属依据。没有任何会话信息时才退回沙箱 id（命令行的独立跑法就是这样）。
+ */
+let activeConversation: string | null = null;
+
 function sessionId(): string {
-	return sandbox.status().sessionId ?? "default";
+	// 沙箱开着就以**它的主人**为准：评估在跑的时候，操作者可能已经切到另一个会话看，
+	// 那不代表这一轮的命令该写进新会话的台账。没有沙箱时才看面板注册的会话。
+	const status = sandbox.status();
+	return status.conversation ?? activeConversation ?? status.sessionId ?? "default";
 }
 
 type Handler = (args: Record<string, unknown>) => Promise<unknown>;
@@ -198,14 +212,17 @@ const HANDLERS: Record<string, Handler> = {
 	},
 
 	strix_sandbox_start: async (args) => {
-		// 没指定 mode 就用面板选的偏好：面板显示"容器"，这里就必须真的跑在容器里（ADR 0013）。
-		if (args.environment === undefined) {
+		// 归属写在**开沙箱的那一刻**：一个进程只有一个沙箱，“这是谁的”不能到读取时再猜。
+		// 依据是面板注册的会话：宿主同一时刻只有一个活动轮次。
+		const owned: Record<string, unknown> = activeConversation ? { ...args, conversation: activeConversation } : args;
+		// 没指定 mode 就用面板选的偏好：面板显示“容器”，这里就必须真的跑在容器里（ADR 0013）。
+		if (owned.environment === undefined) {
 			const preference = await readPreferences(DATA_DIR);
 			const chosen = preference.environmentMode === "auto" ? undefined : preference.environmentMode;
 			// 注意：绝不能把它塞进 `mode`——那是扫描深度（ADR 0013）。
-			if (chosen) return sandbox.start({ ...args, environment: chosen });
+			if (chosen) return sandbox.start({ ...owned, environment: chosen });
 		}
-		return sandbox.start(args);
+		return sandbox.start(owned);
 	},
 	// 一条命令的两种形态：等它跑完（默认），或留下一个会话（background）。
 	strix_exec: (args) => execWithSessions(args),
@@ -485,6 +502,13 @@ const server = createServer(async (req, res) => {
 			}
 			return json(res, 200, await readPreferences(DATA_DIR));
 		}
+		if (url.pathname === "/api/conversation" && req.method === "POST") {
+			// 面板告诉服务“现在活跃的是哪个会话”：台账键与状态归属都靠它（见 sessionId）。
+			const body = await readBody(req);
+			const id = typeof body.conversationId === "string" ? body.conversationId.trim() : "";
+			activeConversation = id || null;
+			return json(res, 200, { conversation: activeConversation });
+		}
 		if (url.pathname === "/api/state") {
 			const [env, list, noteList, todoList, cover, threat] = await Promise.all([
 				environment().catch((error) => ({ error: String(error) })),
@@ -497,6 +521,9 @@ const server = createServer(async (req, res) => {
 			return json(res, 200, {
 				environment: env,
 				sandbox: sandbox.status(),
+				// 台账是按哪个键读的（信息性）：面板的归属判定看 sandbox.conversation，
+				// 不看这个字段——它就等于刚注册的那个 id，拿它比自己永远相等（1.0.7 审查）。
+				conversationKey: sessionId(),
 				findings: (list as { findings?: unknown }).findings ?? [],
 				notes: (noteList as { notes?: unknown }).notes ?? [],
 				todos: (todoList as { todos?: unknown }).todos ?? [],

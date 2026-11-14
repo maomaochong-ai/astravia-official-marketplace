@@ -51,7 +51,6 @@ describe("launch screen composer", () => {
 				log={[]}
 				boot={{ state: "ready" }}
 				version="0.6.2"
-				busy={false}
 				onSubmit={() => undefined}
 				onQuit={() => undefined}
 			/>,

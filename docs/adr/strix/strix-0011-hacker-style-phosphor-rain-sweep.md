@@ -34,8 +34,13 @@
    `.astra-strix-term.astra-strix-phosphor` 覆盖 `--sx-*`，背景仍是
    `color-mix(in srgb, #04120a 92%, var(--background))`——宿主亮色主题下不会把面板钉成纯黑
    （ADR 0004 的教训：整屏黑在亮色主题里让选中文本变成空白块）。
-2. **数据流是纯 CSS 且固定字符集**：18 列、每列 26 字、按 `(column*7 + row*3) % len` 取字符，
-   不用 `Math.random()`——截图与测试可复现；`prefers-reduced-motion` 下静止。
+2. **数据流是纯 CSS 且固定字符集**：首屏 46 列 / 工作台 58 列，每列 18–52 字，
+   字符按 `hash(column,row)` 取（xorshift32），不用 `Math.random()`——截图与测试可复现；
+   `prefers-reduced-motion` 下静止。
+   **逐列随机是 1.0.7 的修正**：1.0.2 用 `(column*7 + row*3) % len` 取字符、`nth-child(2n/3n/5n)`
+   给速度，字符落在等差斜线上、速度只有四档，屏幕上就是一道道平行斜纹加周期性横波——
+   用户的原话是“有规则的竖向流动，希望无规则”。现在速度（7–31s）、相位（负延迟 0–40s）、
+   长度、亮度、断行位置（约 1/8 空格）五个维度各自抗动，仍保持确定性。
 3. **扫光用 keyframes 不用 JS 计时器**：上游是 Go 每帧算一遍 palette（`view.go:962`），
    浏览器里用 9 档亮度的 keyframes 等效，且不与滚动/resize 抢帧；`data-active="no"` 时静止。
 

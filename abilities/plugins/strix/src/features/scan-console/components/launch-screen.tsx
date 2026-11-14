@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Strix's launch screen, reproduced for the activity tab.
  *
  * Shape and wording are upstream's (setup.go:setupBody): wordmark, tagline, the
@@ -22,6 +22,8 @@ import { StrixWordmark } from "./strix-wordmark";
 export interface LaunchScreenProps {
 	t: (key: string) => string;
 	model?: ModelChoice;
+	/** 宿主打开的工作目录名：它是事实，放在事实表里，而不是日志里的一行。 */
+	workspace?: string;
 	log: readonly LogLine[];
 	/** Bridge boot state. A live line, not a log entry (ADR strix-0004). */
 	boot: { state: "connecting" | "ready" | "failed"; detail?: string };
@@ -38,7 +40,6 @@ export interface LaunchScreenProps {
 	onEnvironmentMode?: (mode: "auto" | "host" | "docker") => void;
 	onInstallDocker?: () => void;
 	onRefreshEnvironment?: () => void;
-	busy: boolean;
 	onSubmit: (value: string) => void;
 	onQuit: () => void;
 }
@@ -48,6 +49,7 @@ const MAX_LOG_ROWS = 6;
 export function LaunchScreen({
 	t,
 	model,
+	workspace,
 	log,
 	boot,
 	version,
@@ -59,7 +61,6 @@ export function LaunchScreen({
 	onEnvironmentMode,
 	onInstallDocker,
 	onRefreshEnvironment,
-	busy,
 	onSubmit,
 	onQuit,
 }: LaunchScreenProps): React.ReactElement {
@@ -79,12 +80,14 @@ export function LaunchScreen({
 	const composer = useComposerHeight();
 
 	const submit = (): void => {
-		if (busy) return;
+		// 流式中发送是合法的：宿主会排队（sendPrompt → queued），不是错。
+		// 真正不能发的只有空文本——发送键与 Enter 共用这一条。
+		if (!value.trim()) return;
 		onSubmit(value);
 	};
 
-	// Upstream opens at three rows and grows to eight before the composer scrolls.
-	const rows = Math.min(8, Math.max(3, value.split("\n").length));
+	// 一行起步、最多六行：多行输入是例外，不是常态（1.0.7 收窄了初版的三行）。
+	const rows = Math.min(6, Math.max(1, value.split("\n").length));
 
 	return (
 		<div
@@ -120,26 +123,37 @@ export function LaunchScreen({
 						tabIndex={0}
 						{...composer.handleProps}
 					/>
-					<label className="astra-strix-prompt-row">
+					<div className="astra-strix-prompt-row">
 						<span className="astra-strix-prompt-caret" aria-hidden="true">
 							&gt;
 						</span>
-						<textarea
-							className="astra-strix-prompt-input"
-							aria-label={t("launch.label")}
-							placeholder={t("launch.placeholder")}
-							rows={rows}
-							autoFocus
-							value={value}
-							onChange={(event) => setValue(event.target.value)}
-							onKeyDown={(event) => {
-								if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-									event.preventDefault();
-									submit();
-								}
-							}}
-						/>
-					</label>
+						<label className="astra-strix-prompt-field">
+							<textarea
+								className="astra-strix-prompt-input"
+								aria-label={t("launch.label")}
+								placeholder={t("launch.placeholder")}
+								rows={rows}
+								autoFocus
+								value={value}
+								onChange={(event) => setValue(event.target.value)}
+								onKeyDown={(event) => {
+									if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+										event.preventDefault();
+										submit();
+									}
+								}}
+							/>
+						</label>
+						{/* 发送键与工作台同形：只靠回车的手感看不出“发出去”。 */}
+						<button
+							type="button"
+							className="astra-strix-send"
+							onClick={submit}
+							disabled={!value.trim()}
+						>
+							{t("composer.send")}
+						</button>
+					</div>
 
 
 				</div>
@@ -152,8 +166,12 @@ export function LaunchScreen({
 						<span className="astra-strix-row-value">
 							{model ? (
 								<>
-								<span className="astra-strix-meta-name">{model.name}</span>
-									{model.provider ? <span className="astra-strix-dim"> · {model.provider}</span> : null}
+									<span className="astra-strix-meta-name">{model.name}</span>
+									{/* provider 常常就是模型族名（deepseek-flash · deepseek-v4-flash）：
+									    当它包含在名字里就不再写一遍——一行里两个相似串只是噪声。 */}
+									{model.provider && !model.name.toLowerCase().includes(model.provider.toLowerCase()) ? (
+										<span className="astra-strix-dim"> · {model.provider}</span>
+									) : null}
 									<span className="astra-strix-dim"> · {t("launch.modelScope")}</span>
 								</>
 							) : (
@@ -165,10 +183,19 @@ export function LaunchScreen({
 						</span>
 					</div>
 
+					{/* 工作目录：以前它是**日志里的一行**（“已挂载工作目录: xxx”），现在它是事实，
+					    就放在事实表里；没有目录时这一行不画。 */}
+					{workspace ? (
+						<div className="astra-strix-row">
+							<span className="astra-strix-row-label">{t("launch.folder")}</span>
+							<span className="astra-strix-row-value astra-strix-dim">{workspace}</span>
+						</div>
+					) : null}
+
 					{/* 执行环境（ADR 0013）：四态。
 					    host        → 本机执行，无容器隔离
 					    noDocker    → 让宿主安装 docker
-					    noImage     → 让宿主拉取沙箱镜像
+					    noImage    → 让宿主拉取沙箱镜像
 					    ready       → 只说已就绪 */}
 					<div className="astra-strix-row" data-state={envState}>
 						<span className="astra-strix-row-label">{t("env.choice")}</span>
@@ -223,49 +250,50 @@ export function LaunchScreen({
 						</div>
 					) : null}
 
-					<div className="astra-strix-row">
-						<span className="astra-strix-row-label" />
-						<span className="astra-strix-row-value astra-strix-hints">
-							<span className="astra-strix-hint">
-								<span className="astra-strix-key">enter</span>
-								<span className="astra-strix-dim">{t("launch.hint.enter")}</span>
-							</span>
-							<span className="astra-strix-hint">
-								<span className="astra-strix-key">ctrl+c</span>
-								<span className="astra-strix-dim">{t("launch.hint.quit")}</span>
-							</span>
-							<span className="astra-strix-dim astra-strix-hints-version">v{version}</span>
-						</span>
-					</div>
-
-					<div className="astra-strix-row">
-						<span className="astra-strix-row-label" />
-						<span className="astra-strix-row-value">
-							{boot.state === "connecting" ? (
-								<span className="astra-strix-boot" role="status">
-									<span className="astra-strix-spinner" aria-hidden="true" />
-									<span>{t("boot.connecting")}</span>
-								</span>
-							) : boot.state === "failed" ? (
-								<span className="astra-strix-boot" data-state="failed" role="status">
-									<span className="astra-strix-amber" aria-hidden="true">
-										!
-									</span>
-									<span>{t("boot.failed")}</span>
-									{boot.detail ? <span className="astra-strix-dim"> — {boot.detail}</span> : null}
-								</span>
-							) : (
-								<span className="astra-strix-boot" data-state="ready" role="status">
-									<span className="astra-strix-green" aria-hidden="true">
-										●
-									</span>
-									<span>{t("boot.ready")}</span>
-								</span>
-							)}
-						</span>
-					</div>
 				</div>
 
+				{/* 底部小字：快捷键、版本、桥接状态。这些东西每帧都在，但不是每帧都要看，
+				    所以从“一行一条”收成一条脚注——上面只留决策需要的东西（模型 / 环境）。 */}
+				<div className="astra-strix-launch-foot">
+					<span className="astra-strix-hints">
+						<span className="astra-strix-hint">
+							<span className="astra-strix-key">enter</span>
+							<span className="astra-strix-dim">{t("launch.hint.enter")}</span>
+						</span>
+						<span className="astra-strix-hint">
+							<span className="astra-strix-key">ctrl+c</span>
+							<span className="astra-strix-dim">{t("launch.hint.quit")}</span>
+						</span>
+						<span className="astra-strix-hint">
+							<span className="astra-strix-dim">{t("launch.hint.send")}</span>
+						</span>
+					</span>
+
+					<span className="astra-strix-boot-line">
+						{boot.state === "connecting" ? (
+							<span className="astra-strix-boot" role="status">
+								<span className="astra-strix-spinner" aria-hidden="true" />
+								<span>{t("boot.connecting")}</span>
+							</span>
+						) : boot.state === "failed" ? (
+							<span className="astra-strix-boot" data-state="failed" role="status">
+								<span className="astra-strix-amber" aria-hidden="true">
+									!
+								</span>
+								<span>{t("boot.failed")}</span>
+								{boot.detail ? <span className="astra-strix-dim"> — {boot.detail}</span> : null}
+							</span>
+						) : (
+							<span className="astra-strix-boot" data-state="ready" role="status">
+								<span className="astra-strix-green" aria-hidden="true">
+									●
+								</span>
+								<span>{t("boot.ready")}</span>
+							</span>
+						)}
+						<span className="astra-strix-dim astra-strix-hints-version">v{version}</span>
+					</span>
+				</div>
 
 				{blocked ? <p className="astra-strix-launch-blocked">{blocked}</p> : null}
 			</div>

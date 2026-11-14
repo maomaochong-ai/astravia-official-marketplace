@@ -200,8 +200,13 @@ export function useStrixSession({
 	const phaseRef = useRef<SessionPhase>(phase);
 	phaseRef.current = phase;
 	// Scope and memory (see session-store.ts). `mountedIn` is the conversation this panel
-	// was opened in: events from any other conversation are ignored, so project A's chat
-	// cannot drive project B's panel.
+	// is bound to right now: events from any other conversation are ignored, so project A's
+	// chat cannot drive project B's panel.
+	//
+	// 1.0.7：它必须**跟着 conversation.id 改**。宿主给活动面板做的 key 是
+	// `workspaceId + tabId`（ActivityTabSurface），所以切换会话**不会重挂载**——
+	// 只认挂载那一刻的 id，面板就会一直画着上一个会话的沙箱与命令，而新会话的事件
+	// 被自己挡掉。用户看到的“数据串会话”就是这个（rebindEffect 见下）。
 	const mountedIn = useRef<string | null>(conversation?.id ?? null);
 	// The host replays `conversation-changed` in a microtask, so a tab can mount before
 	// any id exists. Adopting the first real id is what stops the panel from ignoring
@@ -284,7 +289,22 @@ export function useStrixSession({
 		try {
 			await runtime.ensureReady();
 			setBoot({ state: "ready" });
+			// 先向服务声明“我现在是哪个会话”：台账键与状态归属都靠它（1.0.7）。
+			// 拿不到归属不能阻断刷新：服务会退回沙箱 id，界面照常画。
+			await client.setConversation(conversationIdRef.current ?? null).catch(() => undefined);
 			const state = await client.state();
+			// 服务返回的可能是**另一个会话**的沙箱（一个进程只有一个容器）：那就不采纳。
+			//
+			// 判据必须是**沙箱的主人**，不是顶层回显的那个字段：顶层字段就是我们刚 POST 进去的
+			// 那个 id，拿它比等于自己跟自己比，永远相等（1.0.7 审查发现）。
+			const owner = (state?.sandbox as { conversation?: unknown } | undefined)?.conversation;
+			const mine = conversationIdRef.current ?? null;
+			const foreign = typeof owner === "string" && owner !== mine;
+			if (foreign) {
+				// 环境探测是全局事实（docker 在不在与哪个会话无关），其余一律不采纳。
+				setEnvironment(normalizeProbe(state?.environment));
+				return;
+			}
 			bridgeState = (state ?? undefined) as (BridgeState & { threatModel?: { content?: string } }) | undefined;
 			const probe = normalizeProbe(state?.environment);
 			setSandbox(normalizeSandbox(state?.sandbox));
@@ -335,24 +355,13 @@ export function useStrixSession({
 			return open ? "scanning" : "setup";
 		});
 		// 接续的是已有评估时明说一句，否则面板看上去就像凭空跳到了另一屏。
-		if (open && !resumed.current) {
-			resumed.current = true;
-			note(t("scan.resumed"));
-		}
+		// 接续已有评估不再往日志里补一句（1.0.7）：它是状态，落在事实表与运行记录里。
+		// `resumed` 只剩一个用途——重绑时复位，供后续需要区分“首次”的地方使用。
 	}, [client, note, runtime, t]);
 
-	// Where the model and the mounted folder came from, announced once per conversation.
-	const announced = useRef("");
-	useEffect(() => {
-		const key = `${resolved.choice?.modelKey ?? ""}|${conversation?.cwd ?? ""}`;
-		if (!key || key === announced.current) return;
-		announced.current = key;
-		if (resolved.fromConversation && resolved.choice) {
-			note(t("log.modelFromConversation").replace("{model}", resolved.choice.name));
-		}
-		const folder = workspaceLabel(conversation?.cwd);
-		if (folder) note(t("log.workspaceMounted").replace("{folder}", folder));
-	}, [conversation?.cwd, note, resolved, t]);
+	// 模型与目录的出处不再写进日志（1.0.7）。它们已经是首屏事实表里的两行（模型 / 目录），
+	// 再在日志里“宣告”一遍，用户看到的是同一句话说两遍（截图里那三行）。
+	// 日志现在只放**事件**：拉镜像成功/失败、桥接错误、降级……那些事后不再成立的事。
 
 	const booted = useRef(false);
 	useEffect(() => {
@@ -360,6 +369,43 @@ export function useStrixSession({
 		booted.current = true;
 		void refresh();
 	}, [refresh]);
+
+	/**
+	 * 切换会话就重绑（1.0.7）。
+	 *
+	 * 宿主的活动面板按 `workspaceId + tabId` 做 key，换会话不重挂载，所以这里必须自己换：
+	 *  - `mountedIn` 指向新会话，否则 `belongsTo` 会把新会话的每一帧都挡掉；
+	 *  - 显式重水合（而不是等下一次 refresh）——首帧就要画对新会话的快照，
+	 *    不能先把上一个会话的沙箱、命令、发现留在屏幕上；
+	 *  - 序号、轮次、一次性提示全部归位，否则新会话的轨迹会跟前一个同 id 撞车。
+	 *
+	 * 快照没有的新会话就从空开始：宁可是“还没记录”，也比画别人的强。
+	 */
+	const boundTo = useRef<string | null | undefined>(conversation?.id ?? null);
+	useEffect(() => {
+		const id = conversation?.id ?? null;
+		if (!id || id === boundTo.current) return;
+		boundTo.current = id;
+		mountedIn.current = id;
+		const snapshot = readSnapshot(id);
+		setTrace(snapshot?.trace ?? []);
+		setSandbox(snapshot?.sandbox ?? { running: false, targets: [] });
+		setFindings(snapshot?.findings ?? []);
+		setTodos(snapshot?.todos ?? []);
+		setNotes(snapshot?.notes ?? []);
+		setCoverage(snapshot?.coverage ?? []);
+		setMcp(snapshot?.mcp ?? []);
+		setPhase(snapshot?.phase ?? "setup");
+		seq.current = (snapshot?.trace ?? []).reduce((max, entry) => {
+			const value = Number.parseInt(String(entry.id).replace(/^e/, ""), 10);
+			return Number.isFinite(value) && value > max ? value : max;
+		}, 0);
+		turnRef.current = 0;
+		launchPinned.current = false;
+		setShowLaunch(false);
+		resumed.current = false;
+		void refresh();
+	}, [conversation?.id, refresh]);
 
 	/**
 	 * The bridge's own feed: what actually ran.

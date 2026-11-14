@@ -102,11 +102,11 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					sessions={props.sessions}
 					mcp={props.mcp}
 					trace={props.trace}
-					busy={props.busy}
 					onSend={(value) => void props.send(value)}
 					onOpenNote={props.onOpenNote}
 					{...(props.coverageTally ? { coverageTally: props.coverageTally } : {})}
 					onStop={() => void props.stop()}
+					busy={props.busy}
 					onOpenLaunch={props.onOpenLaunch}
 					onNewSession={props.onNewSession}
 				/>
@@ -114,10 +114,10 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 				<LaunchScreen
 					t={t}
 					model={props.model}
+					{...(props.workspace ? { workspace: props.workspace } : {})}
 					log={props.log}
 					version={props.version}
 					blocked={blockedReason(t, props.model, props.environment)}
-					busy={props.busy}
 					boot={props.boot}
 					onSubmit={(value) => void props.start(value)}
 					onQuit={props.onQuit}

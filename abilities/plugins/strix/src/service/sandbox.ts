@@ -91,6 +91,13 @@ export interface SandboxStatus {
 	scanMode?: ScanMode;
 	/** Caido proxy tools were enabled for this session. */
 	proxy?: boolean;
+	/**
+	 * 开这个沙箱的会话（1.0.7）。
+	 *
+	 * 一个服务进程只有**一个**沙箱，所以“这个容器是谁的”必须写下来：
+	 * 否则 B 会话的面板会把 A 会话的容器当成自己的，`strix_file_finding` 也会写进 A 的台账。
+	 */
+	conversation?: string | null;
 }
 
 export interface MountInput {
@@ -135,6 +142,8 @@ export class Sandbox {
 	private targets: string[] = [];
 	private startedAt = 0;
 	private sessionId: string | null = null;
+	/** 开这个沙箱的会话 id（1.0.7）；用于台账隔离与面板归属判定。 */
+	private conversation: string | null = null;
 	/** `host` means no container: commands run in the user's session (ADR strix-0001). */
 	private mode: EnvironmentMode = "docker";
 	private hostRoot: string | null = null;
@@ -163,6 +172,7 @@ export class Sandbox {
 			scanMode: this.scanMode,
 			/** Whether the Caido proxy surface was enabled for this session (ADR strix-0002). */
 			proxy: this.proxyEnabled,
+			conversation: this.conversation,
 		};
 	}
 
@@ -180,6 +190,8 @@ export class Sandbox {
 		this.scanMode = asScanMode(params.mode);
 		// Opt-in: a tool that can make the model request any URL is an attack surface.
 		this.proxyEnabled = params.proxy === true;
+		// 容器/会话的归属写在这里：后面所有“这是谁的沙箱”都只读这一个字段。
+		this.conversation = typeof params.conversation === "string" && params.conversation.trim() ? params.conversation.trim() : null;
 
 		const sessionId = String(params.sessionId ?? "").trim() || `s${Date.now().toString(36)}`;
 		const container = containerName(sessionId);

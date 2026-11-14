@@ -24,7 +24,6 @@ describe("launch screen", () => {
 				model={model}
 				log={[]}
 				version="0.4.0"
-				busy={false}
 				onSubmit={() => undefined}
 				onQuit={() => undefined}
 			/>,
@@ -39,7 +38,7 @@ describe("launch screen", () => {
 	it("shows the host's model the way upstream shows STRIX_LLM", () => {
 		render(
 			<LaunchScreen t={t}
- boot={{ state: "ready" }} model={model} log={[]} version="0.4.0" busy={false} onSubmit={() => undefined} onQuit={() => undefined} />,
+ boot={{ state: "ready" }} model={model} log={[]} version="0.4.0" onSubmit={() => undefined} onQuit={() => undefined} />,
 		);
 		expect(screen.getByText("glm-5.3")).toBeTruthy();
 		expect(screen.getByText(/openrouter\/z-ai/)).toBeTruthy();
@@ -48,7 +47,7 @@ describe("launch screen", () => {
 	it("says there is no model instead of showing a blank chip", () => {
 		render(
 			<LaunchScreen t={t}
- boot={{ state: "ready" }} log={[]} version="0.4.0" busy={false} onSubmit={() => undefined} onQuit={() => undefined} />,
+ boot={{ state: "ready" }} log={[]} version="0.4.0" onSubmit={() => undefined} onQuit={() => undefined} />,
 		);
 		expect(screen.getByText("launch.noModel")).toBeTruthy();
 		expect(screen.getByText(/launch.noModelHint/)).toBeTruthy();
@@ -58,7 +57,7 @@ describe("launch screen", () => {
 		const onSubmit = vi.fn();
 		render(
 			<LaunchScreen t={t}
- boot={{ state: "ready" }} model={model} log={[]} version="0.4.0" busy={false} onSubmit={onSubmit} onQuit={() => undefined} />,
+ boot={{ state: "ready" }} model={model} log={[]} version="0.4.0" onSubmit={onSubmit} onQuit={() => undefined} />,
 		);
 		const input = screen.getByLabelText("launch.label");
 		await userEvent.type(input, "example.com");
@@ -74,7 +73,7 @@ describe("launch screen", () => {
 		const onQuit = vi.fn();
 		render(
 			<LaunchScreen t={t}
- boot={{ state: "ready" }} model={model} log={[]} version="0.4.0" busy={false} onSubmit={() => undefined} onQuit={onQuit} />,
+ boot={{ state: "ready" }} model={model} log={[]} version="0.4.0" onSubmit={() => undefined} onQuit={onQuit} />,
 		);
 		fireEvent.keyDown(screen.getByLabelText("launch.label"), { key: "c", ctrlKey: true });
 		expect(onQuit).toHaveBeenCalled();
@@ -88,7 +87,6 @@ describe("launch screen", () => {
 				model={model}
 				log={[{ text: "log.connecting" }, { text: "log.dockerDown", tone: "error" }]}
 				version="0.4.0"
-				busy={false}
 				blocked="launch.blocked.docker"
 				onSubmit={() => undefined}
 				onQuit={() => undefined}

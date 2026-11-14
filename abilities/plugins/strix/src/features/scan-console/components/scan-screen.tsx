@@ -111,6 +111,13 @@ export function ScanScreen({
 	// 运行记录永远停在最新一行；读者自己往上滚时不抢回（use-stick-to-bottom.ts）。
 	const stick = useStickToBottom(`${trace.length}:${trace[trace.length - 1]?.ok ?? ""}`, trace.length);
 
+	/** Enter 与发送键走同一条路：清空草稿、把话交给宿主。 */
+	const send = (): void => {
+		// 流式中发送也是合法的（宿主排队）；发送键与 Enter 共用这一条。
+		if (!draft.trim()) return;
+		setDraft("");
+		onSend(draft);
+	};
 	const mode: ScanMode = (sandbox.scanMode as ScanMode | undefined) ?? "standard";
 	const envMode = sandbox.mode ?? environment?.mode;
 	const environmentLabel = envMode === "docker" ? t("env.docker") : t("env.host");
@@ -142,6 +149,8 @@ export function ScanScreen({
 						{running ? t("scan.running") : t("scan.idle")}
 					</span>
 				</span>
+				{/* 状态带只留**这一眼里就要的**：跑了没、多少目标、什么深度、跑在哪。
+				    模型 / 步数 / 发现数在右栏的「统计」里已经有一份，同一件事写两遍是噪声（1.0.7）。 */}
 				<Fact label={t("targets.title")} value={String(targets.length)} />
 				<Fact label={t("scan.mode")} value={describeMode(mode)} />
 				<Fact
@@ -149,9 +158,6 @@ export function ScanScreen({
 					value={environmentLabel}
 					tone={envMode === "docker" ? undefined : "astra-strix-amber"}
 				/>
-				{workspace ? <Fact label={t("session.workspace")} value={workspace} /> : null}
-				{model ? <Fact label={t("scan.model")} value={model.name} /> : null}
-				{steps ? <Fact label={t("scan.steps")} value={String(steps)} /> : null}
 				{critical ? <Fact label={t("severity.critical")} value={String(critical)} tone="astra-strix-red" /> : null}
 				<span className="astra-strix-band-gap" />
 				{onOpenLaunch ? (
@@ -232,20 +238,23 @@ export function ScanScreen({
 								className="astra-strix-prompt-input"
 								aria-label={t("scan.label")}
 								placeholder={t("scan.placeholder")}
-								rows={2}
+								rows={1}
 								spellCheck={false}
 								value={draft}
 								onChange={(event) => setDraft(event.target.value)}
 								onKeyDown={(event) => {
 									if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
 										event.preventDefault();
-										if (!draft.trim()) return;
-										setDraft("");
-										onSend(draft);
+										send();
 									}
 								}}
 							/>
+							{/* 发送键：回车能发，但一个只有占位符的框看不出“发出去”。 */}
+							<button type="button" className="astra-strix-send" onClick={send} disabled={!draft.trim()}>
+								{t("composer.send")}
+							</button>
 						</div>
+						{/* 说明不再是框里的一大块：框下小字，盒子高度因此只剩一行。 */}
 						<p className="astra-strix-prompt-hint">{t("scan.inputHint")}</p>
 					</div>
 				</section>

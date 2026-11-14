@@ -95,7 +95,8 @@ describe("the panel follows the host conversation", () => {
 
 	it("reopens on the scan screen when the service already holds an assessment", () => {
 		expect(session).toContain("hasOpenAssessment(");
-		expect(session).toContain('t("scan.resumed")');
+		// 1.0.7：接续是状态，不再往日志里补一句（日志只放事后仍然成立的事件）。
+		expect(session).not.toContain('t("scan.resumed")');
 	});
 
 	it("treats a live sandbox, a finding or a plan as an open assessment", () => {

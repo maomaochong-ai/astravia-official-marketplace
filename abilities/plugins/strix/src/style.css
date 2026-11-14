@@ -240,24 +240,67 @@
 	transition: border-color 120ms ease;
 }
 
+/* 发送键：与环境下拉同高同圆角，右侧固定。禁用时压到 40%——它同时是“还没写东西”的信号。 */
+.astra-strix-send {
+	flex: 0 0 auto;
+	height: 24px;
+	padding: 0 12px;
+	border: 1px solid color-mix(in srgb, var(--sx-green) 50%, transparent);
+	border-radius: 6px;
+	background: color-mix(in srgb, var(--sx-green) 12%, transparent);
+	color: var(--sx-green);
+	font: inherit;
+	font-size: 11.5px;
+	line-height: 1;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.astra-strix-send:hover:not(:disabled) {
+	border-color: var(--sx-green);
+	background: color-mix(in srgb, var(--sx-green) 20%, transparent);
+}
+
+.astra-strix-send:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+
+/* 首屏脚注：快捷键 / 版本 / 桥接状态收在一条小字里。它们每帧都在，
+   但不是每帧都要看，所以从“一行一条”降级为脚注。 */
+.astra-strix-launch-foot {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 4px 16px;
+	padding-top: 8px;
+	border-top: 1px solid var(--sx-rule);
+	/* 与值列同轴：脚注不另起第三条左边缘（标签列 5.2em + 列间距 10px）。 */
+	padding-left: calc(5.2em + 10px);
+	font-size: 11px;
+	color: var(--sx-dim);
+}
+
+.astra-strix-boot-line {
+	margin-left: auto;
+}
+
 .astra-strix-prompt:focus-within {
 	border-color: var(--sx-green);
 }
-
-.astra-strix-prompt[data-blocked="yes"]:focus-within {
-	border-color: var(--sx-amber);
-}
-
-.astra-strix-prompt:focus-within {
-	border-color: var(--sx-green);
-}
-
-
 .astra-strix-prompt-row {
 	display: flex;
-	align-items: flex-start;
+	/* 发送键贴底（flex-end）：一行时它落在文字行上，多行时留在框的下沿。 */
+	align-items: flex-end;
 	gap: 8px;
 	cursor: text;
+}
+
+/* 文字字段自己占满剩余宽度；发送键固定在右侧，不随字数漂。 */
+.astra-strix-prompt-field {
+	display: flex;
+	flex: 1 1 auto;
+	min-width: 0;
 }
 
 .astra-strix-prompt-caret {
@@ -489,6 +532,11 @@
 }
 
 .astra-strix-transcript {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	min-width: 0;
+}
 
 /* 这一栏的标题：它说清自己是运行记录，不是第二份对话。 */
 .astra-strix-transcript-title {
@@ -500,28 +548,29 @@
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
 }
-	display: flex;
-	flex-direction: column;
-	min-height: 0;
-	min-width: 0;
-}
 
 /* Line length, not the window width, decides how wide the text runs: tool output is
-   long, prose is short, and a 1400 px line of either is unreadable. */
+   long, prose is short, and a very wide line of either is unreadable.
+   但可读宽度**不能**加在滚动容器上（1.0.7）：max-width 会把滚动条一起拉到面板中间，
+   隔着一条空白。容器满宽、滚动条贴右边缘，收窄的是里面的行。 */
 .astra-strix-transcript-body {
 	flex: 1;
 	min-height: 0;
 	overflow-y: auto;
 	display: flex;
 	flex-direction: column;
+	align-items: stretch;
 	gap: 10px;
 	padding: clamp(10px, 2.2vh, 16px) clamp(10px, 2.4vw, 20px) 8px;
-	width: 100%;
-	max-width: 118ch;
-	/* 左对齐，**不**用 auto 外边距居中：行距只在阅读长文本时该收窄，
-	   但收窄后的列必须从左边开始——居中的结果是每一行都比标题缩进一截，
-	   与工具栏、标题、输入框全不在一条线上（真机截图就是这个）。 */
+	width: auto;
+	max-width: none;
+	scrollbar-gutter: stable;
 	margin: 0;
+}
+
+/* 行宽在子元素上收：滚动条管位置，可读性管行。 */
+.astra-strix-transcript-body > * {
+	max-width: 118ch;
 }
 
 
@@ -1496,22 +1545,8 @@
 	white-space: nowrap;
 }
 
-.astra-strix-rain > span:nth-child(2n) {
-	animation-duration: 12s;
-	opacity: 0.72;
-}
-
-.astra-strix-rain > span:nth-child(3n) {
-	animation-duration: 15s;
-	opacity: 0.48;
-	animation-delay: -4s;
-}
-
-.astra-strix-rain > span:nth-child(5n) {
-	animation-duration: 7s;
-	opacity: 0.9;
-	animation-delay: -2s;
-}
+/* 逐列的速度 / 相位 / 亮度由组件 inline 给出（hacker-rain.tsx 的 hash）。
+   不要回到 nth-child 分档：只剩四档时整屏会周期性对齐成一道道横波。 */
 
 @keyframes astra-strix-rain-fall {
 	from {

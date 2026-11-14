@@ -33,7 +33,7 @@
 2. **「新会话」按钮**：在当前 `cwd` 建会话（`createSession(cwd)`），面板跟随新的活跃会话；
    没有 cwd 时如实报 `log.noWorkspace`，不猜目录。
 3. **面板与会话的绑定沿用 0.6.0 的 `session-store`**：按 conversationId 存快照，
-   切回旧会话时水合而不是从零开始。多会话共享一个沙箱与一份台账（服务侧按 sessionId 分文件）。
+   切回旧会话时水合而不是从零开始。多会话共享**一个沙箱**，但台账按会话分文件（这一条被 [0015](strix-0015-ledgers-are-per-conversation.md) 修正：原来按沙箱 session id 分，切到另一个会话仍会写进上一个会话的台账）。
 
 ## 为什么不做"面板内多实例"
 

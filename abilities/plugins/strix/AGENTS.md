@@ -130,6 +130,20 @@ npm run check           # typecheck + test + 服务冒烟
 - **投递顺序：先发、后建、最后交给宿主**（1.0.4）。`sendPrompt` 在宿主的新会话页也能发（宿主自己按当前目录建会话），
   所以不要先 `createSession`——那会把"拿不到 cwd"变成一次假的"你没打开目录"。只有发送真的失败才建会话；
   连 cwd 都拿不到时用 `ctx.conversation.insertText` 把话交回宿主输入框。
+- **台账按会话分，不按沙箱分**（ADR 0015，1.0.7）：服务只有一个沙箱，所以"这是谁的事实"必须由
+  `SandboxStatus.conversation`（开沙箱那一刻写入）加面板注册的会话共同决定；`/api/state` 里顶层那个
+  `conversationKey` 就是面板刚注册的 id，**不能**拿它判归属。面板对不上就不采纳（环境探测例外，
+  它是全局事实）。升级后旧台账（按 sandbox id 命名）不再可见，这是刻意的，没有迁移。
+- **雨必须逐列随机但仍确定**（ADR 0011，1.0.7）：速度 / 相位 / 长度 / 亮度 / 断行一律由
+  `hash()` 派生并写进 inline style；不要回到 `nth-child` 分档或等差取字符——那会让整屏出现
+  平行斜纹与周期性横波，用户的原话是"有规则的竖向流动"。
+- **滚动条贴本栏右缘，可读宽度加在行上**（1.0.7）：`max-width` 不能加在 `.astra-strix-transcript-body`
+  这类滚动容器上，否则滚动条会跟着容器跑到面板中间；收窄的是它的子元素。
+- **输入框一行高、发送键在框内**（1.0.7）：`rows` 起点 1、发送键与文本同一行（`align-items: flex-end`），
+  流式中发送交给宿主排队，**不要**把 `busy` 当禁发条件——那会变成"点了没反应"。
+- **首屏只留决策需要的事实**（1.0.7）：模型 / 目录 / 环境是事实表里的行；快捷键、版本桥接状态收进
+  `.astra-strix-launch-foot`，并且它从值列开始（`padding-left: calc(5.2em + 10px)`）——不要另起
+  第三条左边缘。日志只放**事件**，不要写"模型来自对话""已挂载目录"这种事实表里已经有的话。
 - **会话目录要兜底**（1.0.3）：发送/新建会话时用 `conversation.cwd ?? ctx.fileExplorer.getWorkspaceRoots()[0]?.path`。
   只认 conversation.cwd 会误报"先在宿主里打开一个工作目录"，而用户明明已经打开了（需要 `workspace.read`）。
 - **首屏输入框以下是两列**（1.0.4）：`grid-template-columns: 5.2em minmax(0, 1fr)`，标签列 / 值列。

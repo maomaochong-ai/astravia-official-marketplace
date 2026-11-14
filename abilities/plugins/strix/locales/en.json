@@ -9,13 +9,11 @@
   "launch.noModel": "no model",
   "launch.noModelHint": "pick a default model in Astravia settings",
   "launch.conversationModel": "this conversation",
-  "log.modelFromConversation": "Model: {model} · this conversation",
   "launch.hint.enter": "launch scan",
   "launch.hint.quit": "quit",
   "launch.blocked.model": "Set a default model in Astravia settings, or open a conversation that has one, to run a scan.",
   "launch.blocked.docker": "Start Docker Desktop: Strix runs every tool inside its sandbox container.",
   "prompt.instructions": "The user enabled Strix for this turn. Its 36 tools come from this plugin's own MCP service (server name `strix`). Environment: strix_environment, strix_mcp, strix_scope, strix_think. Sandbox: strix_sandbox_start, strix_exec, strix_browser, strix_proxy, strix_sandbox_status, strix_sandbox_stop. Long jobs belong in a kept session: strix_exec with background:true returns a sessionId, then strix_shell_sessions / strix_write_stdin / strix_kill_session read it, talk to it and close it. Use that for a full nmap sweep, a fuzzer or msfconsole instead of raising timeoutSec. Add tty:true for anything interactive (REPL, ssh, nc). Edit files with strix_patch (the *** Begin Patch format), never a heredoc: quotes, backslashes and $ survive verbatim. To look at a screenshot use strix_view_image — it hands the picture to your vision instead of making you infer rendering from HTML. Records: strix_file_finding, strix_update_finding, strix_list_findings, strix_merge_findings, strix_delete_finding, strix_report, strix_note_*, strix_todo_* (with strix_todo_remove), strix_coverage_* (with strix_coverage_update), strix_threat_model. Keep this order: strix_scope first to declare what may be touched, strix_environment next (docker or host mode, which tool is missing), then strix_sandbox_start once for the whole assessment, then strix_list_skills to see the catalogue of 75 packs and strix_load_skills for the few that match the stack (they are method and payloads, not code), then evidence through strix_exec. Write the plan before you probe and state conclusions between batches; file a finding only with evidence you produced, and close with strix_report (it carries the scope). If your tool roster has no strix_* tool at all, the plugin's local service is not ready: do not hand-roll nmap in a shell and do not claim you are scanning. Say in one sentence that the Strix tools are unavailable, ask the user to toggle the Strix capsule in the composer once more, and stop. Keep a plan, record coverage and write notes — put conclusions and evidence in the ledgers, not only in your reply. Plans change: drop stale items with strix_todo_remove instead of marking them done, and correct a coverage row with strix_coverage_update rather than filing a contradicting second row.",
-  "log.workspaceMounted": "Workspace mounted: {folder}",
   "log.ready": "Ready.",
   "log.bridgeError": "Bridge unavailable",
   "log.dockerDown": "Docker is not running.",
@@ -100,7 +98,6 @@
   "trace.host": "you",
   "trace.hostSay": "host agent",
   "scan.followingHost": "following the host turn",
-  "scan.resumed": "resumed the open assessment",
   "skill.entry.description": "Drive the sandbox and its 26 pentest tools straight from the chat: evidence first, findings after.",
   "scan.idle": "idle",
   "log.sendFailed": "could not hand that to the host conversation",
@@ -131,5 +128,8 @@
   "log.imagePullFailed": "image pull failed — see the output below",
   "launch.modelScope": "this conversation",
   "log.handedToHost": "handed to the host composer — press Enter and the host opens the session in its own folder",
-  "log.newSessionNoFolder": "No folder yet: write your first line above and the host creates the conversation in the current folder"
+  "log.newSessionNoFolder": "No folder yet: write your first line above and the host creates the conversation in the current folder",
+  "composer.send": "Send",
+  "launch.folder": "Folder",
+  "launch.hint.send": "Shift+Enter for a new line"
 }
