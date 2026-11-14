@@ -1615,9 +1615,11 @@
 	color: var(--sx-amber);
 }
 
+/* 标签列宽与环境下拉的标签列共用一个变量：两行的值起点才会在一条竖线上。 */
 .astra-strix-meta-label {
+	display: inline-block;
+	min-width: var(--sx-label-width, 68px);
 	color: var(--sx-dim);
-	margin-right: 6px;
 }
 
 .astra-strix-meta-name {
@@ -1640,30 +1642,49 @@
 }
 
 /* ---- 环境下拉：三态（host / 缺 docker / 缺镜像 / 就绪） ----------------------
-   之前 select 背景透明压在绿色上，字看不清。现在给它自己的深色底与亮字，
-   原生下拉列表也用同一套色（option 单独设，否则展开后是系统白底深字）。 */
+   排布改成两行网格，而不是一条会换行的 flex：
+     「执行环境  [容器（docker）]        [拉取镜像] [刷新环境]」
+     「          docker 已就绪 · 沙箱镜像未拉取                」
+   为什么：flex 换行时"刷新环境"会掉到下一行、按钮与下拉高矮不一，看起来层次不齐（真机截图）。
+   标签列用固定宽度，与上面"模型"那一行的值起点对齐。 */
+.astra-strix-launch {
+	/* 用 px 而不是 em：em 按各自字号解析，两个标签的字号不同会错开 7px。 */
+	--sx-label-width: 68px;
+	--sx-control-height: 26px;
+}
+
+.astra-strix-meta-label,
+.astra-strix-env-label {
+	display: inline-block;
+	min-width: var(--sx-label-width);
+	color: var(--sx-dim);
+}
+
 .astra-strix-env {
-	display: flex;
-	flex-wrap: wrap;
+	display: grid;
+	grid-template-columns: var(--sx-label-width) auto minmax(0, 1fr);
 	align-items: center;
-	gap: 6px 10px;
+	/* 列间距必须为 0：否则 68px 标签列 + 10px gap = 78px，比模型行的 68px 多出一截。 */
+	column-gap: 0;
+	row-gap: 6px;
 	font-size: 11.5px;
 }
 
 .astra-strix-env-label {
-	color: var(--sx-dim);
-	margin-right: 2px;
+	margin: 0;
 }
 
 .astra-strix-env-select {
 	appearance: none;
-	padding: 3px 24px 3px 9px;
+	height: var(--sx-control-height);
+	padding: 0 24px 0 9px;
 	border: 1px solid color-mix(in srgb, var(--sx-green) 45%, transparent);
 	border-radius: 6px;
 	background-color: color-mix(in srgb, #04120a 88%, transparent);
 	color: var(--sx-white, #d1fae5);
 	font: inherit;
 	font-size: 11.5px;
+	line-height: 1;
 	cursor: pointer;
 	background-image: linear-gradient(45deg, transparent 50%, var(--sx-green) 50%),
 		linear-gradient(135deg, var(--sx-green) 50%, transparent 50%);
@@ -1682,14 +1703,24 @@
 	outline-offset: 1px;
 }
 
+.astra-strix-env-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	justify-self: start;
+	margin-left: 10px;
+}
+
 .astra-strix-env-status {
+	/* 第二行：从下拉框的起点开始，与控件左边缘对齐，而不是从标签列开始。 */
+	grid-column: 2 / -1;
 	color: var(--sx-dim);
+	font-size: 11px;
+	line-height: 1.5;
 }
 
-.astra-strix-env[data-state="noDocker"] .astra-strix-env-status {
-	color: var(--sx-amber);
-}
-
+.astra-strix-env[data-state="noDocker"] .astra-strix-env-status,
 .astra-strix-env[data-state="noImage"] .astra-strix-env-status {
 	color: var(--sx-amber);
 }
@@ -1699,20 +1730,26 @@
 }
 
 .astra-strix-env-action {
-	padding: 2px 9px;
+	display: inline-flex;
+	align-items: center;
+	height: var(--sx-control-height);
+	padding: 0 10px;
 	border: 1px solid color-mix(in srgb, var(--sx-green) 45%, transparent);
 	border-radius: 6px;
 	background: transparent;
 	color: var(--sx-green);
 	font: inherit;
 	font-size: 11px;
+	line-height: 1;
 	cursor: pointer;
+	white-space: nowrap;
 }
 
 .astra-strix-env-action:hover {
 	border-color: var(--sx-green);
 	background: color-mix(in srgb, var(--sx-green) 12%, transparent);
 }
+
 
 /* 拖拽手柄默认几乎不可见：它占 8px 命中区，但视觉上只在 hover/focus 时出现，
    否则会像一条悬在输入框上方的绿线（真机截图里就是这样）。 */

@@ -190,25 +190,27 @@ export function LaunchScreen({
 						<option value="docker">{t("env.docker")}</option>
 						<option value="auto">{t("env.auto")}</option>
 					</select>
+					<span className="astra-strix-env-actions">
+						{envState === "noDocker" ? (
+							<button type="button" className="astra-strix-env-action" onClick={() => onInstallDocker?.()}>
+								{t("env.install")}
+							</button>
+						) : null}
+						{envState === "noImage" && onPullImage ? (
+							<button type="button" className="astra-strix-env-action" onClick={() => void onPullImage()}>
+								{t("env.pull")}
+							</button>
+						) : null}
+						<button type="button" className="astra-strix-env-action" onClick={() => onRefreshEnvironment?.()}>
+							{t("env.refresh")}
+						</button>
+					</span>
 					<span className="astra-strix-env-status">
 						{envState === "host" ? t("env.statusHost") : null}
 						{envState === "noDocker" ? t("env.statusNoDocker") : null}
 						{envState === "noImage" ? t("env.statusNoImage") : null}
 						{envState === "ready" ? t("env.statusReady") : null}
 					</span>
-					{envState === "noDocker" ? (
-						<button type="button" className="astra-strix-env-action" onClick={() => onInstallDocker?.()}>
-							{t("env.install")}
-						</button>
-					) : null}
-					{envState === "noImage" && onPullImage ? (
-						<button type="button" className="astra-strix-env-action" onClick={() => onPullImage()}>
-							{t("env.pull")}
-						</button>
-					) : null}
-					<button type="button" className="astra-strix-env-action" onClick={() => onRefreshEnvironment?.()}>
-						{t("env.refresh")}
-					</button>
 				</div>
 				<div className="astra-strix-hints">
 					<span className="astra-strix-hints-left">

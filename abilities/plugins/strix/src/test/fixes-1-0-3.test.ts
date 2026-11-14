@@ -55,6 +55,35 @@ describe("the first screen is one column again", () => {
 	});
 });
 
+describe("the hierarchy lines up", () => {
+	it("pins the label column in px, not em", () => {
+		// em 按各自字号解析：meta 12px、env 11.5px → 同样的 5.6em 差 7px，两行值起点错开。
+		expect(css).toContain("--sx-label-width: 68px");
+		expect(css).not.toContain("--sx-label-width: 5.6em");
+	});
+
+	it("drops the grid column gap so the value column matches the model row", () => {
+		const block = /\.astra-strix-env \{([^}]*)\}/s.exec(css)?.[1] ?? "";
+		expect(block).toContain("grid-template-columns: var(--sx-label-width)");
+		expect(block).toContain("column-gap: 0");
+		expect(block).not.toMatch(/gap:\s*6px 10px/);
+	});
+
+	it("keeps the buttons in one row and the same height as the select", () => {
+		// 之前按钮各自换行、与下拉高矮不一，正是"层次不齐"。
+		expect(css).toContain("--sx-control-height: 26px");
+		const action = /\.astra-strix-env-action \{([^}]*)\}/s.exec(css)?.[1] ?? "";
+		expect(action).toContain("height: var(--sx-control-height)");
+		expect(action).toContain("white-space: nowrap");
+		expect(launch).toContain("astra-strix-env-actions");
+	});
+
+	it("puts the status under the control, not under the label", () => {
+		const status = /\.astra-strix-env-status \{([^}]*)\}/s.exec(css)?.[1] ?? "";
+		expect(status).toContain("grid-column: 2 / -1");
+	});
+});
+
 describe("the environment selector is readable", () => {
 	it("gives the control its own background and light text", () => {
 		const block = /\.astra-strix-env-select\s*\{([^}]*)\}/s.exec(css)?.[1] ?? "";

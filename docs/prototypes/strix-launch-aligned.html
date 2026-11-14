@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
 <meta charset="utf-8" />
-<title>Strix 首屏 · 对齐与环境下拉（1.0.3）</title>
+<title>Strix 首屏 · 对齐后的层级（1.0.4）</title>
 <style>
 	:root { --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 	* { box-sizing: border-box; }
@@ -14,12 +14,11 @@
 		--sx-dim: color-mix(in srgb, #34d399 62%, transparent);
 		--sx-placeholder: color-mix(in srgb, #34d399 46%, transparent);
 		--sx-rule: color-mix(in srgb, #22c55e 20%, transparent);
-		--sx-red: #f87171; --sx-amber: #fbbf24;
+		--sx-label-width: 68px; --sx-control-height: 26px;
 		position: relative; overflow: hidden;
-		width: 1180px; height: 700px; margin: 0 auto;
+		width: 1000px; height: 700px; margin: 0 auto;
 		background: color-mix(in srgb, #04120a 94%, #fff);
-		font-size: 13px; display: flex; flex-direction: column; padding: 24px;
-		color: var(--sx-text);
+		font-size: 13px; display: flex; flex-direction: column; padding: 24px; color: var(--sx-text);
 	}
 	.term::before { content: ""; position: absolute; inset: 0; pointer-events: none;
 		background-image: repeating-linear-gradient(to bottom, color-mix(in srgb, #22c55e 8%, transparent) 0 1px, transparent 1px 3px);
@@ -28,43 +27,46 @@
 
 	.launch { margin: auto; width: min(72ch, 100%); display: flex; flex-direction: column; gap: 14px; }
 	.launch > * { padding-left: 0; padding-right: 0; }
+
 	.mark { margin: 0; color: var(--sx-green); font-size: 8.5px; line-height: 1.15; white-space: pre; }
 	.tagline { margin: 6px 0 0; color: var(--sx-dim); font-size: 12px; }
 
 	.prompt { border: 1px solid var(--sx-rule); border-radius: 10px; padding: 10px 12px;
-		background: color-mix(in srgb, #22c55e 4%, transparent); display: flex; flex-direction: column; gap: 6px; }
+		background: color-mix(in srgb, #22c55e 4%, transparent); }
 	.prompt-row { display: flex; gap: 8px; align-items: flex-start; }
 	.caret { color: var(--sx-green); }
-	.input { flex: 1; min-height: 56px; color: var(--sx-placeholder); }
+	.input { flex: 1; min-height: 52px; color: var(--sx-placeholder); }
 
 	.meta, .env, .hints, .boot { margin: 0; padding-left: 2px; line-height: 1.6; }
+
 	.meta { display: flex; align-items: baseline; font-size: 12px; }
-	.meta-label { color: var(--sx-dim); margin-right: 6px; }
+	.meta-label, .env-label { display: inline-block; min-width: var(--sx-label-width); color: var(--sx-dim); }
 	.meta-name { color: var(--sx-text); font-weight: 600; }
 	.dim { color: var(--sx-dim); }
 
-	.env { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 11.5px; }
-	.env-label { color: var(--sx-dim); margin-right: 2px; }
-	select { appearance: none; padding: 3px 24px 3px 9px; border: 1px solid color-mix(in srgb, var(--sx-green) 45%, transparent);
-		border-radius: 6px; background-color: color-mix(in srgb, #04120a 88%, transparent); color: #d1fae5;
-		font: inherit; font-size: 11.5px; }
-	.env-status { color: var(--sx-amber); }
+	.env { display: grid; grid-template-columns: var(--sx-label-width) auto minmax(0, 1fr);
+		align-items: center; column-gap: 0; row-gap: 6px; font-size: 11.5px; }
+	select { appearance: none; height: var(--sx-control-height); padding: 0 24px 0 9px;
+		border: 1px solid color-mix(in srgb, var(--sx-green) 45%, transparent); border-radius: 6px;
+		background-color: color-mix(in srgb, #04120a 88%, transparent); color: #d1fae5;
+		font: inherit; font-size: 11.5px; line-height: 1; }
+	.env-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; justify-self: start; margin-left: 10px; }
+	.action { display: inline-flex; align-items: center; height: var(--sx-control-height); padding: 0 10px;
+		border: 1px solid color-mix(in srgb, var(--sx-green) 45%, transparent); border-radius: 6px;
+		background: transparent; color: var(--sx-green); font: inherit; font-size: 11px; line-height: 1; white-space: nowrap; }
+	.env-status { grid-column: 2 / -1; color: var(--sx-amber); font-size: 11px; line-height: 1.5; }
 	.env[data-state="ready"] .env-status { color: var(--sx-green); }
-	.action { padding: 2px 9px; border: 1px solid color-mix(in srgb, var(--sx-green) 45%, transparent);
-		border-radius: 6px; background: transparent; color: var(--sx-green); font: inherit; font-size: 11px; }
 
 	.hints { display: flex; gap: 18px; font-size: 11.5px; color: var(--sx-dim); align-items: baseline; }
 	.key { color: var(--sx-white); border: 1px solid var(--sx-rule); border-radius: 4px; padding: 0 4px; }
 	.boot { font-size: 11.5px; color: var(--sx-green); }
-	.sweep { display: inline-flex; gap: 2px; margin-right: 8px; vertical-align: middle; }
-	.sweep > span { width: 5px; height: 5px; background: #15803d; }
 
-	.guide { position: absolute; left: 24px; top: 0; bottom: 0; width: 1px; border-left: 1px dashed #22c55e44; z-index: 2; }
-	.caption { width: 1180px; margin: 0 auto 8px; color: #34d399; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+	.caption { width: 1000px; margin: 0 auto 8px; color: #34d399; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+	.caption b { color: #d1fae5; font-weight: 600; }
 </style>
 </head>
 <body>
-	<div class="caption">1.0.3 · 输入框以下每一行共用一条左边缘（虚线是基准线）</div>
+	<div class="caption">1.0.4 · <b>标签列 68px</b>：模型行与执行环境行的值起点同一条竖线；控件与按钮同为 26px 高</div>
 	<div class="term">
 		<div class="launch">
 			<div>
@@ -86,20 +88,13 @@
 			<div class="env" data-state="noImage">
 				<span class="env-label">执行环境</span>
 				<select><option>容器（docker）</option></select>
+				<span class="env-actions"><button class="action">拉取镜像</button><button class="action">刷新环境</button></span>
 				<span class="env-status">docker 已就绪 · 沙箱镜像未拉取</span>
-				<button class="action">拉取镜像</button>
-				<button class="action">刷新环境</button>
 			</div>
 
-			<div class="env" data-state="noDocker" style="margin-top:-4px">
-				<span class="env-label">（同一行的另一态）</span>
-				<span class="env-status">未检测到 docker：安装后点刷新</span>
-				<button class="action">让宿主安装 docker</button>
-			</div>
+			<div class="hints"><span><span class="key">enter</span> 启动扫描</span><span><span class="key">ctrl+c</span> 退出</span><span class="dim" style="margin-left:auto">v1.0.4</span></div>
 
-			<div class="hints"><span><span class="key">enter</span> 启动扫描</span><span><span class="key">ctrl+c</span> 退出</span><span class="dim" style="margin-left:auto">v1.0.3</span></div>
-
-			<p class="boot"><span class="sweep"><span></span><span></span><span></span><span></span><span></span><span></span></span>桥接服务已就绪</p>
+			<p class="boot">桥接服务已就绪 · docker 29.2.1 · 36 个工具</p>
 		</div>
 	</div>
 </body>
