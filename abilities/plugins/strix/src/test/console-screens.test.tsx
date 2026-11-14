@@ -131,7 +131,6 @@ const scanProps = {
 	busy: false,
 	onSend: () => undefined,
 	onStop: () => undefined,
-	agents: [{ name: "auth-specialist", status: "running" as const, task: "Test the login flow" }],
 	mcp: [{ name: "strix", provider: "service", toolCount: 32, dead: false }],
 };
 
@@ -143,10 +142,19 @@ describe("scan screen", () => {
 		expect(screen.getByText(/✓ Done/)).toBeTruthy();
 	});
 
-	it("distinguishes a command still in flight", () => {
-		render(<ScanScreen {...scanProps} phase="scanning" trace={[run({ ok: undefined })]} busy />);
+		it("distinguishes a command still in flight", () => {
+		render(<ScanScreen {...scanProps} phase="scanning" hostStreaming busy trace={[run({ ok: undefined })]} />);
 		expect(screen.getByText(/In progress/)).toBeTruthy();
 		expect(screen.getByText("scan.running")).toBeTruthy();
+	});
+
+	it("says idle, not running, when the host turn is over", () => {
+		// The assessment stays open after a turn ends; the band must not claim the agent
+		// is still working, and the stop button must not offer to stop nothing.
+		render(<ScanScreen {...scanProps} phase="scanning" hostStreaming={false} />);
+		expect(screen.getByText("scan.idle")).toBeTruthy();
+		expect(screen.queryByText("scan.running")).toBeNull();
+		expect((screen.getByRole("button", { name: "scan.stop" }) as HTMLButtonElement).disabled).toBe(true);
 	});
 
 	it("shows the operator's message as a You line", () => {

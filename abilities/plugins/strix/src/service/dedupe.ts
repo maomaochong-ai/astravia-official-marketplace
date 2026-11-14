@@ -1,17 +1,14 @@
 /**
  * Duplicate findings: one weakness reported twice is a worse report, not a longer one.
  *
- * Upstream settles this with a model pass (`strix/report/dedupe.py`): two findings are
- * the same when they describe one root cause at one sink, even if the payload, the
- * endpoint or the wording differ. The model here is the host's (`ctx.ai`), so the pass
- * costs no second credential — the same rule as the rest of this plugin (ADR strix-0003).
- *
- * Deterministic pre-pass first: an exact match on (title, location) is not a judgement
- * call, and asking a model to rediscover it wastes a call. Only the remaining candidates
- * are sent to the model, in one batch, with a bounded transcript.
+ * Upstream settles this with a model pass (`strix/report/dedupe.py`). Here the model is the
+ * host agent, which already reads the ledger and can call `strix_merge_findings` itself
+ * when it recognises a pair; the plugin no longer owns a model call to run a second pass.
+ * What stays is the deterministic half — an exact match on (title, location) is not a
+ * judgement call — plus the instruction text the agent is held to, so the rule can be
+ * asserted without a model.
  */
 
-import type { PluginAiApi } from "@astravia-org/plugin-sdk";
 
 export interface DedupeCandidate {
 	readonly id: string;
@@ -101,34 +98,7 @@ export function parseDedupeReply(reply: string, candidates: readonly DedupeCandi
 	return accepted;
 }
 
-/**
- * Full pass: exact duplicates first, then the model on what is left.
- *
- * A model failure is not a report failure — the deterministic pass has already collapsed
- * the obvious pairs, and an unmerged near-duplicate is better than no report at all.
- */
-export async function dedupeFindings(
-	ai: PluginAiApi,
-	modelKey: string,
-	candidates: readonly DedupeCandidate[],
-): Promise<DedupeResult> {
-	const exact = exactDuplicates(candidates);
-	if (candidates.length < 2) return exact;
-
-	const remaining = candidates.filter(
-		(candidate) => !exact.duplicates.some((duplicate) => duplicate.id === candidate.id),
-	);
-	if (remaining.length < 2) return exact;
-	try {
-		const reply = await ai.complete({
-			modelKey,
-			systemPrompt: "You de-duplicate penetration-test findings and answer with JSON only.",
-			prompt: dedupeInstruction(remaining),
-			maxTokens: 1_200,
-		});
-		const text = reply.text;
-		return { duplicates: [...exact.duplicates, ...parseDedupeReply(text, remaining)], usedModel: true };
-	} catch {
-		return exact;
-	}
+/** The deterministic pass on its own: exact duplicates, no model required. */
+export function dedupeFindings(candidates: readonly DedupeCandidate[]): DedupeResult {
+	return exactDuplicates(candidates);
 }

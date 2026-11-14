@@ -3,7 +3,7 @@
   "plugin.description": "The Strix pentest console in a tab: launch a scan against code or a live target and watch the sandbox work, running on your Astravia model.",
   "tab.label": "Strix",
   "action.label": "Strix",
-  "launch.tagline": "Open-source AI hackers for your apps",
+  "launch.tagline": "Drive the sandbox and its toolchain from the host conversation; this tab is a window on the same run.",
   "launch.label": "What should Strix test?",
   "launch.placeholder": "Describe what to test, or name a target",
   "launch.noModel": "no model",
@@ -97,9 +97,12 @@
   "rail.empty.coverage": "One row per surface, as it is finished",
   "rail.empty.notes": "Payload lists and endpoint maps land here",
   "prompt.instructionsStarting": "The user enabled Strix for this turn, but the plugin's local service may still be starting. Call strix_environment first. If your tool roster has no strix_* tool, say in one sentence that the Strix tools are not ready, ask the user to toggle the Strix capsule in the composer once more, and stop. When the tools are there, work in this order: strix_environment → strix_sandbox_start → strix_list_skills with strix_load_skills → evidence through strix_exec → strix_file_finding → strix_report. Do not hand-roll replacements for a missing toolchain, and do not record a finding without evidence.",
-  "trace.host": "Host chat",
-  "trace.hostSay": "Host agent",
+  "trace.host": "you",
+  "trace.hostSay": "host agent",
   "scan.followingHost": "following the host turn",
   "scan.resumed": "resumed the open assessment",
-  "skill.entry.description": "Drive the sandbox and its 26 pentest tools straight from the chat: evidence first, findings after."
+  "skill.entry.description": "Drive the sandbox and its 26 pentest tools straight from the chat: evidence first, findings after.",
+  "scan.idle": "idle",
+  "log.sendFailed": "could not hand that to the host conversation",
+  "log.noWorkspace": "open a workspace folder in the host first, so this panel has a conversation to start"
 }

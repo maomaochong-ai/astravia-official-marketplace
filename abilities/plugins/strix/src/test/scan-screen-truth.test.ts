@@ -36,9 +36,15 @@ describe("scan screen truthfulness", () => {
 
 	it("lets the host conversation drive the same run", () => {
 		expect(session).toContain('"message-added"');
-		// The host turn is the run: mirror it, do not start a second loop beside it.
-		expect(session).toContain('pushTrace({ kind: "host", label: text })');
-		expect(session).not.toContain("startRef.current(text)");
+		expect(session).toContain("hostRowFor");
+		// The host turn is the run: render it, never start a second loop beside it.
+		expect(session).not.toContain("ai.chat(");
+		expect(session).not.toContain("StrixAgent");
+	});
+
+	it("renders the host agent's answer while it is still arriving", () => {
+		expect(session).toContain('"message-updated"');
+		expect(screen).toContain("astra-strix-streaming");
 	});
 
 	it("keeps upstream's Stats panel", () => {

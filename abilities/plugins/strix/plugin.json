@@ -2,7 +2,7 @@
   "id": "strix",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.5.20",
+  "version": "0.6.0",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -16,13 +16,11 @@
   "permissions": [
     "ui.slot.activity-tab",
     "ui.slot.input-action",
-    "ai.models.list",
-    "ai.complete",
+    "ui.shortcuts.register",
     "agent.session.read",
+    "agent.session.write",
     "agent.skills.control",
-    "agent.mcp.control",
-    "shell.openExternal",
-    "ui.shortcuts.register"
+    "agent.mcp.control"
   ],
   "providers": {
     "services": [

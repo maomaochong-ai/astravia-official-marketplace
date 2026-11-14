@@ -19,7 +19,6 @@ describe("session scope", () => {
 			todos: [],
 			notes: [],
 			coverage: [],
-			agents: [],
 			mcp: [],
 		});
 		expect(readSnapshot("conv-a")?.targets).toEqual(["https://example.test"]);
@@ -38,7 +37,6 @@ describe("session scope", () => {
 			todos: [],
 			notes: [],
 			coverage: [],
-			agents: [],
 			mcp: [],
 		});
 		expect(readSnapshot(undefined)).toBeUndefined();

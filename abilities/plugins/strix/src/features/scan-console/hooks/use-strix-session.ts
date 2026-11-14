@@ -1,41 +1,37 @@
 /**
- * The state machine behind the tab.
+ * The state behind the tab — read from the host conversation, written back to it.
  *
- * Two phases of one screen, as upstream has them: a launch column (`setupView`) and
- * the scan (chat trace + sidebar). What differs is where everything comes from - the
- * panel is a *view of the active conversation*, not a private agent:
+ * There is exactly one model in play: the one the host conversation runs on. This panel
+ * has no loop of its own, no second system prompt and no private transcript of prompts.
+ * No model call is made anywhere in this plugin; the host agent already has the
+ * `strix_*` tools over MCP, so it *is* the loop.
  *
- *  - the model is the conversation's (`resolveModel`), so switching model in the host
- *    switches it here too;
- *  - the workspace is the conversation's cwd, mounted into the sandbox;
- *  - the trace carries both the loop this panel runs **and** the Strix calls the host
- *    agent makes from the chat, because both drive the same sandbox.
+ * So the panel does the two things a window and a controller can do:
  *
- * Everything the tab needs at boot arrives through `runtime.ensureReady()`: the
- * service URL is not known until the host has started the service, so the first
- * paint is always the launch column with a "connecting" line under it.
+ *  - **input** — whatever the operator types here (launch column or composer) is
+ *    delivered into the host conversation with `sendPrompt`, so it renders there and is
+ *    answered by the host agent under the host's own permissions and plan;
+ *  - **output** — the panel renders what that turn produces, from two witnesses: the
+ *    conversation's own events (user text, streamed assistant text, which `strix_*` tool
+ *    is being called) and the bridge's event feed (the command that ran, its exit code,
+ *    its output tail). Facts about the assessment itself — findings, plan, coverage,
+ *    notes, session — are re-read from the service after every tool call.
+ *
+ * Upstream's loop keeps a transcript because it owns the model. Here the host owns it,
+ * and the plugin's job is to show the assessment as it happens and to hand the operator's
+ * words to the only agent that can act on them.
  */
 
-import type { ConversationEvent, ConversationState, PluginAiApi, PluginAiModel } from "@astravia-org/plugin-sdk";
+import type { ConversationEvent, ConversationState } from "@astravia-org/plugin-sdk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { StrixAgent, type AgentEvent } from "../../../agent/strix-agent";
 import type { BridgeClient } from "../../../domain/bridge-client";
-import {
-	normalizeCoverage,
-	normalizeFindings,
-	normalizeNotes,
-	normalizeProbe,
-	normalizeSandbox,
-	normalizeTodos,
-} from "../../../domain/bridge-payloads";
-import type { AgentStatus } from "../../../agent/strix-agent";
-import { hostToolCall, resolveModel, workspaceLabel } from "../../../domain/host-sync";
 import { hasOpenAssessment } from "../../../domain/assessment-presence";
+import { evidenceRow, hostRowFor, isServiceNarrated, toolRow } from "../../../domain/conversation-projection";
+import { resolveModel, workspaceLabel } from "../../../domain/host-sync";
 import { isStrixEngaged } from "../../../domain/engagement";
-import { parseLaunchPrompt } from "../../../domain/launch-request";
-import type { ModelChoice } from "../../../domain/model-label";
-import { belongsTo, readSnapshot, writeSnapshot } from "../session-store";
+import { writeSnapshot, belongsTo, readSnapshot } from "../session-store";
 import { normalizeRoster, type McpConnection } from "../../../service/mcp-roster";
+import type { ModelChoice } from "../../../domain/model-label";
 import type {
 	BridgeEvent,
 	BridgeState,
@@ -47,6 +43,14 @@ import type {
 	TodoItem,
 	TraceEntry,
 } from "../../../runtime-contract";
+import {
+	normalizeCoverage,
+	normalizeFindings,
+	normalizeNotes,
+	normalizeProbe,
+	normalizeSandbox,
+	normalizeTodos,
+} from "../../../domain/bridge-payloads";
 
 const TRACE_LIMIT = 400;
 const LOG_LIMIT = 6;
@@ -72,8 +76,6 @@ export interface StrixSessionModel {
 	todos: TodoItem[];
 	notes: NoteSummary[];
 	coverage: CoverageOutcome[];
-	/** Specialist agents and their status, as reported by the loop. */
-	agents: AgentStatus[];
 	/** MCP connections as last reported; docked like upstream's Mcp panel. */
 	mcp: McpConnection[];
 	model?: ModelChoice;
@@ -81,19 +83,16 @@ export interface StrixSessionModel {
 	modelFromConversation: boolean;
 	/** Folder name of the conversation's workspace, shown in the status row. */
 	workspace?: string;
+	/** The host conversation is generating right now. */
 	hostStreaming: boolean;
+	/** An assistant answer arriving token by token; rendered as a live row. */
+	streaming?: string;
 	busy: boolean;
-	/** A question from `strix_ask_user` that is waiting for the operator. */
-	question?: { text: string; options?: string[] };
-	/** Set when the agent called `strix_finish`; the report is already written. */
-	finished?: { summary: string };
-	/** Start an assessment from the launch prompt. */
+	/** Deliver the launch prompt into the host conversation. */
 	start: (prompt: string) => Promise<void>;
 	/** Continue the assessment from the scan composer. */
 	send: (text: string) => Promise<void>;
-	/** Answer a pending question; the composer submits through this while one is open. */
-	answer: (text: string) => Promise<void>;
-	/** Abort the loop and stop the container. */
+	/** Abort the host turn and stop the sandbox. */
 	stop: () => Promise<void>;
 	/** Re-read state after a failure. */
 	refresh: () => Promise<void>;
@@ -102,25 +101,34 @@ export interface StrixSessionModel {
 export interface StrixSessionOptions {
 	runtime: { ensureReady: () => Promise<string> };
 	client: BridgeClient;
-	ai: PluginAiApi;
 	/** Active conversation, from `useActiveConversation()`; null on a fresh-session page. */
 	conversation: ConversationState | null;
-	/** `ctx.conversation.on`: the host's turn and tool events, so its Strix calls land in the trace. */
+	/** `ctx.conversation.on`: the host's turn, message and tool events. */
 	subscribe: (listener: (event: ConversationEvent) => void) => { dispose(): void };
-	/** Host conversation API: a prompt typed in the panel is delivered there (ADR 0003). */
+	/** Host conversation API: the only path by which this panel speaks. */
 	sendPrompt: (text: string) => Promise<{ status: "sent" | "queued" | "failed" }>;
+	/** Creates a conversation when the user is still on the new-session page. */
+	createSession: (cwd: string) => Promise<ConversationState>;
+	/** Aborts the host turn; `stop()` calls it before stopping the sandbox. */
+	abort: () => Promise<void>;
 	t: (key: string) => string;
 }
 
-export function useStrixSession({ runtime, client, ai, conversation, subscribe, sendPrompt, t }: StrixSessionOptions): StrixSessionModel {
+export function useStrixSession({
+	runtime,
+	client,
+	conversation,
+	subscribe,
+	sendPrompt,
+	createSession,
+	abort,
+	t,
+}: StrixSessionOptions): StrixSessionModel {
 	// Read once, before the first paint: a remounted tab rehydrates instead of showing
-	// the launch column while its scan is still running behind it (session-store.ts).
+	// the launch column while its assessment is still open behind it (session-store.ts).
 	const initial = useRef(readSnapshot(conversation?.id)).current;
 	const [phase, setPhase] = useState<SessionPhase>(initial?.phase ?? "booting");
 	const [log, setLog] = useState<LogLine[]>([]);
-	// Boot is a *state*, not a log entry (ADR strix-0004). Pushing "connecting" into
-	// the log left that line on screen forever: the reader could not tell whether the
-	// bridge was still coming up or the message was simply history.
 	const [boot, setBoot] = useState<{ state: "connecting" | "ready" | "failed"; detail?: string }>({
 		state: "connecting",
 	});
@@ -131,48 +139,41 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 	const [todos, setTodos] = useState<TodoItem[]>(initial?.todos ?? []);
 	const [notes, setNotes] = useState<NoteSummary[]>(initial?.notes ?? []);
 	const [coverage, setCoverage] = useState<CoverageOutcome[]>(initial?.coverage ?? []);
-	const [agents, setAgents] = useState<AgentStatus[]>(initial?.agents ?? []);
 	const [mcp, setMcp] = useState<McpConnection[]>(initial?.mcp ?? []);
-	const [question, setQuestion] = useState<StrixSessionModel["question"]>();
-	const [finished, setFinished] = useState<StrixSessionModel["finished"]>();
-	const [models, setModels] = useState<PluginAiModel[]>([]);
-	const [defaultModel, setDefaultModel] = useState<string | null>(null);
-	const [busy, setBusy] = useState(false);
+	const [streaming, setStreaming] = useState<string>("");
+	const [hostStreaming, setHostStreaming] = useState<boolean>(Boolean(conversation?.isStreaming));
+	const [submitting, setSubmitting] = useState(false);
 	/** 接续已有评估只提示一次：refresh 会被轮次反复叫到。 */
 	const resumed = useRef(false);
+	/**
+	 * The phase as the event handlers see it. The handlers are installed once but have to
+	 * know whether an assessment is already open, and a state value would be stale in their
+	 * closure — the same reason the shortcut scope reads the session through a ref.
+	 */
+	const phaseRef = useRef<SessionPhase>(phase);
+	phaseRef.current = phase;
 
 	// Scope and memory (see session-store.ts). `mountedIn` is the conversation this panel
 	// was opened in: events from any other conversation are ignored, so project A's chat
-	// cannot start a scan in project B's panel.
+	// cannot drive project B's panel.
 	const mountedIn = useRef<string | null>(conversation?.id ?? null);
 	// The host replays `conversation-changed` in a microtask, so a tab can mount before
 	// any id exists. Adopting the first real id is what stops the panel from ignoring
-	// every event for the rest of its life — which read as "the host chat does not sync".
+	// every event for the rest of its life.
 	if (mountedIn.current === null && conversation?.id) mountedIn.current = conversation.id;
 	const conversationIdRef = useRef<string | undefined>(conversation?.id);
 	conversationIdRef.current = conversation?.id;
-	/**
-	 * Prompts the panel itself just delivered to the conversation. The host echoes them
-	 * back as `message-added`, and that echo must not start a second run (ADR strix-0003).
-	 */
-	const suppressMirror = useRef<Set<string>>(new Set());
+	const streamingRef = useRef("");
 	const seq = useRef(0);
-	const agentRef = useRef<StrixAgent | null>(null);
-	/** Resolver for the question currently on screen; `answer()` calls it. */
-	const answerRef = useRef<((text: string) => void) | null>(null);
 
-	// The conversation's model is the authority; recomputed on every conversation
-	// change so a model switch in the chat moves this panel with it.
-	const resolved = useMemo(
-		() => resolveModel({ conversationModel: conversation?.model, models, defaultModel }),
-		[conversation?.model, models, defaultModel],
-	);
-	const modelRef = useRef<ModelChoice | undefined>(resolved.choice);
+	// The conversation's model is the authority; recomputed on every conversation change
+	// so a model switch in the chat moves this panel with it.
+	const resolved = useMemo(() => resolveModel({ conversationModel: conversation?.model }), [conversation?.model]);
 	const cwdRef = useRef<string | null>(conversation?.cwd ?? null);
 	useEffect(() => {
-		modelRef.current = resolved.choice;
 		cwdRef.current = conversation?.cwd ?? null;
-	}, [resolved.choice, conversation?.cwd]);
+		setHostStreaming(Boolean(conversation?.isStreaming));
+	}, [conversation?.cwd, conversation?.isStreaming]);
 
 	const note = useCallback((text: string, tone?: LogLine["tone"]) => {
 		setLog((previous) => [...previous, { text, ...(tone ? { tone } : {}) }].slice(-LOG_LIMIT));
@@ -184,7 +185,25 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 		);
 	}, []);
 
-	/** Service + machine state, plus the model list the conversation model resolves against. */
+	/** Close the newest row that is still open; returns the patched list unchanged if none. */
+	const closeRow = useCallback(
+		(patch: Partial<TraceEntry>, match?: (entry: TraceEntry) => boolean) => {
+			setTrace((previous) => {
+				for (let index = previous.length - 1; index >= 0; index -= 1) {
+					const row = previous[index];
+					if (!row || row.kind !== "tool" || row.ok !== undefined) continue;
+					if (match && !match(row)) continue;
+					const next = previous.slice();
+					next[index] = { ...row, ...patch };
+					return next;
+				}
+				return previous;
+			});
+		},
+		[],
+	);
+
+	/** Service + machine state: the assessment's own facts, re-read rather than inferred. */
 	const refresh = useCallback(async () => {
 		setBoot({ state: "connecting" });
 		// 让后面的阶段判定能用上同一份快照：`state` 本来只活在 try 块里。
@@ -200,7 +219,6 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 			setTodos(normalizeTodos(state?.todos));
 			setNotes(normalizeNotes(state?.notes));
 			setCoverage(normalizeCoverage(state?.coverage));
-			setFindings(normalizeFindings(state?.findings));
 			if (probe) {
 				setEnvironment(probe);
 				// A missing daemon is the working state in `host` mode (ADR strix-0001), not an
@@ -213,28 +231,19 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 				const detail = (state?.environment as { error?: unknown } | undefined)?.error;
 				if (typeof detail === "string" && detail) setBoot({ state: "failed", detail });
 			}
-			// No "ready" line either: the boot state already says it, and a log that keeps
-			// every status turns into the same noise the terminal had.
+			void client
+				.callTool("strix_mcp")
+				.then((result) => setMcp(normalizeRoster(result)))
+				.catch(() => undefined);
 		} catch (cause) {
 			setBoot({ state: "failed", detail: cause instanceof Error ? cause.message : String(cause) });
 			// Not also pushed into the log: the boot strip shows the same sentence with the
 			// reason, and two copies of one error read as two failures (ADR strix-0004).
 		}
 
-		try {
-			const list = await ai.listModels();
-			setModels(list.models);
-			setDefaultModel(list.defaultModel);
-			if (!list.models.length && !conversation?.model) note(t("log.noModel"), "error");
-		} catch (cause) {
-			// A host without `ai.complete` cannot run the loop; say so on the launch
-			// screen rather than letting Enter fail later.
-			note(`${t("log.noModel")} ${cause instanceof Error ? cause.message : ""}`.trim(), "error");
-		}
-
 		// 屏幕上该画哪一侧，由服务里的事实决定，不由「这个组件碰巧挂载过」决定：
 		// 已经开了沙箱、已经落了 finding / 计划 / 笔记 / 覆盖，说明评估正在进行——
-		// 此时停在首屏，就是用户说的「面板没反应，还在首屏」。
+		// 此时停在首屏，就是「面板没反应，还在首屏」。
 		const open = hasOpenAssessment(
 			bridgeState
 				? {
@@ -256,11 +265,9 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 			resumed.current = true;
 			note(t("scan.resumed"));
 		}
-	}, [ai, client, conversation?.model, note, runtime, t]);
+	}, [client, note, runtime, t]);
 
-	// Where the model and the mounted folder came from, announced once per conversation
-	// in the launch log. Upstream's log is exactly this kind of launch-time status, and
-	// it is the only place the provenance can be stated without changing the layout.
+	// Where the model and the mounted folder came from, announced once per conversation.
 	const announced = useRef("");
 	useEffect(() => {
 		const key = `${resolved.choice?.modelKey ?? ""}|${conversation?.cwd ?? ""}`;
@@ -280,17 +287,39 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 		void refresh();
 	}, [refresh]);
 
-	// The bridge narrates its sandbox lifecycle; tool rows come from the loop and the
-	// host conversation, so subscribing to `tool_*` here would draw commands twice.
+	/**
+	 * The bridge's own feed: what actually ran.
+	 *
+	 * The host tells us *that* `strix_exec` was called; only the service knows the exit
+	 * code and the output, because it is the side holding the container. Commands are
+	 * therefore drawn from here, and every other `strix_*` call from the host events —
+	 * one row per call, never two (domain/conversation-projection.ts owns the split).
+	 */
 	useEffect(
 		() =>
 			client.events((event: BridgeEvent) => {
+				if (event.event === "tool_start") {
+					// 宽松取值：`BridgeEvent` 的兼容成员把字段写成 unknown，这里只认字符串。
+					const start = event as { tool?: unknown; command?: unknown };
+					const command = typeof start.command === "string" ? start.command : undefined;
+					const row = toolRow({ tool: String(start.tool ?? ""), ...(command ? { command } : {}) });
+					if (row) pushTrace(row);
+					return;
+				}
+				if (event.event === "tool_end") {
+					const row = evidenceRow(event as unknown as Extract<BridgeEvent, { event: "tool_end" }>);
+					if (!row) return;
+					closeRow(row.patch, (entry) => isServiceNarrated(entry.label));
+					void client
+						.findings()
+						.then((list) => setFindings(normalizeFindings(list)))
+						.catch(() => undefined);
+					return;
+				}
 				if (event.event === "sandbox_status") {
 					pushTrace({ kind: "note", label: String((event as { phase?: string }).phase ?? "sandbox") });
 				}
 				if (event.event === "sandbox_degraded") {
-					// Say it in the trace and in the environment chip: a session that runs on this
-					// machine is usable, but the reader has to know the isolation is weaker.
 					const reason = String((event as { reason?: string }).reason ?? "");
 					pushTrace({ kind: "note", label: `${t("sandbox.degraded")}${reason ? `: ${reason}` : ""}` });
 					setEnvironment((current) => (current ? { ...current, mode: "host" } : current));
@@ -300,268 +329,136 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 				}
 				if (event.event === "sandbox_stopped") setSandbox({ running: false, targets: [] });
 			}),
-		[client, pushTrace],
-	);
-
-
-
-	const onAgentEvent = useCallback(
-		(event: AgentEvent) => {
-			switch (event.type) {
-				case "say":
-					pushTrace({ kind: "say", label: event.text });
-					break;
-				case "note":
-					pushTrace({ kind: "note", label: event.text });
-					break;
-				case "tool-start":
-					pushTrace({ kind: "tool", label: event.name, detail: event.label });
-					break;
-				case "tool-end":
-					// Close the open row for this call instead of adding one: a command and
-					// its result are one block in the trace, as upstream renders them.
-					setTrace((previous) => {
-						const index = [...previous]
-							.reverse()
-							.findIndex((item) => item.kind === "tool" && item.ok === undefined);
-						if (index < 0) return previous;
-						const target = previous.length - 1 - index;
-						const next = previous.slice();
-						const row = next[target];
-						if (!row) return previous;
-						next[target] = {
-							...row,
-							ok: event.ok,
-							detail: [row.detail, event.detail].filter(Boolean).join("  ·  "),
-							...(event.output ? { output: event.output } : {}),
-						};
-						return next;
-					});
-					void client
-						.findings()
-						.then((list) => setFindings(normalizeFindings(list)))
-						.catch(() => undefined);
-					void client
-						.callTool("strix_mcp")
-						.then((result) => setMcp(normalizeRoster(result)))
-						.catch(() => undefined);
-					break;
-				case "agent":
-					setAgents((previous) => [...previous.filter((item) => item.name !== event.agent.name), event.agent]);
-					break;
-				case "question":
-					setQuestion({ text: event.question, ...(event.options ? { options: event.options } : {}) });
-					pushTrace({ kind: "note", label: event.question });
-					break;
-				case "finished":
-					setFinished({ summary: event.summary });
-					pushTrace({ kind: "note", label: event.summary });
-					break;
-			}
-		},
-		[client, pushTrace],
+		[client, closeRow, pushTrace, t],
 	);
 
 	/**
-	 * The operator's answer, and the report a `finish` writes.
+	 * The host conversation → this panel.
 	 *
-	 * `askUser` parks the loop on a promise: the composer submits into `answer()`, which
-	 * resolves it. `finish` renders the report through the service so the artefact lands
-	 * next to the findings instead of living only in this tab.
-	 */
-	const local = useMemo(
-		() => ({
-			askUser: (questionText: string, options?: string[]) =>
-				new Promise<string>((resolve) => {
-					setQuestion({ text: questionText, ...(options ? { options } : {}) });
-					answerRef.current = (value: string) => {
-						setQuestion(undefined);
-						answerRef.current = null;
-						resolve(value);
-					};
-				}),
-			finish: async ({ executiveSummary, targets }: { executiveSummary: string; targets?: string[] }) => {
-				await client
-					.callTool("strix_report", {
-						executiveSummary,
-						...(targets?.length ? { targets } : {}),
-					})
-					.then(() => client.callTool("strix_report", { format: "sarif" }))
-					.catch(() => undefined);
-				setPhase("done");
-			},
-		}),
-		[client],
-	);
-
-	const answer = useCallback(async (text: string) => {
-		const resolve = answerRef.current;
-		if (!resolve) return;
-		pushTrace({ kind: "user", label: text });
-		resolve(text);
-	}, [pushTrace]);
-
-	const agent = useMemo(
-		() => new StrixAgent({ ai, bridge: client, emit: onAgentEvent, local }),
-		[ai, client, local, onAgentEvent],
-	);
-
-	// Ownership: aborting on unmount stops a loop whose tab has gone away, so a
-	// closed panel cannot keep spending model calls in the background.
-	useEffect(() => {
-		agentRef.current = agent;
-		return () => agent.abort();
-	}, [agent]);
-
-	/**
-	 * The host agent's own Strix calls, mirrored into the trace.
-	 *
-	 * Without this the panel would be blind to everything the user does from the chat:
-	 * `strix_sandbox_start` sets the targets, `strix_exec` runs the commands, and the
-	 * findings they file land in the sidebar. One assessment, two windows.
+	 * One subscription, four kinds of event, and the rule for each is "show what the
+	 * agent is doing, do not react to it": the panel never starts a run of its own, which
+	 * is what used to make two agents race for one sandbox (ADR strix-0003).
 	 */
 	useEffect(() => {
-		if (!belongsTo(mountedIn.current, conversationIdRef.current)) return;
 		const subscription = subscribe((event) => {
-			switch (event.type) {
-				case "tool-call-start": {
-					// Only Strix's own tools: another MCP server in the same conversation
-					// must not write rows into this assessment.
-					const row = hostToolCall(event.toolName, event.args);
-					if (row) pushTrace({ kind: "tool", label: row.label, detail: row.detail });
-					break;
+			// Only this panel's conversation: the host's event stream is not per-tab.
+			if (!belongsTo(mountedIn.current, conversationIdRef.current)) return;
+
+			if (event.type === "turn-start") {
+				// 胶囊开着说明用户把这一轮交给了 Strix：宿主一开始跑，面板就离开首屏跟上去。
+				if (isStrixEngaged() && phaseRef.current !== "scanning") {
+					setPhase("scanning");
+					pushTrace({ kind: "note", label: t("scan.followingHost") });
 				}
-				case "tool-call-end": {
-					if (!hostToolCall(event.toolName)) break;
-					// Close the oldest open row rather than appending: the host emits end
-					// without the arguments, so the call is identified by an open row.
-					setTrace((previous) => {
-						const index = previous.findIndex((item) => item.kind === "tool" && item.ok === undefined);
-						if (index < 0) return previous;
-						const next = previous.slice();
-						const entry = next[index];
-						if (!entry) return previous;
-						next[index] = { ...entry, ok: !event.isError };
-						return next;
-					});
-					void client
-						.findings()
-						.then((list) => setFindings(normalizeFindings(list)))
-						.catch(() => undefined);
-					break;
+				setHostStreaming(true);
+				return;
+			}
+
+			if (event.type === "turn-end") {
+				// A turn that ended with streamed text but no `message-added` still has a
+				// conclusion worth keeping; an aborted turn leaves nothing to keep.
+				const pending = streamingRef.current.trim();
+				if (pending) {
+					pushTrace({ kind: "host-say", label: streamingRef.current });
+					streamingRef.current = "";
+					setStreaming("");
 				}
-				default:
-					break;
+				setHostStreaming(false);
+				void refresh();
+				return;
+			}
+
+			if (event.type === "message-updated") {
+				// Token-by-token: this is the panel producing output as the host AI does.
+				streamingRef.current += event.delta;
+				setStreaming(streamingRef.current);
+				return;
+			}
+
+			if (event.type === "message-added") {
+				const row = hostRowFor(event.message);
+				if (!row) return;
+				if (row.kind === "host-say") {
+					// The final text supersedes whatever streamed; one row, not two.
+					streamingRef.current = "";
+					setStreaming("");
+				}
+				pushTrace(row);
+				return;
+			}
+
+			if (event.type === "tool-call-start") {
+				// `strix_exec` is narrated by the service, which has the output. Drawing it
+				// here too would put the same command on screen twice.
+				if (isServiceNarrated(event.toolName)) return;
+				const row = toolRow({ tool: event.toolName, ...(event.args ? { args: event.args } : {}) });
+				if (row) pushTrace(row);
+				return;
+			}
+
+			if (event.type === "tool-call-end") {
+				if (isServiceNarrated(event.toolName)) return;
+				closeRow({ ok: !event.isError });
+				void refresh();
 			}
 		});
 		return () => subscription.dispose();
-	}, [client, conversation?.id, pushTrace, subscribe]);
-	const start = useCallback(
-		async (prompt: string) => {
-			if (phase === "scanning") return;
-			const typed = prompt.trim();
-			// Same route as `send`: the host conversation is the run, so the panel does not
-			// start a second one beside it (ADR strix-0003). Suppressed in the mirror so the
-			// echo does not come back as a fresh prompt.
-			if (typed && conversation?.id) {
-				suppressMirror.current.add(typed);
-				const receipt = await sendPrompt(typed).catch(() => undefined);
-				if (receipt && receipt.status !== "failed") {
-					pushTrace({ kind: "user", label: typed });
-					setPhase("scanning");
-					return;
-				}
-				suppressMirror.current.delete(typed);
-			}
-			const request = parseLaunchPrompt(prompt);
-			if (!modelRef.current) {
-				note(t("log.noModel"), "error");
-				return;
-			}
-			if (!request.targets.length && !request.instruction && !cwdRef.current) {
-				note(t("log.noTarget"), "error");
-				return;
-			}
-			if (environment && !environment.docker.ready) {
-				note(t("log.dockerDown"), "error");
-				return;
-			}
+	}, [closeRow, pushTrace, refresh, subscribe, t]);
 
-			setTrace([]);
-			setPhase("scanning");
-			setBusy(true);
-			const workspace = cwdRef.current;
-			note(
-				request.targets.length
-					? t("log.scanning").replace("{targets}", request.targets.join(", "))
-					: t("log.scanningInstruction"),
-				"ok",
-			);
-			try {
-				await agent.start({
-					...request,
-					modelKey: modelRef.current.modelKey,
-					...(workspace ? { workspace } : {}),
-				});
-				setPhase("done");
-			} catch (cause) {
-				const detail = cause instanceof Error ? cause.message : String(cause);
-				note(`${t("log.scanFailed")}: ${detail}`, "error");
-				pushTrace({ kind: "note", label: detail });
-				setPhase("done");
-			} finally {
-				setBusy(false);
-			}
-		},
-		[agent, environment, note, phase, pushTrace, t],
-	);
-
-	const send = useCallback(
-		async (text: string) => {
+	/**
+	 * Deliver one prompt into the host conversation.
+	 *
+	 * The only write path. On a fresh-session page there is nothing to send into yet, so a
+	 * conversation is created in the current folder first — the same two steps the user
+	 * would take by hand, and no model of our own.
+	 */
+	const deliver = useCallback(
+		async (text: string): Promise<boolean> => {
 			const value = text.trim();
-			if (!value) return;
-			pushTrace({ kind: "user", label: value });
-			// Typed here, delivered to the conversation: the host's own turn is the run, so
-			// the message also lands in the host transcript instead of existing only here
-			// (ADR strix-0003). Suppressed in the mirror so it cannot start a second run.
-			if (conversation?.id) {
-				suppressMirror.current.add(value);
-				const receipt = await sendPrompt(value).catch(() => undefined);
-				if (receipt && receipt.status !== "failed") {
-					if (phase !== "scanning") setPhase("scanning");
-					return;
-				}
-				suppressMirror.current.delete(value);
-			}
-			if (phase === "scanning") return;
-			setPhase("scanning");
-			setBusy(true);
+			if (!value) return false;
+			setSubmitting(true);
 			try {
-				await agent.send(value, modelRef.current?.modelKey);
-				setPhase("done");
+				if (!conversationIdRef.current) {
+					const cwd = cwdRef.current;
+					if (!cwd) {
+						note(t("log.noWorkspace"), "error");
+						return false;
+					}
+					const created = await createSession(cwd);
+					conversationIdRef.current = created.id ?? conversationIdRef.current;
+				}
+				const receipt = await sendPrompt(value);
+				if (receipt.status === "failed") {
+					note(t("log.sendFailed"), "error");
+					return false;
+				}
+				pushTrace({ kind: "user", label: value });
+				if (phaseRef.current !== "scanning") setPhase("scanning");
+				return true;
 			} catch (cause) {
 				const detail = cause instanceof Error ? cause.message : String(cause);
-				note(`${t("log.scanFailed")}: ${detail}`, "error");
-				pushTrace({ kind: "note", label: detail });
-				setPhase("done");
+				note(`${t("log.sendFailed")}: ${detail}`, "error");
+				return false;
 			} finally {
-				setBusy(false);
+				setSubmitting(false);
 			}
 		},
-		[agent, note, phase, pushTrace, t],
+		[createSession, note, pushTrace, sendPrompt, t],
 	);
 
+	const start = useCallback(async (prompt: string) => void deliver(prompt), [deliver]);
+	const send = useCallback(async (text: string) => void deliver(text), [deliver]);
+
+	/** Stop means "stop the run": abort the host turn, then release the container. */
 	const stop = useCallback(async () => {
-		agentRef.current?.abort();
+		await abort().catch(() => undefined);
 		await client.stopSandbox().catch(() => undefined);
 		setSandbox({ running: false, targets: [] });
-		setBusy(false);
-		setPhase((current) => (current === "scanning" ? "done" : current));
-	}, [client]);
+		setHostStreaming(false);
+		setPhase("done");
+	}, [abort, client]);
 
-	// Persist after every change so a remount resumes rather than restarts. Not a
-	// `useMemo`: the whole point is the write, and it has to happen while the tab is
-	// still alive — React does not run effects on unmount for this.
+	// Persist after every change so a remount resumes rather than restarts.
 	useEffect(() => {
 		writeSnapshot(conversation?.id, {
 			phase,
@@ -572,60 +469,12 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 			todos,
 			notes,
 			coverage,
-			agents,
 			mcp,
 		});
-	}, [conversation?.id, phase, trace, sandbox, findings, todos, notes, coverage, agents, mcp]);
+	}, [conversation?.id, phase, trace, sandbox, findings, todos, notes, coverage, mcp]);
 
-	// Host conversation → panel (ADR strix-0003). Declared after `start`/`send` so the
-	// effect can hold their latest identities without re-subscribing on every render:
-	// re-subscribing would drop a message that arrives while the panel re-renders.
-	const phaseRef = useRef<SessionPhase>(phase);
-	phaseRef.current = phase;
-	const startRef = useRef(start);
-	startRef.current = start;
-	const sendRef = useRef(send);
-	sendRef.current = send;
-	useEffect(() => {
-		const subscription = subscribe((event) => {
-			// Only this panel's conversation: the host's event stream is not per-tab, so an
-			// unscoped listener would let project A's message start a scan in project B.
-			if (!belongsTo(mountedIn.current, conversationIdRef.current)) return;
 
-			// 胶囊开着说明用户把这一轮交给了 Strix：宿主一开始跑，面板就离开首屏跟上去。
-			// 之前只看 `message-added`，而消息要等模型答完才到，中途那几秒面板一直停在
-			// 启动页——读起来就是「点完胶囊，面板没反应」。
-			if (event.type === "turn-start") {
-				if (!isStrixEngaged()) return;
-				if (phaseRef.current === "scanning") return;
-				setPhase("scanning");
-				pushTrace({ kind: "note", label: t("scan.followingHost") });
-				return;
-			}
-
-			if (event.type !== "message-added") return;
-			const message = event.message;
-			const text = message.text.trim();
-			if (!text) return;
-			if (message.role === "user") {
-				// A prompt the panel just delivered comes back as this echo: show it once, and do
-				// not start a second run from it (ADR strix-0003).
-				if (suppressMirror.current.delete(text)) {
-					pushTrace({ kind: "host", label: text });
-					return;
-				}
-				pushTrace({ kind: "host", label: text });
-				// The host is already running this turn: mirror it, do not start a parallel
-				// loop of our own (ADR strix-0003). Its tool calls arrive as `tool-call-*`
-				// events and land in this same transcript.
-				if (phaseRef.current !== "scanning") setPhase("scanning");
-				return;
-			}
-			if (message.role === "assistant") pushTrace({ kind: "host-say", label: text });
-		});
-		return () => subscription.dispose();
-	}, [subscribe, pushTrace, t]);
-return useMemo(
+	return useMemo(
 		() => ({
 			phase,
 			log,
@@ -637,18 +486,15 @@ return useMemo(
 			todos,
 			notes,
 			coverage,
-			agents,
 			mcp,
-			question,
-			finished,
 			model: resolved.choice,
 			modelFromConversation: resolved.fromConversation,
 			workspace: workspaceLabel(conversation?.cwd),
-			hostStreaming: Boolean(conversation?.isStreaming),
-			busy,
+			hostStreaming,
+			...(streaming ? { streaming } : {}),
+			busy: submitting || hostStreaming,
 			start,
 			send,
-			answer,
 			stop,
 			refresh,
 		}),
@@ -663,20 +509,18 @@ return useMemo(
 			todos,
 			notes,
 			coverage,
-			agents,
 			mcp,
-			question,
-			finished,
 			resolved,
-			models,
 			conversation?.cwd,
-			conversation?.isStreaming,
-			busy,
+			hostStreaming,
+			streaming,
+			submitting,
 			start,
 			send,
-			answer,
 			stop,
 			refresh,
 		],
 	);
 }
+
+/** Re-exported so the projection helpers live in one testable place. */

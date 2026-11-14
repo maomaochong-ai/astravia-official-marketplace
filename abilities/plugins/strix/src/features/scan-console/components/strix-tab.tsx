@@ -5,9 +5,12 @@
  * with the trace - the same transition `strix` makes when you press enter. The tab
  * never renders both, so the launch column can own the whole height the way it does
  * in a terminal.
+ *
+ * What both phases show is the host conversation's run: the launch column hands its
+ * prompt to that conversation, and the scan screen renders what the host agent (and the
+ * bridge's own event feed) reports. The plugin has no model of its own to drive.
  */
 
-import type { AgentStatus } from "../../../agent/strix-agent";
 import type { ModelChoice } from "../../../domain/model-label";
 import type {
 	CoverageOutcome,
@@ -43,11 +46,9 @@ export interface StrixTabProps {
 	todos: readonly TodoItem[];
 	notes: readonly NoteSummary[];
 	coverage: readonly CoverageOutcome[];
-	agents: readonly AgentStatus[];
 	mcp: readonly McpConnection[];
-	question?: { text: string; options?: string[] };
-	/** Answers the pending question; the composer submits through this while one is open. */
-	answer: (text: string) => Promise<void>;
+	/** The host agent's answer arriving token by token. */
+	streaming?: string;
 	busy: boolean;
 	start: (prompt: string) => Promise<void>;
 	send: (text: string) => Promise<void>;
@@ -84,12 +85,11 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					todos={props.todos}
 					notes={props.notes}
 					coverage={props.coverage}
-					agents={props.agents}
 					mcp={props.mcp}
-					{...(props.question ? { question: props.question } : {})}
+					{...(props.streaming ? { streaming: props.streaming } : {})}
 					trace={props.trace}
 					busy={props.busy}
-					onSend={(value) => void (props.question ? props.answer(value) : props.send(value))}
+					onSend={(value) => void props.send(value)}
 					onStop={() => void props.stop()}
 				/>
 			) : (

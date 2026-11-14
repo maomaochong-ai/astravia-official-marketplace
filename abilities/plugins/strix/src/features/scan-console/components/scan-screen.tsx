@@ -1,17 +1,18 @@
 /**
  * The scan workspace: one status band, one transcript, one artefact rail.
  *
- * See `docs/adr/strix/strix-0004-panel-is-a-workbench.md`. The previous layout copied
- * the terminal frame literally — an unbounded black pane with six bordered boxes of
- * zeroes beside it — which in a tab reads as "nothing happened, and here are six
- * reasons". This one keeps the things that carry meaning (monospace tool output, the
- * green/red/amber tool semantics) and drops the things that only made sense in a
- * terminal: the full-bleed black, the box borders, the counts as a row of zeroes.
+ * See `docs/adr/strix/strix-0004-panel-is-a-workbench.md`. The layout keeps the things
+ * that carry meaning (monospace tool output, the green/red/amber tool semantics) and drops
+ * the things that only made sense in a terminal: the full-bleed black, the box borders,
+ * the counts as a row of zeroes.
+ *
+ * Who runs this: the host conversation. The transcript is that turn rendered from both
+ * witnesses — the conversation's events and the bridge's command feed — and "running" means
+ * the host is generating right now, not that this component has a loop of its own.
  */
 
 import { useEffect, useState } from "react";
 import type { ModelChoice } from "../../../domain/model-label";
-import type { AgentStatus } from "../../../agent/strix-agent";
 import type {
 	CoverageOutcome,
 	EnvironmentProbe,
@@ -39,14 +40,14 @@ export interface ScanScreenProps {
 	todos: readonly TodoItem[];
 	notes: readonly NoteSummary[];
 	coverage: readonly CoverageOutcome[];
-	agents: readonly AgentStatus[];
 	mcp: readonly McpConnection[];
-	/** Folder name of the conversation workspace that is mounted. */
+	/** Folder name of the conversation workspace. */
 	workspace?: string;
 	/** The host conversation is generating a turn right now. */
 	hostStreaming: boolean;
+	/** The host agent's answer arriving token by token. */
+	streaming?: string;
 	busy: boolean;
-	question?: { text: string; options?: string[] };
 	onSend: (value: string) => void;
 	onStop: () => void;
 }
@@ -75,35 +76,32 @@ export function ScanScreen({
 	todos,
 	notes,
 	coverage,
-	agents,
 	mcp,
 	trace,
 	busy,
-	question,
+	streaming,
 	onSend,
 	onStop,
 }: ScanScreenProps): React.ReactElement {
 	const targets = sandbox.targets ?? [];
-	const scanning = phase === "scanning";
+	// A live run is the host generating; an open assessment whose turn already ended is
+	// idle, not "running" and not "done" — the distinction the band used to blur.
+	const running = phase === "scanning" && hostStreaming;
 	const critical = findings.filter((item) => item.severity === "critical").length;
 	const steps = trace.filter((entry) => entry.kind === "tool").length;
 	const [draft, setDraft] = useState("");
 
 	const mode: ScanMode = (sandbox.scanMode as ScanMode | undefined) ?? "standard";
-	// `sandbox.mode` is only set once a session exists; before that the probe knows. Falling
-	// back keeps the band from reading "未确定" while the environment is in fact known.
 	const envMode = sandbox.mode ?? environment?.mode;
-	const environmentLabel =
-		envMode === "docker" ? t("env.docker") : t("env.host");
-	// Seconds since the session started, ticking only while a run is live.
+	const environmentLabel = envMode === "docker" ? t("env.docker") : t("env.host");
+	// Seconds since the turn started, ticking only while the host is generating.
 	const [elapsed, setElapsed] = useState(0);
 	useEffect(() => {
-		if (!scanning) return;
+		if (!running) return;
 		const started = Date.now();
 		const timer = setInterval(() => setElapsed(Math.round((Date.now() - started) / 1000)), 1_000);
 		return () => clearInterval(timer);
-	}, [scanning]);
-
+	}, [running]);
 
 	// The one thing a new assessment should say: what to do, not what is missing.
 	const emptyHint = targets.length ? t("scan.emptyWithTargets") : t("scan.emptyNoTargets");
@@ -111,10 +109,10 @@ export function ScanScreen({
 	return (
 		<div className="astra-strix-term astra-strix-workbench">
 			<header className="astra-strix-band">
-				<span className="astra-strix-band-state" data-state={scanning ? "running" : "idle"}>
+				<span className="astra-strix-band-state" data-state={running ? "running" : "idle"}>
 					{busy ? <span className="astra-strix-spinner" aria-hidden="true" /> : null}
-					<span className={scanning ? "astra-strix-green" : "astra-strix-dim"}>
-						{scanning ? t("scan.running") : t("scan.done")}
+					<span className={running ? "astra-strix-green" : "astra-strix-dim"}>
+						{running ? t("scan.running") : t("scan.idle")}
 					</span>
 				</span>
 				<Fact label={t("targets.title")} value={String(targets.length)} />
@@ -130,14 +128,14 @@ export function ScanScreen({
 				{critical ? <Fact label={t("severity.critical")} value={String(critical)} tone="astra-strix-red" /> : null}
 				<span className="astra-strix-band-gap" />
 				{hostStreaming ? <span className="astra-strix-blue astra-strix-band-note">{t("scan.hostTurn")}</span> : null}
-				<button type="button" className="astra-strix-band-stop" onClick={onStop} disabled={!scanning}>
+				<button type="button" className="astra-strix-band-stop" onClick={onStop} disabled={!hostStreaming}>
 					{t("scan.stop")}
 				</button>
 			</header>
 
 			<div className="astra-strix-workbench-grid">
 				<section className="astra-strix-transcript">
-					<div className="astra-strix-transcript-body" role="log" aria-live="polite" data-running={scanning ? "yes" : "no"}>
+					<div className="astra-strix-transcript-body" role="log" aria-live="polite" data-running={running ? "yes" : "no"}>
 						{trace.length ? (
 							trace.map((entry) => (
 								<TraceBlock
@@ -150,9 +148,12 @@ export function ScanScreen({
 						) : (
 							<p className="astra-strix-empty">{emptyHint}</p>
 						)}
+						{/* The host agent's answer as it arrives: the panel's own output is this
+						    text, so it has to be visible while it is being written. */}
+						{streaming ? <p className="astra-strix-say astra-strix-streaming">{streaming}</p> : null}
 						{/* A live caret: without it a quiet stretch reads as "the run died". The timer
 						    says the same thing in words for anyone who misses the blink. */}
-						{scanning ? (
+						{running ? (
 							<p className="astra-strix-running" role="status">
 								<span className="astra-strix-caret" aria-hidden="true" />
 								<span className="astra-strix-dim">
@@ -162,26 +163,6 @@ export function ScanScreen({
 						) : null}
 					</div>
 
-					{question ? (
-						<div className="astra-strix-question" role="status">
-							<p className="astra-strix-question-text">
-								<span className="astra-strix-amber" aria-hidden="true">
-									?
-								</span>{" "}
-								{question.text}
-							</p>
-							{question.options?.length ? (
-								<p className="astra-strix-question-options">
-									{question.options.map((option) => (
-										<button key={option} type="button" className="astra-strix-chip" onClick={() => onSend(option)}>
-											{option}
-										</button>
-									))}
-								</p>
-							) : null}
-						</div>
-					) : null}
-
 					<div className="astra-strix-composer" data-busy={busy ? "yes" : "no"}>
 						<div className="astra-strix-prompt-row">
 							<span className="astra-strix-prompt-caret" aria-hidden="true">
@@ -189,8 +170,8 @@ export function ScanScreen({
 							</span>
 							<textarea
 								className="astra-strix-prompt-input"
-								aria-label={t(question ? "scan.answer" : "scan.label")}
-								placeholder={t(question ? "scan.answer" : "scan.placeholder")}
+								aria-label={t("scan.label")}
+								placeholder={t("scan.placeholder")}
 								rows={2}
 								spellCheck={false}
 								value={draft}
@@ -272,7 +253,7 @@ export function ScanScreen({
 						)}
 					</section>
 
-					<ArtefactPanels t={t} agents={agents} todos={todos} notes={notes} coverage={coverage} />
+					<ArtefactPanels t={t} todos={todos} notes={notes} coverage={coverage} />
 
 					{/* Upstream docks the run's MCP connections as its own panel: a dead server looks
 					    exactly like the model forgetting its tools. */}
@@ -342,7 +323,7 @@ export function ScanScreen({
 								{findings.length}
 							</span>
 						</h3>
-						<FindingList t={t} findings={findings} runStatus={scanning ? "running" : "completed"} />
+						<FindingList t={t} findings={findings} runStatus={running ? "running" : "completed"} />
 					</section>
 				</aside>
 			</div>

@@ -25,11 +25,11 @@ const ACTION_ID = "strix.activate";
 /**
  * The tab root binds the panel to the host.
  *
- * `useActiveConversation()` is the wiring that makes this a first-class surface
- * rather than a silo: the tab reads the conversation's model, workspace and streaming
- * state, and the session hook asks `ctx.ai` to run on exactly that model. Switching
- * the model in the chat switches this panel; opening the tab in a project scans that
- * project's folder.
+ * `useActiveConversation()` is the wiring that makes this a first-class surface rather
+ * than a silo, and it is now the *only* model in the picture: the panel reads the
+ * conversation's model, workspace and streaming state, and every prompt it accepts is
+ * delivered into that conversation. There is no `ctx.ai` call here — the host agent owns
+ * the loop and reaches this plugin through its `strix_*` MCP tools.
  */
 function StrixTabRoot({
 	ctx,
@@ -48,10 +48,11 @@ function StrixTabRoot({
 	const session = useStrixSession({
 		runtime,
 		client,
-		ai: ctx.ai,
 		conversation,
 		subscribe: (listener) => ctx.conversation.on(listener),
 		sendPrompt: (text) => ctx.conversation.sendPrompt(text),
+		createSession: (cwd) => ctx.conversation.createSession(cwd),
+		abort: () => ctx.conversation.abort(),
 		t,
 	});
 
@@ -74,7 +75,7 @@ function StrixTabRoot({
 					key: "escape",
 					when: "always",
 					run: () => {
-						if (live.current.phase === "scanning") void live.current.stop();
+						if (live.current.hostStreaming) void live.current.stop();
 					},
 				},
 				{ key: "mod+shift+c", when: "always", run: () => onQuit() },
@@ -99,10 +100,8 @@ function StrixTabRoot({
 			todos={session.todos}
 			notes={session.notes}
 			coverage={session.coverage}
-			agents={session.agents}
 			mcp={session.mcp}
-			{...(session.question ? { question: session.question } : {})}
-			answer={session.answer}
+			{...(session.streaming ? { streaming: session.streaming } : {})}
 			trace={session.trace}
 			busy={session.busy}
 			start={session.start}

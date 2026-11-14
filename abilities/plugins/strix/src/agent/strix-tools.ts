@@ -1,14 +1,14 @@
 /**
  * The tool catalogue, in one place.
  *
- * Strix's own agent sees these tools; so does anything driving the sandbox through
- * the plugin's MCP server. The names, descriptions and JSON schemas are shared, and
- * the service attaches a handler to each by name - previously the two lists were
- * written twice, which is how a description drifts from the thing it describes.
+ * One agent sees these tools: the host conversation, over this plugin's MCP server. The
+ * console tab does not have a model of its own — it renders what that agent does — so the
+ * catalogue describes the MCP surface and nothing else. Names, descriptions and JSON
+ * schemas are shared with the service, which attaches a handler to each by name; the two
+ * lists used to be written twice, which is how a description drifts from its tool.
  *
- * Grouping follows upstream `strix/tools/`: sandbox, skills, findings and report,
- * then the working surfaces a pentester needs (notes, todos, coverage, threat model,
- * browser), then the two lifecycle calls (`think`, `finish`).
+ * Grouping follows upstream `strix/tools/`: sandbox, skills, findings and report, then
+ * the working surfaces a pentester needs (notes, todos, coverage, threat model, browser).
  */
 
 import type { PluginAiChatTool } from "@astravia-org/plugin-sdk";
@@ -433,85 +433,15 @@ export const STRIX_TOOL_SPECS: readonly StrixToolSpec[] = [
 			additionalProperties: false,
 		},
 	},
-
-	// ---- lifecycle (plugin-side) --------------------------------------------
-	{
-		handler: "plugin",
-		name: "strix_think",
-		description:
-			"Think before acting: record a short reasoning step - what you know, what you suspect, what you will try next. Use it when a decision is not obvious; it goes into the trace so the operator can follow the reasoning.",
-		parameters: {
-			type: "object",
-			properties: { thought: { type: "string" } },
-			required: ["thought"],
-			additionalProperties: false,
-		},
-	},
-	{
-		handler: "plugin",
-		name: "strix_ask_user",
-		description:
-			"Ask the operator a question and wait for the answer. Use it when scope, credentials or an ambiguous target blocks progress - not for confirmation of things you can verify yourself.",
-		parameters: {
-			type: "object",
-			properties: {
-				question: { type: "string" },
-				options: { type: "array", items: { type: "string" }, description: "Suggested answers, when a short list fits." },
-			},
-			required: ["question"],
-			additionalProperties: false,
-		},
-	},
-	{
-		handler: "plugin",
-		name: "strix_spawn_agent",
-		description:
-			"Start a sandbox worker on a subtask, in parallel with your own work. Give it a name and a self-contained task; it shares this sandbox and the findings ledger, so its evidence lands where yours does. Up to three run at once. These workers live inside this assessment and are not host subagents — they do not appear in the host's own agent list.",
-		parameters: {
-			type: "object",
-			properties: {
-				name: { type: "string", description: "Short role name, e.g. auth-specialist." },
-				task: { type: "string", description: "What it must do, and what to report back." },
-			},
-			required: ["name", "task"],
-			additionalProperties: false,
-		},
-	},
-	{
-		handler: "plugin",
-		name: "strix_wait_agents",
-		description: "Wait for the sandbox workers you spawned and read their result summaries.",
-		parameters: { ...OBJECT, properties: {} },
-	},
-	{
-		handler: "plugin",
-		name: "strix_view_agents",
-		description: "The worker tree: every sandbox worker you started, its status and what it was asked to do.",
-		parameters: { ...OBJECT, properties: {} },
-	},
-	{
-		handler: "plugin",
-		name: "strix_finish",
-		description:
-			"End the assessment: write the executive summary and stop. Call it once, when the surfaces you meant to test are tested or you have run out of useful leads.",
-		parameters: {
-			type: "object",
-			properties: {
-				executiveSummary: { type: "string" },
-				targets: { type: "array", items: { type: "string" } },
-			},
-			required: ["executiveSummary"],
-			additionalProperties: false,
-		},
-	},
 ];
 
-/** The subset the model may call directly through `ctx.ai.chat`. */
-export const STRIX_TOOLS: PluginAiChatTool[] = STRIX_TOOL_SPECS.map(({ name, description, parameters }) => ({
-	name,
-	description,
-	parameters,
-}));
+/**
+ * The service-side subset, by name, for the MCP and `/api/tool` surfaces.
+ *
+ * There is no plugin-side subset any more: the loop that used to answer `strix_think`,
+ * `strix_ask_user` and `strix_finish` was this plugin hosting a second agent, and it was
+ * removed in favour of the host conversation calling these tools over MCP.
+ */
 
 /** The service-side subset, by name, for the MCP and `/api/tool` surfaces. */
 export const SERVICE_TOOL_NAMES: readonly string[] = STRIX_TOOL_SPECS.filter((tool) => tool.handler === "service").map(

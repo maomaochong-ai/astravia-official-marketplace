@@ -6,8 +6,10 @@ in Astravia, not on a second API key.
 
 This plugin is a first-party integration over
 [usestrix/strix](https://github.com/usestrix/strix). It reproduces the terminal
-interface of the CLI and keeps Strix's sandbox and tradecraft; the model comes from
-`ctx.ai`, so a scan needs no extra credential and writes no second transcript.
+interface of the CLI and keeps Strix's sandbox and tradecraft. **There is one AI and it
+lives in the host conversation**: the plugin serves 26 `strix_*` tools over MCP, so the
+host agent plans and executes, and this tab renders that run. No second model call, no
+second transcript, no extra credential.
 
 ## What the plugin contributes
 
@@ -15,11 +17,10 @@ interface of the CLI and keeps Strix's sandbox and tradecraft; the model comes f
 |---|---|
 | Activity tab `strix.console` | `initiallyVisible: false` — nothing appears under the conversation until you open it. From there it is the CLI: launch column → trace + sidebar. |
 | Input action `strix.activate` | One click opens the tab; while active, every prompt carries Strix's method (`decoratePrompt`). |
-| Agent loop | `src/agent/strix-agent.ts`: `ctx.ai.chat()` in a loop over the bridge's tools, with the transcript kept here. Stop aborts before the next model call. |
-| Host binding | `useActiveConversation()` (`agent.session.read`): the tab runs on **the conversation's model**, mounts **the conversation's folder** as the sandbox workspace, and mirrors the host agent's own `strix_*` tool calls into the trace. Switch model in the chat and the panel follows. |
-| Tools | 23 of them, described once in `src/agent/strix-tools.ts` and served over both MCP and `/api/tool`: the sandbox (`strix_environment`, `strix_sandbox_start`, `strix_exec`, `strix_sandbox_status`, `strix_sandbox_stop`), the browser (`strix_browser`), skills, findings (`file`/`update`/`list`) and the report (Markdown or SARIF), the working artefacts (`strix_note_*`, `strix_todo_*`, `strix_coverage_*`, `strix_threat_model`), and the lifecycle calls the plugin answers itself (`strix_think`, `strix_ask_user`, `strix_spawn_agent`, `strix_wait_agents`, `strix_view_agents`, `strix_finish`). |
-| Multi-agent | The lead can spawn up to three named specialists (`strix_spawn_agent`), each with its own transcript but the **same** sandbox and findings ledger; their status and summaries appear in the Agents box. |
-| Operator in the loop | `strix_ask_user` parks the loop on a question; the scan composer becomes the answer box until it is answered. |
+| Input | Everything typed in the panel goes to the host conversation (`sendPrompt`, or `createSession` first when there is none). A failed delivery is reported, never simulated. |
+| Output | The host turn rendered from two witnesses: conversation events (which tool, streamed answer text) and the bridge's own feed (command, exit code, duration, output tail). Both rules live in `src/domain/conversation-projection.ts`. |
+| Tools | 26 of them, described once in `src/agent/strix-tools.ts` and served over MCP and `/api/tool`: the sandbox (`strix_environment`, `strix_sandbox_start`, `strix_exec`, `strix_sandbox_status`, `strix_sandbox_stop`), the browser and proxy, skills, findings and the report (Markdown or SARIF), and the working artefacts (`strix_note_*`, `strix_todo_*`, `strix_coverage_*`, `strix_threat_model`). |
+| Host binding | `useActiveConversation()` (`agent.session.read`): the panel reports **the conversation's model**, the conversation's folder is the sandbox workspace, and the host agent's `strix_*` calls appear in the trace. Switch model in the chat and the panel follows. |
 | Skills | The nine upstream consumer skills ship in `agent/skills/` but are declared `hidden`: the capability page, slash menu and skill picker show **Strix** — name and icon — not nine lookalikes. The agent still loads them. |
 
 ## The screen
@@ -31,7 +32,7 @@ Two phases, traced from upstream's Go TUI:
 | `setup.go:setupBody` — wordmark, tagline, composer with the model line inside, feedback log, `enter launch scan / ctrl+c quit / vX` | `features/scan-console/components/launch-screen.tsx` |
 | `view.go:mainView` — bordered trace, status row, composer, sidebar boxes | `features/scan-console/components/scan-screen.tsx` |
 | `render/registry.go` — `→ Using tool <name>`, arguments, status glyph | `features/scan-console/components/trace-block.tsx` |
-| `todos` / `notes` / `coverage` / agents panels | `features/scan-console/components/artefact-panels.tsx` |
+| `todos` / `notes` / `coverage` panels | `features/scan-console/components/artefact-panels.tsx` |
 | `render/styles.go` — the report palette | the `--sx-*` variables in `src/style.css` |
 
 The one line that differs is the model chip: upstream prints `STRIX_LLM`, this
@@ -44,10 +45,21 @@ tool. Only `astra-strix-*` classes are defined.
 ## What is aligned with upstream, and what is not
 
 Aligned: the screen, the tool catalogue (sandbox, browser, skills, findings, report in
-Markdown or SARIF, notes, todos, coverage, threat model, finish), the multi-agent
-split, an operator-in-the-loop question, and honest coverage in the report.
+Markdown or SARIF, notes, todos, coverage, threat model), and honest coverage in the
+report.
 
 Not aligned, on purpose:
+
+- **The agent loop and its model.** Upstream runs its own Python agent with its own key;
+  here the host conversation is the loop, using the same tools over MCP. That is the one
+  deliberate divergence the whole plugin is built around (ADR `strix-0003`).
+- **Multi-agent orchestration.** Upstream's `create_agent` / `send_message_to_agent` /
+  `wait_for_agents` / `view_agent_graph` need a side that can run a sub-loop. Without a
+  plugin-side model there is nothing to run it; use the host's own subagents instead, which
+  share this sandbox and ledger. A `spawn` tool here would promise orchestration that does
+  not exist.
+- **An operator-in-the-loop question tool.** The host already asks the user and already
+  has a question panel; a second one in this tab would be a second place to answer.
 
 - **Caido proxy tools** (`list_requests`, `view_request`, `repeat_request`, `sitemap`).
   Caido runs in the container; the agent drives it over `strix_exec`, but the
@@ -69,9 +81,12 @@ that is real work rather than a synonym for `strix_exec`.
 ```text
 src/index.tsx                 registration only (tab + input action)
 src/runtime.ts                strix-bridge lifecycle via ctx.services
-src/agent/                    the loop, its tools, its system prompt
+src/agent/                    the MCP tool catalogue (schemas, one line of copy each)
 src/domain/bridge-client.ts   HTTP + SSE client
-src/domain/host-sync.ts       model / workspace / host tool-call mirroring
+src/domain/conversation-projection.ts  host events + service events -> one trace
+src/domain/engagement.ts      whether the capsule is on (survives tab remounts)
+src/domain/assessment-presence.ts      "is an assessment already open"
+src/domain/host-sync.ts       model label / workspace name (read-only)
 src/domain/bridge-payloads.ts response narrowing for every artefact
 src/domain/launch-request.ts  prompt -> targets vs instruction (setup.go parity)
 src/domain/model-label.ts     provider/model split and default-model choice
@@ -102,8 +117,9 @@ artifact: `npm run build` runs Vite first (which empties `dist/`) and then bundl
   agent-browser, trivy, gitleaks, trufflehog …), its **skill library** read as
   Markdown from the installed `strix-agent` package, and its **interface** — layout,
   wording, glyphs, palette.
-* **Not used:** Strix's Python agent loop and its model configuration. The loop runs
-  here on `ctx.ai`; tools reach the container through the plugin's own service.
+ * **Not used:** Strix's Python agent loop and its model configuration. The loop is the
+   host conversation, which already has the `strix_*` tools; the plugin owns the container
+   and the evidence, not the reasoning.
 
 ### Why the service declares its artifact
 
@@ -119,7 +135,7 @@ starts. After changing the service, re-stamp the digest: `npm run stamp-service`
 | Need | Why | Check |
 |---|---|---|
 | Docker (recommended) | every Strix tool runs inside its sandbox image; without a daemon the plugin falls back to this machine's toolchain and says so | `docker info` |
-| A default model in Astravia | the loop runs on `ctx.ai`; without one the launch screen says so and Enter does nothing | Settings → model |
+| A model on the conversation | the host agent does the reasoning; with no model the launch column says so and Enter does nothing | the composer's model chip |
 
 `strix-agent` is **optional**: when it is installed in any Python or uv tool venv the
 service reads the engine's full skill library, otherwise it serves the 13 tool manuals

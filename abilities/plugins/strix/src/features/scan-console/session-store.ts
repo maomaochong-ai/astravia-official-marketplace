@@ -5,26 +5,18 @@
  *
  * 1. **The panel reset to the launch screen** when the user switched to another
  *    conversation and came back. The host unmounts an activity tab with its
- *    conversation, so React state died with it — even though the bridge session, the
- *    sandbox and the findings were all still alive. The run was fine; the window was not.
+ *    conversation, so React state died with it — even though the sandbox, the findings
+ *    and the host turn were all still alive. The run was fine; the window was not.
  * 2. **Conversations bled into each other.** The host emits conversation events on one
- *    stream, so a message typed in project A must not start a scan in project B's panel.
+ *    stream, so a turn in project A must not drive project B's panel.
  *
  * So state is keyed by conversation id and lives outside the component tree (the same
  * shape as `engagement.ts` in the craft family): a remount rehydrates, and a panel only
  * ever reads and writes its own conversation's entry.
  */
 
-import type { AgentStatus } from "../../agent/strix-agent";
 import type { McpConnection } from "../../service/mcp-roster";
-import type {
-	CoverageOutcome,
-	NoteSummary,
-	SandboxStatus,
-	StrixFinding,
-	TodoItem,
-	TraceEntry,
-} from "../../runtime-contract";
+import type { CoverageOutcome, NoteSummary, SandboxStatus, StrixFinding, TodoItem, TraceEntry } from "../../runtime-contract";
 
 export interface SessionSnapshot {
 	phase: "booting" | "setup" | "scanning" | "done";
@@ -35,11 +27,8 @@ export interface SessionSnapshot {
 	todos: TodoItem[];
 	notes: NoteSummary[];
 	coverage: CoverageOutcome[];
-	agents: AgentStatus[];
 	/** MCP connections as last reported; empty in host mode, where there is no roster. */
 	mcp: McpConnection[];
-	/** Set while a run is live, so a remount knows to keep polling rather than reset. */
-	runningSince?: number;
 }
 
 const MAX_SNAPSHOTS = 8;
@@ -74,7 +63,7 @@ export function forgetSnapshot(conversationId: string | null | undefined): void 
  * The conversation a panel belongs to.
  *
  * The id at mount is the scope: a panel opened in conversation A keeps reporting into A
- * even if the host's event stream briefly carries messages from B. `undefined` means the
+ * even if the host's event stream briefly carries events from B. `undefined` means the
  * host exposed no id, in which case the panel stays scoped to whatever it mounted with
  * rather than accepting every event.
  */

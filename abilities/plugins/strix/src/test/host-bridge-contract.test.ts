@@ -17,6 +17,7 @@ import { resolve } from "node:path";
 
 const manifest = JSON.parse(readFileSync(resolve(process.cwd(), "plugin.json"), "utf8")) as {
 	providers?: { cli?: unknown; services?: { id: string }[] };
+	permissions?: string[];
 	agent: { mcpServers: Record<string, { type: string; serviceId: string }> };
 };
 const index = readFileSync(resolve(process.cwd(), "src/index.tsx"), "utf8");
@@ -36,6 +37,15 @@ describe("nothing glues the tool surface to a CLI that is not needed", () => {
 
 	it("still advertises its tools over the plugin's own service", () => {
 		expect(manifest.agent.mcpServers.strix).toMatchObject({ type: "service", serviceId: "strix-bridge" });
+	});
+
+	it("asks the host for no model surface at all", () => {
+		// The panel renders the conversation's run; the moment an `ai.*` permission comes
+		// back, someone has started growing a second agent here (ADR strix-0003).
+		const permissions = manifest.permissions ?? [];
+		expect(permissions.filter((permission) => permission.startsWith("ai."))).toEqual([]);
+		expect(permissions).toContain("agent.mcp.control");
+		expect(permissions).toContain("agent.session.write");
 	});
 
 	it("starts the bridge when the plugin activates, not when a tab happens to mount", () => {

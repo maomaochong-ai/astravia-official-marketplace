@@ -1,56 +1,60 @@
-# strix-0003 — 面板与智能体：复用宿主的模型与会话，沙箱内保留 worker
+# strix-0003 — 一个 AI：宿主会话即循环，插件只做窗口与操作面
 
-- **Status:** Proposed（2026-11-13 修订第 3 条：宿主没有插件侧子智能体接口）
-- **Date:** 2026-11-13
-- **Context:** 插件 strix 0.5.1；宿主 0.5.93 已有 `ai.models.list` / `ai.complete` /
-  `conversation.*` 与子智能体调度
-- **Related:** [0002](strix-0002-capability-parity-with-upstream.md) — 能力对照，
-  上游模型矩阵与 CLI 明确不补
+- **Status:** Accepted（2026-11-14 定稿：自带循环已删除，不再是并存的第二套）
+- **Date:** 2026-11-13，2026-11-14 修订
+- **Context:** 插件 strix 0.6.0；宿主已有 `conversation.*`、`agent.mcp.control`（MCP 工具贡献）
+- **Related:** [0002](strix-0002-capability-parity-with-upstream.md) — 能力对照，上游模型矩阵与 CLI 明确不补
 
 ## The situation
 
-插件里现在有两套东西在跑同一个循环：
+插件里曾经有两套东西在跑同一个循环：
 
-1. **面板自己的循环**（`use-strix-session` + `strix-agent`）：自己选模型、自己调
-   `ai.complete`、自己维护 trace 与提问队列，约三百行。
-2. **宿主的会话与模型**：用户在对话框里换模型，面板不会跟着变（只在重新挂载时读一次
-   `conversation.model`）；子智能体在宿主里有一套调度，插件又写了 `spawn/wait/view`。
+1. **面板自己的循环**（`use-strix-session` + `agent/strix-agent.ts` + `agent/system-prompt.ts`）：
+   自己写系统提示词、自己调 `ctx.ai.chat`、自己维护 messages 数组、自己判 `finish`，
+   还派生 `strix_spawn_agent` 的私有 worker，约四百行。
+2. **宿主会话**：用户在同一台机器上换模型、发消息、调用工具；宿主已经通过
+   `agent.mcpServers` 把本插件的 26 个 `strix_*` 工具挂进了它自己的 agent。
 
-两套并存的结果是：同一个模型设置在两处显示不同、面板与对话框的轮次互不感知、
-`strix_spawn_agent` 出来的智能体不在宿主的子智能体面板里。
+两套并存的结果，用户能看到：面板与对话框各自推理、各自计费；面板里的 worker
+不在宿主的子智能体面板里；同一句话在两个窗口里得到两套结论。更糟的是，面板那套
+循环在特权/离线校验态下不可用，于是「插件不能用」就成了结论。
 
-这不是功能缺失，是**所有权的重叠**。
+这不是功能缺失，是**所有权的重叠**。一个插件只能有一个 AI，而这个 AI 是宿主的。
 
 ## The decision
 
-**面板只做「展示与操作」，循环交给宿主；三样东西不再由插件持有。**
+**插件不持有模型调用。宿主会话是唯一的循环；插件是它的窗口与操作面。**
 
-1. **模型：只读宿主，不存自己的一份。**
-   订阅 `conversation.model` 与 `ai.models.list`，用户在哪切、面板就在哪跟。
-   删除面板里的模型选择器与默认模型回落逻辑（`model-label.ts` 只留展示格式化）。
+具体到代码：
 
-2. **循环：走宿主的会话发送，而不是自己调 `ai.complete`。**
-   `strix_send` 的语义变成「把这句话作为当前会话的一轮发出」，token 计量、中断、模型
-   切换全由宿主负责。面板从「驱动者」降为「观察者 + 操作面板」：显示宿主会话的消息流
-   与工具调用，提供结构化的操作入口（启动扫描、看 findings、导出报告）。
+1. **没有 `ctx.ai.chat`，也没有第二份系统提示词。**
+   `agent/strix-agent.ts`、`agent/system-prompt.ts` 已删除，`agent/strix-tools.ts`
+   只剩 MCP 工具目录。工具的方法论（先取证、后结论、不手搓替代）改由
+   `locales/*.json#prompt.instructions` 随每一轮发出——这是提示词，不是模型。
 
-3. **子智能体：改为「沙箱 worker」，并写明它不是宿主子智能体。**
-   原写的是「转发给宿主的 subagent 能力」，核实后不能成立：插件 SDK 只提供
-   `SubagentStart` / `SubagentStop` 两个**观察**钩子，没有任何 API 让插件派生宿主
-   子智能体（`agent.d.ts` 全文只有这两处提到 subagent）。所以这里保留插件自己的
-   `strix_spawn_agent` / `wait` / `view`，但把它的身份说清：它们在同一沙箱里跑，
-   共享 findings 台账，**不会**出现在宿主的子智能体面板里。工具名不变（模型已经习惯），
-   描述文案不能再让人以为它是宿主调度的一部分。
-   这两个东西不是重复：宿主子智能体是另一条会话，沙箱 worker 是同一次评估里的并行分工。
+2. **输入：面板说的每一句话都交给宿主会话。**
+   `start()` / `send()` 只有两条路径：`sendPrompt(text)`；没有活跃会话时先
+   `createSession(cwd)` 再发。发不出去就在启动日志里如实说（`log.sendFailed` /
+   `log.noWorkspace`），绝不另起一轮假装在跑。
 
-4. **面板信息层级照上游，但不移植上游前端。**
-   上游 `interface/viewer/frontend` 是一个独立 Web 应用（React + 它自己的状态层）；
-   照搬会与宿主的主题、字体、快捷键打架。做法是**照它的信息分组**：目标与模式 →
-   运行状态（环境、沙箱、模式）→ 实时轨迹 → findings / 覆盖 / 报告。四块，一块都
-   不少，排布用宿主的组件体系。
+3. **输出：面板渲染宿主这一轮的产物，来自两个见证方。**
+   - 会话事件（`turn-start` / `message-added` / `message-updated` / `tool-call-*`）：
+     谁在什么时候调了哪个 `strix_*` 工具，模型的回答正在流式到达；
+   - 服务事件（`/api/events` 的 `tool_start` / `tool_end`）：命令原文、退出码、耗时、
+     输出尾巴——只有持有容器的一侧知道。
+   `domain/conversation-projection.ts` 是唯一的切分规则：带证据的命令从服务画，
+   其余工具从会话画，`isServiceNarrated()` 让两边都不重复。评估自身的事实
+   （findings / 计划 / 覆盖 / 笔记 / 会话）在每次工具结束后从服务重读。
 
-5. **运行时不往画面上叠文字。** 批次执行时的进度只出现在状态行与轨迹区，不在编辑器或
-   目标页面上浮动（与 craft 家族同一条约束）。
+4. **子智能体不再是插件的东西。**
+   上一版曾保留 `strix_spawn_agent` / `wait` / `view` 作为「沙箱 worker」。既然插件
+   不再持有模型，它就无法跑一个子循环——那些工具名保留下来只会承诺不存在的编排。
+   需要并行分工时，用宿主自己的 subagent 能力，共享同一个沙箱与 findings 台账。
+   侧栏里那个永远填不满的「agents」面板同时删除。
+
+5. **面板信息层级照上游，但不移植上游前端。**
+   目标与模式 → 运行状态（环境、沙箱、模式）→ 实时轨迹 + 流式回答 → findings /
+   覆盖 / 报告。排布用宿主的组件体系。
 
 ## Considered options
 
@@ -64,14 +68,19 @@
 ## What this does not do
 
 - **不再有「面板自己的模型」**，因此也不再有面板级模型设置；一切跟随当前会话。
+  面板连 `ai.models.list` 都不再调用——`conversation.model` 的 `provider/id` 就够做标签。
+- **权限随之收窄**：`ai.complete` / `ai.models.list` / `shell.openExternal` 全部移除，
+  只留 `agent.session.read` / `agent.session.write` / `agent.skills.control` /
+  `agent.mcp.control` 与三个 UI 槽位。
 - **不保证与上游 TUI 的键位一致**；面板用宿主的交互习惯。
-- **不搬运上游 viewer 的图表组件**；findings 与覆盖用宿主已有的表格与标签。
 
 ## The cost
 
-- 删掉自带循环是一次净删除（约三百行），但**面板的行为会变**：以前面板独立于对话，
-  现在它与对话是同一轮。需要一次明确的迁移说明，否则用户会以为「面板不能单独跑了」。
-- 沙箱 worker 不会被宿主看见：用户在宿主的子智能体面板里找不到它们，只能在本面板的
-  轨迹里看。这是能力缺失带来的代价，已经写进能力详情页，不让用户找不到。
-- 面板从驱动者变成观察者，实时性依赖宿主事件流；事件有延迟时轨迹会慢半拍，
-  需要在 UI 上表达「等待宿主」而不是「卡住」。
+- 删掉自带循环是净删除，但**面板的行为会变**：以前面板独立于对话，现在它与对话是同一轮。
+  没有活跃会话时，面板不能自己开工——它需要用户先在一个工作目录里开一轮对话。
+  这条限制写进启动日志（`log.noWorkspace`），而不是替用户猜一个目录。
+- 实时性依赖宿主事件流；事件有延迟时轨迹会慢半拍，因此状态带区分
+  「宿主在跑」（`scan.running`）与「评估还开着但这一轮结束了」（`scan.idle`），
+  而不是把两者都说成 running。
+- 命令的证据来自服务事件：宿主若绕过 `strix_exec`（例如直接用宿主自己的 shell 工具），
+  那条命令不会出现在本面板——它不是本评估的一部分，画上来才是撒谎。

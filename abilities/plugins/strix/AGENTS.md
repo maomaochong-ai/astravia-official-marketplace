@@ -1,13 +1,13 @@
 # Strix 插件 · 开发说明
 
-工作目录就是本目录，所有命令在这里执行。上游引擎是 [usestrix/strix](https://github.com/usestrix/strix)，本插件把它的 **界面** 搬进标签页，模型则用宿主的。
+工作目录就是本目录，所有命令在这里执行。上游引擎是 [usestrix/strix](https://github.com/usestrix/strix)，本插件把它的 **界面** 搬进标签页；模型、循环与工具调用都归宿主，插件只提供沙箱、工具面与窗口（ADR `strix-0003`）。
 
 ## 命令
 
 ```bash
 npm install
 npm run typecheck       # tsc --noEmit，全量类型检查
-npm test                # vitest：界面、agent loop、桥接客户端、服务层纯函数
+npm test                # vitest：界面、事件投影、桥接客户端、服务层纯函数
 npm run build:service   # src/service/*.ts -> dist/service/main.mjs（esbuild 单文件）
 npm run stamp-service   # 改了服务后重算工件摘要
 npm run build           # vite build + build:service（顺序：先清空 dist，再写服务）
@@ -31,27 +31,36 @@ npm run check           # typecheck + test + 服务冒烟
 
 界面刻意 **不** 用宿主主题变量：这一屏就是终端里的 `strix`，换成本地配色的卡片就不像它了。只有 `astra-strix-*` 类名，不碰宿主 class。
 
-## 模型从哪来（宿主 → 插件）
+## 只有一个 AI：宿主会话（不要退回两套）
 
-上游用自己那份 `STRIX_LLM` + key；这里全部来自宿主，三条通道各有唯一来源：
+上游用自己那份 `STRIX_LLM` + key 跑 agent loop。这里**不跑**：宿主 agent 已经通过
+`agent.mcpServers` 拿到这 26 个 `strix_*` 工具，它就是循环。插件只做窗口与操作面。
 
-| 通道 | 来源 | 用法 |
+| 方向 | 来源 | 用法 |
 |---|---|---|
-| **模型** | `useActiveConversation().model`（`provider/id`），没有时回退 `ctx.ai.listModels().defaultModel` | 直接传给 `ctx.ai.chat({ modelKey })`，并在启动页那句 `● <name> · <provider>` 上显示 |
-| **工作目录** | `useActiveConversation().cwd` | 作为 `strix_sandbox_start` 的 `localSources` 挂进 `/workspace/<name>`，启动日志写明挂载了哪个目录 |
-| **对话侧工具调用** | `ctx.conversation.on(...)` 的 `tool-call-start/end` | 用户在聊天里让宿主 agent 调 `strix_*` 时，这些调用会同步出现在插件轨迹里（按工具名过滤，别的 MCP server 不会混进来） |
+| **输入** | `ctx.conversation.sendPrompt` / `createSession` | 启动列与输入框的每句话都交给宿主会话（没有活跃会话时先按当前 cwd 建一个）；发不出去就 `log.sendFailed`，不自己开工 |
+| **输出：会话侧** | `ctx.conversation.on(...)` | `turn-start` / `message-added` / `message-updated`（流式正文）/ `tool-call-*`（哪个 `strix_*` 被调） |
+| **输出：服务侧** | `/api/events`（`client.events`） | `strix_exec` 的命令、退出码、耗时、输出尾巴——只有持有容器的一侧知道 |
+| **事实** | `GET /api/state` | 每次工具结束/轮次结束重读 findings、计划、覆盖、笔记、沙箱 |
 
-都靠权限 `agent.session.read`。纯函数在 `domain/host-sync.ts`（`resolveModel` / `strixToolName` / `hostToolCall` / `workspaceLabel`），有单测。
+切分规则在 `domain/conversation-projection.ts`：带证据的命令从服务画，其余工具从会话画，
+`isServiceNarrated()` 是唯一开关（`exec_command` → `strix_exec` 的映射也在这里）。宿主名
+可以带前缀（`mcp__strix__strix_exec`），按最后一个 `strix_*` 段比对。
 
 要点：
 
-- **对话的模型优先**，即使它不在 `listModels()` 的文本模型列表里——宿主是权威，标签从 key 拆。
-- 聊天里换模型，插件顶部跟着换（`conversation-changed` → 重新解析）。
-- `ctx.ai.chat()` 是真 loop，在 `agent/strix-agent.ts`；`chat` 无状态，转写由插件持有并整轮重放。
-- 工具目录只有一份：`agent/strix-tools.ts` 的 `STRIX_TOOL_SPECS`。每个 spec 标明 `handler: "service" | "plugin"`，服务端只认领 `service` 那一半并在启动时校验 handler 齐备；插件侧（`think` / `ask_user` / `spawn` / `wait` / `view_agents` / `finish`）在 loop 里直接回答，因为它们要模型或要界面。
-- 宿主 agent 走 MCP 时看到的是同一批 `service` 工具；插件自己的 loop 走 `POST /api/tool`。两条路到达同一个沙箱与同一份发现台账。
+- **插件里不存在模型调用**：没有 `ctx.ai.chat`、没有第二份系统提示词、没有私有 messages。
+  `agent/strix-agent.ts` / `agent/system-prompt.ts` 已删，不要再写回来。
+- **方法论走提示词，不走模型**：`locales/*.json#prompt.instructions` 随每一轮发出，
+  写清工具分组、取证顺序、以及「工具表里没有 `strix_*` 时如实说明并停下，不许手搓替代」。
+- **模型标签只读 `conversation.model`**：`provider/id` 拆开就是名字，连 `ai.models.list`
+  都不叫（权限已移除）。
+- **工作目录来自 `conversation.cwd`**：它就是宿主 agent 在干活的目录，也是沙箱挂的目录。
+- **没有插件侧子智能体**：需要并行分工就用宿主自己的 subagent，共享同一个沙箱与台账。
+- 工具目录只有一份：`agent/strix-tools.ts` 的 `STRIX_TOOL_SPECS`，全部是 `handler: "service"`；
+  服务端启动时校验 handler 齐备。
 
-所以一次扫描不需要第二份凭据，也不会产生第二份对话。
+所以一次扫描不需要第二份凭据，也没有第二份对话。
 
 ## 分层
 
@@ -60,13 +69,14 @@ npm run check           # typecheck + test + 服务冒烟
 | `src/index.tsx` | 只做装配：activity tab + input action，并用 `useActiveConversation()` 把标签页绑到当前会话 |
 | `src/runtime.ts` | `strix-bridge` 生命周期（`ctx.services`）：声明 → 安装 → 启动 → 就绪 |
 | `src/runtime-contract.ts` | 宿主桥接的最小类型边界 |
-| `src/agent/strix-agent.ts` | agent loop：模型轮次、工具执行、失败回灌、上限与中止 |
-| `src/agent/strix-tools.ts` | 工具 schema 与轨迹文案（工具名 → 一行摘要） |
-| `src/agent/system-prompt.ts` | Strix 的作业姿态：授权范围、证据优先、只有沙箱能执行命令 |
+| `src/agent/strix-tools.ts` | 工具 schema 与轨迹文案（工具名 → 一行摘要）；**全部是服务侧工具** |
+| `src/domain/conversation-projection.ts` | 两条事件流 → 一条轨迹：工具命名、服务名映射、行构造与证据回填 |
+| `src/domain/engagement.ts` | 胶囊是否开着（模块层，标签页重挂不失忆） |
+| `src/domain/assessment-presence.ts` | 「评估是否已开」的判定：沙箱/发现/计划/笔记/覆盖/威胁模型 |
 | `src/domain/bridge-client.ts` | 对服务的客户端：state / report / stop / callTool / SSE |
 | `src/domain/launch-request.ts` | 启动提示词的解析（目标 vs 方法），对齐 `setup.go:submitSetupPrompt` |
-| `src/domain/model-label.ts` | `provider/model` 拆分与默认模型选择 |
-| `src/domain/host-sync.ts` | 宿主→插件三通道：模型解析、工作目录名、宿主工具调用→轨迹行 |
+| `src/domain/model-label.ts` | `provider/model` 拆分与展示格式化 |
+| `src/domain/host-sync.ts` | 宿主→插件的只读通道：模型标签、工作目录名 |
 | `src/features/scan-console/` | 两屏 UI、状态机、轨迹块、词标、错误边界 |
 | `src/features/findings/` | 问题列表与展开详情 |
 | `src/service/main.ts` | 受管服务入口：MCP 工具面 + `/api/*` + SSE |
@@ -86,9 +96,9 @@ npm run check           # typecheck + test + 服务冒烟
 
 1. **全仓 TypeScript，生成物在 `dist/`。** 服务端没有 Python 层：沙箱走 docker CLI，技能从已安装的 `strix-agent` 包里读 Markdown。宿主只认 JavaScript 入口，`scripts/build-service.mjs` 用 esbuild 打成 `dist/service/main.mjs`，并拒绝产物目录出现 `.py`。
 2. **界面照抄，模型借用。** 复刻启动页与扫描页的排版、文案与配色（包括词标与 `enter launch scan` 这行提示），差异只有一处：模型那行显示的是宿主模型，而不是 `STRIX_LLM`。
-3. **agent loop 在插件里，不在服务里。** 服务是无状态的容器管理者；loop 需要模型，而模型只有渲染进程侧的 `ctx.ai` 有。loop 放渲染层还让"停止"能立刻中断下一次模型调用。
-4. **工具目录只有一份。** `STRIX_TOOL_SPECS` 同时供给 MCP 面与 `/api/tool`，`handler` 字段决定由谁回答；服务端启动时校验“声明的都接上了”，缺一个 handler 直接起不来。
-5. **失败不终止。** 工具抛错变成 `isError` 的 tool result 回灌给模型继续；只有模型调用本身失败才结束本轮。
+3. **插件里没有 loop。** 宿主 agent 是唯一会推理的一侧（ADR strix-0003）；服务是无状态的容器管理者，面板是窗口。之前那份 `strix-agent` loop 已删：它需要模型，而多一份模型就是多一套结论。
+4. **工具目录只有一份。** `STRIX_TOOL_SPECS` 同时供给 MCP 面与 `/api/tool`，服务端启动时校验「声明的都接上了」，缺一个 handler 直接起不来。
+5. **失败不弹给用户，交给模型。** 工具抛错变成 `isError` 的 tool result 回到宿主 agent 手里，让它换一条路；面板不帮它收尾。
 6. **服务声明全部工件。** 宿主 `resolve()` 拒绝启动未经 `install()` 写入的运行时，`install()` 要求 payload 与 `platform.artifacts` 一一对应并校验 SHA-256。
 7. **就绪语义。** `/api/health/ready` 一旦监听就回 200，细节放 body：非 2xx 会被宿主当成进程坏掉并重启。
 8. **数据目录只有一个出口。** 所有存储走 `service/paths.ts`：宿主给了 `ASTRAVIA_SERVICE_DATA_DIR` 就用它，否则 `~/.astravia/plugin-data/strix`——绝不用进程 cwd（上一版在 checkout 里跑服务，把 `notes/`、`todos/` 写进了插件目录）。

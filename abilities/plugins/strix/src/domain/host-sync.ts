@@ -1,22 +1,21 @@
 /**
- * Where the plugin's model, workspace and trace come from.
+ * Where the plugin's model and workspace come from.
  *
  * The console is not a second agent with its own settings: it reads the *active
- * conversation* and follows it. Three things travel from host to plugin, and each
- * has one source of truth:
+ * conversation* and follows it. Two things travel from host to plugin, and each has one
+ * source of truth:
  *
- *  - **model**  - `ConversationState.model` (`provider/id`), falling back to the
- *    user's default when the conversation has none. `ctx.ai.chat({ modelKey })`
- *    accepts exactly that string, so the console runs on the same model, plan and
- *    quota as the chat next to it.
- *  - **workspace** - `ConversationState.cwd`, mounted into the sandbox as the
- *    working directory, the way upstream mounts cwd for a prompt with no target.
- *  - **trace** - the host agent's own tool calls. When the user drives Strix from
- *    the chat ("scan this host"), those calls reach the same sandbox; the panel
- *    narrates them so both surfaces read as one assessment.
+ *  - **model**  — `ConversationState.model` (`provider/id`). The panel displays it and
+ *    nothing more: the run itself happens inside the host conversation, on the model the
+ *    host already resolved, so there is no second model selection to drift out of sync.
+ *  - **workspace** — `ConversationState.cwd`, which is the folder the host agent works
+ *    in and the folder the sandbox mounts, so "review this repo" means one thing in both
+ *    windows.
  *
- * Pure functions only: narrowing and naming, no I/O, so they are testable without
- * a host.
+ * Tool-name and message projection used to live here too; those call rules now sit in
+ * `conversation-projection.ts`, next to the event split they belong to.
+ *
+ * Pure functions only: narrowing and naming, no I/O, so they are testable without a host.
  */
 
 import type { PluginAiModel } from "@astravia-org/plugin-sdk";
@@ -30,20 +29,20 @@ export interface ModelResolution {
 }
 
 /**
- * The conversation's model wins; the default fills the gap.
+ * The conversation's model is the only authority.
  *
- * A conversation can name a model `ctx.ai.listModels()` does not offer for text
- * (or the list can be empty on an older host). In that case the conversation still
- * decides - the host is the authority on what it will run - and the label falls back
- * to splitting the key.
+ * `models` is optional and used for display only (a nicer label than the raw key). A
+ * conversation can name a model the list does not offer — an older host, or a provider
+ * the list call skipped — and the label then falls back to splitting the key, because the
+ * host is still the authority on what it will run.
  */
 export function resolveModel(input: {
 	conversationModel: string | null | undefined;
-	models: readonly PluginAiModel[];
+	models?: readonly PluginAiModel[];
 	/** Kept out of the resolution on purpose (ADR strix-0003): the conversation decides. */
 	defaultModel?: string | null;
 }): ModelResolution {
-	const { conversationModel, models } = input;
+	const { conversationModel, models = [] } = input;
 	const match = (key: string | null | undefined): PluginAiModel | undefined =>
 		key ? models.find((model) => model.modelKey === key) : undefined;
 
@@ -62,39 +61,10 @@ export function resolveModel(input: {
 	}
 
 	// No host-wide fallback (ADR strix-0003). The conversation is the only authority on
-	// which model runs: picking `defaultModel` here made the panel claim a model the
-	// chat was not using, and switching model in the chat did not reach the panel.
-	// Without one the panel says so (log.noModel) instead of inventing a choice.
+	// which model runs: picking `defaultModel` here made the panel claim a model the chart
+	// was not using, and switching model in the chat did not reach the panel. Without one
+	// the panel says so (log.noModel) instead of inventing a choice.
 	return { choice: undefined, fromConversation: false };
-}
-
-/** The `strix_*` tool behind whatever namespace the host applied to it. */
-export function strixToolName(toolName: string): string | undefined {
-	// The host namespaces MCP tools, e.g. `mcp__strix__strix_exec`; the part that matters
-	// is the last `strix_*` segment, whatever separator precedes it.
-	const trimmed = toolName.trim();
-	const index = trimmed.toLowerCase().lastIndexOf("strix_");
-	if (index < 0) return undefined;
-	const candidate = trimmed.slice(index).replace(/_+$/, "");
-	return /^strix_[a-z0-9_]+$/i.test(candidate) ? candidate : undefined;
-}
-
-/**
- * A trace label for a host tool call: the tool, and the argument that says what it
- * acts on. Returns undefined for tools that are not Strix's, so an unrelated MCP
- * server in the same conversation does not leak into the trace.
- */
-export function hostToolCall(toolName: string, args?: Record<string, unknown>): { label: string; detail?: string } | undefined {
-	const name = strixToolName(toolName);
-	if (!name) return undefined;
-	const values = args ?? {};
-	const pick = (key: string): string | undefined => (typeof values[key] === "string" ? (values[key] as string) : undefined);
-	const detail =
-		pick("command") ??
-		pick("title") ??
-		(Array.isArray(values.targets) ? values.targets.map(String).join(" ") : undefined) ??
-		(Array.isArray(values.names) ? values.names.map(String).join(", ") : undefined);
-	return detail ? { label: name, detail } : { label: name };
 }
 
 /** A short name for the workspace, for the status row. */

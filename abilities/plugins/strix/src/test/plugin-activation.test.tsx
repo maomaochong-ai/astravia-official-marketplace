@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -40,30 +40,49 @@ async function disposeOf(value: unknown): Promise<void> {
 	}
 }
 
-function fakeHost(services: Record<string, unknown> = {}, models: unknown[] = [{ modelKey: "openai/gpt-5", name: "GPT-5", provider: "openai", id: "gpt-5", api: "chat", reasoning: false, input: ["text"], contextWindow: 128000 }]) {
+function fakeHost(services: Record<string, unknown> = {}) {
 	let registered: { component: () => React.ReactElement } | undefined;
+	let action: { onToggle?: (active: boolean) => void } | undefined;
+	const listenerRef: { current: ((event: unknown) => void) | undefined } = { current: undefined };
 	const ctx = {
-		plugin: { id: "strix", version: "0.4.0", iconUrl: "astravia-plugin://strix/versions/0.4.0/assets/icon.png" },
+		plugin: { id: "strix", version: "0.5.0", iconUrl: "astravia-plugin://strix/versions/0.5.0/assets/icon.png" },
 		i18n: { t: (key: string) => key },
+		// Kept in the stub on purpose: the panel must not reach for any of it. The tests
+		// that care replace these with throwing spies (see "never calls a model itself").
+		// `listenerRef` / `action` let a test drive the run the way the host does: toggle
+		// the capsule, then push conversation events.
 		ai: {
-			listModels: async () => ({ defaultModel: (models[0] as { modelKey: string }).modelKey, models }),
-			complete: async () => ({ modelKey: "openai/gpt-5", text: "", stopReason: "stop", usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } }),
-			stream: async () => ({ modelKey: "openai/gpt-5", text: "", stopReason: "stop", usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 } }),
-			chat: async () => ({ modelKey: "openai/gpt-5", text: "done", toolCalls: [], stopReason: "stop", usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 } }),
+			listModels: async () => ({ defaultModel: "openai/gpt-5", models: [] }),
+			complete: async () => {
+				throw new Error("unused");
+			},
+			stream: async () => {
+				throw new Error("unused");
+			},
+			chat: async () => {
+				throw new Error("unused");
+			},
 		},
 		ui: {
 			registerActivityTab: (contribution: { component: () => React.ReactElement }) => {
 				registered = contribution;
 				return { dispose() {} };
 			},
-			registerInputAction: () => ({ dispose() {} }),
+			registerInputAction: (contribution: { onToggle?: (active: boolean) => void }) => {
+				action = contribution;
+				return { dispose() {} };
+			},
 			setActivityTabVisible: () => undefined,
 			openActivityTab: () => undefined,
 		},
 		// `agent.session.read`: the tab follows the active conversation, so the stub has to
-		// answer with the same event stream the host does.
+		// answer with the same event stream the host does. The listener is captured so a
+		// test can drive a turn exactly the way the host would.
 		conversation: {
-			on: () => ({ dispose() {} }),
+			on: (listener: (event: unknown) => void) => {
+				listenerRef.current = listener;
+				return { dispose() {} };
+			},
 			sendPrompt: async () => ({ status: "sent" }),
 			insertText: () => undefined,
 			abort: async () => undefined,
@@ -78,7 +97,21 @@ function fakeHost(services: Record<string, unknown> = {}, models: unknown[] = [{
 			...services,
 		},
 	} as unknown as Parameters<typeof plugin.activate>[0];
-	return { ctx, tab: () => registered };
+	return {
+		ctx,
+		tab: () => registered,
+		/** Flip the composer capsule, as a click would. */
+		toggle: (active: boolean) => action?.onToggle?.(active),
+		/** Push a conversation event, as the host would. */
+		emit: (event: unknown) => listenerRef.current?.(event),
+	};
+}
+
+/** Fill the launch column's prompt and press Enter, the way a user launches a scan. */
+function launchWith(text: string): void {
+	const input = screen.getByLabelText("launch.label") as HTMLTextAreaElement;
+	fireEvent.change(input, { target: { value: text } });
+	fireEvent.keyDown(input, { key: "Enter" });
 }
 
 describe("plugin activation", () => {
@@ -98,18 +131,18 @@ describe("plugin activation", () => {
 		await disposeOf(disposable);
 	});
 
-	it("shows the conversation's model, not the settings default", async () => {
+	it("shows the conversation's model, not a settings default", async () => {
 		const host = fakeHost();
 		const disposable = await plugin.activate(host.ctx);
 		render(host.tab()!.component());
-		// The conversation runs claude-opus-5-5; the settings default is gpt-5. The chip
-		// carries the name, the launch log says where it came from.
+		// The conversation runs claude-opus-5-5; the chip carries that name and the launch
+		// log says where it came from. Nothing here asks the host for a model list.
 		expect(await screen.findByText("claude-opus-5-5")).toBeTruthy();
 		expect(await screen.findByText(/log.modelFromConversation/)).toBeTruthy();
 		await disposeOf(disposable);
 	});
 
-	it("says which workspace the sandbox will mount", async () => {
+	it("says which workspace the conversation is in", async () => {
 		const host = fakeHost();
 		const disposable = await plugin.activate(host.ctx);
 		render(host.tab()!.component());
@@ -152,6 +185,91 @@ describe("plugin activation", () => {
 		await new Promise((resolve) => setTimeout(resolve, 50));
 		process.off("unhandledRejection", spy);
 		expect(spy).not.toHaveBeenCalled();
+		await disposeOf(disposable);
+	});
+
+	it("hands the launch prompt to the host conversation and never calls a model itself", async () => {
+		const host = fakeHost();
+		const listModels = vi.fn(async () => {
+			throw new Error("the panel must not ask for a model list");
+		});
+		const chat = vi.fn(async () => {
+			throw new Error("the panel must not run its own loop");
+		});
+		Object.assign(host.ctx.ai as unknown as Record<string, unknown>, { listModels, chat });
+		const sent: string[] = [];
+		Object.assign(host.ctx.conversation as unknown as Record<string, unknown>, {
+			sendPrompt: async (text: string) => {
+				sent.push(text);
+				return { status: "sent" as const };
+			},
+		});
+
+		const disposable = await plugin.activate(host.ctx);
+		render(host.tab()!.component());
+		launchWith("pentest staging.example.com");
+
+		// The conversation is the only AI in the picture: the prompt lands there, and the
+		// panel's own model surface is never touched.
+		await vi.waitFor(() => expect(sent).toEqual(["pentest staging.example.com"]));
+		expect(chat).not.toHaveBeenCalled();
+		expect(listModels).not.toHaveBeenCalled();
+
+		await disposeOf(disposable);
+	});
+
+	it("reports a failed delivery instead of inventing output", async () => {
+		const host = fakeHost();
+		Object.assign(host.ctx.conversation as unknown as Record<string, unknown>, {
+			sendPrompt: async () => {
+				throw new Error("No active conversation to send to");
+			},
+		});
+		const disposable = await plugin.activate(host.ctx);
+		render(host.tab()!.component());
+		launchWith("scan a.test");
+
+		// The failure is reported in the launch log; no transcript row is fabricated.
+		expect(await screen.findByText(/log.sendFailed/)).toBeTruthy();
+
+		await disposeOf(disposable);
+	});
+
+	it("renders the host turn itself: the capsule starts it and the answer streams in", async () => {
+		const host = fakeHost();
+		// The bridge is unreachable here; that only affects the environment probe, which
+		// must not stop the panel from rendering what the host tells it.
+		const disposable = await plugin.activate(host.ctx);
+		render(host.tab()!.component());
+
+		// 1. The capsule is what puts Strix on this turn.
+		host.toggle(true);
+
+		// 2. The host starts a turn and streams an answer token by token.
+		await act(async () => {
+			host.emit({ type: "turn-start" });
+			host.emit({ type: "message-updated", delta: "Four renditions found" });
+			host.emit({ type: "message-updated", delta: "; one IDOR filed." });
+		});
+
+		// The panel left the launch column and is showing the host's words as they arrive:
+		// this is the plugin producing output from the conversation, not a second model.
+		expect(await screen.findByText(/Four renditions found/)).toBeTruthy();
+		expect(screen.getByText(/one IDOR filed/)).toBeTruthy();
+		expect(screen.queryByText("launch.tagline")).toBeNull();
+
+		// 3. The finished message replaces the streamed text with one row, not two.
+		await act(async () => {
+			host.emit({
+				type: "message-added",
+				message: { id: "m1", role: "assistant", text: "Four renditions found; one IDOR filed." },
+			});
+			host.emit({ type: "turn-end", stopReason: "stop" });
+		});
+
+		expect(screen.getAllByText(/Four renditions found/).length).toBe(1);
+		expect(screen.getByText("scan.idle")).toBeTruthy();
+
 		await disposeOf(disposable);
 	});
 });
