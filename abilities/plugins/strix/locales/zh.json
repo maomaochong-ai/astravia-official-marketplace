@@ -3,7 +3,7 @@
   "plugin.description": "标签页里的 Strix 渗透控制台：对着代码或线上目标发起扫描，看着沙箱干活，模型用你 Astravia 里已经配好的那个。",
   "tab.label": "Strix",
   "action.label": "Strix",
-  "launch.tagline": "为你应用而生的 AI 黑客",
+  "launch.tagline": "在宿主对话里驱动沙箱与工具链，这里是同一份现场的窗口。",
   "launch.label": "要让 Strix 测什么？",
   "launch.placeholder": "描述要测什么，或直接给出目标",
   "launch.noModel": "没有可用模型",
@@ -97,9 +97,12 @@
   "rail.empty.coverage": "每测完一个面就记录一行",
   "rail.empty.notes": "载荷与端点图存放在这里",
   "prompt.instructionsStarting": "用户在本轮启用了 Strix，但插件的本地服务可能还没就绪。 先调 strix_environment 确认模式与工具链；如果工具表里根本没有 strix_*，用一句话说明「Strix 工具尚未就绪」并请用户再点一次输入框里的 Strix 胶囊，然后停下。 工具可用时按这个顺序走：strix_environment → strix_sandbox_start → strix_list_skills + strix_load_skills → strix_exec 取证 → strix_file_finding → strix_report；不要用 shell 手搓替代工具链，也不要在没有证据时记录问题。",
-  "trace.host": "宿主对话",
+  "trace.host": "你说的",
   "trace.hostSay": "宿主 Agent",
-  "scan.followingHost": "跟随宿主对话",
+  "scan.followingHost": "跟随宿主这一轮",
   "scan.resumed": "接续上次评估现场",
-  "skill.entry.description": "在对话里直接驱动沙箱与 26 个渗透工具：先取证，再记录问题。"
+  "skill.entry.description": "在对话里直接驱动沙箱与 26 个渗透工具：先取证，再记录问题。",
+  "scan.idle": "待命",
+  "log.sendFailed": "没能把指令交给宿主对话",
+  "log.noWorkspace": "先在宿主里打开一个工作目录，面板才能替你开一轮对话"
 }
