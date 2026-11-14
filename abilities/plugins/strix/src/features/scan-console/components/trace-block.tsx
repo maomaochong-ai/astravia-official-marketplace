@@ -12,6 +12,7 @@
 
 import { useState } from "react";
 import type { TraceEntry } from "../../../runtime-contract";
+import { presentTool } from "../tool-presentation";
 
 export interface TraceBlockProps {
 	entry: TraceEntry;
@@ -23,18 +24,24 @@ const OUTPUT_PREVIEW_LINES = 16;
 function ToolBlock({ entry }: { entry: TraceEntry }): React.ReactElement {
 	const [open, setOpen] = useState(false);
 	const state = entry.ok === undefined ? "running" : entry.ok ? "ok" : "fail";
+	// 逐工具外观：上游 24 个渲染器的家族化版本（tool-presentation.ts）。
+	// 未登记的工具落到 generic，也就是上游的 `→ Using tool <name>`。
+	const look = presentTool(entry.label);
 	const status = state === "running" ? "● In progress..." : state === "ok" ? "✓ Done" : "✗ Failed";
 	const output = entry.output ?? "";
 	const lines = output ? output.split("\n") : [];
 	const truncated = lines.length > OUTPUT_PREVIEW_LINES;
 	const visible = open ? output : lines.slice(0, OUTPUT_PREVIEW_LINES).join("\n");
-	const expandable = Boolean(output);
+	const expandable = Boolean(output) && look.expandable;
 
 	return (
-		<div className="astra-strix-tool" data-state={state}>
-			<div className="astra-strix-tool-head">
-				<span className="astra-strix-dim">→ Using tool </span>
-				<span className="astra-strix-tool-name">{entry.label}</span>
+		<div className="astra-strix-tool" data-state={state} data-family={look.family}>
+			<div className="astra-strix-tool-head" data-tone={look.tone}>
+				<span className="astra-strix-tool-glyph-mark" aria-hidden="true">
+					{look.glyph}
+				</span>
+				<span className="astra-strix-tool-name">{look.title}</span>
+				{look.family === "generic" ? <span className="astra-strix-dim"> {entry.label}</span> : null}
 				{lines.length ? <span className="astra-strix-tool-meta">{lines.length} 行</span> : null}
 			</div>
 			{entry.detail ? <code className="astra-strix-tool-args">{entry.detail}</code> : null}

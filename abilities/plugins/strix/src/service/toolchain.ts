@@ -37,8 +37,6 @@ export const TOOLCHAIN = [
 	"jwt_tool",
 ] as const;
 
-export type ToolName = (typeof TOOLCHAIN)[number];
-
 export interface ToolProbe {
 	readonly name: string;
 	readonly found: boolean;

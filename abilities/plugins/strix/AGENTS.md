@@ -127,3 +127,5 @@ npm run check           # typecheck + test + 服务冒烟
   覆盖超上限要写“还有 N 行”；计划/覆盖/笔记的**写入归 agent**，面板只读。
 - **运行记录永远贴在底部**（`features/scan-console/scroll-stick.ts`）：贴底时跟随新行；读者
   往上滚了不抢回，只显示“N 条新消息”。改滚动行为前先读那两个文件，不要在组件里另写一套。
+- **工具行必须家族化**（ADR 0009）：新增工具要在 `features/scan-console/tool-presentation.ts` 登记字形/色调/是否可展开；未登记落到 generic（上游同名回落），`tool-presentation.test.ts` 守着覆盖率。不要再回到“一个通用块画 35 个工具”——那是上一轮与上游最大的界面差距。
+- 界面对照基线是上游 TUI（`strix/interface/tui/internal/app/view.go`）；对照原型在仓库 `docs/prototypes/strix-panel-vs-tui.html`，相似度用 `tools/ui-parity.mjs` 复算。

@@ -68,18 +68,61 @@ export function strixToolName(toolName: string): string | undefined {
 	return /^strix_[a-z0-9_]+$/i.test(candidate) ? candidate : undefined;
 }
 
-/** The argument that says what a call acts on, when it has one. */
-function detailOf(args: Record<string, unknown> | undefined): string | undefined {
+/**
+ * What this call acts on, per tool — the line a reader needs under the tool name.
+ *
+ * 这曾经是 strix-tools 里的 `describeToolCall`：一个没人调用的导出，还引用着已删除的
+ * `strix_spawn_agent` / `strix_ask_user`。逐工具的“这一行代表什么”本身是对的，只是放错了
+ * 地方——轨迹的唯一使用点在投影层，所以搬到这里，并按**每个工具的语义**取值，而不是
+ * 猜一个通用的键名顺序（`targets` 在 sandbox_start 是目标，在 scope 是范围声明）。
+ */
+const DETAIL_KEYS: Record<string, readonly string[]> = {
+	strix_exec: ["command"],
+	strix_patch: ["patch"],
+	strix_view_image: ["path"],
+	strix_write_stdin: ["sessionId"],
+	strix_kill_session: ["sessionId"],
+	strix_shell_sessions: ["sessionId"],
+	strix_think: ["thought"],
+	strix_scope: ["targets"],
+	strix_sandbox_start: ["targets"],
+	strix_report: ["targets"],
+	strix_load_skills: ["names", "skills"],
+	strix_file_finding: ["title"],
+	strix_update_finding: ["title"],
+	strix_note_create: ["title"],
+	strix_note_update: ["title"],
+	strix_note_get: ["id"],
+	strix_note_delete: ["id"],
+	strix_todo_create: ["todos"],
+	strix_todo_update: ["ids"],
+	strix_todo_remove: ["ids"],
+	strix_coverage_record: ["surface", "outcome"],
+	strix_coverage_update: ["id", "outcome"],
+	strix_browser: ["action", "target"],
+	strix_proxy: ["action"],
+};
+
+function text(value: unknown): string | undefined {
+	if (typeof value === "string") return value.trim() || undefined;
+	if (Array.isArray(value)) {
+		const parts = value.map((item) => (typeof item === "string" ? item : (item as { title?: string })?.title ?? ""));
+		const joined = parts.filter(Boolean).join(" · ");
+		return joined || undefined;
+	}
+	return undefined;
+}
+
+function detailOf(tool: string, args: Record<string, unknown> | undefined): string | undefined {
 	const values = args ?? {};
-	const pick = (key: string): string | undefined => (typeof values[key] === "string" ? (values[key] as string) : undefined);
-	return (
-		pick("command") ??
-		pick("question") ??
-		pick("title") ??
-		pick("name") ??
-		(Array.isArray(values.targets) ? values.targets.map(String).join(" ") : undefined) ??
-		(Array.isArray(values.names) ? values.names.map(String).join(", ") : undefined)
-	);
+	const keys = DETAIL_KEYS[tool] ?? ["command", "query", "title", "name", "targets", "names"];
+	const parts: string[] = [];
+	for (const key of keys) {
+		const value = text(values[key]);
+		if (value) parts.push(value);
+	}
+	const joined = parts.join(" → ");
+	return joined || undefined;
 }
 
 /**
@@ -97,7 +140,7 @@ export function toolRow(input: {
 }): Omit<TraceEntry, "id" | "at"> | undefined {
 	const label = serviceToolToStrix(input.tool);
 	if (!label) return undefined;
-	const detail = input.command ?? detailOf(input.args);
+	const detail = input.command ?? detailOf(label, input.args);
 	return detail ? { kind: "tool", label, detail } : { kind: "tool", label };
 }
 

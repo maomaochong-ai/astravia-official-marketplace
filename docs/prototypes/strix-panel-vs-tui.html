@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<title>Strix 面板原型 · 与上游 TUI 对照</title>
+<style>
+	:root {
+		--black: #0a0a0a;
+		--panel: #111113;
+		--rule: #26262b;
+		--text: #d4d4d4;
+		--dim: #6b7280;
+		--placeholder: #525252;
+		--green: #22c55e;
+		--bright: #86efac;
+		--amber: #d97706;
+		--red: #ef4444;
+		--blue: #3b82f6;
+		--slate: #94a3b8;
+	}
+	* { box-sizing: border-box; }
+	body {
+		margin: 0;
+		padding: 28px;
+		background: #17171a;
+		color: var(--text);
+		font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+	}
+	h1 { font-size: 15px; font-weight: 600; margin: 0 0 4px; }
+	p.lead { margin: 0 0 22px; color: var(--dim); font-size: 12px; }
+	.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+	.caption { font-size: 11px; color: var(--dim); margin: 0 0 8px; letter-spacing: .04em; text-transform: uppercase; }
+
+	/* —— 左：上游 TUI 观感 —— */
+	.tui {
+		background: #000;
+		border: 1px solid #000;
+		border-radius: 6px;
+		padding: 12px;
+		display: grid;
+		grid-template-columns: 1fr 236px;
+		gap: 10px;
+		font-size: 12px;
+		line-height: 1.65;
+	}
+	.tui-chat { border: 1px solid #0a0a0a; border-radius: 8px; padding: 8px 10px; min-height: 372px; }
+	.tui-status { display: flex; justify-content: space-between; color: var(--dim); font-size: 11px; padding: 4px 2px; }
+	.tui-input { border: 1px solid #525252; border-radius: 8px; padding: 6px 8px; color: var(--placeholder); }
+	.tui-side { display: flex; flex-direction: column; gap: 10px; }
+	.tui-panel { border: 1px solid #1f1f23; border-radius: 6px; padding: 6px 8px; }
+	.tui-panel h4 { margin: 0 0 4px; font-size: 11px; font-weight: 600; color: var(--text); display: flex; justify-content: space-between; }
+	.tui-panel h4 span { color: var(--dim); font-weight: 400; }
+	.tui-kv { display: grid; grid-template-columns: 62px 1fr; gap: 0 6px; font-size: 11px; color: var(--dim); }
+	.tui-kv b { color: var(--text); font-weight: 500; }
+	.you-bar { color: var(--blue); }
+	.tool-line { color: var(--dim); }
+	.tool-name { color: var(--blue); font-weight: 700; }
+	.done { color: var(--green); }
+	.fail { color: var(--red); }
+	.sweep { color: var(--green); letter-spacing: 1px; }
+
+	/* —— 右：插件面板（当前实现） —— */
+	.panel {
+		background: var(--panel);
+		border: 1px solid var(--rule);
+		border-radius: 8px;
+		overflow: hidden;
+		font-size: 12px;
+		line-height: 1.6;
+	}
+	.band {
+		display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+		padding: 8px 12px; border-bottom: 1px solid var(--rule); color: var(--dim); font-size: 11px;
+	}
+	.band .state { color: var(--green); }
+	.band .fact { display: flex; gap: 5px; }
+	.band .fact b { color: var(--text); font-weight: 500; }
+	.body { display: grid; grid-template-columns: 1fr 216px; }
+	.trace { padding: 10px 14px; min-height: 372px; }
+	.trace h3 { margin: 0 0 8px; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--dim); }
+	.row { margin: 0 0 8px; }
+	.row.tool .head { color: var(--dim); }
+	.row.tool .head .glyph { font-weight: 700; margin-right: 6px; }
+	.row.tool .args { color: var(--text); display: block; padding-left: 16px; }
+	.row.tool .status { display: block; padding-left: 16px; }
+	.note { color: var(--dim); font-style: italic; }
+	.rail { border-left: 1px solid var(--rule); padding: 10px; display: flex; flex-direction: column; gap: 12px; }
+	.rail section h4 { margin: 0 0 4px; font-size: 11px; color: var(--text); display: flex; justify-content: space-between; }
+	.rail section h4 span { color: var(--dim); font-weight: 400; }
+	.rail ul { list-style: none; margin: 0; padding: 0; font-size: 11px; color: var(--dim); }
+	.rail li { display: flex; gap: 6px; }
+	.rail .empty { font-size: 11px; color: var(--placeholder); margin: 0; }
+	.composer { border-top: 1px solid var(--rule); padding: 10px 12px; }
+	.composer .box { border: 1px solid var(--rule); border-radius: 8px; padding: 8px 10px; color: var(--placeholder); }
+	.composer .hint { margin: 6px 0 0; font-size: 10.5px; color: var(--placeholder); }
+	.e-merald { color: var(--green); }
+	.e-amber { color: var(--amber); }
+	.e-red { color: var(--red); }
+	.e-blue { color: var(--blue); }
+	.e-slate { color: var(--slate); }
+	.legend { margin-top: 18px; font-size: 11px; color: var(--dim); line-height: 1.8; }
+	.legend code { color: var(--text); }
+</style>
+</head>
+<body>
+	<h1>Strix 面板原型 · 上游 TUI（左）vs 插件面板（右）</h1>
+	<p class="lead">同一轮扫描、同一批事件。左边是 <code>strix/interface/tui</code> 的样子，右边是插件按 ADR 0009 家族化后的样子。</p>
+
+	<div class="grid">
+		<div>
+			<p class="caption">上游 TUI · 主界面</p>
+			<div class="tui">
+				<div>
+					<div class="tui-chat">
+						<div class="row"><span class="you-bar">▍</span> <b>You:</b></div>
+						<div class="row"><span class="you-bar">▍</span> 对 staging.example.com 做渗透测试</div>
+						<div class="row tool-line">→ Using tool <span class="tool-name">exec_command</span></div>
+						<div class="row tool-line" style="padding-left:14px">cmd: nmap -sV staging.example.com</div>
+						<div class="row done">✓ Done</div>
+						<div class="row tool-line">→ Using tool <span class="tool-name">create_vulnerability_report</span></div>
+						<div class="row tool-line" style="padding-left:14px">title: IDOR on /api/orders</div>
+						<div class="row tool-line" style="padding-left:14px">severity: high</div>
+						<div class="row fail">✗ Failed</div>
+						<div class="row tool-line"><span class="e-emerald">◇</span> patch</div>
+						<div class="row tool-line" style="padding-left:14px">/workspace/poc/idor.py</div>
+						<div class="row done">✓ Done</div>
+					</div>
+					<div class="tui-status">
+						<span><span class="sweep">▖▘▝▗</span> esc stop</span>
+						<span>ctrl-q quit</span>
+					</div>
+					<div class="tui-input">&gt; 描述要测什么</div>
+				</div>
+				<div class="tui-side">
+					<div class="tui-panel"><h4>targets <span>1</span></h4>
+						<div class="tui-kv"><span>▸</span><b>staging.example.com</b></div></div>
+					<div class="tui-panel"><h4>stats <span>▾</span></h4>
+						<div class="tui-kv"><span>model</span><b>glm-5.3</b><span>tokens</span><b>18.4k</b><span>cost</span><b>$0.02</b></div></div>
+					<div class="tui-panel"><h4>vulnerabilities <span>1</span></h4>
+						<div class="tui-kv"><span class="e-red">high</span><b>IDOR /api/orders</b></div></div>
+					<div class="tui-panel"><h4>mcp connections <span>▾</span></h4>
+						<div class="tui-kv"><span class="e-green">●</span><b>strix</b><span>0</span></div></div>
+					<div class="tui-panel"><h4>agents <span>▸</span></h4>
+						<div class="tui-kv"><span>—</span><span>no subagents</span></div></div>
+				</div>
+			</div>
+		</div>
+
+		<div>
+			<p class="caption">插件面板 · 0.7.6（家族化渲染）</p>
+			<div class="panel">
+				<div class="band">
+					<span class="state">● 扫描中</span>
+					<span class="fact">目标 <b>1</b></span>
+					<span class="fact">模式 <b>standard</b></span>
+					<span class="fact">环境 <b>docker</b></span>
+					<span class="fact">会话 <b>4102</b></span>
+					<span class="fact">步数 <b>3</b></span>
+					<span class="fact" style="margin-left:auto;color:var(--blue)">对话侧正在运行</span>
+					<span>停止</span>
+				</div>
+				<div class="body">
+					<div class="trace">
+						<h3>运行记录 · 命令与结果</h3>
+						<p class="note">第 1 轮 · 这一轮说了什么在对话区</p>
+						<div class="row tool">
+							<span class="head"><span class="glyph e-blue">▶</span><span class="tool-name" style="color:var(--blue)">exec</span></span>
+							<code class="args">nmap -sV staging.example.com</code>
+							<span class="status done">✓ Done · exit 0 · 12.4s</span>
+						</div>
+						<div class="row tool">
+							<span class="head"><span class="glyph e-red">⚑</span><span class="tool-name" style="color:var(--red)">finding</span></span>
+							<code class="args">IDOR on /api/orders</code>
+							<span class="status done">✓ Done</span>
+						</div>
+						<div class="row tool">
+							<span class="head"><span class="glyph e-emerald">◇</span><span class="tool-name" style="color:var(--green)">patch</span></span>
+							<code class="args">/workspace/poc/idor.py</code>
+							<span class="status fail">✗ Failed</span>
+						</div>
+						<div class="row tool">
+							<span class="head"><span class="glyph e-slate">▤</span><span class="tool-name" style="color:var(--text)">coverage</span></span>
+							<code class="args">GET /api/orders → clean</code>
+							<span class="status done">✓ Done</span>
+						</div>
+						<p class="note">仍在运行 · 38s</p>
+					</div>
+					<div class="rail">
+						<section><h4>目标 <span>1</span></h4>
+							<ul><li>▸ staging.example.com</li></ul></section>
+						<section><h4>计划 <span>1/3</span></h4>
+							<ul><li>● 枚举 /api</li><li>○ 试 /admin</li><li>✓ 读 robots.txt</li></ul></section>
+						<section><h4>覆盖 <span>1/0</span></h4>
+							<ul><li><span class="e-green">✓</span> GET /api/orders</li><li><span class="e-slate">–</span> auth flow</li></ul></section>
+						<section><h4>笔记 <span>2</span></h4>
+							<ul><li>✎ <span style="color:var(--text)">IDOR payload</span></li><li>✎ <span style="color:var(--text)">endpoint map</span></li></ul></section>
+						<section><h4>连接 <span>1</span></h4>
+							<ul><li><span class="e-green">●</span> strix</li></ul></section>
+						<section><h4>发现 <span>1</span></h4>
+							<ul><li><span class="e-red">high</span> IDOR /api/orders</li></ul></section>
+					</div>
+				</div>
+				<div class="composer">
+					<div class="box">&gt; 发送消息</div>
+					<p class="hint">从这里发出也会进对话区；面板不重复显示文字，只记命令与结果。</p>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="legend">
+		<b>对照要点</b><br />
+		1. 工具行：上游 <code>→ Using tool exec_command</code> + 参数 + 状态；插件 <code>▶ exec</code> + 参数 + 状态 —— 同一套
+		字形语义，插件把 <code>exec_command</code> 收敛成 <code>exec</code>，并补上 exit code 与耗时（上游没有）。<br />
+		2. 家族字形：<code>◇ patch</code>、<code>◇ view image</code>、<code>⚑ finding</code>、<code>▤ coverage</code>、
+		<code>✎ note</code>、<code>☰ plan</code>、<code>⇄ mcp</code> —— 取自上游 <code>internal/render/*</code>。<br />
+		3. 上游用 <code>▍</code> 竖条标用户消息；插件不画用户消息（ADR 0007：文字归对话），只留「第 N 轮」分隔行。<br />
+		4. 上游状态行是 <code>6 方块扫光 + esc stop / ctrl-q quit</code>；插件换成一条状态带（目标/模式/环境/步数/停止），
+		因为面板可点，不需要键盘提示占位。<br />
+		5. 上游侧栏是单一展开的五个盒子；插件侧栏常驻六块（多出「计划/覆盖/笔记」台账，上游把这三样画在轨迹里）。
+	</div>
+</body>
+</html>

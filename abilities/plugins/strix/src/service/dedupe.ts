@@ -97,8 +97,3 @@ export function parseDedupeReply(reply: string, candidates: readonly DedupeCandi
 	}
 	return accepted;
 }
-
-/** The deterministic pass on its own: exact duplicates, no model required. */
-export function dedupeFindings(candidates: readonly DedupeCandidate[]): DedupeResult {
-	return exactDuplicates(candidates);
-}

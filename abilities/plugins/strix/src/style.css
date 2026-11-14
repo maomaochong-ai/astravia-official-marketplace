@@ -693,6 +693,32 @@
 	font-weight: 700;
 }
 
+/* 逐工具色调（ADR 0009）：字形与标题取上游同一套语义色。 */
+.astra-strix-tool-glyph-mark {
+	margin-right: 6px;
+	font-weight: 700;
+}
+
+.astra-strix-tool-head[data-tone="emerald"] .astra-strix-tool-glyph-mark,
+.astra-strix-tool-head[data-tone="emerald"] .astra-strix-tool-name {
+	color: var(--sx-green);
+}
+
+.astra-strix-tool-head[data-tone="amber"] .astra-strix-tool-glyph-mark,
+.astra-strix-tool-head[data-tone="amber"] .astra-strix-tool-name {
+	color: var(--sx-amber);
+}
+
+.astra-strix-tool-head[data-tone="red"] .astra-strix-tool-glyph-mark,
+.astra-strix-tool-head[data-tone="red"] .astra-strix-tool-name {
+	color: var(--sx-red);
+}
+
+.astra-strix-tool-head[data-tone="slate"] .astra-strix-tool-glyph-mark,
+.astra-strix-tool-head[data-tone="slate"] .astra-strix-tool-name {
+	color: var(--sx-text);
+}
+
 .astra-strix-tool-args {
 	color: var(--sx-text);
 	white-space: pre-wrap;

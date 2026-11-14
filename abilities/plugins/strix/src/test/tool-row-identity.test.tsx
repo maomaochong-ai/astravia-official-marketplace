@@ -1,5 +1,5 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const conversationState = {
 	id: "session-1",
@@ -15,8 +15,14 @@ vi.mock("@astravia-org/plugin-sdk", async (importOriginal) => {
 });
 
 import plugin from "../index";
+import { forgetSnapshot } from "../features/scan-console/session-store";
 
 afterEach(cleanup);
+
+// 面板会从 session-store 水合轨迹；不清掉就会把上一条测试的行带进来。
+beforeEach(() => {
+	forgetSnapshot("session-1");
+});
 
 /**
  * 工具行的归属：end 事件必须关掉**它自己的**那一行。
@@ -92,11 +98,12 @@ describe("interleaved tool calls", () => {
 			host.emit({ type: "tool-call-end", toolName: "strix_environment", isError: false });
 		});
 
-		// 两行各自对应自己的工具名：scope 失败、environment 成功，不串。
-		const scopeRow = screen.getByText("strix_scope").closest(".astra-strix-tool") as HTMLElement;
-		const envRow = screen.getByText("strix_environment").closest(".astra-strix-tool") as HTMLElement;
-		expect(scopeRow.getAttribute("data-state")).toBe("fail");
-		expect(envRow.getAttribute("data-state")).toBe("ok");
+		// 两行各自对应自己的工具：第一行（scope）失败、第二行（environment）成功，不串。
+		// 逐工具渲染后标题是家族名，所以按顺序取行，顺序正是这条测试的被测对象。
+		const rows = [...document.querySelectorAll(".astra-strix-tool")] as HTMLElement[];
+		expect(rows).toHaveLength(2);
+		expect(rows[0]?.getAttribute("data-state")).toBe("fail");
+		expect(rows[1]?.getAttribute("data-state")).toBe("ok");
 	});
 
 	it("keeps an end event from closing another tool's row when names differ", async () => {
@@ -112,7 +119,8 @@ describe("interleaved tool calls", () => {
 			host.emit({ type: "tool-call-end", toolName: "strix_unknown_tool", isError: true });
 		});
 
-		const row = screen.getByText("strix_todo_create").closest(".astra-strix-tool") as HTMLElement;
-		expect(row.getAttribute("data-state")).toBe("running");
+		const rows = [...document.querySelectorAll(".astra-strix-tool")] as HTMLElement[];
+		expect(rows).toHaveLength(1);
+		expect(rows[0]?.getAttribute("data-state")).toBe("running");
 	});
 });

@@ -51,8 +51,20 @@ const items = [
 	// 结构
 	{ name: "启动屏 / splash", weight: 4, score: has("LaunchScreen") ? 1 : 0, note: "banner + 目标输入，对应 setup.go" },
 	{ name: "实时转写（chat/trace 主体）", weight: 8, score: has("TraceBlock") ? 1 : 0, note: "render/chat.go" },
-	{ name: "工具卡片", weight: 10, score: has("astra-strix-tool") ? 0.5 : 0, note: "有卡片，但只有一个通用渲染器" },
-	{ name: "按工具分的渲染器", weight: 12, score: 0, note: "上游 ~27 个（report/todo/coverage/notes/proxy…）" },
+	{
+		name: "工具卡片",
+		weight: 10,
+		score: has("astra-strix-tool-glyph-mark") ? 1 : has("astra-strix-tool") ? 0.5 : 0,
+		note: "字形 + 家族色调 + 可展开（0.7.6 补）",
+	},
+	{
+		name: "按工具分的渲染器",
+		weight: 12,
+		// 上游 24 个一对一渲染器；这里 14 个家族覆盖 35 个工具（tool-presentation.ts）。
+		// 家族化能表达“这是补丁 / 这是覆盖 / 这是发现”，但同家族内的差异会被抹平，故记 3/4。
+		score: has("presentTool(") && has("data-family") ? 0.75 : 0,
+		note: "12 家族 + generic（上游 24 个一对一）",
+	},
 	{ name: "状态行（模式/目标/步数/模型）", weight: 5, score: has("astra-strix-band") ? 1 : 0, note: "view.go sweepView + stats" },
 	{ name: "侧栏 · 目标", weight: 3, score: has("targets.title") ? 1 : 0, note: "targetsBoxHeight" },
 	{ name: "侧栏 · 统计", weight: 3, score: has("stats.title") ? 1 : 0, note: "statsView" },
