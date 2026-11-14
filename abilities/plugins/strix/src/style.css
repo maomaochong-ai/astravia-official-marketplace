@@ -465,26 +465,6 @@
 	cursor: default;
 }
 
-.astra-strix-fact {
-	display: inline-flex;
-	align-items: baseline;
-	gap: 6px;
-	min-width: 0;
-}
-
-.astra-strix-fact-label {
-	color: var(--sx-dim);
-	font-size: 11px;
-	letter-spacing: 0.02em;
-}
-
-.astra-strix-fact-value {
-	color: var(--sx-text);
-	max-width: 22ch;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
 
 .astra-strix-workbench-grid {
 	display: grid;
@@ -1762,4 +1742,151 @@
 .astra-strix-composer:hover .astra-strix-resize-handle::before,
 .astra-strix-composer:focus-within .astra-strix-resize-handle::before {
 	opacity: 1;
+}
+
+/* ---- 输入框以下：两列 rows（1.0.4） ----------------------------------------
+   标签列固定宽，值列占满其余；所有行共用这两个栅格列，因此文字、下拉、按钮、
+   日志、快捷键、桥接状态都落在同一条左边缘上（1.0.3 是各行为自己加 padding，
+   于是出现"参差不齐"）。 */
+.astra-strix-rows {
+	display: flex;
+	flex-direction: column;
+	gap: 7px;
+	margin: 0;
+}
+
+.astra-strix-row {
+	display: grid;
+	grid-template-columns: 5.2em minmax(0, 1fr);
+	align-items: baseline;
+	column-gap: 10px;
+}
+
+.astra-strix-row-label {
+	color: var(--sx-dim);
+	font-size: 11.5px;
+	white-space: nowrap;
+}
+
+.astra-strix-row-value {
+	display: block;
+	min-width: 0;
+	font-size: 12px;
+	color: var(--sx-text);
+}
+
+.astra-strix-fact[data-missing="yes"] .astra-strix-row-value {
+	color: var(--sx-amber);
+}
+
+/* 环境：选择器 + 状态同一行；动作另起一行但仍在值列内。 */
+.astra-strix-env-line {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 10px;
+	font-size: 11.5px;
+}
+
+.astra-strix-env-status {
+	color: var(--sx-dim);
+	font-size: 11.5px;
+}
+
+.astra-strix-row[data-state="noDocker"] .astra-strix-env-status,
+.astra-strix-row[data-state="noImage"] .astra-strix-env-status {
+	color: var(--sx-amber);
+}
+
+.astra-strix-row[data-state="ready"] .astra-strix-env-status {
+	color: var(--sx-green);
+}
+
+.astra-strix-env-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 5px;
+}
+
+/* 下拉：与正文同高、同字色；底色自己带，不靠父级背景。 */
+.astra-strix-env-select {
+	appearance: none;
+	height: 22px;
+	padding: 0 20px 0 8px;
+	border: 1px solid color-mix(in srgb, var(--sx-green) 38%, transparent);
+	border-radius: 5px;
+	background-color: color-mix(in srgb, #04120a 90%, transparent);
+	color: var(--sx-white, #d1fae5);
+	font: inherit;
+	font-size: 11.5px;
+	line-height: 20px;
+	cursor: pointer;
+	background-image: linear-gradient(45deg, transparent 50%, var(--sx-green) 50%),
+		linear-gradient(135deg, var(--sx-green) 50%, transparent 50%);
+	background-position: calc(100% - 11px) 52%, calc(100% - 7px) 52%;
+	background-size: 4px 4px, 4px 4px;
+	background-repeat: no-repeat;
+	vertical-align: middle;
+}
+
+.astra-strix-env-select option {
+	background-color: #04120a;
+	color: #d1fae5;
+}
+
+.astra-strix-env-select:focus-visible {
+	outline: 1px solid var(--sx-green);
+	outline-offset: 1px;
+}
+
+.astra-strix-env-action {
+	height: 22px;
+	padding: 0 9px;
+	border: 1px solid color-mix(in srgb, var(--sx-green) 38%, transparent);
+	border-radius: 5px;
+	background: transparent;
+	color: var(--sx-green);
+	font: inherit;
+	font-size: 11px;
+	line-height: 20px;
+	cursor: pointer;
+}
+
+.astra-strix-env-action:hover {
+	background: color-mix(in srgb, var(--sx-green) 14%, transparent);
+}
+
+/* 日志 / 快捷键 / 桥接状态：都在值列里，垂直节奏一致。 */
+.astra-strix-row-value.astra-strix-launch-log {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	max-height: 4.8em;
+	overflow: hidden;
+	font-size: 11.5px;
+}
+
+.astra-strix-row-value.astra-strix-launch-log > span {
+	display: block;
+}
+
+.astra-strix-row-value.astra-strix-hints {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 4px 16px;
+	font-size: 11.5px;
+	color: var(--sx-dim);
+}
+
+.astra-strix-hints-version {
+	margin-left: auto;
+}
+
+.astra-strix-row-value .astra-strix-boot {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11.5px;
 }

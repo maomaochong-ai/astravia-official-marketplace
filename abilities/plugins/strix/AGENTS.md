@@ -127,6 +127,9 @@ npm run check           # typecheck + test + 服务冒烟
   覆盖超上限要写“还有 N 行”；计划/覆盖/笔记的**写入归 agent**，面板只读。
 - **运行记录永远贴在底部**（`features/scan-console/scroll-stick.ts`）：贴底时跟随新行；读者
   往上滚了不抢回，只显示“N 条新消息”。改滚动行为前先读那两个文件，不要在组件里另写一套。
+- **投递顺序：先发、后建、最后交给宿主**（1.0.4）。`sendPrompt` 在宿主的新会话页也能发（宿主自己按当前目录建会话），
+  所以不要先 `createSession`——那会把"拿不到 cwd"变成一次假的"你没打开目录"。只有发送真的失败才建会话；
+  连 cwd 都拿不到时用 `ctx.conversation.insertText` 把话交回宿主输入框。
 - **会话目录要兜底**（1.0.3）：发送/新建会话时用 `conversation.cwd ?? ctx.fileExplorer.getWorkspaceRoots()[0]?.path`。
   只认 conversation.cwd 会误报"先在宿主里打开一个工作目录"，而用户明明已经打开了（需要 `workspace.read`）。
 - **首屏输入框以下是一列**：模型行、环境下拉、快捷键、桥接状态共用一条左边缘（`padding-left: 2px`），

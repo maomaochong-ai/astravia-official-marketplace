@@ -143,107 +143,131 @@ export function LaunchScreen({
 
 				</div>
 
-				{/* 模型行：只此一处。有模型说清名字与归属，没有则警告（Enter 会变成无操作）。 */}
-				<p className="astra-strix-meta" data-missing={model ? "no" : "yes"}>
-					{model ? (
-						<>
-							<span className="astra-strix-meta-dot" aria-hidden="true">
-								●
-							</span>
-							<span className="astra-strix-meta-label">{t("scan.model")}</span>
-							<span className="astra-strix-meta-name">{model.name}</span>
-							{model.provider ? <span className="astra-strix-dim"> · {model.provider}</span> : null}
-							<span className="astra-strix-dim"> · {t("launch.modelScope")}</span>
-						</>
-					) : (
-						<>
-							<span aria-hidden="true">○</span> {t("launch.noModel")}
-							<span className="astra-strix-dim"> · {t("launch.noModelHint")}</span>
-						</>
-					)}
-				</p>
-
-				{log.length ? (
-					<div className="astra-strix-launch-log" role="status">
-						{log.slice(-MAX_LOG_ROWS).map((line, index) => (
-							<p key={`${index}-${line.text}`} className={line.tone ? `astra-strix-${line.tone}` : "astra-strix-dim"}>
-								{line.text}
-							</p>
-						))}
+				{/* 输入框以下：两列 facts（标签列 + 值列）。所有行共用两个栅格列，
+				    所以文字、下拉、按钮都落在同一条左边缘上——之前每行各自缩进，看起来参差。 */}
+				<div className="astra-strix-rows">
+					<div className="astra-strix-row" data-missing={model ? "no" : "yes"}>
+						<span className="astra-strix-row-label">{t("scan.model")}</span>
+						<span className="astra-strix-row-value">
+							{model ? (
+								<>
+									<span className="astra-strix-meta-dot" aria-hidden="true">
+										●
+									</span>
+									<span className="astra-strix-meta-name">{model.name}</span>
+									{model.provider ? <span className="astra-strix-dim"> · {model.provider}</span> : null}
+									<span className="astra-strix-dim"> · {t("launch.modelScope")}</span>
+								</>
+							) : (
+								<>
+									<span aria-hidden="true">○</span> {t("launch.noModel")}
+									<span className="astra-strix-dim"> · {t("launch.noModelHint")}</span>
+								</>
+							)}
+						</span>
 					</div>
-				) : null}
 
-				{/* 执行环境（ADR 0013）：三态检测。
-				    host       → 不检测 docker，直接说"本机执行，无容器隔离"
-				    docker 缺失 → 把安装命令交给宿主执行（这是"具备性"问题）
-				    镜像缺失    → 提示并给一个「拉取镜像」按钮（这是"就绪性"问题）
-				    全部就绪    → 说清"已就绪"与镜像状态，不再给多余按钮 */}
-				<div className="astra-strix-env" data-state={envState}>
-					<span className="astra-strix-env-label">{t("env.choice")}</span>
-					<select
-						className="astra-strix-env-select"
-						value={environmentMode}
-						onChange={(event) => onEnvironmentMode?.(event.target.value as "auto" | "host" | "docker")}
-						aria-label={t("env.choice")}
-					>
-						<option value="host">{t("env.host")}</option>
-						<option value="docker">{t("env.docker")}</option>
-						<option value="auto">{t("env.auto")}</option>
-					</select>
-					<span className="astra-strix-env-actions">
-						{envState === "noDocker" ? (
-							<button type="button" className="astra-strix-env-action" onClick={() => onInstallDocker?.()}>
-								{t("env.install")}
-							</button>
-						) : null}
-						{envState === "noImage" && onPullImage ? (
-							<button type="button" className="astra-strix-env-action" onClick={() => void onPullImage()}>
-								{t("env.pull")}
-							</button>
-						) : null}
-						<button type="button" className="astra-strix-env-action" onClick={() => onRefreshEnvironment?.()}>
-							{t("env.refresh")}
-						</button>
-					</span>
-					<span className="astra-strix-env-status">
-						{envState === "host" ? t("env.statusHost") : null}
-						{envState === "noDocker" ? t("env.statusNoDocker") : null}
-						{envState === "noImage" ? t("env.statusNoImage") : null}
-						{envState === "ready" ? t("env.statusReady") : null}
-					</span>
-				</div>
-				<div className="astra-strix-hints">
-					<span className="astra-strix-hints-left">
-						<span className="astra-strix-hint">
-							<span className="astra-strix-key">enter</span>
-							<span className="astra-strix-dim">{t("launch.hint.enter")}</span>
+					{/* 执行环境（ADR 0013）：四态。
+					    host        → 本机执行，无容器隔离
+					    noDocker    → 让宿主安装 docker
+					    noImage     → 让宿主拉取沙箱镜像
+					    ready       → 只说已就绪 */}
+					<div className="astra-strix-row" data-state={envState}>
+						<span className="astra-strix-row-label">{t("env.choice")}</span>
+						<span className="astra-strix-row-value">
+							<span className="astra-strix-env-line">
+								<select
+									className="astra-strix-env-select"
+									value={environmentMode}
+									onChange={(event) => onEnvironmentMode?.(event.target.value as "auto" | "host" | "docker")}
+									aria-label={t("env.choice")}
+								>
+									<option value="host">{t("env.host")}</option>
+									<option value="docker">{t("env.docker")}</option>
+									<option value="auto">{t("env.auto")}</option>
+								</select>
+								<span className="astra-strix-env-status">
+									{envState === "host" ? t("env.statusHost") : null}
+									{envState === "noDocker" ? t("env.statusNoDocker") : null}
+									{envState === "noImage" ? t("env.statusNoImage") : null}
+									{envState === "ready" ? t("env.statusReady") : null}
+								</span>
+							</span>
+							{/* 动作另起一行，但仍缩进在值列里：不会把状态文字挤到下一行，也不会跨出左边缘。 */}
+							<span className="astra-strix-env-actions">
+								{envState === "noDocker" ? (
+									<button type="button" className="astra-strix-env-action" onClick={() => onInstallDocker?.()}>
+										{t("env.install")}
+									</button>
+								) : null}
+								{envState === "noImage" && onPullImage ? (
+									<button type="button" className="astra-strix-env-action" onClick={() => void onPullImage()}>
+										{t("env.pull")}
+									</button>
+								) : null}
+								<button type="button" className="astra-strix-env-action" onClick={() => onRefreshEnvironment?.()}>
+									{t("env.refresh")}
+								</button>
+							</span>
 						</span>
-						<span className="astra-strix-hints-gap" />
-						<span className="astra-strix-hint">
-							<span className="astra-strix-key">ctrl+c</span>
-							<span className="astra-strix-dim">{t("launch.hint.quit")}</span>
+					</div>
+
+					{log.length ? (
+						<div className="astra-strix-row">
+							<span className="astra-strix-row-label" />
+							<span className="astra-strix-row-value astra-strix-launch-log" role="status">
+								{log.slice(-MAX_LOG_ROWS).map((line, index) => (
+									<span key={`${index}-${line.text}`} className={line.tone ? `astra-strix-${line.tone}` : "astra-strix-dim"}>
+										{line.text}
+									</span>
+								))}
+							</span>
+						</div>
+					) : null}
+
+					<div className="astra-strix-row">
+						<span className="astra-strix-row-label" />
+						<span className="astra-strix-row-value astra-strix-hints">
+							<span className="astra-strix-hint">
+								<span className="astra-strix-key">enter</span>
+								<span className="astra-strix-dim">{t("launch.hint.enter")}</span>
+							</span>
+							<span className="astra-strix-hint">
+								<span className="astra-strix-key">ctrl+c</span>
+								<span className="astra-strix-dim">{t("launch.hint.quit")}</span>
+							</span>
+							<span className="astra-strix-dim astra-strix-hints-version">v{version}</span>
 						</span>
-					</span>
-					<span className="astra-strix-dim">v{version}</span>
+					</div>
+
+					<div className="astra-strix-row">
+						<span className="astra-strix-row-label" />
+						<span className="astra-strix-row-value">
+							{boot.state === "connecting" ? (
+								<span className="astra-strix-boot" role="status">
+									<span className="astra-strix-spinner" aria-hidden="true" />
+									<span>{t("boot.connecting")}</span>
+								</span>
+							) : boot.state === "failed" ? (
+								<span className="astra-strix-boot" data-state="failed" role="status">
+									<span className="astra-strix-amber" aria-hidden="true">
+										!
+									</span>
+									<span>{t("boot.failed")}</span>
+									{boot.detail ? <span className="astra-strix-dim"> — {boot.detail}</span> : null}
+								</span>
+							) : (
+								<span className="astra-strix-boot" data-state="ready" role="status">
+									<span className="astra-strix-green" aria-hidden="true">
+										●
+									</span>
+									<span>{t("boot.ready")}</span>
+								</span>
+							)}
+						</span>
+					</div>
 				</div>
 
-				{boot.state === "connecting" ? (
-					<p className="astra-strix-boot" role="status">
-						<span className="astra-strix-spinner" aria-hidden="true" />
-						<span>{t("boot.connecting")}</span>
-					</p>
-				) : boot.state === "failed" ? (
-					<p className="astra-strix-boot" data-state="failed" role="status">
-						<span className="astra-strix-amber" aria-hidden="true">!</span>
-						<span>{t("boot.failed")}</span>
-						{boot.detail ? <span className="astra-strix-dim"> — {boot.detail}</span> : null}
-					</p>
-				) : (
-					<p className="astra-strix-boot" data-state="ready" role="status">
-						<span className="astra-strix-green" aria-hidden="true">●</span>
-						<span>{t("boot.ready")}</span>
-					</p>
-				)}
 
 				{blocked ? <p className="astra-strix-launch-blocked">{blocked}</p> : null}
 			</div>

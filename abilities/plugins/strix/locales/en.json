@@ -130,5 +130,6 @@
   "env.pull": "Pull image",
   "log.imagePulled": "image pulled — the container environment is ready",
   "log.imagePullFailed": "image pull failed — see the output below",
-  "launch.modelScope": "this conversation"
+  "launch.modelScope": "this conversation",
+  "log.handedToHost": "handed to the host composer — press Enter and the host opens the session in its own folder"
 }

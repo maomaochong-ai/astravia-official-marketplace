@@ -129,6 +129,8 @@ export interface StrixSessionOptions {
 	subscribe: (listener: (event: ConversationEvent) => void) => { dispose(): void };
 	/** Host conversation API: the only path by which this panel speaks. */
 	sendPrompt: (text: string) => Promise<{ status: "sent" | "queued" | "failed" }>;
+	/** 把文字放进宿主输入框（拿不到 cwd 时，让宿主自己建会话）。 */
+	insertText: (text: string) => void;
 	/**
 	 * 宿主当前打开的工作目录（`ctx.fileExplorer.getWorkspaceRoots()`，需要 workspace.read）。
 	 *
@@ -149,6 +151,7 @@ export function useStrixSession({
 	conversation,
 	subscribe,
 	sendPrompt,
+	insertText,
 	createSession,
 	abort,
 	workspaceRoot,
@@ -463,21 +466,37 @@ export function useStrixSession({
 			const value = text.trim();
 			if (!value) return false;
 			setSubmitting(true);
+			let sendError: string | undefined;
 			try {
-				if (!conversationIdRef.current) {
-					// 先看当前会话的 cwd；没有就看宿主打开的工作目录——用户已经打开目录时不该报错。
+				// 顺序很重要：**先直接发**。
+				//
+				// 宿主自己的输入框在"新会话页"也能发——发出去就按当前目录建会话。面板复用同一条路，
+				// 于是插件根本不需要知道目录在哪。之前反过来（先 createSession 再 send），只要拿不到
+				// cwd 就报"先在宿主里打开一个工作目录"，而用户明明已经打开了——那是插件的盲区，
+				// 不是用户的问题（1.0.4）。
+				const receipt = await sendPrompt(value).catch((cause: unknown) => {
+					sendError = cause instanceof Error ? cause.message : String(cause);
+					return { status: "failed" as const };
+				});
+
+				if (receipt.status === "failed") {
+					// 宿主没有可用会话，也没有可发的草稿：才需要自己建一个。
+					// cwd 依次取：当前会话 → 宿主打开的工作目录 → 宿主最近用过的目录。
 					const cwd = cwdRef.current ?? workspaceRoot?.() ?? null;
 					if (!cwd) {
-						note(t("log.noWorkspace"), "error");
-						return false;
+						// 连目录都拿不到：把话交给宿主的输入框，让宿主的"新会话页"自己建会话。
+						// 这比报错有用——用户按下 Enter 就能继续，插件不再假装"你没有打开目录"。
+						insertText(value);
+						note(t("log.handedToHost"), "ok");
+						return true;
 					}
 					const created = await createSession(cwd);
 					conversationIdRef.current = created.id ?? conversationIdRef.current;
-				}
-				const receipt = await sendPrompt(value);
-				if (receipt.status === "failed") {
-					note(t("log.sendFailed"), "error");
-					return false;
+					const retry = await sendPrompt(value);
+					if (retry.status === "failed") {
+						note(t("log.sendFailed"), "error");
+						return false;
+					}
 				}
 				// 不在面板里回显这句：宿主对话已经渲染了它，面板再画一次就是冗余（ADR 0007）。
 				if (phaseRef.current !== "scanning") setPhase("scanning");
