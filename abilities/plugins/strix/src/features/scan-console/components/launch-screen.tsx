@@ -151,16 +151,13 @@ export function LaunchScreen({
 						<span className="astra-strix-row-value">
 							{model ? (
 								<>
-									<span className="astra-strix-meta-dot" aria-hidden="true">
-										●
-									</span>
-									<span className="astra-strix-meta-name">{model.name}</span>
+								<span className="astra-strix-meta-name">{model.name}</span>
 									{model.provider ? <span className="astra-strix-dim"> · {model.provider}</span> : null}
 									<span className="astra-strix-dim"> · {t("launch.modelScope")}</span>
 								</>
 							) : (
 								<>
-									<span aria-hidden="true">○</span> {t("launch.noModel")}
+									<span>{t("launch.noModel")}</span>
 									<span className="astra-strix-dim"> · {t("launch.noModelHint")}</span>
 								</>
 							)}

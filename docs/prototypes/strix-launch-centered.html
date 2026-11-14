@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<title>Strix 首屏 · 居中 + 无括号（1.0.5）</title>
+<style>
+	:root { --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+	* { box-sizing: border-box; }
+	body { margin: 0; padding: 20px; background: #0a0a0c; font-family: var(--mono); }
+	.term {
+		--sx-green: #22c55e; --sx-white: #d1fae5; --sx-text: #a7f3d0;
+		--sx-dim: color-mix(in srgb, #34d399 62%, transparent);
+		--sx-placeholder: color-mix(in srgb, #34d399 46%, transparent);
+		--sx-rule: color-mix(in srgb, #22c55e 20%, transparent);
+		--sx-amber: #fbbf24;
+		position: relative; overflow: hidden;
+		width: 1136px; height: 620px; margin: 0 auto;
+		background: color-mix(in srgb, #04120a 94%, #fff);
+		font-size: 13px; display: flex; flex-direction: column; padding: 26px 24px;
+		color: var(--sx-text);
+	}
+	.term::before { content:""; position:absolute; inset:0; pointer-events:none;
+		background-image: repeating-linear-gradient(to bottom, color-mix(in srgb,#22c55e 8%,transparent) 0 1px, transparent 1px 3px);
+		opacity:.35; z-index:0; }
+	.term > * { position: relative; z-index: 1; }
+
+	/* 关键：整块给 px 上限（680），两侧留白相等 → 这才是"居中"的观感。 */
+	.launch { margin: auto; width: min(680px, 100%); display: flex; flex-direction: column; gap: 13px; }
+	.mark { margin: 0; color: var(--sx-green); font-size: 8.5px; line-height: 1.15; white-space: pre; }
+	.tagline { margin: 6px 0 0; color: var(--sx-dim); font-size: 12px; max-width: 72ch; }
+
+	.prompt { border: 1px solid var(--sx-rule); border-radius: 10px; padding: 10px 12px;
+		background: color-mix(in srgb,#22c55e 4%,transparent); }
+	.prompt-row { display: flex; gap: 8px; }
+	.caret { color: var(--sx-green); }
+	.input { color: var(--sx-placeholder); }
+
+	.rows { display: flex; flex-direction: column; gap: 7px; max-width: 72ch; }
+	.row { display: grid; grid-template-columns: 5.2em minmax(0,1fr); align-items: baseline; column-gap: 10px; }
+	.row-label { color: var(--sx-dim); font-size: 11.5px; white-space: nowrap; }
+	.row-value { display: block; min-width: 0; font-size: 12px; color: var(--sx-text); }
+	.dot { color: var(--sx-green); margin-right: 5px; }
+	.name { font-weight: 600; }
+	.dim { color: var(--sx-dim); }
+
+	.env-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 11.5px; }
+	select { appearance:none; height:22px; padding:0 20px 0 8px; border:1px solid color-mix(in srgb,#22c55e 38%,transparent);
+		border-radius:5px; background-color: color-mix(in srgb,#04120a 90%,transparent); color:#d1fae5;
+		font: inherit; font-size:11.5px; line-height:20px; }
+	.env-status { color: var(--sx-dim); font-size: 11.5px; }
+	.row[data-state="noImage"] .env-status, .row[data-state="noDocker"] .env-status { color: var(--sx-amber); }
+	.row[data-state="ready"] .env-status { color: var(--sx-green); }
+	.env-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:5px; }
+	.action { height:22px; padding:0 9px; border:1px solid color-mix(in srgb,#22c55e 38%,transparent);
+		border-radius:5px; background:transparent; color:var(--sx-green); font:inherit; font-size:11px; line-height:20px; }
+
+	.hints { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 16px; font-size:11.5px; color:var(--sx-dim); }
+	.key { color: var(--sx-white); border:1px solid var(--sx-rule); border-radius:4px; padding:0 4px; }
+	.version { margin-left: auto; }
+	.boot { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:var(--sx-green); }
+	.sweep { display:inline-flex; gap:2px; }
+	.sweep > span { width:5px; height:5px; background:#15803d; }
+
+	.caption { width:1136px; margin:0 auto 8px; color:#34d399; font-size:11px; letter-spacing:.06em; text-transform:uppercase; }
+	.note { width:1136px; margin:14px auto 0; color:#34d399; font-size:11px; line-height:1.7; }
+	.guide { position:absolute; top:0; bottom:0; width:1px; border-left:1px dashed #22c55e44; z-index:2; }
+</style>
+</head>
+<body>
+	<div class="caption">1.0.5 · 块宽 680px，两侧留白相等（虚线标出块的两端）</div>
+	<div class="term">
+		<div class="guide" style="left:228px"></div>
+		<div class="guide" style="right:228px"></div>
+		<div class="launch">
+			<div>
+				<pre class="mark">███████╗████████╗██████╗ ██╗██╗  ██╗
+██╔════╝╚══██╔══╝██╔══██╗██║╚██╗██╔╝
+███████╗   ██║   ██████╔╝██║ ╚███╔╝
+╚════██║   ██║   ██╔══██╗██║ ██╔██╗
+███████║   ██║   ██║  ██║██║██╔╝ ██╗
+╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝  ╚═╝</pre>
+				<p class="tagline">在宿主对话里驱动沙箱与工具链；这里是同一份现场的窗口。</p>
+			</div>
+
+			<div class="prompt"><div class="prompt-row"><span class="caret">&gt;</span><span class="input">描述要测什么，或直接给出目标</span></div></div>
+
+			<div class="rows">
+				<div class="row">
+					<span class="row-label">模型</span>
+					<span class="row-value"><span class="dot">●</span><span class="name">deepseek-flash</span><span class="dim"> · deepseek · 当前对话</span></span>
+				</div>
+
+				<div class="row" data-state="noImage">
+					<span class="row-label">执行环境</span>
+					<span class="row-value">
+						<span class="env-line">
+							<select><option>容器</option><option>本机</option></select>
+							<span class="env-status">有 docker · 镜像还没拉取</span>
+						</span>
+						<span class="env-actions">
+							<button class="action">拉取镜像</button>
+							<button class="action">刷新环境</button>
+						</span>
+					</span>
+				</div>
+
+				<div class="row" data-state="host">
+					<span class="row-label">执行环境</span>
+					<span class="row-value">
+						<span class="env-line">
+							<select style="opacity:.9"><option>本机</option></select>
+							<span class="env-status">在本机执行 · 无容器隔离</span>
+						</span>
+					</span>
+				</div>
+
+				<div class="row">
+					<span class="row-label"></span>
+					<span class="row-value hints">
+						<span><span class="key">enter</span> 启动扫描</span>
+						<span><span class="key">ctrl+c</span> 退出</span>
+						<span class="version dim">v1.0.5</span>
+					</span>
+				</div>
+
+				<div class="row">
+					<span class="row-label"></span>
+					<span class="row-value">
+						<span class="boot"><span class="sweep"><span></span><span></span><span></span><span></span><span></span><span></span></span>桥接服务已就绪 · docker 29.2.1 · 36 个工具</span>
+					</span>
+				</div>
+			</div>
+		</div>
+	</div>
+	<p class="note">上面列了环境的两种状态（容器缺镜像 / 本机）；实际只显示当前那一种。<br>
+	标签只留三个名词：本机、容器、自动。解释放在右侧状态行里，用 · 分隔，不再套括号。</p>
+</body>
+</html>

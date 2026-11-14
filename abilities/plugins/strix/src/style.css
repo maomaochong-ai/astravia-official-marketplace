@@ -1890,3 +1890,39 @@
 	gap: 6px;
 	font-size: 11.5px;
 }
+
+/* ---- 首屏列宽（1.0.5） ------------------------------------------------------
+   之前用 `min(72ch, 100%)`：在 CJK 等宽字体里 1ch ≈ 13px，72ch ≈ 940px，
+   于是这一列几乎占满面板、两侧只各剩几十像素，看起来就是"没居中"。
+   行为 72ch（可读性上限）保留在正文行宽上，但**整块**给一个 px 上限，
+   两侧留白才会相等。 */
+.astra-strix-term.astra-strix-launch-surface > .astra-strix-launch {
+	width: min(680px, 100%);
+	margin: auto;
+}
+
+/* 正文行宽仍按 72ch 收，长命令不横穿整块。 */
+.astra-strix-launch .astra-strix-tagline,
+.astra-strix-launch .astra-strix-rows {
+	max-width: 72ch;
+}
+
+/* ---- Wordmark 居中（1.0.5） -------------------------------------------------
+   1.0.4 把整块收成 680px 并居中，但块内的 wordmark 仍然左对齐：面板正中一块，
+   里面却从左边开始写，读起来还是"没居中"。这里只把**头部**（wordmark + 标语）
+   居中，下面的行保持左对齐——终端里居中的 logo + 左对齐的内容，是唯一不别扭的组合。 */
+.astra-strix-launch-head {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+}
+
+.astra-strix-launch-head .astra-strix-wordmark {
+	margin: 0;
+}
+
+.astra-strix-launch-head .astra-strix-tagline {
+	margin-top: 8px;
+	max-width: 52ch;
+}

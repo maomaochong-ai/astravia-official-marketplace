@@ -28,7 +28,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BridgeClient } from "../../../domain/bridge-client";
 import { hasOpenAssessment } from "../../../domain/assessment-presence";
 import { resolveModel, workspaceLabel } from "../../../domain/host-sync";
-import { isStrixEngaged } from "../../../domain/engagement";
 import { writeSnapshot, belongsTo, readSnapshot } from "../session-store";
 import { normalizeRoster, type McpConnection } from "../../../service/mcp-roster";
 import type { ModelChoice } from "../../../domain/model-label";
@@ -418,8 +417,18 @@ export function useStrixSession({
 
 			if (event.type === "turn-start") {
 				turnRef.current += 1;
-				// 胶囊开着说明用户把这一轮交给了 Strix：宿主一开始跑，面板就离开首屏跟上去。
-				if (isStrixEngaged() && phaseRef.current !== "scanning" && !launchPinned.current) setPhase("scanning");
+				// 这一轮在本对话里跑：面板跟着离开首屏。
+				//
+				// 1.0.5：原来这里还要求 `isStrixEngaged()`——胶囊没开时（比如用户直接在宿主输入框
+				// 打字）面板就停在首屏，用户看到的就是「发出去了，面板没动」。面板挂在本对话上、
+				// 这一轮又是本对话在跑，两个事实合起来就够了，与胶囊无关。
+				//
+				// 唯一例外是「返回首屏」那颗按钮（ADR 0014）：pin 立着就不拓。它是用户点出来的
+				// 一次查看，所以只要没点过它，自动跟屏就不该被其他条件拦住。
+				if (!launchPinned.current) {
+					setShowLaunch(false);
+					if (phaseRef.current !== "scanning") setPhase("scanning");
+				}
 				// 一条分隔行说清“这是第几轮、说明在对话里”，而不是把回复再抄一遍。
 				pushTrace(turnDivider(turnRef.current, t("scan.turnDivider", { turn: turnRef.current })));
 				setHostStreaming(true);
@@ -499,6 +508,11 @@ export function useStrixSession({
 					}
 				}
 				// 不在面板里回显这句：宿主对话已经渲染了它，面板再画一次就是冗余（ADR 0007）。
+				// 面板跟着这一句离开首屏：用户按下的是「开始」，不是「继续看首屏」。
+				// 没有这一步时，只有宿主回一个 turn-start 才会切屏——而宿主在草稿态下
+				// 并不一定马上发事件，于是面板看起来像没反应（1.0.5）。
+				launchPinned.current = false;
+				setShowLaunch(false);
 				if (phaseRef.current !== "scanning") setPhase("scanning");
 				return true;
 			} catch (cause) {

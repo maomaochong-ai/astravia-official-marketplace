@@ -132,8 +132,17 @@ npm run check           # typecheck + test + 服务冒烟
   连 cwd 都拿不到时用 `ctx.conversation.insertText` 把话交回宿主输入框。
 - **会话目录要兜底**（1.0.3）：发送/新建会话时用 `conversation.cwd ?? ctx.fileExplorer.getWorkspaceRoots()[0]?.path`。
   只认 conversation.cwd 会误报"先在宿主里打开一个工作目录"，而用户明明已经打开了（需要 `workspace.read`）。
-- **首屏输入框以下是一列**：模型行、环境下拉、快捷键、桥接状态共用一条左边缘（`padding-left: 2px`），
-  不要在单行上加自己的缩进；模型只画一次。
+- **首屏输入框以下是两列**（1.0.4）：`grid-template-columns: 5.2em minmax(0, 1fr)`，标签列 / 值列。
+  不要在单行上加自己的缩进——那正是“参差不齐”的来源；模型只画一次。
+- **首屏整块留 px 上限，不要用 ch**（1.0.5）：CJK 等宽下 `1ch ≈ 13px`，`72ch` 就是 940px，
+  一块就把面板撑满，两侧没留白就永远看着“没居中”。整块 `min(680px, 100%)` + `margin: auto`；
+  头部（wordmark + 标语）居中，**行保持左对齐**（居中的 logo + 左对齐的内容是唯一不别扭的组合）。
+- **行首不要挂装饰圆点**（1.0.5）：`●` / `○` 只给状态（桥接就绪、工具进行中、todo 状态）。
+  模型名、环境名前不加点。文案里也不要用括号补充说明（`容器（docker）` → `容器`），
+  括号里的信息要么单独成为标签，要么放进状态行。
+- **切屏条件不要掺胶囊状态**（1.0.5）：`turn-start` 只问一句“用户按过返回首屏吗”。
+  旧实现还要 `isStrixEngaged()`，胶囊没开就停在首屏，看起来像“发出去了面板没反应”。
+  `deliver` 成功自己也切屏并销 pin——用户按的是“开始”，不是“继续看首屏”。
 - **环境下拉要有自己的底色**：它压在磷光绿背景上，透明背景会让字看不清；`option` 也要单独设色。
 - **工具行必须家族化**（ADR 0009）：新增工具要在 `features/scan-console/tool-presentation.ts` 登记字形/色调/是否可展开；未登记落到 generic（上游同名回落），`tool-presentation.test.ts` 守着覆盖率。不要再回到“一个通用块画 35 个工具”——那是上一轮与上游最大的界面差距。
 - **外观口径（ADR 0011）**：磷光是 `.astra-strix-term.astra-strix-phosphor` 的变量覆盖，不要直接把背景写成黑色；

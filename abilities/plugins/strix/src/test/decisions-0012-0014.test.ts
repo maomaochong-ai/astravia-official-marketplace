@@ -92,8 +92,8 @@ describe("navigation and instances (ADR 0014)", () => {
 		const hook = readFileSync(join(plugin, "src/features/scan-console/hooks/use-strix-session.ts"), "utf8");
 		expect(hook).toContain("launchPinned");
 		expect(hook).toContain("const openLaunch");
-		// 自动跟屏必须检查是否被钉住
-		expect(hook).toMatch(/isStrixEngaged\(\)[\s\S]{0,120}launchPinned\.current/);
+		// 自动跟屏必须检查是否被钉住（1.0.5：不再要求胶囊启用，pin 是唯一开关）
+		expect(hook).toMatch(/if \(!launchPinned\.current\) \{[\s\S]{0,160}setShowLaunch\(false\)/);
 	});
 
 	it("creates a new conversation in the current folder instead of guessing one", () => {
