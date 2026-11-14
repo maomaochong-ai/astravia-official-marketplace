@@ -179,7 +179,7 @@ export const STRIX_TOOL_SPECS: readonly StrixToolSpec[] = [
 		handler: "service",
 		name: "strix_list_skills",
 		description:
-			"List Strix's security knowledge packs, from the installed engine. Each entry has a name, a category and a one-line description.",
+			"List the security knowledge packs that ship with this plugin: 11 categories, 75 packs (vulnerabilities, technologies, frameworks, protocols, cloud, reconnaissance, tooling, analysis, custom, coordination, scan_modes). Each entry carries a name, category and one-line description. Call this before testing an unfamiliar stack, then load the packs that match it.",
 		parameters: { ...OBJECT, properties: {} },
 	},
 	{

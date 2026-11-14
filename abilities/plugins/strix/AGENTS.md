@@ -119,7 +119,7 @@ npm run check           # typecheck + test + 服务冒烟
 - `detail.json` 的 `showcase` 文案必须短：宿主用固定高度卡片 + `line-clamp-3` 渲染。
 - 图标是上游官方位图（`docs/logo/strix.png`），不要用相似的 Iconify 图形替代。
 - 视觉改动请在真实浏览器里核对：`src/style.css` 逐像素对应终端观感，改颜色/间距前先看一眼启动页。
-- 清单里**不要再写 `providers.cli`**：宿主 `arePluginCliProvidersReady()` 一旦不满足就会丢掉这整条 agent 贡献（技能 + MCP 服务器一起丢），而命令行不是本插件的依赖——技能库有 `agent/skills/strix/tooling/` 的随包副本。
+- 清单里**不要再写 `providers.cli`**：宿主 `arePluginCliProvidersReady()` 一旦不满足就会丢掉这整条 agent 贡献（技能 + MCP 服务器一起丢），而命令行不是本插件的依赖——技能库有 `agent/skills/library/tooling/` 的随包副本。
 - `agent.mcpServers` 的 `type: "service"` 只有在服务就绪时才会物化成工具（`resolveServiceMcp` 返回 undefined 就跳过），所以 `activate()` 里必须先 `runtime.ensureReady()`；否则先建的会话永远看不到 `strix_*`。
 - 面板的屏幕由服务里的事实决定（`domain/assessment-presence.ts`），不是「组件看过消息没有」：宿主已经跑过一轮时面板必须直接进扫描屏。
 - **面板不画对话正文**（ADR 0007）：`TraceEntry.kind` 只有 `tool` / `say` / `note`，`message-*` 事件显式 return。要加回文字先读 0007——两个可滚区域就是用户抱怨的那份冗余。

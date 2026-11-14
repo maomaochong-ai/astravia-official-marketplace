@@ -86,7 +86,7 @@ const families = [
 		items: [
 			[3, "按目标加载技能", "skills/ (76 篇)", hasTool("strix_load_skills")],
 			[2, "技能目录分类", "skills/__init__.py", hasTool("strix_list_skills")],
-			[2, "随包工具手册（无 CLI 时）", "skills/tooling (13)", countFiles(join(PLUGIN, "agent/skills/strix/tooling"), (n) => n.endsWith(".md")) >= 13],
+			[2, "随包工具手册（无 CLI 时）", "skills/tooling (13)", countFiles(join(PLUGIN, "agent/skills/library/tooling"), (n) => n.endsWith(".md")) >= 13],
 		],
 	},
 	{

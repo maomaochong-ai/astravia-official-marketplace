@@ -7,7 +7,7 @@
  * 所以 0.9.1 起只有一条路：
  *
  *   agent/skills/library/            ← 上游 11 类 76 篇的逐字副本（tools/vendor-skills.cjs 同步）
- *   agent/skills/strix/tooling/      ← 13 份工具手册（本插件自己的写法）
+ *                                       含 tooling/ 13 份工具手册与 LICENSE / PROVENANCE.md
  *
  * 曾经的 `locateSkills()` 会去问每个 python 解释器「strix 包装在哪」，然后把上游的 skills 目录
  * 当根——那是**运行时耦合**：升级上游、切换 venv、CI 没有 Python，都会改变插件的行为。删掉了。
