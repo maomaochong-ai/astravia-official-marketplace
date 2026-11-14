@@ -104,5 +104,6 @@
   "skill.entry.description": "在对话里直接驱动沙箱与 26 个渗透工具：先取证，再记录问题。",
   "scan.idle": "待命",
   "log.sendFailed": "没能把指令交给宿主对话",
-  "log.noWorkspace": "先在宿主里打开一个工作目录，面板才能替你开一轮对话"
+  "log.noWorkspace": "先在宿主里打开一个工作目录，面板才能替你开一轮对话",
+  "composer.resize": "拖动调整输入框高度（向上变大，也可用上下方向键）"
 }
