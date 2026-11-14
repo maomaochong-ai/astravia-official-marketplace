@@ -72,21 +72,35 @@
 	   the panel empty (ADR strix-0004: the surface is the panel, not a band in it). */
 	flex: 1 1 auto;
 	height: 100%;
-	min-height: 100%;
-	align-items: center;
-	justify-content: center;
-	padding: 24px 16px;
+	min-height: 0;
+	/* **不**在滚动容器上居中（上一版是 align-items/justify-content: center）。
+	   居中 + overflow:auto 会把溢出的起始边裁到不可达：面板一矮或一窄，上半部分
+	   就“消失”且滚不回来，读起来就是“宽度/高度变了界面不自适应”。居中改到子元素
+	   的 `margin: auto` 上——有余量时居中，溢出时自动变成 0 并贴顶，那边永远可达。 */
+	align-items: stretch;
+	justify-content: flex-start;
+	padding: clamp(12px, 3.5vh, 28px) clamp(10px, 3vw, 24px);
 	overflow: auto;
 }
 
 .astra-strix-launch {
 	display: flex;
 	flex-direction: column;
-	gap: 18px;
+	gap: clamp(12px, 2.4vh, 18px);
 	width: min(72ch, 100%);
+	min-height: 100%;
+	/* Safe centering: auto margins centre when there is room and collapse to 0 when
+	   there is not, so a short panel scrolls from the top instead of hiding its head. */
+	margin: auto;
+}
+
+/* The column never shrinks its children to fit: the surface scrolls instead. */
+.astra-strix-launch > * {
+	flex: 0 0 auto;
 }
 
 .astra-strix-launch-head {
+	min-width: 0; /* flex/grid 子项默认 min-width:auto，宽度一窄就会顶出横向滚动 */
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -97,9 +111,9 @@
 	margin: 0;
 	color: var(--sx-green);
 	font-family: var(--sx-mono);
-	/* Same cell scale as the rest of the screen, as upstream draws it; the clamp only
-	   keeps the block from overflowing a narrow panel. */
-	font-size: clamp(9px, 1.05em, 16px);
+	/* 38ch 的 ASCII 块：字号必须跟视口宽走，否则 320–400px 宽的面板里它就溢出。
+	   2.35vw × 38ch ≈ 宽度的 54%，永远装得下；宽屏下 min() 退回今日的字号。 */
+	font-size: clamp(7px, min(1.05em, 2.35vw), 16px);
 	font-weight: 400;
 	line-height: 1;
 	letter-spacing: 0;
@@ -114,17 +128,53 @@
 	text-align: center;
 }
 
-/* The in-run composer: same box as the launch one, plus a hint row that stays visible. */
+/* The in-run composer: same box as the launch one, plus a hint row that stays visible.
+   高度由两个屏共用的 composer-height.ts 控制；这里只决定“哪一部分长高”。
+   手柄在顶边（见 .astra-strix-resize-handle），向上拖 = 变高。 */
 .astra-strix-composer {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
-	margin: 0 20px 14px;
+	position: relative;
+	/* 窄屏不再白白吃 20px：两侧按视口收缩。 */
+	margin: 0 clamp(8px, 2.2vw, 20px) 14px;
 	padding: 10px 12px;
 	border: 1px solid var(--sx-rule);
 	border-radius: 10px;
 	background: color-mix(in srgb, var(--foreground) 3%, transparent);
 	transition: border-color 120ms ease;
+}
+
+/* 拖拽手柄：8px 命中区、顶部跨界 4px，视觉上是一条 32×3 的圆角短横。
+   命中区比视觉大是故意的——3px 的条没人能一次抓住。 */
+.astra-strix-resize-handle {
+	position: absolute;
+	inset: -4px 0 auto 0;
+	height: 8px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: ns-resize;
+	touch-action: none;
+	z-index: 1;
+}
+
+.astra-strix-resize-handle::before {
+	content: "";
+	width: 32px;
+	height: 3px;
+	border-radius: 999px;
+	background: var(--sx-rule);
+	transition: background 120ms ease;
+}
+
+.astra-strix-resize-handle:hover::before,
+.astra-strix-resize-handle:focus-visible::before {
+	background: var(--sx-green);
+}
+
+.astra-strix-resize-handle:focus-visible {
+	outline: none;
 }
 
 .astra-strix-composer:focus-within {
@@ -171,6 +221,7 @@
 	}
 }
 .astra-strix-prompt {
+	position: relative; /* 手柄的定位基准 */
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
@@ -209,6 +260,9 @@
 }
 
 .astra-strix-prompt-input {
+	/* 拖拽设定的高度；未设定时回落到 textarea 自己的 rows。 */
+	height: var(--sx-composer-h, auto);
+	overflow-y: auto;
 	flex: 1;
 	min-width: 0;
 	background: transparent;
@@ -364,7 +418,7 @@
 	flex-wrap: wrap;
 	align-items: center;
 	gap: 4px 14px;
-	padding: 8px 14px;
+	padding: 8px clamp(8px, 2vw, 14px);
 	border-bottom: 1px solid var(--sx-rule);
 	font-size: 12px;
 }
@@ -429,7 +483,8 @@
 
 .astra-strix-workbench-grid {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) 19rem;
+	/* 右栏跟随视口宽度：固定 19rem 在 900px 左右的窗口里把左栏压成一窄条。 */
+	grid-template-columns: minmax(0, 1fr) clamp(15rem, 22vw, 19rem);
 	gap: 0;
 	flex: 1;
 	min-height: 0;
@@ -461,7 +516,7 @@
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
-	padding: 16px 20px 8px;
+	padding: clamp(10px, 2.2vh, 16px) clamp(10px, 2.4vw, 20px) 8px;
 	width: 100%;
 	max-width: 118ch;
 	margin: 0 auto;
@@ -1150,4 +1205,59 @@
 
 .astra-strix-mcp-count {
 	font-variant-numeric: tabular-nums;
+}
+
+/* ---- 窄与矮：两种真实的屏幕，不是同一种“小尺寸” ---------------------- */
+
+/* 窄面板（宿主侧栏里的标签页、平板竖屏）：字不是问题，**间距**是。
+   标题下的 wordmark 已经按视口宽度收字号；这里把只占地方的元素让出去。 */
+@media (max-width: 480px) {
+	.astra-strix-term.astra-strix-launch-surface {
+		padding: 12px 10px;
+	}
+
+	.astra-strix-launch {
+		gap: 12px;
+	}
+
+	/* 3 行日志 + 快捷键提示在 400px 宽里会把输入框顶出视野 */
+	.astra-strix-launch-log {
+		max-height: 3.2em;
+		overflow: hidden;
+	}
+
+	.astra-strix-hints {
+		flex-wrap: wrap;
+		gap: 4px 10px;
+	}
+
+	.astra-strix-meta {
+		font-size: 11.5px;
+	}
+}
+
+/* 矮面板（拖小了标签页高度）：纵向预算不够时先舍掉辅助信息，
+   保证“能输入”和“能看见命令”这两件事不被挤掉。 */
+@media (max-height: 560px) {
+	.astra-strix-term.astra-strix-launch-surface {
+		padding-top: 8px;
+		padding-bottom: 8px;
+	}
+
+	.astra-strix-launch {
+		gap: 10px;
+	}
+
+	.astra-strix-hints {
+		display: none;
+	}
+
+	.astra-strix-launch-log {
+		max-height: 2.4em;
+		overflow: hidden;
+	}
+
+	.astra-strix-band {
+		gap: 2px 10px;
+	}
 }

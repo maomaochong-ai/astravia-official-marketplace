@@ -12,6 +12,7 @@
  */
 
 import { useState } from "react";
+import { useComposerHeight } from "../hooks/use-composer-height";
 import type { ModelChoice } from "../../../domain/model-label";
 import type { LogLine } from "../hooks/use-strix-session";
 import { StrixWordmark } from "./strix-wordmark";
@@ -44,6 +45,8 @@ export function LaunchScreen({
 	onQuit,
 }: LaunchScreenProps): React.ReactElement {
 	const [value, setValue] = useState("");
+	// 同一个高度状态，两个屏共用：启动页与扫描屏的输入框行为必须一致。
+	const composer = useComposerHeight();
 
 	const submit = (): void => {
 		if (busy) return;
@@ -70,8 +73,21 @@ export function LaunchScreen({
 				</div>
 
 				{/* One panel holds the prompt and the model line, flush under it, the way
-				    upstream's composer panel reads as a single unit. */}
-				<div className="astra-strix-prompt" data-blocked={blocked ? "yes" : "no"}>
+				    upstream's composer panel reads as a single unit. The handle on its top edge
+				    is the same control as the scan screen's: drag up = taller. */}
+				<div
+					className="astra-strix-prompt"
+					data-blocked={blocked ? "yes" : "no"}
+					{...(composer.height ? { style: { "--sx-composer-h": `${composer.height}px` } as React.CSSProperties } : {})}
+				>
+					<div
+						className="astra-strix-resize-handle"
+						role="separator"
+						aria-orientation="horizontal"
+						aria-label={t("composer.resize")}
+						tabIndex={0}
+						{...composer.handleProps}
+					/>
 					<label className="astra-strix-prompt-row">
 						<span className="astra-strix-prompt-caret" aria-hidden="true">
 							&gt;

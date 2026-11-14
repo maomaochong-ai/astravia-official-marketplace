@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { useComposerHeight } from "../hooks/use-composer-height";
 import type { ModelChoice } from "../../../domain/model-label";
 import type {
 	CoverageOutcome,
@@ -90,6 +91,8 @@ export function ScanScreen({
 	const critical = findings.filter((item) => item.severity === "critical").length;
 	const steps = trace.filter((entry) => entry.kind === "tool").length;
 	const [draft, setDraft] = useState("");
+	// 高度与拖拽方向：两个屏共用一份状态（composer-height.ts），否则一边对一边错。
+	const composer = useComposerHeight();
 
 	const mode: ScanMode = (sandbox.scanMode as ScanMode | undefined) ?? "standard";
 	const envMode = sandbox.mode ?? environment?.mode;
@@ -163,7 +166,21 @@ export function ScanScreen({
 						) : null}
 					</div>
 
-					<div className="astra-strix-composer" data-busy={busy ? "yes" : "no"}>
+					{/* 拖拽手柄在盒子顶边：向上拖 = 变高（方向定义在 composer-height.ts，
+					    不在 CSS 里猜）。用 separator 而不是 button，因为它是尺寸控件。 */}
+					<div
+						className="astra-strix-composer"
+						data-busy={busy ? "yes" : "no"}
+						{...(composer.height ? { style: { "--sx-composer-h": `${composer.height}px` } as React.CSSProperties } : {})}
+					>
+						<div
+							className="astra-strix-resize-handle"
+							role="separator"
+							aria-orientation="horizontal"
+							aria-label={t("composer.resize")}
+							tabIndex={0}
+							{...composer.handleProps}
+						/>
 						<div className="astra-strix-prompt-row">
 							<span className="astra-strix-prompt-caret" aria-hidden="true">
 								&gt;

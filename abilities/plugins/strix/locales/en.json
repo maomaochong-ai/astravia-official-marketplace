@@ -104,5 +104,6 @@
   "skill.entry.description": "Drive the sandbox and its 26 pentest tools straight from the chat: evidence first, findings after.",
   "scan.idle": "idle",
   "log.sendFailed": "could not hand that to the host conversation",
-  "log.noWorkspace": "open a workspace folder in the host first, so this panel has a conversation to start"
+  "log.noWorkspace": "open a workspace folder in the host first, so this panel has a conversation to start",
+  "composer.resize": "Drag to resize the prompt box (up makes it taller; arrow keys work too)"
 }
