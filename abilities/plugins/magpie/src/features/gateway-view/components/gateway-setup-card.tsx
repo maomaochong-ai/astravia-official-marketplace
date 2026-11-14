@@ -61,13 +61,16 @@ export function GatewaySetupCard({ state, onInstallAndStart, onStart, onStop }: 
 	const elapsedSeconds =
 		runtime.phaseStartedAt !== undefined ? Math.max(0, Math.round((Date.now() - runtime.phaseStartedAt) / 1000)) : undefined;
 
+	const seconds = elapsedSeconds ?? 0;
+	// 官方 feed 自 0.1.4138 起不再发布字节数，所以「总长未知」是常态：
+	// 此时不能只写一句「正在连接」——一次 86 MB 的下载要十几分钟，不动的界面
+	// 就是用户眼里的「卡住了」。改为报告已下多少、已经过了多久、当前速度。
 	const readout: string[] = [];
 	if (verifying) {
 		readout.push(t("runtime.progress.verifying"));
 	} else if (progress && percent !== undefined) {
 		readout.push(`${percent}%`);
 		readout.push(`${formatMegabytes(progress.downloaded)} / ${formatMegabytes(progress.total)}`);
-		const seconds = elapsedSeconds ?? 0;
 		const bytesPerSecond = seconds > 1 ? progress.downloaded / seconds : 0;
 		if (bytesPerSecond > 0) {
 			readout.push(t("runtime.progress.speed", { speed: (bytesPerSecond / (1024 * 1024)).toFixed(1) }));
@@ -76,13 +79,21 @@ export function GatewaySetupCard({ state, onInstallAndStart, onStart, onStop }: 
 		} else if (seconds > 0) {
 			readout.push(t("runtime.progress.elapsed", { seconds }));
 		}
+	} else if (progress && progress.downloaded > 0) {
+		readout.push(t("runtime.progress.downloadedOnly", { size: formatMegabytes(progress.downloaded) }));
+		const bytesPerSecond = seconds > 1 ? progress.downloaded / seconds : 0;
+		if (bytesPerSecond > 0) readout.push(t("runtime.progress.speed", { speed: (bytesPerSecond / (1024 * 1024)).toFixed(1) }));
+		if (seconds > 0) readout.push(t("runtime.progress.elapsed", { seconds }));
+		if (runtime.releaseVersion) readout.push(runtime.releaseVersion);
 	} else if (starting) {
 		readout.push(t("runtime.phase.starting"));
 	} else if (downloading) {
 		readout.push(t("runtime.progress.contacting"));
 	}
 
-	const barWidth = verifying || starting ? 100 : (percent ?? 0);
+	// 总长未知时用「满格 + 脉冲」表示不确定进度，而不是画一条永远停在 0 的空条。
+	const indeterminate = downloading && percent === undefined;
+	const barWidth = verifying || starting || indeterminate ? 100 : (percent ?? 0);
 	const primaryLabel = working
 		? downloading
 			? verifying
@@ -133,14 +144,18 @@ export function GatewaySetupCard({ state, onInstallAndStart, onStart, onStop }: 
 					<div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
 						<div
 							className={`h-full rounded-full bg-amber-500 transition-[width] duration-500 ease-out ${
-								verifying || starting || percent === undefined ? "animate-pulse" : ""
+								verifying || starting || indeterminate ? "animate-pulse" : ""
 							}`}
 							style={{ width: `${barWidth}%` }}
 						/>
 					</div>
 					<p className="mt-1.5 font-mono text-[11px] tabular-nums text-muted-foreground">{readout.join(" · ")}</p>
+					{/* 总长未知时不提「百分比会动」，而是明确说“官方没发布字节数，看已下多少”——
+					    否则用户会一直等一个不会出现的百分比。 */}
 					{downloading && !verifying ? (
-						<p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{t("runtime.progress.hint")}</p>
+						<p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+							{percent !== undefined ? t("runtime.progress.hint") : t("runtime.progress.noTotal")}
+						</p>
 					) : null}
 				</div>
 			) : null}

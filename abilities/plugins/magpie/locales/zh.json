@@ -90,5 +90,7 @@
   "runtime.diagnosis.endpoint": "探测地址",
   "runtime.noShell": "这台机器上既没有 sh，也没有 powershell，插件无法执行任何命令。",
   "runtime.noShellHint": "在 Windows 上通常说明 PowerShell 被策略移除或 PATH 异常；在 macOS/Linux 上说明 /bin/sh 不可用。",
-  "runtime.deniedHint": "到「设置 → 插件 → Magpie → 命令」里允许 sh（macOS/Linux）或 powershell（Windows）。"
+  "runtime.deniedHint": "到「设置 → 插件 → Magpie → 命令」里允许 sh（macOS/Linux）或 powershell（Windows）。",
+  "runtime.progress.downloadedOnly": "已下载 {size}",
+  "runtime.progress.noTotal": "官方 feed 这一版没有公布文件大小，所以没有百分比；上面的已下载字节数是真的。"
 }

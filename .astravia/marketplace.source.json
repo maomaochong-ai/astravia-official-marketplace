@@ -2001,7 +2001,7 @@
       "slug": "magpie",
       "name": "Magpie",
       "description": "Connect the magpie gateway on this computer to Astravia, browse its real model catalog and publish those models into the model picker when you choose to. If magpie is not installed yet, the panel installs and starts it.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
