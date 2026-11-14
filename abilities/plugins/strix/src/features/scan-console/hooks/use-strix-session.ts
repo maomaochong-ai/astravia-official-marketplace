@@ -22,6 +22,7 @@
  * words to the only agent that can act on them.
  */
 import { evidenceRow, isServiceNarrated, strixToolName, toolRow, turnDivider } from "../../../domain/conversation-projection";
+import { foldTrace, type TraceDraft } from "../../../domain/trace-log";
 import type { ConversationEvent, ConversationState } from "@astravia-org/plugin-sdk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BridgeClient } from "../../../domain/bridge-client";
@@ -183,10 +184,14 @@ export function useStrixSession({
 		setLog((previous) => [...previous, { text, ...(tone ? { tone } : {}) }].slice(-LOG_LIMIT));
 	}, []);
 
-	const pushTrace = useCallback((entry: Omit<TraceEntry, "id" | "at">) => {
-		setTrace((previous) =>
-			[...previous, { ...entry, id: `e${(seq.current += 1)}`, at: Date.now() }].slice(-TRACE_LIMIT),
-		);
+	/**
+	 * Append a row, folding a run of identical notes into one with a count.
+	 *
+	 * 合并规则在 `domain/trace-log.ts`（纯函数、有测试）：真机上容器起不来时服务会反复重试，
+	 * 每次两条 note，不合并就是一堵重复的墙，真证据（命令与输出）会被挤出视野。
+	 */
+	const pushTrace = useCallback((entry: TraceDraft) => {
+		setTrace((previous) => foldTrace(previous, entry, { id: `e${(seq.current += 1)}`, at: Date.now() }).entries);
 	}, []);
 
 	/**

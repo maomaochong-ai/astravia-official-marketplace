@@ -76,6 +76,14 @@ function Prose({ text, className }: { text: string; className: string }): React.
 
 export function TraceBlock({ entry }: TraceBlockProps): React.ReactElement {
 	if (entry.kind === "tool") return <ToolBlock entry={entry} />;
-	if (entry.kind === "note") return <p className="astra-strix-note">{entry.label}</p>;
+	if (entry.kind === "note") {
+		// 相邻同文合并后的计数：一条 ×12 比十二行重复更能说明“它在重试”。
+		return (
+			<p className="astra-strix-note">
+				{entry.label}
+				{entry.count && entry.count > 1 ? <span className="astra-strix-note-count"> ×{entry.count}</span> : null}
+			</p>
+		);
+	}
 	return <Prose text={entry.label} className="astra-strix-say" />;
 }

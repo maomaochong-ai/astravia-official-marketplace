@@ -164,6 +164,8 @@ export interface TraceEntry {
 	kind: "tool" | "say" | "note";
 	/** For tools: the tool name. For chat: the message body. For notes: the line. */
 	label: string;
+	/** 相邻同文 note 被合并了几次（≥2 时面板显示 ×N）。 */
+	count?: number;
 	/** Arguments, exit code and duration, rendered under a tool name. */
 	detail?: string;
 	/** Undefined while a tool call is still in flight. */

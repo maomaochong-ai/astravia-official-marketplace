@@ -539,6 +539,13 @@
 
 
 /* “还有 N 行”：截断要说出来，而不是默默只画前 8 行。 */
+/* 合并计数：不抢字号，只告诉读者“这条重复了几次”。 */
+.astra-strix-note-count {
+	color: var(--sx-dim);
+	font-size: 10.5px;
+	margin-left: 4px;
+}
+
 
 /* 笔记的折叠预览：一眼能看出这条是不是你要找的那条。 */
 .astra-strix-note-preview {

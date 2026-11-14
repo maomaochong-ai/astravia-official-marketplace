@@ -153,6 +153,10 @@ export function ScanScreen({
 						data-running={running ? "yes" : "no"}
 						ref={stick.ref}
 						onScroll={stick.onScroll}
+						{...stick.wheelProps}
+						{...stick.touchProps}
+						{...stick.keyProps}
+						tabIndex={-1}
 					>
 						{trace.length ? (
 							trace.map((entry) => <TraceBlock key={entry.id} entry={entry} />)
