@@ -46,3 +46,23 @@ for (const tag of PLATFORMS) {
 
 await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 console.log(`stamped ${entries.length} artifact(s) across ${PLATFORMS.length} platforms`);
+
+/**
+ * 写回后从磁盘再读一遍：这一步是给发布流水线兜底的。
+ *
+ * 宿主安装服务时按 `platform.artifacts[].sha256` 校验字节，对不上就拒绝启动——
+ * 表现出来是「插件装了、胶囊亮了、工具全不在」，正是最难定位的那种故障。而发布
+ * 流水线对插件的 `npm run build` 失败是继续往下走的（marketplace.mjs 把 build 包在
+ * try/catch 里），所以摘要没重算也能被打进包里。这里让打不出正确摘要的构建直接
+ * 红，而不是把错误留到用户机器上。
+ */
+const verified = JSON.parse(await readFile(manifestPath, "utf8")).providers.services[0].runtime.platforms;
+for (const tag of PLATFORMS) {
+	for (const artifact of verified[tag].artifacts) {
+		const actual = createHash("sha256").update(await readFile(join(root, artifact.destination))).digest("hex");
+		if (actual !== artifact.sha256) {
+			throw new Error(`${tag}: ${artifact.destination} is ${actual} but the manifest pins ${artifact.sha256}`);
+		}
+	}
+}
+console.log(`verified ${entries.length} artifact(s) x ${PLATFORMS.length} platform tags`);
