@@ -4,9 +4,14 @@
 
 ## 定位
 
-这是一个**连接器**，不是一个运行时。magpie 是用户自己装、自己启动的外部程序；插件不安装、不启动、不打包它。
+定位分两层，不要混：
 
-所以在动手之前先想清一件事：**这个改动会让插件开始拥有 magpie 的生命周期吗？** 如果会，先停下——五平台二进制各 15–25 MB，包体硬上限 50 MB，随包分发没有可行性，单平台拆包又会破坏平台无关的包模型。README 的「What it does not do」是这条边界的正式表述。
+- **连接器**（默认）：把用户已经装好的 magpie 接进来——探 `/api/version`、读 `/v1/models`、写宿主模型注册表。
+- **可选的一键安装**（0.1.4 起）：用户点「安装并启动」才发生。包体仍然不带任何二进制（五平台各 15–25 MB，硬上限 50 MB）；插件做的是“取回 → 核 sha256 → 落到用户目录 → 拉起子进程”，而且只在点到按钮时。
+
+执行面有两套（`src/platform-shell.ts`）：POSIX 用 `sh`，Windows 用 `powershell`。生命周期由 `src/runtime-manager.ts` 持有，经 `ctx.command` 执行——`ctx.command` 必须由宿主授权，未授权时面板给 `runtime.denied` 而不是静默失败。
+
+改这块前先想清：**这个改动会让插件开始默认拥有 magpie 的生命周期吗？** 不应谈——默认仍是不托管，自启只在用户曾经点过「运行」之后（`runtime.json` 的 `desiredRunning`）。
 
 ## 目录职责
 
@@ -14,6 +19,8 @@
 src/gateway-endpoint.ts   设置类型、默认值、URL 拼装、fail-closed 归一化（纯函数）
 src/gateway-client.ts     两个 HTTP 调用的唯一出口，失败原因收敛成封闭枚举
 src/model-catalog.ts      /v1/models 解析、宿主模型映射、统计、过滤、格式化（纯函数）
+src/platform-shell.ts       执行面（sh / powershell）、两套脚本、同一套行协议（纯函数）
+src/runtime-manager.ts      二进制探测 / 安装 / 启动 / 停止，只经 ctx.command
 src/controller.ts         状态机：探活 → 读目录 → 发布/移除；视图与工具共用
 src/tools/                两个只读 Agent 工具（ctx.agent.registerTool）
 src/features/gateway-view/components/   一个文件一个组件

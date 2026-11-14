@@ -104,11 +104,12 @@ describe("toModelDefinitions", () => {
 		]);
 	});
 
-	it("declares image input when the model takes images", () => {
-		const [definition] = toModelDefinitions(
-			parseModelRows({ data: [row({ modalities: { input: ["text", "image"] } })] }),
-		);
-		expect(definition?.input).toEqual(["text", "image"]);
+	it("does not send the host a field it no longer accepts", () => {
+		// 宿主当前的 PluginModelDefinition 只有 id/name/api/reasoning*/context/maxTokens。
+		// 吃不吃图仍写在目录行（`row.images`）上给面板展示，但不能往注册表里塞 `input`。
+		const [definition] = toModelDefinitions(parseModelRows({ data: [row({ modalities: { input: ["text", "image"] } })] }));
+		expect(definition).not.toHaveProperty("input");
+		expect(definition?.id).toBeTruthy();
 	});
 });
 

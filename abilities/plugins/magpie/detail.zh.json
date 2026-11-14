@@ -3,75 +3,71 @@
   "blocks": [
     {
       "type": "hero",
-      "eyebrow": "模型",
-      "title": "已经付过钱的模型，一个网关统一调用",
-      "description": "magpie 在本机跑一个网关，把你配好的提供方（订阅、API Key、本地运行时）统一到一个地址后面。这个插件把那个网关接进 Astravia，模型就和内置模型并排出现在同一份列表里。",
+      "eyebrow": "本机网关",
+      "title": "把本机 magpie 接进 Astravia，一键装好并起起来",
+      "description": "面板读官方发布 feed、核对公布的 SHA-256、按平台装到用户目录，再以插件子进程的方式拉起网关——Windows 用 PowerShell 装到 %LOCALAPPDATA%，macOS / Linux 用 sh 装到 ~/.local/bin。不用开终端，也不要管理员。",
       "badges": [
-        "仅本机",
-        "跑在你这台机器上"
+        "零终端",
+        "官方校验和",
+        "随宿主退出"
       ]
     },
     {
       "type": "showcase",
       "showcase": {
         "template": "chat-thread",
-        "user_prompt": "挑一个上下文最长的模型。",
-        "assistant_reply": "共 14 个模型，最长是 claude-sonnet-4。"
+        "canvas": "generic",
+        "brand_name": "magpie",
+        "user_prompt": "把本机 magpie 打开，用它的模型。",
+        "assistant_reply": "网关起来了，37 个模型已写进 Astravia。"
       }
     },
     {
       "type": "feature-grid",
-      "title": "它给你什么",
       "items": [
         {
-          "title": "真实目录，不是估的",
-          "description": "面板直接读网关的 /v1/models，所以看到的就是 magpie 此刻能提供的——提供方、上下文窗口、是否吃图、是否支持推理都写在行里。",
-          "icon": "solar:list-check-bold"
+          "title": "一键装并启动",
+          "description": "面板自己找执行面：Windows 用 powershell，macOS / Linux 用 sh；找不到就把两条都试过什么写出来，而不是笼统说「不支持」。",
+          "icon": "solar:play-circle-bold"
         },
         {
-          "title": "一次点击进模型选择器",
-          "description": "点「发布模型到 Astravia」才会写入，写成 OpenAI 兼容的提供方；旁边那个按钮负责把它摘掉。不点就不写。",
-          "icon": "solar:routing-2-bold"
+          "title": "校验和说了算",
+          "description": "下载地址只认厂商域名，字节一律按 feed 公布的 SHA-256 核对（PowerShell 用 Get-FileHash，POSIX 用 shasum/sha256sum），对不上不落地。",
+          "icon": "solar:shield-check-bold"
         },
         {
-          "title": "Agent 能自己查网关",
-          "description": "两个只读工具 magpie_status 与 magpie_models：模型可以现场确认网关在不在、有哪些模型，而不是凭记忆回答。",
-          "icon": "solar:magnifer-bold"
+          "title": "跟随宿主主题",
+          "description": "所有表面只用宿主的主题令牌（card / border / muted / primary），亮色、暗色与主题包切换都不需要改代码。",
+          "icon": "solar:pallete-2-bold"
         },
         {
-          "title": "密钥留在 magpie 里",
-          "description": "提供方凭据在本机 magpie 自己的配置里。插件既不展示也不保存它们。",
-          "icon": "solar:lock-keyhole-minimalistic-bold"
-        },
-        {
-          "title": "帮你把 magpie 装上",
-          "description": "不用开终端、不用手动下载：面板读官方发布 feed、核对公布的 SHA-256、把 `~/.local/bin/magpie` 装上，再以插件子进程的方式拉起网关。系统里没有 `sh`，或者你拒绝授权，它会直说并给出官方安装器。",
-          "icon": "solar:download-square-bold"
+          "title": "目录写进 Astravia",
+          "description": "点一次「发布到 Astravia」，网关当前的模型目录就变成宿主里的一个提供方；摘掉时只删自己写的那份。",
+          "icon": "solar:database-bold"
         }
       ]
     },
     {
       "type": "steps",
-      "title": "开始使用",
       "items": [
         {
-          "title": "打开「Magpie 网关」，按「安装并启动」",
-          "description": "本机还没有 magpie 时，面板会取官方构建（约 70 MB）、按发布 feed 里公布的校验和核对、装成 `~/.local/bin/magpie`，再把网关拉起来。不用敲命令，也不要 sudo。要是 PATH 或 `~/bin` 里已经有一份，它直接启那份，不重下。Astravia 会先问一次是否允许这个插件执行 `sh`。"
+          "title": "看状态",
+          "description": "面板一打开就探 /api/version，并读回本机二进制在不在。"
         },
         {
-          "title": "在 magpie 里加好至少一个提供方",
-          "description": "网关只提供 magpie 自己配好的东西。用面板上的「打开 magpie」进那个页面——模型是从那里来的。"
+          "title": "装并启动",
+          "description": "没有二进制时按钮变成「安装并启动」；有就直接起 serve，端口与面板地址对齐。"
         },
         {
-          "title": "点「发布模型到 Astravia」",
-          "description": "面板会先确认版本再列出目录。发布后模型进入你的模型选择器，紧邻的按钮可以随时移除。"
+          "title": "发布模型",
+          "description": "网关答了之后，点一次把模型目录写进宿主，随后就能在模型选择器里看到。"
         }
       ]
     },
     {
       "type": "callout",
       "tone": "info",
-      "content": "这个插件拉起的网关是子进程：Astravia 退出它就停，不在系统里留下任何服务。要一个重启后仍在跑的网关，用 magpie 自己的服务装一次 `magpie daemon install`。没有网关时面板读不到目录——它会说清是连接被拒、超时、不是 magpie，还是 HTTP 错误。"
+      "content": "网关是插件拉起的子进程，随 Astravia 退出而停止；要开机常驻，装好后在终端运行 magpie daemon install。"
     }
   ]
 }

@@ -11,19 +11,36 @@ import {
 	probeScript,
 	RELEASE_FEED_URL,
 	startScript,
+	type HostTarget,
 	type ReleaseAsset,
 } from "./gateway-runtime";
+import {
+	describeShell,
+	SHELL_CANDIDATES,
+	shellHandshakeScript,
+	shellMissing,
+	type ShellKind,
+	type ShellRunner,
+	windowsArchScript,
+	windowsInstallScript,
+	windowsProbeScript,
+	windowsStartScript,
+} from "./platform-shell";
 
 /**
  * 面板上的「安装并启动」到底做了什么：
  *
- * 1. 探二进制（`$HOME/.local/bin/magpie`，退到 PATH 上的 magpie）；
- * 2. 没有就去官网发布接口要清单，挑本平台的 `magpie-cli-*`，下载并复核 sha256，
- *    装到 `$HOME/.local/bin/magpie`；
- * 3. 用宿主的 spawn 跑 `magpie serve`（子进程、独立进程组、随插件卸载与 App 退出被回收），
+ * 1. 找一条能执行的 shell：`sh`（macOS / Linux）或 `powershell`（Windows）；
+ * 2. 探二进制：POSIX 是 `$HOME/.local/bin/magpie`，Windows 是
+ *    `%LOCALAPPDATA%\magpie\bin\magpie.exe`，两者都退到 PATH；
+ * 3. 没有就去官网发布接口要清单，挑本平台的 `magpie-cli-*`，下载并复核 sha256，装到上面那个位置；
+ * 4. 用宿主的 spawn 跑 `magpie serve`（子进程、独立进程组、随插件卸载与 App 退出被回收），
  *    端口跟面板里的地址一致（`MAGPIE_ADDR`）。
  *
- * 边界：不 sudo、不写 /Applications、不改用户 PATH、不装开机服务。长期常驻是上游
+ * 0.1.3 只走第 1 步的 `sh`，所以在 Windows 上整条流程在第一步就死了；
+ * 现在的失败只会在「两条 shell 都不存在」或「平台真的没有官方构建」时出现。
+ *
+ * 边界：不 sudo / 不要管理员、不写系统目录、不改用户 PATH、不装开机服务。长期常驻是上游
  * 自己的事（`magpie daemon install`），面板只说明，不代劳。
  */
 
@@ -49,6 +66,8 @@ export interface RuntimeState {
 	releaseVersion?: string;
 	/** 用户希望它运行（落盘），下次加载时据此自动拉起。 */
 	desiredRunning: boolean;
+	/** 实际在用的执行面（`sh` / `powershell`）；两条都没有时 undefined。诊断里会显示它。 */
+	shell?: ShellKind;
 }
 
 const STATE_PATH = "runtime.json";
@@ -93,6 +112,10 @@ export class RuntimeManager {
 	private handle: PluginCommandSpawnHandle | null = null;
 	private stoppedByUser = false;
 	private operationInFlight = false;
+	/** 解一次、记住：每次操作都重试 `sh` 会白白付一次 ENOENT 与一个错帧。 */
+	private shell: ShellRunner | null = null;
+	private shellResolved = false;
+	private shellAttempt = "";
 	private disposed = false;
 
 	constructor(deps: RuntimeDeps) {
@@ -108,6 +131,45 @@ export class RuntimeManager {
 		if (!this.disposed) this.deps.onChanged(this.state);
 	}
 
+	/**
+	 * 找一条能执行的 shell，并把结果记到状态里。
+	 *
+	 * 顺序：`sh` 先（macOS/Linux 一条就成）。宿主报 ENOENT 就换下一个；报其它错（权限门、
+	 * 命令未声明）也继续试，但记下原文——最后会有“两条都不行”时的 detail 可看。
+	 */
+	private async resolveShell(): Promise<ShellRunner | null> {
+		if (this.shellResolved) return this.shell;
+		const failures: string[] = [];
+		for (const candidate of SHELL_CANDIDATES) {
+			try {
+				await this.deps.command.run(candidate.command, candidate.args(shellHandshakeScript(candidate.kind)), {
+					timeoutMs: 10_000,
+				});
+				this.shell = candidate;
+				this.shellResolved = true;
+				this.set({ shell: candidate.kind });
+				return candidate;
+			} catch (error) {
+				const raw = error instanceof Error ? error.message : String(error);
+				failures.push(`${candidate.command}: ${lastLine(raw) ?? raw}`);
+				// `sh` 不存在是正常的（Windows），不需要特别处理；继续试下一个。
+				void shellMissing(error);
+			}
+		}
+		this.shell = null;
+		this.shellResolved = true;
+		this.shellAttempt = failures.join(" | ");
+		return null;
+	}
+
+	/** 两条 shell 都没有：把试过什么写进 detail，而不是谎称“平台没有构建”。 */
+	private shellFailureDetail(): string {
+		return (
+			this.shellAttempt ||
+			`no shell among ${SHELL_CANDIDATES.map((candidate) => describeShell(candidate)).join(", ")}`
+		);
+	}
+
 	/** 读回「用户希望它运行」，再探一次二进制。 */
 	async hydrate(): Promise<void> {
 		const saved = await readJsonFile(this.deps.storage, STATE_PATH).catch(() => undefined);
@@ -120,7 +182,7 @@ export class RuntimeManager {
 		await writeJsonFile(this.deps.storage, STATE_PATH, { desiredRunning: this.state.desiredRunning }).catch(() => undefined);
 	}
 
-	/** 只看二进制在不在：`sh` 被禁时把原因说清楚，不假装「没装」。 */
+	/** 只看二进制在不在：没有 shell 时把原因说清，不假装「没装」。 */
 	async probeBinary(options: { keepPhase?: boolean } = {}): Promise<boolean> {
 		// keepPhase：安装流程内部的那一探只想知道「在不在」，
 		// 不能把相位从「正在下载」打回「还没有 magpie」——面板就凭它显示进度。
@@ -128,8 +190,14 @@ export class RuntimeManager {
 		const idlePhase = (fallback: RuntimePhase): RuntimePhase =>
 			this.state.phase === "running" ? "running" : fallback;
 		if (!keepPhase) this.set({ phase: idlePhase("checking"), messageKey: undefined });
+		const shell = await this.resolveShell();
+		if (!shell) {
+			this.set({ phase: "failed", messageKey: "runtime.noShell", detail: this.shellFailureDetail() });
+			return false;
+		}
 		try {
-			const result = await this.deps.command.run("sh", ["-c", probeScript()], { timeoutMs: PROBE_BUDGET_MS });
+			const script = shell.kind === "windows" ? windowsProbeScript() : probeScript();
+			const result = await this.deps.command.run(shell.command, shell.args(script), { timeoutMs: PROBE_BUDGET_MS });
 			const probe = parseProbe(result.stdout, result.exitCode);
 			if (!probe.installed) {
 				this.set(
@@ -157,24 +225,35 @@ export class RuntimeManager {
 	}
 
 	/** 取发布清单并挑本平台资产；失败返回 null 并写好 messageKey。 */
-	private async resolveAsset(): Promise<ReleaseAsset | null> {
-		let target;
+	private async resolveAsset(shell: ShellRunner): Promise<ReleaseAsset | null> {
+		let target: HostTarget | null = null;
 		try {
-			const uname = await this.deps.command.run("sh", ["-c", "uname -s; uname -m"], { timeoutMs: PROBE_BUDGET_MS });
-			target = parseHostTarget(uname.stdout);
+			if (shell.kind === "windows") {
+				// Windows 上没有 uname：处理器架构从环境变量读，系统直接就是 windows。
+				const arch = await this.deps.command.run(shell.command, shell.args(windowsArchScript()), {
+					timeoutMs: PROBE_BUDGET_MS,
+				});
+				const raw = arch.stdout.trim().toUpperCase();
+				const mapped = raw === "AMD64" || raw === "X86_64" ? "amd64" : raw === "ARM64" ? "arm64" : null;
+				target = mapped ? { os: "windows", arch: mapped } : null;
+			} else {
+				const uname = await this.deps.command.run(shell.command, shell.args("uname -s; uname -m"), {
+					timeoutMs: PROBE_BUDGET_MS,
+				});
+				target = parseHostTarget(uname.stdout);
+			}
 		} catch (error) {
 			const denial = classifyCommandError(error);
 			const raw = error instanceof Error ? error.message : String(error);
-			// 连 `sh` 都没有（Windows）：这不是「装失败」，而是这里没有可走的路。
-			const noShell = /enoent|not found/i.test(raw);
 			this.set({
 				phase: "failed",
-				messageKey: denial === "denied" ? "runtime.denied" : noShell ? "runtime.unsupported" : "runtime.failed",
+				messageKey: denial === "denied" ? "runtime.denied" : "runtime.failed",
 				detail: lastLine(raw),
 			});
 			return null;
 		}
 		if (!target) {
+			// 真正的「平台未支持」：有 shell、能执行，但认不出架构（不再把「没有 sh」误报成它）
 			this.set({ phase: "failed", messageKey: "runtime.unsupported" });
 			return null;
 		}
@@ -226,9 +305,21 @@ export class RuntimeManager {
 				this.set({ phase: "stopped", progress: undefined, installStep: undefined });
 				return true;
 			}
-			const asset = await this.resolveAsset();
+			const shell = await this.resolveShell();
+			if (!shell) {
+				this.set({
+					phase: "failed",
+					messageKey: "runtime.noShell",
+					detail: this.shellFailureDetail(),
+					progress: undefined,
+					installStep: undefined,
+				});
+				return false;
+			}
+			const asset = await this.resolveAsset(shell);
 			if (!asset) return false;
-			const handle = await this.deps.command.spawn("sh", ["-c", installScript(asset)]);
+			const script = shell.kind === "windows" ? windowsInstallScript(asset) : installScript(asset);
+			const handle = await this.deps.command.spawn(shell.command, shell.args(script));
 			const outcome = await this.waitForExit(handle, INSTALL_BUDGET_MS, (output) => this.reportInstall(output));
 			if (outcome.exitCode !== 0) {
 				this.set({
@@ -272,8 +363,14 @@ export class RuntimeManager {
 		this.set({ phase: "starting", messageKey: undefined, detail: undefined, phaseStartedAt: Date.now() });
 		try {
 			const address = loopbackAddress(this.deps.endpoint());
-			// 用探针读到的路径：用户在 ~/bin 里已有的那份也能启，不必只认插件安装位
-			const handle = await this.deps.command.spawn("sh", ["-c", startScript(this.state.binPath)], {
+			const shell = await this.resolveShell();
+			if (!shell) {
+				this.set({ phase: "failed", messageKey: "runtime.noShell", detail: this.shellFailureDetail() });
+				return false;
+			}
+			// 用探针读到的路径：用户在 ~/bin 或 LOCALAPPDATA 里已有的那份也能启，不必只认插件安装位。
+			const script = shell.kind === "windows" ? windowsStartScript(this.state.binPath) : startScript(this.state.binPath);
+			const handle = await this.deps.command.spawn(shell.command, shell.args(script), {
 				env: address ? { MAGPIE_ADDR: address } : undefined,
 			});
 			this.handle = handle;

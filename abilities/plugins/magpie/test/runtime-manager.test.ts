@@ -206,11 +206,15 @@ describe("RuntimeManager.install", () => {
 		expect(h.manager.getState()).toMatchObject({ phase: "failed", messageKey: "runtime.denied" });
 	});
 
-	it("says there is no route when the system has no sh at all", async () => {
+	it("says no shell exists when neither sh nor powershell can run", async () => {
+		// 能执行的东西一个都没有：这不是「平台没有构建」（Windows 是有官方 .exe 的），
+		// 而是插件根本没有执行面 —— 文案与 detail 必须指向后者。
 		const h = harness();
 		h.failRun("spawn sh ENOENT");
 		expect(await h.manager.install()).toBe(false);
-		expect(h.manager.getState()).toMatchObject({ phase: "failed", messageKey: "runtime.unsupported" });
+		const state = h.manager.getState();
+		expect(state).toMatchObject({ phase: "failed", messageKey: "runtime.noShell" });
+		expect(state.detail).toContain("sh");
 	});
 
 	it("skips the download when the binary is already there", async () => {

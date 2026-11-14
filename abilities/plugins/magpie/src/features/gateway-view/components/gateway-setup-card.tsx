@@ -1,7 +1,8 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { Button } from "@astravia-org/ui";
 import type { MagpieState } from "../../../controller";
 import type { RuntimePhase } from "../../../runtime-manager";
+import { binDisplayPath } from "../../../platform-shell";
+import { Button, Card, Fact, StatusDot } from "./ui";
 
 interface SetupCardProps {
 	state: MagpieState;
@@ -21,15 +22,15 @@ const PHASE_KEY: Record<RuntimePhase, string> = {
 	failed: "runtime.phase.failed",
 };
 
-const TONE: Record<RuntimePhase, string> = {
-	unknown: "bg-muted-foreground/50",
-	checking: "bg-amber-500",
-	absent: "bg-destructive",
-	downloading: "bg-amber-500",
-	starting: "bg-amber-500",
-	running: "bg-emerald-500",
-	stopped: "bg-muted-foreground/50",
-	failed: "bg-destructive",
+const PHASE_TONE: Record<RuntimePhase, "ok" | "working" | "bad" | "idle"> = {
+	unknown: "idle",
+	checking: "working",
+	absent: "bad",
+	downloading: "working",
+	starting: "working",
+	running: "ok",
+	stopped: "idle",
+	failed: "bad",
 };
 
 function formatMegabytes(bytes: number): string {
@@ -38,12 +39,11 @@ function formatMegabytes(bytes: number): string {
 }
 
 /**
- * 运行环境卡片：网关没响应时，用户在这里一键取回官方二进制并启动它。
+ * 运行环境：网关没响应时，用户在这里一键取回官方二进制并启动它。
  *
- * 它只说三件事：现在是什么状态、点哪个按钮、刚才最后一行输出是什么。
- * 安装那 70 MB 是分钟级的，所以在「正在下载」期间多给一条进度条 ——
- * 不动的界面会让人以为按钮没生效。
- * 具体的下载/校验/启动由 controller 经宿主 ctx.command 完成 —— 这一层不做副作用。
+ * 三件事，按用户排查的顺序排：现在是什么状态 → 点哪个按钮 → 刚才到底跑了什么。
+ * 「刚才跑了什么」这一行（用了哪个 shell、装到哪个路径、最后一行输出）是这次修的重点：
+ * 0.1.3 只把错误原文丢进一个灰框，用户看到 `sh (ENOENT)` 却不知道它意味着什么都完了。
  */
 export function GatewaySetupCard({ state, onInstallAndStart, onStart, onStop }: SetupCardProps) {
 	const { t } = useTranslation();
@@ -61,7 +61,6 @@ export function GatewaySetupCard({ state, onInstallAndStart, onStart, onStop }: 
 	const elapsedSeconds =
 		runtime.phaseStartedAt !== undefined ? Math.max(0, Math.round((Date.now() - runtime.phaseStartedAt) / 1000)) : undefined;
 
-	// 进度条下面那行读数：百分比 · 已下/总长 · 速度 · 剩余。数字全来自安装脚本自己报的字节数。
 	const readout: string[] = [];
 	if (verifying) {
 		readout.push(t("runtime.progress.verifying"));
@@ -84,14 +83,6 @@ export function GatewaySetupCard({ state, onInstallAndStart, onStart, onStop }: 
 	}
 
 	const barWidth = verifying || starting ? 100 : (percent ?? 0);
-	const barTone = verifying ? "bg-emerald-500" : starting ? "bg-amber-500/70" : "bg-amber-500";
-
-	const primary = running
-		? null
-		: installed
-			? { label: t("runtime.action.start"), action: onStart }
-			: { label: t("runtime.action.installAndStart"), action: onInstallAndStart };
-
 	const primaryLabel = working
 		? downloading
 			? verifying
@@ -102,48 +93,46 @@ export function GatewaySetupCard({ state, onInstallAndStart, onStart, onStop }: 
 			: t("runtime.action.starting")
 		: runtime.phase === "failed" && installed
 			? t("runtime.action.retry")
-			: (primary?.label ?? t("runtime.action.installAndStart"));
+			: installed
+				? t("runtime.action.start")
+				: t("runtime.action.installAndStart");
+
+	const installPath = binDisplayPath(runtime.shell === "windows" ? "windows" : "posix");
 
 	return (
-		<section className="rounded-xl border border-border/70 bg-card/60 p-5">
-			<div className="flex items-start justify-between gap-4">
-				<div className="min-w-0">
-					<div className="flex items-center gap-2">
-						<span className={`h-2 w-2 shrink-0 rounded-full ${TONE[runtime.phase]}`} />
-						<h2 className="truncate text-sm font-medium">{t("runtime.title")}</h2>
-					</div>
-					<p className="mt-1 text-xs text-muted-foreground">
-						{t(PHASE_KEY[runtime.phase])}
-						{downloading && percent !== undefined && !verifying ? ` · ${percent}%` : ""}
-						{runtime.version ? ` · ${runtime.version}` : ""}
-						{runtime.pid ? ` · pid ${runtime.pid}` : ""}
-					</p>
-				</div>
-				<div className="flex shrink-0 gap-2">
-					{primary ? (
-						<Button size="sm" onClick={primary.action} disabled={working}>
-							{primaryLabel}
-						</Button>
-					) : null}
+		<Card
+			title={
+				<span className="flex items-center gap-2">
+					<StatusDot tone={PHASE_TONE[runtime.phase]} pulse={working} />
+					<span className="truncate">{t("runtime.title")}</span>
+				</span>
+			}
+			aside={
+				<div className="flex gap-2">
 					{running ? (
-						<Button variant="outline" size="sm" onClick={onStop} disabled={working}>
+						<Button tone="outline" size="sm" onClick={onStop} disabled={working}>
 							{t("runtime.action.stop")}
 						</Button>
-					) : null}
+					) : (
+						<Button size="sm" onClick={installed ? onStart : onInstallAndStart} disabled={working}>
+							{primaryLabel}
+						</Button>
+					)}
 				</div>
-			</div>
-
-			<p className="mt-3 text-xs leading-relaxed text-muted-foreground">{t("runtime.body", { endpoint: state.endpoint })}</p>
-
-			{runtime.binPath ? (
-				<p className="mt-2 truncate font-mono text-[11px] text-muted-foreground">{runtime.binPath}</p>
-			) : null}
+			}
+		>
+			<p className="text-xs text-muted-foreground">
+				{t(PHASE_KEY[runtime.phase])}
+				{runtime.pid ? ` · pid ${runtime.pid}` : ""}
+				{runtime.version ? ` · ${runtime.version}` : ""}
+				{runtime.releaseVersion ? ` · ${t("runtime.release")} ${runtime.releaseVersion}` : ""}
+			</p>
 
 			{downloading || starting ? (
 				<div className="mt-3">
 					<div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
 						<div
-							className={`h-full rounded-full transition-[width] duration-500 ease-out ${barTone} ${
+							className={`h-full rounded-full bg-amber-500 transition-[width] duration-500 ease-out ${
 								verifying || starting || percent === undefined ? "animate-pulse" : ""
 							}`}
 							style={{ width: `${barWidth}%` }}
@@ -157,27 +146,39 @@ export function GatewaySetupCard({ state, onInstallAndStart, onStart, onStop }: 
 			) : null}
 
 			{runtime.messageKey ? (
-				<p className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-					{t(runtime.messageKey)}
-				</p>
+				<div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2">
+					<p className="text-xs font-medium text-destructive">{t(runtime.messageKey)}</p>
+					{runtime.messageKey === "runtime.noShell" ? (
+						<p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{t("runtime.noShellHint")}</p>
+					) : null}
+					{runtime.messageKey === "runtime.denied" ? (
+						<p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{t("runtime.deniedHint")}</p>
+					) : null}
+				</div>
 			) : null}
 
+			{/* 诊断：这一层是本次改造的重点 —— 用户要能看见它到底跑了什么。 */}
+			<dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+				<Fact label={t("runtime.diagnosis.shell")} value={runtime.shell ?? "—"} />
+				<Fact label={t("runtime.diagnosis.path")} value={runtime.binPath ?? installPath} />
+				<Fact label={t("runtime.diagnosis.endpoint")} value={state.endpoint} />
+			</dl>
+
 			{runtime.detail ? (
-				<pre className="mt-2 overflow-x-auto rounded-lg border border-border/70 bg-background px-3 py-2 font-mono text-[11px] text-muted-foreground">
+				<pre className="mt-2 max-h-24 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-border bg-muted/40 px-3 py-2 font-mono text-[11px] text-muted-foreground">
 					{runtime.detail}
 				</pre>
 			) : null}
 
 			<p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">{t("runtime.note")}</p>
-
 			<a
 				href="https://usemagpie.ai"
 				target="_blank"
 				rel="noreferrer"
-				className="mt-2 inline-block text-xs underline underline-offset-4"
+				className="mt-1 inline-block text-[11px] text-muted-foreground underline underline-offset-4 hover:text-foreground"
 			>
 				{t("runtime.manual")} — usemagpie.ai
 			</a>
-		</section>
+		</Card>
 	);
 }

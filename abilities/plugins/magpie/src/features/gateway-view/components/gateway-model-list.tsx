@@ -1,17 +1,22 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
+import { useState } from "react";
 import type { MagpieState } from "../../../controller";
 import { formatContextWindow } from "../../../model-catalog";
+import { Card } from "./ui";
 
 interface ModelListProps {
 	state: MagpieState;
-	query: string;
 	limit: number;
-	onQueryChange: (value: string) => void;
 }
 
-/** 目录表格。只展示前 `limit` 行，并在标题上写清「显示多少 / 一共多少」。 */
-export function GatewayModelList({ state, query, limit, onQueryChange }: ModelListProps) {
+/**
+ * 模型目录。只展示前 `limit` 行，标题上写清「显示多少 / 一共多少」。
+ *
+ * 表头固定在滚动区里（`sticky`）：一个 200 行的表滚到一半时，用户得知道这三列是什么。
+ */
+export function GatewayModelList({ state, limit }: ModelListProps) {
 	const { t } = useTranslation();
+	const [query, setQuery] = useState("");
 	const needle = query.trim().toLowerCase();
 	const matched = needle
 		? state.rows.filter(
@@ -24,45 +29,49 @@ export function GatewayModelList({ state, query, limit, onQueryChange }: ModelLi
 	const shown = matched.slice(0, limit);
 
 	return (
-		<section className="rounded-xl border border-border/70 bg-card/60 p-5">
-			<div className="flex flex-wrap items-center justify-between gap-3">
-				<h2 className="text-sm font-medium">{t("models.title")}</h2>
-				<span className="text-xs text-muted-foreground">
+		<Card
+			title={t("models.title")}
+			aside={
+				<span className="text-[11px] text-muted-foreground">
 					{t("models.showing", { shown: shown.length, total: matched.length })}
 				</span>
-			</div>
-
+			}
+		>
 			<input
 				value={query}
-				onChange={(event) => onQueryChange(event.target.value)}
+				onChange={(event) => setQuery(event.target.value)}
 				placeholder={t("models.filter")}
-				className="mt-3 h-8 w-full rounded-md border border-border/70 bg-background px-2 text-xs outline-none focus:border-foreground/40"
+				className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs text-foreground outline-none placeholder:text-muted-foreground/70 focus:border-foreground/40"
 			/>
 
 			{state.rows.length === 0 ? (
 				<p className="mt-3 text-xs text-muted-foreground">{t("models.empty")}</p>
 			) : (
-				<div className="mt-3 max-h-96 overflow-auto">
+				<div className="mt-3 max-h-[26rem] overflow-auto rounded-lg border border-border/60">
 					<table className="w-full text-left text-xs">
-						<thead className="sticky top-0 bg-card/95 text-muted-foreground">
-							<tr>
-								<th className="py-1.5 pr-3 font-normal">{t("models.title")}</th>
-								<th className="py-1.5 pr-3 font-normal">{t("models.provider")}</th>
-								<th className="py-1.5 pr-3 font-normal">{t("models.context")}</th>
+						<thead className="sticky top-0 z-10 bg-card text-[11px] text-muted-foreground">
+							<tr className="[&>th]:border-b [&>th]:border-border [&>th]:py-2 [&>th]:pr-3 [&>th]:font-normal [&>th]:last:pr-2">
+								<th className="pl-2">{t("models.name")}</th>
+								<th>{t("models.provider")}</th>
+								<th>{t("models.context")}</th>
 							</tr>
 						</thead>
 						<tbody>
 							{shown.map((row) => (
-								<tr key={row.id} className="border-t border-border/40 align-top">
-									<td className="py-1.5 pr-3">
-										<div className="truncate font-medium">{row.name}</div>
-										<div className="truncate font-mono text-[11px] text-muted-foreground">{row.id}</div>
+								<tr key={row.id} className="border-b border-border/40 align-top last:border-0">
+									<td className="max-w-0 py-2 pl-2 pr-3">
+										<div className="truncate font-medium text-foreground" title={row.name}>
+											{row.name}
+										</div>
+										<div className="truncate font-mono text-[11px] text-muted-foreground" title={row.id}>
+											{row.id}
+										</div>
 									</td>
-									<td className="py-1.5 pr-3 text-muted-foreground">{row.provider || "—"}</td>
-									<td className="py-1.5 pr-3 font-mono">
+									<td className="py-2 pr-3 text-muted-foreground">{row.provider || "—"}</td>
+									<td className="whitespace-nowrap py-2 pr-3 font-mono">
 										{formatContextWindow(row.contextWindow) ?? "—"}
-										{row.images ? <span className="ml-2 text-muted-foreground">img</span> : null}
-										{row.reasoning ? <span className="ml-2 text-muted-foreground">think</span> : null}
+										{row.images ? <span className="ml-2 text-muted-foreground">{t("models.badgeImages")}</span> : null}
+										{row.reasoning ? <span className="ml-2 text-muted-foreground">{t("models.badgeReasoning")}</span> : null}
 									</td>
 								</tr>
 							))}
@@ -70,6 +79,12 @@ export function GatewayModelList({ state, query, limit, onQueryChange }: ModelLi
 					</table>
 				</div>
 			)}
-		</section>
+
+			{matched.length > shown.length ? (
+				<p className="mt-2 text-[11px] text-muted-foreground">
+					{t("models.truncated", { shown: shown.length, total: matched.length })}
+				</p>
+			) : null}
+		</Card>
 	);
 }

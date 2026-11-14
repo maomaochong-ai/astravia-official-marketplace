@@ -48,7 +48,8 @@ export interface ReleaseAsset {
 	version: string;
 	url: string;
 	sha256: string;
-	size: number;
+	/** 字节数；官方 feed 自 0.1.4138 起不再发布，缺失时只有 sha256 守着。 */
+	size?: number;
 }
 
 /**
@@ -91,9 +92,12 @@ export function pickReleaseAsset(feed: unknown, target: HostTarget): ReleaseAsse
 	const version = typeof feed.version === "string" ? feed.version.trim() : "";
 	if (typeof url !== "string" || !DOWNLOAD_PREFIXES.some((prefix) => url.startsWith(prefix))) return null;
 	if (typeof sha256 !== "string" || !SHA256_PATTERN.test(sha256)) return null;
-	if (typeof size !== "number" || !Number.isFinite(size) || size <= 0) return null;
+	// `size` 从 0.1.4138 起变成 0（官方 feed 不再发布字节数）。它不是安全属性：
+	// 真正的完整性靠下面那个 sha256，size 只用来算进度与“残片是否已完整”。当未知处理，
+	// 不能因为厂商少给一个可选字段就把整个平台的安装入口关死。
+	const bytes = typeof size === "number" && Number.isFinite(size) && size > 0 ? size : undefined;
 	if (!version) return null;
-	return { key: assetKeyFor(target), version, url, sha256, size };
+	return { key: assetKeyFor(target), version, url, sha256, ...(bytes ? { size: bytes } : {}) };
 }
 
 /** POSIX sh 单引号字符串：脚本里出现的每个外部值都从这里过。 */
@@ -121,14 +125,17 @@ export function installScript(asset: ReleaseAsset): string {
 		// 下载物落在缓存目录：没下完的残片下次会被整包覆盖，不会当成已装
 		`part="$HOME/.cache/magpie/${asset.key}"`,
 		'mkdir -p "$HOME/.cache/magpie"',
-		`echo "downloading ${asset.key} ${asset.version} (${asset.size} bytes)"`,
+		`echo "downloading ${asset.key} ${asset.version} (${asset.size ?? "size unknown"}${asset.size ? " bytes" : ""})"`,
+		// size 未知时 `want=0`：下面的比较只用于「残片是否已完整」，0 表示不预检。
+		`want="${asset.size ?? 0}"`,
 		`want="${asset.size}"`,
 		'have=0',
 		`if [ -f "$part" ]; then have="$(wc -c < "$part" | tr -d ' ')"; fi`,
 		// 长度已经对上就直接校验，不再发请求；否则整包重下。
 		// 不续传：实测文件主机不处理 Range 请求（curl 报 56），残片一旦存在，
 		// `-C -` 会每次以同样的错误失败；整包 70 MB 重下比赌服务端更稳。
-		'if [ "$have" != "$want" ]; then',
+		// 不知道总长（want=0）或长度不对，都整包重下；有残片就算不完整。
+		'if [ "$want" = 0 ] || [ "$have" != "$want" ]; then',
 		// curl 的进度条只画在终端里，插件这边没有终端 —— 70 MB 看起来就是卡住。
 		// 所以下载在前台跑，旁边挂一个每秒数一次落盘字节的观察者，把
 		// `progress <已下> <总长>` 写进 spawn 的环形缓冲，面板据此画进度。
@@ -153,7 +160,8 @@ export function installScript(asset: ReleaseAsset): string {
 		'    rm -f "$part"',
 		'    exit 5',
 		'  fi',
-		'  echo "progress $want $want"',
+		// 总长未知时不报假的「全部完成」：让最后一行进度保持为实际字节数。
+		'  if [ "$want" != 0 ]; then echo "progress $want $want"; fi',
 		'fi',
 		'echo "verifying"',
 		'if command -v shasum >/dev/null 2>&1; then',

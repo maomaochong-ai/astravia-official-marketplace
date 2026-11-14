@@ -1,40 +1,41 @@
 {
-	"id": "magpie",
-	"name": "%plugin.name%",
-	"icon": "assets/icon.png",
-	"version": "0.1.3",
-	"defaultLocale": "zh",
-	"pluginApiVersion": "^2.0.0",
-	"entry": "dist/mf-manifest.json",
-	"moduleFederation": {
-		"remoteName": "magpieGateway",
-		"expose": "./plugin"
-	},
-	"styles": [
-		"dist/style.css"
-	],
-	"permissions": [
-		"ui.slot.workspace-view",
-		"models.manage",
-		"network.fetch",
-		"storage.read",
-		"storage.write",
-		"shell.openExternal",
-		"agent.tools.register",
-		"agent.toolHandler.execute",
-		"agent.command.run",
-		"agent.command.spawn"
-	],
-	"commands": [
-		"sh"
-	],
-	"network": {
-		"allowedHosts": [
-			"127.0.0.1",
-			"localhost",
-			"usemagpie.ai"
-		]
-	},
-	"description": "%plugin.description%",
-	"author": "Astravia Community"
+  "id": "magpie",
+  "name": "%plugin.name%",
+  "icon": "assets/icon.png",
+  "version": "0.2.0",
+  "defaultLocale": "zh",
+  "pluginApiVersion": "^2.0.0",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "magpieGateway",
+    "expose": "./plugin"
+  },
+  "styles": [
+    "dist/style.css"
+  ],
+  "permissions": [
+    "ui.slot.workspace-view",
+    "models.manage",
+    "network.fetch",
+    "storage.read",
+    "storage.write",
+    "shell.openExternal",
+    "agent.tools.register",
+    "agent.toolHandler.execute",
+    "agent.command.run",
+    "agent.command.spawn"
+  ],
+  "commands": [
+    "sh",
+    "powershell"
+  ],
+  "network": {
+    "allowedHosts": [
+      "127.0.0.1",
+      "localhost",
+      "usemagpie.ai"
+    ]
+  },
+  "description": "%plugin.description%",
+  "author": "Astravia Community"
 }

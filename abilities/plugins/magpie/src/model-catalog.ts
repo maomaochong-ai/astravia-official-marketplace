@@ -94,7 +94,9 @@ export function toModelDefinitions(rows: readonly MagpieModelRow[]): PluginModel
 		if (row.maxOutputTokens !== undefined) definition.maxTokens = row.maxOutputTokens;
 		if (row.reasoning) definition.reasoning = true;
 		if (row.reasoningLevels.length > 0) definition.reasoningLevels = [...row.reasoningLevels];
-		if (row.images) definition.input = ["text", "image"];
+		// `input` 在当前的 `PluginModelDefinition` 里已不存在（宿主改成了只声明 id/name/api/
+		// reasoning*/context/maxTokens）。吃不吃图仍由面板自己展示（`row.images`），不能写进
+		// 一个宿主不认的字段——那只是把一个无效字段名发给注册表。
 		return definition;
 	});
 }
