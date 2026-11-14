@@ -4,8 +4,8 @@
 		{
 			"type": "hero",
 			"eyebrow": "安全测试",
-			"title": "Strix 的渗透控制台，就在标签页里",
-			"description": "Strix 的终端界面、沙箱与 78 个技能包，从标签页启动，跑在你已经配好的模型上，不需要第二份 API Key。",
+			"title": "在对话里驱动 Strix，在标签页里看现场",
+			"description": "Sandbox、内置工具链、技能库与问题台账都由插件自带的本地服务提供，模型通过 strix_* 工具直接调用；面板是同一份现场的窗口，宿主对话跑到哪它就显示到哪。不需要第二份 API Key。",
 			"badges": [
 				"自主智能体",
 				"验证过程",
@@ -26,18 +26,18 @@
 			"type": "feature-grid",
 			"items": [
 				{
-					"title": "熟悉的界面",
-					"description": "词标、启动提示、模型行、命令轨迹、右侧面板：CLI 的排版与配色，为标签页重画一遍。",
-					"icon": "solar:monitor-bold"
+					"title": "工具就在对话里",
+					"description": "strix_environment、strix_sandbox_start、strix_exec、strix_file_finding、strix_report 等 26 个工具由插件自带服务提供，模型按取证顺序自己调用。",
+					"icon": "solar:plug-circle-bold"
 				},
 				{
 					"title": "真正的工具链",
-					"description": "nmap、nuclei、ffuf、sqlmap、subfinder、Caido、agent-browser、trivy、gitleaks、trufflehog，同一个容器内。",
+					"description": "nmap、nuclei、ffuf、sqlmap、subfinder、Katana、Caido、agent-browser、trivy、gitleaks、trufflehog，跑在同一个沙箱里。",
 					"icon": "solar:shield-keyhole-bold"
 				},
 				{
 					"title": "Strix 自己的技能",
-					"description": "78 份关于漏洞、技术与工具的知识包，开测前自动加载。",
+					"description": "随插件附带 13 份工具手册，装了 strix-agent 时直接读它完整的技能库，开测前按目标加载。",
 					"icon": "solar:document-text-bold"
 				},
 				{
@@ -51,12 +51,12 @@
 			"type": "steps",
 			"items": [
 				{
-					"title": "打开标签页",
-					"description": "Strix 在标签页菜单里；没打开之前它不占用对话区域。"
+					"title": "点胶囊，在对话里说目标",
+					"description": "输入框里的 Strix 胶囊把工具挂到这一轮；目标、范围、指令写进同一条消息即可，不需要背技能名。"
 				},
 				{
-					"title": "填目标，回车",
-					"description": "域名、网址或本地仓库会成为扫描目标，句子里剩下的部分成为指令。"
+					"title": "打开标签页，看同一份现场",
+					"description": "面板读的是同一个沙箱与问题台账；宿主对话一开始跑，它就离开启动页跟上去。"
 				},
 				{
 					"title": "看过程，读结论",

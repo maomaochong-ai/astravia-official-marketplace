@@ -139,7 +139,14 @@ export function ScanScreen({
 				<section className="astra-strix-transcript">
 					<div className="astra-strix-transcript-body" role="log" aria-live="polite" data-running={scanning ? "yes" : "no"}>
 						{trace.length ? (
-							trace.map((entry) => <TraceBlock key={entry.id} entry={entry} />)
+							trace.map((entry) => (
+								<TraceBlock
+									key={entry.id}
+									entry={entry}
+									hostLabel={t("trace.host")}
+									hostSayLabel={t("trace.hostSay")}
+								/>
+							))
 						) : (
 							<p className="astra-strix-empty">{emptyHint}</p>
 						)}

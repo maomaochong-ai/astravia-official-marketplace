@@ -15,7 +15,7 @@
   "launch.blocked.model": "请先在 Astravia 设置里指定默认模型，或打开一个已配置模型的对话，否则无法开扫。",
   "launch.blocked.docker": "请启动 Docker Desktop：Strix 的所有工具都在它的沙箱容器里运行。",
   "log.workspaceMounted": "已挂载工作目录：{folder}",
-  "prompt.instructions": "用户正在使用 Strix 插件，控制台面板已打开。可用工具：strix_environment、strix_sandbox_start、strix_exec、strix_sandbox_status、strix_sandbox_stop、strix_list_skills、strix_load_skills、strix_file_finding、strix_list_findings、strix_report。像渗透测试工程师那样工作：先检查环境，为本次评估启动一个沙箱会话，测试前先加载匹配目标的技能，通过 strix_exec 使用内置工具链（nmap、nuclei、ffuf、sqlmap、Caido、agent-browser、trivy、gitleaks、trufflehog），只有在拿到真实证据后才记录问题。按严重程度汇报，附复现步骤与修复建议。",
+  "prompt.instructions": "用户在本轮启用了 Strix，工具来自本插件自带的 MCP 服务（server 名 strix）。 可用工具分四组：环境 strix_environment、strix_mcp；沙箱 strix_sandbox_start、strix_exec、strix_browser、strix_proxy、strix_sandbox_status、strix_sandbox_stop；技能 strix_list_skills、strix_load_skills；记录 strix_file_finding、strix_update_finding、strix_list_findings、strix_merge_findings、strix_report、strix_note_create/list/get/update/delete、strix_todo_create/update/list、strix_coverage_record/list、strix_threat_model。 顺序固定：先 strix_environment 看这台机器能不能跑（docker 还是 host 模式、缺哪个工具），再 strix_sandbox_start 为本次评估开一个会话（目标写全，别一个目标开一个），然后 strix_list_skills 找到匹配目标的技能并用 strix_load_skills 读正文，之后用 strix_exec 调内置工具链（nmap、nuclei、ffuf、sqlmap、httpx、subfinder、katana、opengrep、trivy、gitleaks 等）取证。 先写计划再打，批次之间给结论；只有拿到自己产出的证据才 strix_file_finding，最后用 strix_report 收尾。 如果你的工具表里没有 strix_*：那是插件的本地服务还没就绪，不要用 shell 手搓 nmap 之类替代，也不要声称在扫描；用一句话告诉用户 Strix 工具当前不可用，请他再点一次输入框里的 Strix 胶囊（服务几秒内会起来），然后停下等指示。",
   "log.ready": "就绪。",
   "log.bridgeError": "桥接服务不可用",
   "log.dockerDown": "Docker 未运行。",
@@ -95,5 +95,11 @@
   "rail.empty.agents": "宽目标时由模型派生专家后出现",
   "rail.empty.todos": "扫描开始后模型会先写计划",
   "rail.empty.coverage": "每测完一个面就记录一行",
-  "rail.empty.notes": "载荷与端点图存放在这里"
+  "rail.empty.notes": "载荷与端点图存放在这里",
+  "prompt.instructionsStarting": "用户在本轮启用了 Strix，但插件的本地服务可能还没就绪。 先调 strix_environment 确认模式与工具链；如果工具表里根本没有 strix_*，用一句话说明「Strix 工具尚未就绪」并请用户再点一次输入框里的 Strix 胶囊，然后停下。 工具可用时按这个顺序走：strix_environment → strix_sandbox_start → strix_list_skills + strix_load_skills → strix_exec 取证 → strix_file_finding → strix_report；不要用 shell 手搓替代工具链，也不要在没有证据时记录问题。",
+  "trace.host": "宿主对话",
+  "trace.hostSay": "宿主 Agent",
+  "scan.followingHost": "跟随宿主对话",
+  "scan.resumed": "接续上次评估现场",
+  "skill.entry.description": "在对话里直接驱动沙箱与 26 个渗透工具：先取证，再记录问题。"
 }

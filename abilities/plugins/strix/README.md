@@ -118,9 +118,15 @@ starts. After changing the service, re-stamp the digest: `npm run stamp-service`
 
 | Need | Why | Check |
 |---|---|---|
-| Docker | every Strix tool runs inside its sandbox image | `docker info` |
+| Docker (recommended) | every Strix tool runs inside its sandbox image; without a daemon the plugin falls back to this machine's toolchain and says so | `docker info` |
 | A default model in Astravia | the loop runs on `ctx.ai`; without one the launch screen says so and Enter does nothing | Settings → model |
-| `strix-agent` on some Python in `PATH` | the skill library lives inside it; the plugin reads the Markdown, it does not run the engine | `python -c "import strix"` |
+
+`strix-agent` is **optional**: when it is installed in any Python or uv tool venv the
+service reads the engine's full skill library, otherwise it serves the 13 tool manuals
+shipped under `agent/skills/strix/tooling/`. Nothing in the manifest requires the CLI —
+that used to be a `providers.cli` entry, and the host drops *every* agent contribution
+(skills and MCP servers both) while a declared CLI provider is not ready, which made the
+capsule appear over a session that had no `strix_*` tools at all.
 
 No API key is needed here: inference happens in the host, on the model you already
 selected.

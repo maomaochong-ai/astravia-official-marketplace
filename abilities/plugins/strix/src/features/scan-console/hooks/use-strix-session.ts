@@ -30,12 +30,15 @@ import {
 } from "../../../domain/bridge-payloads";
 import type { AgentStatus } from "../../../agent/strix-agent";
 import { hostToolCall, resolveModel, workspaceLabel } from "../../../domain/host-sync";
+import { hasOpenAssessment } from "../../../domain/assessment-presence";
+import { isStrixEngaged } from "../../../domain/engagement";
 import { parseLaunchPrompt } from "../../../domain/launch-request";
 import type { ModelChoice } from "../../../domain/model-label";
 import { belongsTo, readSnapshot, writeSnapshot } from "../session-store";
 import { normalizeRoster, type McpConnection } from "../../../service/mcp-roster";
 import type {
 	BridgeEvent,
+	BridgeState,
 	CoverageOutcome,
 	EnvironmentProbe,
 	NoteSummary,
@@ -135,6 +138,8 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 	const [models, setModels] = useState<PluginAiModel[]>([]);
 	const [defaultModel, setDefaultModel] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
+	/** 接续已有评估只提示一次：refresh 会被轮次反复叫到。 */
+	const resumed = useRef(false);
 
 	// Scope and memory (see session-store.ts). `mountedIn` is the conversation this panel
 	// was opened in: events from any other conversation are ignored, so project A's chat
@@ -182,10 +187,13 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 	/** Service + machine state, plus the model list the conversation model resolves against. */
 	const refresh = useCallback(async () => {
 		setBoot({ state: "connecting" });
+		// 让后面的阶段判定能用上同一份快照：`state` 本来只活在 try 块里。
+		let bridgeState: (BridgeState & { threatModel?: { content?: string } }) | undefined;
 		try {
 			await runtime.ensureReady();
 			setBoot({ state: "ready" });
 			const state = await client.state();
+			bridgeState = (state ?? undefined) as (BridgeState & { threatModel?: { content?: string } }) | undefined;
 			const probe = normalizeProbe(state?.environment);
 			setSandbox(normalizeSandbox(state?.sandbox));
 			setFindings(normalizeFindings(state?.findings));
@@ -224,7 +232,30 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 			note(`${t("log.noModel")} ${cause instanceof Error ? cause.message : ""}`.trim(), "error");
 		}
 
-		setPhase((current) => (current === "scanning" ? current : "setup"));
+		// 屏幕上该画哪一侧，由服务里的事实决定，不由「这个组件碰巧挂载过」决定：
+		// 已经开了沙箱、已经落了 finding / 计划 / 笔记 / 覆盖，说明评估正在进行——
+		// 此时停在首屏，就是用户说的「面板没反应，还在首屏」。
+		const open = hasOpenAssessment(
+			bridgeState
+				? {
+						sandbox: bridgeState.sandbox as { running?: boolean } | undefined,
+						findings: (bridgeState.findings as unknown[] | undefined) ?? [],
+						todos: (bridgeState.todos as unknown[] | undefined) ?? [],
+						notes: (bridgeState.notes as unknown[] | undefined) ?? [],
+						coverage: (bridgeState.coverage as unknown[] | undefined) ?? [],
+						threatModel: bridgeState.threatModel as { content?: string } | undefined,
+					}
+				: undefined,
+		);
+		setPhase((current) => {
+			if (current === "scanning" || current === "done") return current;
+			return open ? "scanning" : "setup";
+		});
+		// 接续的是已有评估时明说一句，否则面板看上去就像凭空跳到了另一屏。
+		if (open && !resumed.current) {
+			resumed.current = true;
+			note(t("scan.resumed"));
+		}
 	}, [ai, client, conversation?.model, note, runtime, t]);
 
 	// Where the model and the mounted folder came from, announced once per conversation
@@ -560,6 +591,18 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 			// Only this panel's conversation: the host's event stream is not per-tab, so an
 			// unscoped listener would let project A's message start a scan in project B.
 			if (!belongsTo(mountedIn.current, conversationIdRef.current)) return;
+
+			// 胶囊开着说明用户把这一轮交给了 Strix：宿主一开始跑，面板就离开首屏跟上去。
+			// 之前只看 `message-added`，而消息要等模型答完才到，中途那几秒面板一直停在
+			// 启动页——读起来就是「点完胶囊，面板没反应」。
+			if (event.type === "turn-start") {
+				if (!isStrixEngaged()) return;
+				if (phaseRef.current === "scanning") return;
+				setPhase("scanning");
+				pushTrace({ kind: "note", label: t("scan.followingHost") });
+				return;
+			}
+
 			if (event.type !== "message-added") return;
 			const message = event.message;
 			const text = message.text.trim();
@@ -581,7 +624,7 @@ export function useStrixSession({ runtime, client, ai, conversation, subscribe, 
 			if (message.role === "assistant") pushTrace({ kind: "host-say", label: text });
 		});
 		return () => subscription.dispose();
-	}, [subscribe, pushTrace]);
+	}, [subscribe, pushTrace, t]);
 return useMemo(
 		() => ({
 			phase,

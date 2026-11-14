@@ -3,6 +3,7 @@ import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { definePlugin, useActiveConversation } from "@astravia-org/plugin-sdk";
 import { useEffect, useRef } from "react";
 import { createBridgeClient } from "./domain/bridge-client";
+import { setStrixEngaged } from "./domain/engagement";
 import { StrixTab } from "./features/scan-console/components/strix-tab";
 import { useStrixSession } from "./features/scan-console/hooks/use-strix-session";
 import { createServiceRuntime, type ServiceRuntime } from "./runtime";
@@ -115,6 +116,11 @@ function StrixTabRoot({
 export default definePlugin({
 	async activate(ctx: PluginContext): Promise<Disposable> {
 		const runtime = createServiceRuntime(ctx);
+		// 先把 bridge 拉起再注册贡献：宿主的 MCP 贡献是「服务就绪才物化」的
+		// （plugin-runtime-config-builder / resolveServiceMcp 返回 undefined 就跳过），
+		// 所以等到用户点胶囊才启动，这一会话已经建好，`strix_*` 永远不会出现在工具表里。
+		// 这里不 await：激活不能等一个子进程，失败了由胶囊/面板再报一次。
+		void runtime.ensureReady().catch(() => undefined);
 		// Captured once: the React tree needs it to register the panel's own keys, the same
 		// pattern `notify` uses (a component cannot reach `ctx`).
 		registerShortcutScope = ctx.ui.registerShortcutScope?.bind(ctx.ui) ?? null;
@@ -142,6 +148,7 @@ export default definePlugin({
 			label: ctx.i18n.t("action.label"),
 			scope_use: ["conversation", "project"],
 			onToggle: (active) => {
+				setStrixEngaged(active === true);
 				if (!active) {
 					ctx.ui.setActivityTabVisible(TAB_ID, false);
 					return;
@@ -161,11 +168,14 @@ export default definePlugin({
 			},
 			// The method travels with the prompt: the agent then knows which tools exist
 			// and in what order to use them, without the user reciting a skill name.
-			decoratePrompt: () => ({ instructions: [ctx.i18n.t("prompt.instructions")] }),
+			decoratePrompt: () => ({
+				instructions: [ctx.i18n.t(runtime.lastStatus()?.phase === "ready" ? "prompt.instructions" : "prompt.instructionsStarting")],
+			}),
 		});
 
 		return {
 			dispose(): void {
+				setStrixEngaged(false);
 				action.dispose();
 				tab.dispose();
 				runtime.dispose();

@@ -2,7 +2,7 @@
   "id": "strix",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.5.19",
+  "version": "0.5.20",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -25,27 +25,6 @@
     "ui.shortcuts.register"
   ],
   "providers": {
-    "cli": [
-      {
-        "id": "strix",
-        "command": "strix",
-        "probe": {
-          "args": [
-            "--version"
-          ],
-          "timeoutMs": 60000
-        },
-        "install": {
-          "command": "uv",
-          "args": [
-            "tool",
-            "install",
-            "strix-agent"
-          ],
-          "timeoutMs": 600000
-        }
-      }
-    ],
     "services": [
       {
         "id": "strix-bridge",
@@ -215,7 +194,8 @@
             "skillPicker": "visible",
             "pluginDetail": "visible"
           },
-          "displayName": "Strix"
+          "displayName": "Strix",
+          "displayDescription": "%skill.entry.description%"
         },
         "web-app-penetration-testing": {
           "defaultVisibility": "hidden",

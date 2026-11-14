@@ -597,6 +597,46 @@
 	overflow: auto;
 }
 
+.astra-strix-tool-meta {
+	margin-left: 6px;
+	color: var(--sx-dark);
+	font-size: 10.5px;
+}
+
+.astra-strix-prose {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.astra-strix-host {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+}
+
+.astra-strix-host p {
+	margin: 0;
+	white-space: pre-wrap;
+	word-break: break-word;
+	font-size: 12.5px;
+}
+
+.astra-strix-host-bar {
+	color: var(--sx-amber);
+	margin-right: 0.5ch;
+}
+
+.astra-strix-host-name {
+	color: var(--sx-amber);
+	font-weight: 700;
+}
+
+.astra-strix-host-text {
+	color: var(--sx-text);
+	padding-left: 1.5ch;
+}
+
 .astra-strix-say {
 	margin: 0;
 	color: var(--sx-text);

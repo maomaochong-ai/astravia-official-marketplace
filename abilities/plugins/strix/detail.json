@@ -4,8 +4,8 @@
 		{
 			"type": "hero",
 			"eyebrow": "Security testing",
-			"title": "The Strix pentest console, inside a Astravia tab",
-			"description": "Strix's terminal interface, its sandbox and its 78-skill library - launched from a tab and run on the model you already configured. No second API key.",
+			"title": "Drive Strix from the chat, watch it in the tab",
+			"description": "The sandbox, the bundled toolchain, the skill library and the findings ledger are served by the plugin's own local service, and the model calls them through strix_* tools. The panel is a window on that same run, so it follows the host conversation instead of living beside it. No second API key.",
 			"badges": [
 				"Autonomous agents",
 				"Proof of concept",
@@ -26,18 +26,18 @@
 			"type": "feature-grid",
 			"items": [
 				{
-					"title": "The screen you know",
-					"description": "Wordmark, launch prompt, model line, trace, sidebar: the CLI's layout and palette, rebuilt for a tab.",
-					"icon": "solar:monitor-bold"
+					"title": "Tools, right in the chat",
+					"description": "strix_environment, strix_sandbox_start, strix_exec, strix_file_finding, strix_report and 21 more come from the plugin's local service, in the order an assessment needs them.",
+					"icon": "solar:plug-circle-bold"
 				},
 				{
 					"title": "The real toolchain",
-					"description": "nmap, nuclei, ffuf, sqlmap, subfinder, Caido, agent-browser, trivy, gitleaks and trufflehog, inside one container.",
+					"description": "nmap, nuclei, ffuf, sqlmap, subfinder, Katana, Caido, agent-browser, trivy, gitleaks and trufflehog, inside one sandbox.",
 					"icon": "solar:shield-keyhole-bold"
 				},
 				{
 					"title": "Strix's own skills",
-					"description": "78 knowledge packs on vulnerabilities, technologies and tooling - loaded before testing starts.",
+					"description": "13 tool manuals ship with the plugin; with strix-agent installed it reads the engine's full library instead, loading what matches the target.",
 					"icon": "solar:document-text-bold"
 				},
 				{
@@ -51,16 +51,16 @@
 			"type": "steps",
 			"items": [
 				{
-					"title": "Open the tab",
-					"description": "Strix sits in the tab menu; nothing appears under the conversation until you open it."
+					"title": "Toggle the capsule, name the target",
+					"description": "The Strix capsule in the composer puts the tools on this turn; target, scope and instruction go into the same message, with no skill names to memorise."
 				},
 				{
-					"title": "Name a target and press Enter",
-					"description": "A host, URL or local repo becomes the scan target; the rest of the sentence becomes the instruction."
+					"title": "Or open the tab on the same run",
+					"description": "The panel reads the same sandbox and ledger; as soon as the host turn starts it leaves the launch screen and follows."
 				},
 				{
 					"title": "Watch and read",
-					"description": "Commands run in Strix's sandbox and appear in the trace; each confirmed issue lands in Findings with proof and fix."
+					"description": "Commands run in the sandbox and appear in the trace; each confirmed issue lands in Findings with proof and fix."
 				}
 			]
 		},
