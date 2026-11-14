@@ -100,6 +100,7 @@ function StrixTabRoot({
 			todos={session.todos}
 			notes={session.notes}
 			coverage={session.coverage}
+			sessions={session.sessions}
 			mcp={session.mcp}
 			trace={session.trace}
 			onOpenNote={session.onOpenNote}

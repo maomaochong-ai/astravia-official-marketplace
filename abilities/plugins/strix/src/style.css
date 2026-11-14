@@ -1380,3 +1380,164 @@
 		gap: 2px 10px;
 	}
 }
+
+/* 上游 sweepView 的 CSS 版：6 个方块 + 一个来回扫的绿色波。
+   亮度档取自 view.go 的 palette（#0a3d1f → #052e16 → #0d4a2a → #15803d → #22c55e → #86efac），
+   用 keyframes 抬亮而不是 JS 计时器——不占主线程，也不与滚动/resize 抢帧。 */
+.astra-strix-sweep {
+	display: inline-flex;
+	gap: 2px;
+	align-items: center;
+	margin-right: 8px;
+}
+
+.astra-strix-sweep > span {
+	display: block;
+	width: 5px;
+	height: 5px;
+	background: #0a3d1f;
+	animation: astra-strix-sweep-wave 1.8s ease-in-out infinite;
+}
+
+.astra-strix-sweep[data-active="no"] > span {
+	animation: none;
+	background: #052e16;
+}
+
+@keyframes astra-strix-sweep-wave {
+	0%,
+	100% {
+		background: #0a3d1f;
+	}
+	20% {
+		background: #052e16;
+	}
+	40% {
+		background: #15803d;
+	}
+	50% {
+		background: #86efac;
+	}
+	60% {
+		background: #22c55e;
+	}
+	80% {
+		background: #0d4a2a;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.astra-strix-sweep > span {
+		animation: none;
+		background: #0d4a2a;
+	}
+}
+
+/* ---- 磷光档（ADR 0011：用户选定「全绿磷光」） -------------------------------
+   单色绿系：绿为主，红只留给失败、琥珀只留给进行中。字体全部等宽。
+   做法是在 .astra-strix-term 上覆盖同一批变量，而不是改上面的宿主令牌：
+   宿主亮色主题下这些变量本就被主题覆盖，追加一档不会把面板钉死成黑底。 */
+.astra-strix-term.astra-strix-phosphor {
+	--sx-green: #22c55e;
+	--sx-green-bright: #86efac;
+	--sx-blue: #4ade80;
+	--sx-white: #d1fae5;
+	--sx-text: #a7f3d0;
+	--sx-dim: color-mix(in srgb, #34d399 62%, transparent);
+	--sx-placeholder: color-mix(in srgb, #34d399 46%, transparent);
+	--sx-dark: color-mix(in srgb, #22c55e 24%, transparent);
+	--sx-rule: color-mix(in srgb, #22c55e 20%, transparent);
+	--sx-red: #f87171;
+	--sx-amber: #fbbf24;
+
+	background: color-mix(in srgb, #04120a 92%, var(--background, #ffffff));
+}
+
+/* 扫描线纹理：1px 水平线，极低不透明度；只在磷光档出现。 */
+.astra-strix-term.astra-strix-phosphor::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	background-image: repeating-linear-gradient(
+		to bottom,
+		color-mix(in srgb, #22c55e 8%, transparent) 0 1px,
+		transparent 1px 3px
+	);
+	opacity: 0.35;
+	z-index: 0;
+}
+
+.astra-strix-term.astra-strix-phosphor > * {
+	position: relative;
+	z-index: 1;
+}
+
+/* ---- 首屏数据流背景（用户选定） -------------------------------------------
+   上游的 splash 是静态 wordmark；这里在它后面放一列列下落的绿字。
+   纯 CSS：每列是一串字，靠 translateY 动画下落，不与滚动/resize 抢帧。
+   对比度压到很低（opacity .12），内容区永远在上层。 */
+.astra-strix-rain {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	justify-content: space-between;
+	overflow: hidden;
+	pointer-events: none;
+	color: #22c55e;
+	font-family: var(--sx-mono);
+	font-size: 11px;
+	line-height: 1.15;
+	opacity: 0.12;
+	z-index: 0;
+	user-select: none;
+}
+
+.astra-strix-rain > span {
+	writing-mode: vertical-rl;
+	text-orientation: upright;
+	letter-spacing: 0.35em;
+	animation: astra-strix-rain-fall 9s linear infinite;
+	white-space: nowrap;
+}
+
+.astra-strix-rain > span:nth-child(2n) {
+	animation-duration: 12s;
+	opacity: 0.7;
+}
+
+.astra-strix-rain > span:nth-child(3n) {
+	animation-duration: 15s;
+	opacity: 0.45;
+	animation-delay: -4s;
+}
+
+@keyframes astra-strix-rain-fall {
+	from {
+		transform: translateY(-60%);
+	}
+	to {
+		transform: translateY(110%);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.astra-strix-rain > span {
+		animation: none;
+	}
+	.astra-strix-rain {
+		opacity: 0.06;
+	}
+}
+
+/* ---- 轨迹行首的微缩扫光（用户选定：状态带 + 行首） -------------------------
+   4 格而不是状态带的 6 格：一行里的动静要比标题栏小一档。 */
+.astra-strix-sweep[data-size="row"] {
+	gap: 1px;
+	margin-right: 6px;
+}
+
+.astra-strix-sweep[data-size="row"] > span {
+	width: 3px;
+	height: 3px;
+}

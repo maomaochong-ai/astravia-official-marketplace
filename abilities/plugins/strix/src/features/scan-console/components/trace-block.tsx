@@ -52,6 +52,13 @@ function ToolBlock({ entry }: { entry: TraceEntry }): React.ReactElement {
 				onClick={() => (expandable ? setOpen((value) => !value) : undefined)}
 				aria-expanded={expandable ? open : undefined}
 			>
+				{state === "running" ? (
+					<span className="astra-strix-sweep" data-size="row" data-active="yes" aria-hidden="true">
+						{Array.from({ length: 4 }, (_, index) => (
+							<span key={index} style={{ animationDelay: `${index * 90}ms` }} />
+						))}
+					</span>
+				) : null}
 				<span className="astra-strix-tool-glyph">{status}</span>
 				{expandable ? (
 					<span className="astra-strix-dim">

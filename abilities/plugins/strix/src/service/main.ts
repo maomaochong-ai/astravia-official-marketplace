@@ -262,6 +262,7 @@ const HANDLERS: Record<string, Handler> = {
 	strix_update_finding: (args) => findings.update(sessionId(), args),
 	strix_list_findings: (args) => findings.list(sessionId(), args),
 	strix_merge_findings: (args) => findings.merge(sessionId(), args),
+	strix_delete_finding: (args) => findings.remove(sessionId(), args),
 	strix_report: async (args) => {
 		// `deep` promises more than a breadth pass; without a coverage gate the report
 		// would read the same as `standard` while the user waited longer (ADR strix-0002).
@@ -432,6 +433,8 @@ const server = createServer(async (req, res) => {
 				coverage: (cover as { entries?: unknown }).entries ?? [],
 				coverageTally: (cover as { byOutcome?: unknown }).byOutcome ?? {},
 				threatModel: threat,
+				// 工作单元：保留的 shell 会话（上游 agents 面板在本插件的诚实等价物，ADR 0010）。
+				sessions: sessions.list().map(({ id, command, running, uptimeSec, tty }) => ({ id, command, running, uptimeSec, tty })),
 				logTail: log.slice(-40),
 			});
 		}

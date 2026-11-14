@@ -33,6 +33,12 @@ export interface LaunchScreenProps {
 
 const MAX_LOG_ROWS = 6;
 
+/** 数据流的列：固定字符集，不随机——截图与测试都可复现。 */
+const RAIN_GLYPHS = "01ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉ$#%&*+=<>{}[]";
+const RAIN_COLUMNS = Array.from({ length: 18 }, (_, column) =>
+	Array.from({ length: 26 }, (_, row) => RAIN_GLYPHS[(column * 7 + row * 3) % RAIN_GLYPHS.length]).join(""),
+);
+
 export function LaunchScreen({
 	t,
 	model,
@@ -58,7 +64,7 @@ export function LaunchScreen({
 
 	return (
 		<div
-			className="astra-strix-term astra-strix-launch-surface"
+			className="astra-strix-term astra-strix-phosphor astra-strix-launch-surface"
 			onKeyDown={(event) => {
 				if (event.key === "c" && (event.ctrlKey || event.metaKey)) {
 					event.preventDefault();
@@ -66,6 +72,13 @@ export function LaunchScreen({
 				}
 			}}
 		>
+			{/* 数据流背景（用户选定）：一列列下落的绿字，压在内容后面。
+			    纯装饰、aria-hidden、prefers-reduced-motion 下静止（style.css）。 */}
+			<div className="astra-strix-rain" aria-hidden="true">
+				{RAIN_COLUMNS.map((column, index) => (
+					<span key={index}>{column}</span>
+				))}
+			</div>
 			<div className="astra-strix-launch">
 				<div className="astra-strix-launch-head">
 					<StrixWordmark />

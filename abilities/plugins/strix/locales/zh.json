@@ -110,5 +110,8 @@
   "scan.turnDivider": "第 {turn} 轮 · 这一轮说了什么在对话区",
   "panels.moreRows": "还有 {count} 行未显示（用工具带过滤条件取全量）",
   "panels.loading": "正在取正文…",
-  "scan.newRows": "{count} 条新消息"
+  "scan.newRows": "{count} 条新消息",
+  "sessions.title": "工作单元",
+  "sessions.empty": "还没有并行会话。",
+  "rail.empty.sessions": "长任务会用 background 起会话"
 }

@@ -177,6 +177,40 @@ export async function update(sessionId: string, params: Record<string, unknown>)
 }
 
 /**
+ * 删掉一条发现（上游 `delete_vulnerability_report`）。
+ *
+ * 为什么需要它：台账里会进真实的误报——某个“越权”最后证明是同一个人自己的两个账号。
+ * 只能改不能删的话，那一条会永久占着报告，而报告是交给客户的。删一条比把它改成
+ * `info` 诚实：后者仍在说“这里有个问题”。
+ *
+ * 删除是要不可逆的，所以回传完整台账与删除前的那条（供模型在回复里说明删了什么），
+ * 不做静默丢弃。
+ */
+export async function remove(
+	sessionId: string,
+	params: Record<string, unknown>,
+): Promise<{ deleted: Finding; count: number; bySeverity: Record<Severity, number>; findings: Finding[] }> {
+	const id = String(params.id ?? "").trim();
+	const title = String(params.title ?? "").trim();
+	if (!id && !title) throw new Error("id or title is required");
+
+	const findings = await read(sessionId);
+	const index = id
+		? findings.findIndex((item) => item.id === id)
+		: findings.findIndex((item) => item.title === title);
+	if (index < 0) throw new Error(`no finding matched ${id || title}`);
+
+	const [deleted] = findings.splice(index, 1);
+	await write(sessionId, findings);
+	return {
+		deleted: deleted as Finding,
+		count: findings.length,
+		bySeverity: tally(findings),
+		findings: bySeverity(findings),
+	};
+}
+
+/**
  * Merge one finding into another: the duplicate disappears, its evidence stays.
  *
  * Upstream collapses duplicates before writing the report (`strix/report/dedupe.py`).

@@ -18,7 +18,7 @@
  */
 
 import { useState } from "react";
-import type { CoverageOutcome, NoteSummary, TodoItem } from "../../../runtime-contract";
+import type { CoverageOutcome, NoteSummary, ShellSessionSummary, TodoItem } from "../../../runtime-contract";
 import { PanelBox } from "../../../shared/components/panel-box";
 
 const TODO_STATUS_ORDER = ["in_progress", "pending", "done"];
@@ -153,11 +153,49 @@ function NotesPanel({
 	);
 }
 
+/**
+ * 工作单元（ADR 0010）：上游 agents 面板在本插件的诚实等价物。
+ *
+ * 上游列的是它自己派生的子智能体（名字、状态、任务、携带的技能）。本插件没有模型循环
+ * （ADR 0003），所以**不存在**可派生的子智能体；能如实列出的是同一个沙箱里并行干活的东西：
+ * agent 用 `strix_exec background:true` 留下、用 `strix_write_stdin` 驱动的 shell 会话。
+ *
+ * 它只读：启动/写入/停止都走工具（那是 agent 的动作）。面板不提供按钮，
+ * 否则就成了第二个决定“要并行跑什么”的地方。
+ */
+function SessionPanel({
+	t,
+	sessions,
+}: {
+	t: (key: string, params?: Record<string, string | number>) => string;
+	sessions: readonly ShellSessionSummary[];
+}): React.ReactElement {
+	if (!sessions.length) return <p className="astra-strix-dim">{t("sessions.empty")}</p>;
+	return (
+		<ul className="astra-strix-list">
+			{sessions.slice(0, ROW_LIMIT).map((session) => (
+				<li key={session.id} className="astra-strix-list-row" data-state={session.running ? "in_progress" : "done"}>
+					<span className={session.running ? "astra-strix-green" : "astra-strix-dim"} aria-hidden="true">
+						{session.running ? "●" : "○"}
+					</span>
+					<span className="astra-strix-list-text" title={`${session.command}${session.tty ? " · tty" : ""}`}>
+						{session.command}
+					</span>
+					<span className="astra-strix-dim astra-strix-micro">
+						{session.uptimeSec}s{session.tty ? " · tty" : ""}
+					</span>
+				</li>
+			))}
+		</ul>
+	);
+}
+
 export function ArtefactPanels({
 	t,
 	todos,
 	notes,
 	coverage,
+	sessions = [],
 	coverageTally,
 	onOpenNote,
 }: {
@@ -166,6 +204,8 @@ export function ArtefactPanels({
 	notes: readonly NoteSummary[];
 	coverage: readonly CoverageOutcome[];
 	/** Counts by outcome, from the service; shown on the coverage title. */
+	/** Kept shell sessions; empty when the bridge has none (ADR 0010). */
+	sessions?: readonly ShellSessionSummary[];
 	coverageTally?: Record<string, number>;
 	/** Fetches a note's body on demand (`strix_note_get`). */
 	onOpenNote?: (id: string) => Promise<string>;
@@ -192,6 +232,13 @@ export function ArtefactPanels({
 			</PanelBox>
 			<PanelBox title={t("notes.title")} hint={notes.length ? String(notes.length) : undefined} emptyLabel={t("rail.empty.notes")}>
 				<NotesPanel t={t} notes={notes} {...(onOpenNote ? { onOpen: onOpenNote } : {})} />
+			</PanelBox>
+			<PanelBox
+				title={t("sessions.title")}
+				hint={sessions.length ? `${sessions.filter((session) => session.running).length}/${sessions.length}` : undefined}
+				emptyLabel={t("rail.empty.sessions")}
+			>
+				<SessionPanel t={t} sessions={sessions} />
 			</PanelBox>
 		</>
 	);

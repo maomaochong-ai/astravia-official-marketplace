@@ -17,6 +17,7 @@ import { useStickToBottom } from "../hooks/use-stick-to-bottom";
 import type { ModelChoice } from "../../../domain/model-label";
 import type {
 	CoverageOutcome,
+	ShellSessionSummary,
 	EnvironmentProbe,
 	NoteSummary,
 	SandboxStatus,
@@ -42,6 +43,8 @@ export interface ScanScreenProps {
 	todos: readonly TodoItem[];
 	notes: readonly NoteSummary[];
 	coverage: readonly CoverageOutcome[];
+	/** Kept shell sessions (ADR 0010). */
+	sessions?: readonly ShellSessionSummary[];
 	mcp: readonly McpConnection[];
 	/** Folder name of the conversation workspace. */
 	workspace?: string;
@@ -80,6 +83,7 @@ export function ScanScreen({
 	todos,
 	notes,
 	coverage,
+	sessions,
 	mcp,
 	trace,
 	busy,
@@ -116,10 +120,15 @@ export function ScanScreen({
 	const emptyHint = targets.length ? t("scan.emptyWithTargets") : t("scan.emptyNoTargets");
 
 	return (
-		<div className="astra-strix-term astra-strix-workbench">
+		<div className="astra-strix-term astra-strix-phosphor astra-strix-workbench">
 			<header className="astra-strix-band">
 				<span className="astra-strix-band-state" data-state={running ? "running" : "idle"}>
-					{busy ? <span className="astra-strix-spinner" aria-hidden="true" /> : null}
+					{/* 上游状态行的扫光：6 个方块，一个绿色波来回扫；idle 时静止在暗档。 */}
+					<span className="astra-strix-sweep" data-active={running ? "yes" : "no"} aria-hidden="true">
+						{Array.from({ length: 6 }, (_, index) => (
+							<span key={index} style={{ animationDelay: `${index * 90}ms` }} />
+						))}
+					</span>
 					<span className={running ? "astra-strix-green" : "astra-strix-dim"}>
 						{running ? t("scan.running") : t("scan.idle")}
 					</span>
@@ -290,6 +299,7 @@ export function ScanScreen({
 						todos={todos}
 						notes={notes}
 						coverage={coverage}
+						{...(sessions ? { sessions } : {})}
 						{...coverageTally ? { coverageTally } : {}}
 						{...onOpenNote ? { onOpenNote } : {}}
 					/>

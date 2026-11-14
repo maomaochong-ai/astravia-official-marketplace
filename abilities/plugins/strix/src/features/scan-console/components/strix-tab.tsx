@@ -14,6 +14,7 @@
 import type { ModelChoice } from "../../../domain/model-label";
 import type {
 	CoverageOutcome,
+	ShellSessionSummary,
 	EnvironmentProbe,
 	NoteSummary,
 	SandboxStatus,
@@ -46,6 +47,7 @@ export interface StrixTabProps {
 	todos: readonly TodoItem[];
 	notes: readonly NoteSummary[];
 	coverage: readonly CoverageOutcome[];
+	sessions: readonly ShellSessionSummary[];
 	mcp: readonly McpConnection[];
 	busy: boolean;
 	start: (prompt: string) => Promise<void>;
@@ -85,6 +87,7 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					todos={props.todos}
 					notes={props.notes}
 					coverage={props.coverage}
+					sessions={props.sessions}
 					mcp={props.mcp}
 					trace={props.trace}
 					busy={props.busy}

@@ -279,6 +279,20 @@ export const STRIX_TOOL_SPECS: readonly StrixToolSpec[] = [
 	},
 	{
 		handler: "service",
+		name: "strix_delete_finding",
+		description:
+			"Remove a finding that turned out to be wrong or out of scope — a false positive, a duplicate that merge could not fold, a report the operator withdrew. Deleting is honest; downgrading it to `info` keeps claiming there is an issue. Identify it by id (from strix_list_findings) or by exact title. Say in one line why you removed it.",
+		parameters: {
+			type: "object",
+			properties: {
+				id: { type: "string" },
+				title: { type: "string", description: "Exact title, when the id is not at hand." },
+			},
+			additionalProperties: false,
+		},
+	},
+	{
+		handler: "service",
 		name: "strix_report",
 		description:
 			"Render the penetration-test report from the findings filed so far. `format: sarif` writes the same findings as SARIF 2.1.0 for a CI pipeline; the Markdown report is the default.",

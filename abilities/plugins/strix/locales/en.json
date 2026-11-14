@@ -110,5 +110,8 @@
   "scan.turnDivider": "turn {turn} · what was said lives in the chat",
   "panels.moreRows": "{count} more rows not shown (ask the tool with a filter for the full set)",
   "panels.loading": "loading…",
-  "scan.newRows": "{count} new"
+  "scan.newRows": "{count} new",
+  "sessions.title": "Units",
+  "sessions.empty": "No parallel session yet.",
+  "rail.empty.sessions": "long jobs run as background sessions"
 }

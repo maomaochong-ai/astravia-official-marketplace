@@ -36,6 +36,7 @@ import type {
 	BridgeEvent,
 	BridgeState,
 	CoverageOutcome,
+	ShellSessionSummary,
 	EnvironmentProbe,
 	NoteSummary,
 	SandboxStatus,
@@ -49,6 +50,7 @@ import {
 	normalizeNotes,
 	normalizeProbe,
 	normalizeSandbox,
+	normalizeSessions,
 	normalizeTodos,
 } from "../../../domain/bridge-payloads";
 
@@ -76,6 +78,8 @@ export interface StrixSessionModel {
 	todos: TodoItem[];
 	notes: NoteSummary[];
 	coverage: CoverageOutcome[];
+	/** 保留的 shell 会话：面板上的「工作单元」（ADR 0010）。 */
+	sessions: ShellSessionSummary[];
 	/** MCP connections as last reported; docked like upstream's Mcp panel. */
 	mcp: McpConnection[];
 	model?: ModelChoice;
@@ -143,6 +147,7 @@ export function useStrixSession({
 	const [todos, setTodos] = useState<TodoItem[]>(initial?.todos ?? []);
 	const [notes, setNotes] = useState<NoteSummary[]>(initial?.notes ?? []);
 	const [coverage, setCoverage] = useState<CoverageOutcome[]>(initial?.coverage ?? []);
+	const [liveSessions, setLiveSessions] = useState<ShellSessionSummary[]>([]);
 	const [mcp, setMcp] = useState<McpConnection[]>(initial?.mcp ?? []);
 	/** 覆盖台账的分结果计数，来自服务（`/api/state` 的 coverageTally）。 */
 	const [tally, setTally] = useState<Record<string, number> | undefined>(undefined);
@@ -248,6 +253,7 @@ export function useStrixSession({
 			setTodos(normalizeTodos(state?.todos));
 			setNotes(normalizeNotes(state?.notes));
 			setCoverage(normalizeCoverage(state?.coverage));
+			setLiveSessions(normalizeSessions((state as { sessions?: unknown } | undefined)?.sessions));
 			if (probe) {
 				setEnvironment(probe);
 				// A missing daemon is the working state in `host` mode (ADR strix-0001), not an
@@ -498,6 +504,7 @@ export function useStrixSession({
 			todos,
 			notes,
 			coverage,
+			sessions: liveSessions,
 			mcp,
 			model: resolved.choice,
 			modelFromConversation: resolved.fromConversation,
@@ -527,6 +534,7 @@ export function useStrixSession({
 			todos,
 			notes,
 			coverage,
+			liveSessions,
 			mcp,
 			resolved,
 			conversation?.cwd,

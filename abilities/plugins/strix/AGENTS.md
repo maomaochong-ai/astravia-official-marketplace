@@ -128,4 +128,8 @@ npm run check           # typecheck + test + 服务冒烟
 - **运行记录永远贴在底部**（`features/scan-console/scroll-stick.ts`）：贴底时跟随新行；读者
   往上滚了不抢回，只显示“N 条新消息”。改滚动行为前先读那两个文件，不要在组件里另写一套。
 - **工具行必须家族化**（ADR 0009）：新增工具要在 `features/scan-console/tool-presentation.ts` 登记字形/色调/是否可展开；未登记落到 generic（上游同名回落），`tool-presentation.test.ts` 守着覆盖率。不要再回到“一个通用块画 35 个工具”——那是上一轮与上游最大的界面差距。
+- **外观口径（ADR 0011）**：磷光是 `.astra-strix-term.astra-strix-phosphor` 的变量覆盖，不要直接把背景写成黑色；
+  `--sx-red` 只给失败、`--sx-amber` 只给进行中，其余一律绿。首屏数据流用固定字符集（禁止 `Math.random()`），
+   `prefers-reduced-motion` 下必须静止。扫光只在状态带（6 格）与 running 的工具行（4 格）出现，且用 keyframes 不用 JS 计时器。
+- **工作单元面板只列沙箱会话**（ADR 0010）：不要把宿主子智能体画进来——宿主有自己的面板，插件只能观察启停。
 - 界面对照基线是上游 TUI（`strix/interface/tui/internal/app/view.go`）；对照原型在仓库 `docs/prototypes/strix-panel-vs-tui.html`，相似度用 `tools/ui-parity.mjs` 复算。

@@ -17,6 +17,7 @@ import type {
 	SandboxStatus,
 	StrixFinding,
 	TodoItem,
+	ShellSessionSummary,
 } from "../runtime-contract";
 
 function text(value: unknown): string {
@@ -113,4 +114,17 @@ export function normalizeCoverage(raw: unknown): CoverageOutcome[] {
 			...(item.note ? { note: text(item.note) } : {}),
 		}))
 		.filter((entry) => entry.surface);
+}
+
+/** 保留的 shell 会话；字段缺失时给安全默认值，不让面板因一个坏行整块空掉。 */
+export function normalizeSessions(raw: unknown): ShellSessionSummary[] {
+	return list(raw)
+		.map((item) => ({
+			id: text(item.id),
+			command: text(item.command),
+			running: item.running === true,
+			uptimeSec: typeof item.uptimeSec === "number" ? item.uptimeSec : 0,
+			tty: item.tty === true,
+		}))
+		.filter((session) => session.id && session.command);
 }
