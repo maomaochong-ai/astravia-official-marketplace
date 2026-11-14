@@ -120,6 +120,14 @@ describe("the first screen adapts instead of hiding its own head", () => {
 		expect(css).toMatch(/\.astra-strix-composer\s*\{[^}]*margin:\s*0 clamp\(/s);
 	});
 
+	it("keeps the run log left-aligned instead of centring the column", () => {
+		// 真机截图：每一行都比标题缩进一截。原因是 auto 外边距把收窄后的列居中——
+		// 行距该收窄，但收窄后的列必须从左边开始，才能和标题/工具栏/输入框对齐。
+		const body = /\.astra-strix-transcript-body\s*\{([^}]*)\}/s.exec(rules)?.[1] ?? "";
+		expect(body).toContain("margin: 0;");
+		expect(body).not.toMatch(/margin:\s*[^;]*auto/);
+	});
+
 	it("has a breakpoint for short panels as well as narrow ones", () => {
 		expect(css).toContain("@media (max-width: 480px)");
 		expect(css).toContain("@media (max-height: 560px)");

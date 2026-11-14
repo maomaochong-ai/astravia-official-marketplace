@@ -531,6 +531,12 @@
 	padding: clamp(10px, 2.2vh, 16px) clamp(10px, 2.4vw, 20px) 8px;
 	width: 100%;
 	max-width: 118ch;
+	/* 左对齐，**不**用 auto 外边距居中：行距只在阅读长文本时该收窄，
+	   但收窄后的列必须从左边开始——居中的结果是每一行都比标题缩进一截，
+	   与工具栏、标题、输入框全不在一条线上（真机截图就是这个）。 */
+	margin: 0;
+}
+
 
 /* “还有 N 行”：截断要说出来，而不是默默只画前 8 行。 */
 
@@ -600,8 +606,6 @@
 	font: inherit;
 	font-size: 11px;
 	cursor: pointer;
-}
-	margin: 0 auto;
 }
 
 .astra-strix-transcript-body:focus-within {

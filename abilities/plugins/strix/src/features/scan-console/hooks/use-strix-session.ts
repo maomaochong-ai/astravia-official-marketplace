@@ -21,7 +21,7 @@
  * and the plugin's job is to show the assessment as it happens and to hand the operator's
  * words to the only agent that can act on them.
  */
-import { evidenceRow, isServiceNarrated, toolRow, turnDivider } from "../../../domain/conversation-projection";
+import { evidenceRow, isServiceNarrated, strixToolName, toolRow, turnDivider } from "../../../domain/conversation-projection";
 import type { ConversationEvent, ConversationState } from "@astravia-org/plugin-sdk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BridgeClient } from "../../../domain/bridge-client";
@@ -189,14 +189,24 @@ export function useStrixSession({
 		);
 	}, []);
 
-	/** Close the newest row that is still open; returns the patched list unchanged if none. */
+	/**
+	 * Close the row that *this* tool opened.
+	 *
+	 * 之前这里只找「最新的未关闭行」，不看到底是哪个工具——那是真 bug：宿主可以并发发
+	 * 多个 tool-call，两个工具交错时，一个的 end 事件会把另一个的行关掉。真机现象是
+	 * 一条 strix_scope 被标 Failed，而下一条带着它的参数显示 Done（截图里那两行）。
+	 *
+	 * 现在按工具名匹配，从新到旧找；同名工具并发时取最新那一行（后开先关的常见顺序）。
+	 */
 	const closeRow = useCallback(
-		(patch: Partial<TraceEntry>, match?: (entry: TraceEntry) => boolean) => {
+		(patch: Partial<TraceEntry>, toolName?: string) => {
+			const wanted = toolName ? strixToolName(toolName) : undefined;
 			setTrace((previous) => {
 				for (let index = previous.length - 1; index >= 0; index -= 1) {
 					const row = previous[index];
 					if (!row || row.kind !== "tool" || row.ok !== undefined) continue;
-					if (match && !match(row)) continue;
+					// 服务叙述的行（`strix_exec`）用服务侧的命名，也要能对上。
+					if (wanted && strixToolName(row.label) !== wanted) continue;
 					const next = previous.slice();
 					next[index] = { ...row, ...patch };
 					return next;
@@ -312,7 +322,8 @@ export function useStrixSession({
 				if (event.event === "tool_end") {
 					const row = evidenceRow(event as unknown as Extract<BridgeEvent, { event: "tool_end" }>);
 					if (!row) return;
-					closeRow(row.patch, (entry) => isServiceNarrated(entry.label));
+					// 服务侧事件带 tool 名（`exec_command` → `strix_exec`），按它关对应的行。
+					closeRow(row.patch, String((event as { tool?: unknown }).tool ?? ""));
 					void client
 						.findings()
 						.then((list) => setFindings(normalizeFindings(list)))
@@ -383,7 +394,7 @@ export function useStrixSession({
 
 			if (event.type === "tool-call-end") {
 				if (isServiceNarrated(event.toolName)) return;
-				closeRow({ ok: !event.isError });
+				closeRow({ ok: !event.isError }, event.toolName);
 				void refresh();
 			}
 		});
