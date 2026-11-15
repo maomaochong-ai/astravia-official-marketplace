@@ -59,7 +59,8 @@ describe("the panel refuses state that belongs to another conversation", () => {
 		expect(client).toContain("setConversation(conversationId");
 		expect(client).toContain("/api/conversation");
 		// 声明必须排在 state() 之前：否则这一次读到的还是上一个会话的归属。
-		const refresh = /const refresh = useCallback\(([\s\S]*?)\n\t\)/.exec(hook)?.[1] ?? "";
+		// 真实现叫 refreshNow（refresh 是与它同名的合并器，只做单飞），所以这里找实现那一份。
+		const refresh = /const refreshNow = useCallback\(([\s\S]*?)\n\t\)/.exec(hook)?.[1] ?? "";
 		expect(refresh.indexOf("setConversation")).toBeGreaterThan(-1);
 		expect(refresh.indexOf("setConversation")).toBeLessThan(refresh.indexOf("await client.state()"));
 	});

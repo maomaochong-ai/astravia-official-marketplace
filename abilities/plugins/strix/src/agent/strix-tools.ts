@@ -186,7 +186,7 @@ export const STRIX_TOOL_SPECS: readonly StrixToolSpec[] = [
 		handler: "service",
 		name: "strix_load_skills",
 		description:
-			"Load the full Markdown of one or more skills, by name or category/name. Load the packs that match the target before testing: they carry the technique, the payloads and the false-positive rules for that class of issue.",
+			"Load the full Markdown of one or more skills, by name or category/name. Names are matched loosely (dashes, underscores and spaces are equivalent), and a miss returns `suggestions` — the closest packs by name, category and description — so retry with one of those instead of giving up. Load the packs that match the target before testing: they carry the technique, the payloads and the false-positive rules for that class of issue.",
 		parameters: {
 			type: "object",
 			properties: { names: { type: "array", items: { type: "string" }, minItems: 1 } },

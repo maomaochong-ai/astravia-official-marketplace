@@ -36,6 +36,7 @@ import { installHint, missingTools, probeToolchain } from "./toolchain";
 import { managedToolchainDir } from "./paths";
 import { describeRoster, mergeRoster, normalizeRoster } from "../domain/mcp-roster";
 import { installPaths, type InstallPath } from "../domain/install-paths";
+import { createProbeCache } from "./probe-cache";
 import { TodoStore } from "./todo";
 import { Budget, normalizeLimits } from "./budget";
 import { Telemetry } from "./telemetry";
@@ -49,11 +50,20 @@ const PORT = Number(process.env.ASTRAVIA_SERVICE_PORT || 0);
 const HOST = process.env.STRIX_BRIDGE_HOST || "127.0.0.1";
 const DATA_DIR = process.env.ASTRAVIA_SERVICE_DATA_DIR || "";
 
+/**
+ * 服务日志的保留条数。
+ *
+ * 之前是无限增长：每条工具事件都 push 一次，长跑几小时就是几十万条，而对外只用得到
+ * 最后 40 条。这是真实的内存泄漏，不是理论问题。
+ */
+const LOG_LIMIT = 200;
 const log: Record<string, unknown>[] = [];
 const subscribers = new Set<(payload: Record<string, unknown>) => void>();
 
 function record(payload: Record<string, unknown>): void {
 	log.push(payload);
+	// 只保留最近 LOG_LIMIT 条：无限长的日志在长跑里就是内存泄漏。
+	if (log.length > LOG_LIMIT) log.splice(0, log.length - LOG_LIMIT);
 	if (log.length > 400) log.shift();
 	for (const send of subscribers) send(payload);
 }
@@ -179,12 +189,56 @@ function readVersion(): string {
 }
 const version = readVersion();
 
+/**
+ * 三个探测缓存（1.4.1）。
+ *
+ * 背景：`refresh()` 在每次工具调用结束都会打 `/api/state`，而这个接口原本每次都：
+ *   - spawn `docker info` + `docker image inspect`（实测 3.1s）
+ *   - 本机模式下 spawn 每个工具的 `--version`（实测 4.6s）
+ *   - 顺序读 75 篇技能（实测 0.19s）
+ * 于是每调一次工具就有几秒钟花在重复回答同一件事上，还跟真正的扫描抢 CPU。
+ *
+ * TTL 的选择：环境 8 秒（用户装 docker / 拉镜像之后点「刷新环境」是强制路径，不受它限制），
+ * 工具链 60 秒（二进制不会中途冒出来），技能索引 60 秒（随包内容运行期不变）。
+ */
+const environmentCache = createProbeCache({
+	probe: () => resolveEnvironment(sandboxImage()),
+	ttlMs: 8_000,
+	// daemon 刚起来的情况要尽快反映出来：失败的缓存更短。
+	failureTtlMs: 1_500,
+	isFailure: (value) => value.ready === false,
+});
+
+const toolchainCache = createProbeCache({
+	probe: () => probeToolchain(),
+	ttlMs: 60_000,
+	failureTtlMs: 10_000,
+});
+
+const skillsIndexCache = createProbeCache({
+	probe: () => loadIndex(locateSkills()),
+	ttlMs: 60_000,
+});
+
+/**
+ * MCP 连接名单。
+ *
+ * 取它的代价是进容器跑一段 python（docker exec），而面板每次刷新都会取一次。
+ * 名单是这一轮连了哪些 server，秒级不会变，所以缓存 10 秒：新连上的 server 在一个呼吸内出现，
+ * 又不让每次刷新都多一次容器内进程。
+ */
+const mcpRosterCache = createProbeCache({
+	probe: () => sandbox.mcpRoster(),
+	ttlMs: 10_000,
+});
+
 async function environment() {
-	const resolved = await resolveEnvironment(sandboxImage());
+	// 走缓存：它被 `/api/state` 与工具共用，TTL 由 probe-cache 决定。
+	const resolved = await environmentCache.get();
 	const docker = resolved.docker;
 	const skills = await locateSkills();
 	// Only meaningful in `host` mode: in a container the toolchain is the image's.
-	const tools = resolved.mode === "host" ? await probeToolchain() : [];
+	const tools = resolved.mode === "host" ? await toolchainCache.get() : [];
 	return {
 		mode: resolved.mode,
 		docker: { ready: docker.ready, detail: docker.detail, image: sandboxImage(), imagePresent: docker.imagePresent },
@@ -233,14 +287,19 @@ type Handler = (args: Record<string, unknown>) => Promise<unknown>;
  * renderer owns.
  */
 const HANDLERS: Record<string, Handler> = {
-	strix_environment: () => environment(),
+	strix_environment: async () => {
+		// 模型主动问“现在的环境”，要的是最新结果，不是缓存。
+		environmentCache.invalidate();
+		return environment();
+	},
 
 	// The MCP roster upstream docks as its own panel. Declared servers come from the
 	// manifest, reported ones from the run; the merge keeps both and never invents a
 	// "dead" state for a server that simply has not connected yet (domain/mcp-roster.ts).
 	strix_mcp: async () => {
 		const declared = [{ name: "strix" }];
-		const reported = normalizeRoster(await sandbox.mcpRoster().catch(() => null));
+		// 走缓存：这条路径的代价是一次 docker exec，不该由面板的刷新频率决定。
+		const reported = normalizeRoster(await mcpRosterCache.get().catch(() => null));
 		const connections = mergeRoster(declared, reported);
 		return { connections, summary: describeRoster(connections) };
 	},
@@ -504,9 +563,19 @@ async function runHost(command: string, argv: string[]): Promise<{ code: number;
 	});
 }
 
+/** 请求体上限：这个服务只监听 127.0.0.1，但没有上限仍然是一个 OOM 的口子。 */
+const MAX_BODY_BYTES = 16 * 1024 * 1024;
+
 async function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
 	const chunks: Buffer[] = [];
-	for await (const chunk of req) chunks.push(chunk as Buffer);
+	let bytes = 0;
+	for await (const chunk of req) {
+		bytes += (chunk as Buffer).length;
+		// 超限就不再累积：让这个请求拿到空 body（随后报参数错误），
+		// 而不是把整个服务拖进交换分区。
+		if (bytes > MAX_BODY_BYTES) break;
+		chunks.push(chunk as Buffer);
+	}
 	if (!chunks.length) return {};
 	try {
 		return JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>;
@@ -621,15 +690,17 @@ const server = createServer(async (req, res) => {
 		}
 		if (url.pathname === "/api/environment") {
 			// 环境检测：面板切换环境后要能立刻知道"有没有 docker / 镜像在不在"。
+			// 这条请求本身就是"我要最新的"：先失效缓存再取（仍然单飞，不会并发跑十份）。
 			const preference = await readPreferences(DATA_DIR);
-			const resolved = await resolveEnvironment(sandboxImage(), preference.environmentMode);
+			environmentCache.invalidate();
+			const resolved = await environmentCache.get();
 			return json(res, 200, { ...resolved, preference: preference.environmentMode });
 		}
 		if (url.pathname === "/api/paths") {
 			// 「装在哪」：当前系统的 docker 位置、容器内落点、随包工具链与数据目录。
 			// 路径是**猜的**（各系统默认值），所以这里逐个探一次"在不在"，面板照实画。
-			const preference = await readPreferences(DATA_DIR);
-			const resolved = await resolveEnvironment(sandboxImage(), preference.environmentMode);
+			// 与环境探测同源：走同一个缓存，避免点开一次路径表又多打两次 docker。
+			const resolved = await environmentCache.get();
 			const status = sandbox.status();
 			const container = status.running && status.mode === "docker" && status.sessionId ? containerName(status.sessionId) : null;
 			const entries = installPaths({
@@ -663,7 +734,8 @@ const server = createServer(async (req, res) => {
 			try {
 				const docker = process.platform === "win32" ? "docker.exe" : "docker";
 				const result = await runHost(docker, ["pull", image]);
-				const resolved = await resolveEnvironment(image, "docker");
+				environmentCache.invalidate();
+				const resolved = await environmentCache.get();
 				return json(res, 200, {
 					ok: result.code === 0,
 					image,
@@ -726,7 +798,7 @@ const server = createServer(async (req, res) => {
 			const skillLocation = locateSkills();
 			const [scopeSnapshot, skillIndex] = await Promise.all([
 				scope.snapshot().catch(() => ({ entries: [], rules: { ports: [], notes: [], updatedAt: null } })),
-				loadIndex(skillLocation).catch(() => undefined),
+				skillsIndexCache.get().catch(() => undefined),
 			]);
 			return json(res, 200, {
 				environment: env,
@@ -774,6 +846,7 @@ const server = createServer(async (req, res) => {
 			return json(res, 200, await findings.report(sessionId(), { scope: describeScope(await scope.snapshot()) }, { version }));
 		}
 		if (url.pathname === "/api/sandbox/stop" && req.method === "POST") {
+			mcpRosterCache.invalidate();
 			return json(res, 200, await sandbox.stop());
 		}
 		if (url.pathname === "/api/log") {
@@ -803,6 +876,8 @@ const server = createServer(async (req, res) => {
 
 server.listen(PORT, HOST, () => {
 	record({ event: "service_listening", host: HOST, port: PORT, id: randomUUID() });
+	// 预热：第一次 /api/state 不该等 docker 探测那两秒。失败不要紧——面板会自己再探。
+	void environmentCache.get().catch(() => undefined);
 });
 
 const shutdown = () => {

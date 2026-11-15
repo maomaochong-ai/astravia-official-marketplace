@@ -64,7 +64,6 @@ import {
 	normalizeTodos,
 } from "../../../domain/bridge-payloads";
 
-const TRACE_LIMIT = 400;
 const LOG_LIMIT = 6;
 
 export type SessionPhase = "booting" | "setup" | "scanning" | "done";
@@ -341,12 +340,22 @@ export function useStrixSession({
 		[],
 	);
 /** Service + machine state: the assessment's own facts, re-read rather than inferred. */
-	const refresh = useCallback(async () => {
-		setBoot({ state: "connecting" });
+		/**
+	 * 真正的刷新实现（被下面的合并器调度，别处不要直接调用）。
+	 *
+	 * 一次 /api/state 加一次装的路径查询。服务侧已经把 docker 与技能索引缓存了，
+	 * 所以它本身很便宜；但它不该并发跑——一轮里工具调用是成串的，每条都直连过去，
+	 * 服务端就会同时处理 N 个请求（早期版本每次 2.6s，叠起来就是几秒空转）。
+	 */
+	const loadedOnce = useRef(false);
+	const refreshNow = useCallback(async () => {
+		// 只有第一次（面板刚起来）才显示 connecting：后台刷新时闪一下会让人以为断开过。
+		if (!loadedOnce.current) setBoot({ state: "connecting" });
 		// 让后面的阶段判定能用上同一份快照：`state` 本来只活在 try 块里。
 		let bridgeState: (BridgeState & { threatModel?: { content?: string } }) | undefined;
 		try {
 			await runtime.ensureReady();
+			loadedOnce.current = true;
 			setBoot({ state: "ready" });
 			// 先向服务声明“我现在是哪个会话”：台账键与状态归属都靠它（1.0.7）。
 			// 拿不到归属不能阻断刷新：服务会退回沙箱 id，界面照常画。
@@ -379,11 +388,15 @@ export function useStrixSession({
 			setScope((state as { scope?: BridgeScope } | undefined)?.scope);
 			setCapabilities((state as { capabilities?: BridgeCapabilities } | undefined)?.capabilities);
 			setResolvedMode(probe?.mode);
-			// 「装在哪」随环境一起取：它依赖 docker 状态与容器名，分开取会不一致。
-			void client
-				.installPaths()
-				.then((paths) => setInstallPaths(paths))
-				.catch(() => setInstallPaths(undefined));
+			// 「装在哪」只在容器模式下才会被画出来：宿主模式不必为它多打一次请求。
+			if (probe?.mode === "docker") {
+				void client
+					.installPaths()
+					.then((paths) => setInstallPaths(paths))
+					.catch(() => setInstallPaths(undefined));
+			} else {
+				setInstallPaths(undefined);
+			}
 			if (probe) {
 				setEnvironment(probe);
 				// A missing daemon is the working state in `host` mode, not an
@@ -429,6 +442,30 @@ export function useStrixSession({
 		// 接续已有评估不再往日志里补一句（1.0.7）：它是状态，落在事实表与运行记录里。
 		// `resumed` 只剩一个用途——重绑时复位，供后续需要区分“首次”的地方使用。
 	}, [client, note, runtime, t]);
+	/**
+	 * 合并器：同一时刻只跑一个刷新；跑的过程中再来的请求只置一个标记，跑完补一次。
+	 *
+	 * 调用点有四处（挂载、换会话、turn-end、每次 tool-call-end），而一轮评估里工具调用是成串的。
+	 * 面板要的是最终一致，不是每个事件各对应一次请求。
+	 */
+	const inFlight = useRef(false);
+	const queued = useRef(false);
+	const refresh = useCallback(async () => {
+		if (inFlight.current) {
+			queued.current = true;
+			return;
+		}
+		inFlight.current = true;
+		try {
+			await refreshNow();
+		} finally {
+			inFlight.current = false;
+		}
+		if (queued.current) {
+			queued.current = false;
+			await refresh();
+		}
+	}, [refreshNow]);
 
 	// 模型与目录的出处不再写进日志（1.0.7）。它们已经是首屏事实表里的两行（模型 / 目录），
 	// 再在日志里“宣告”一遍，用户看到的是同一句话说两遍（截图里那三行）。

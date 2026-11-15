@@ -82,9 +82,13 @@ describe("colour is capped so the text stays readable", () => {
 			expect(block, name).toContain(name);
 		}
 		// 极光/网格/环/扫光都引用变量：改一处就能整体换色。
-		for (const selector of [".astra-strix-aurora", ".astra-strix-mesh", ".astra-strix-sheen", ".astra-strix-rings"]) {
+		// 扫光的渐变在它的 ::after 上（1.4.1 把它从 background-position 改成 transform，
+		// 让这条动画走合成层而不是每帧重绘整屏）。
+		for (const selector of [".astra-strix-aurora", ".astra-strix-mesh", ".astra-strix-rings"]) {
 			expect(ruleFor(selector), selector).toContain("var(--sx-aurora-");
 		}
+		const sheenAfter = rules.slice(rules.indexOf(".astra-strix-sheen::after"));
+		expect(sheenAfter.slice(0, sheenAfter.indexOf("}"))).toContain("var(--sx-aurora-");
 	});
 
 	it("keeps the palette in the green–cyan–violet family (not a random rainbow)", () => {

@@ -115,6 +115,11 @@ npm run check           # typecheck + test + 服务冒烟
 - 改了 `src/service/` 就要 `npm run build:service && npm run stamp-service`：宿主安装的运行时摘要来自 `stamp`，入口是 `dist/service/main.mjs`。`npm run build` 会做前者，后者需要单独跑。
 - 改了插件运行内容（`src/`、清单、技能）就要抬版本，并同步 `plugin.json`、`ability.json`、`package.json`、锁文件、`.astravia/marketplace.source.json`。
 - 不要手写 `dist/service/main.mjs`：它是生成物。
+- **`release/*.astraviapkg` 不是发布的那个包。** 它由 `@astravia-org/plugin-vite` 在 `vite build`
+  期间写出，而 `dist/service/main.mjs` 是之后 `scripts/build-service.mjs` 才生成的——所以仓库里这份
+  归档**不含服务**（119 个文件，没有 `dist/service/`）。真正发布的包由 CI 在 `npm run build` 全部跑完之后
+  重新打包（`scripts/marketplace.mjs build`）。核对发布结果请下载 GitHub Release 上的制品，
+  不要核对仓库里这一份，也不要用它判断「服务有没有打进去」。
 - 提交前跑 `npm run check`；`typecheck` 是硬门槛，不要靠 `@ts-nocheck` 绕过。
 - `detail.json` 的 `showcase` 文案必须短：宿主用固定高度卡片 + `line-clamp-3` 渲染。
 - 图标是上游官方位图（`docs/logo/strix.png`），不要用相似的 Iconify 图形替代。

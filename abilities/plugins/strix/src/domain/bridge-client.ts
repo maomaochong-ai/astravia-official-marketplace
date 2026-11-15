@@ -153,20 +153,48 @@ export function createBridgeClient(baseUrl: () => Promise<string>): BridgeClient
 		events(onEvent) {
 			let source: EventSource | undefined;
 			let closed = false;
-			void (async () => {
+			let retry: ReturnType<typeof setTimeout> | undefined;
+			let attempt = 0;
+
+			/**
+			 * 连一次；断了就带**最新的** baseUrl 重连。
+			 *
+			 * 不能只靠 EventSource 自带的自动重连：它记的是创建时那个 URL。服务被宿主重启
+			 * （装新版本、崩溃拉起）之后端口可能变，旧 URL 永远连不上，而面板看起来还活着——
+			 * 只是运行记录不再更新。那是一条静默故障。
+			 */
+			const connect = async (): Promise<void> => {
 				const base = await baseUrl();
 				if (closed) return;
-				source = new EventSource(`${base}/api/events`);
-				source.onmessage = (message) => {
+				const next = new EventSource(`${base}/api/events`);
+				source = next;
+				next.onopen = () => {
+					attempt = 0;
+				};
+				next.onmessage = (message) => {
 					try {
 						onEvent(JSON.parse(message.data) as BridgeEvent);
 					} catch {
 						/* a partial line is not worth surfacing */
 					}
 				};
-			})().catch(() => undefined);
+				next.onerror = () => {
+					if (closed || source !== next) return;
+					next.close();
+					source = undefined;
+					// 退避 0.5s → 1 → 2 → 4 → 8，封顶 10s：不做快速无限重试。
+					attempt += 1;
+					const delay = Math.min(10_000, 500 * 2 ** Math.min(attempt - 1, 5));
+					retry = setTimeout(() => {
+						void connect().catch(() => undefined);
+					}, delay);
+				};
+			};
+
+			void connect().catch(() => undefined);
 			return () => {
 				closed = true;
+				if (retry) clearTimeout(retry);
 				source?.close();
 			};
 		},
