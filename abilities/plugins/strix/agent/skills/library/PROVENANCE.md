@@ -3,7 +3,7 @@
 本目录是 [usestrix/strix](https://github.com/usestrix/strix) 技能库的**逐字副本**，用于让本插件在没有安装上游 Python 包时也能完整加载技术知识（ADR 0012）。
 
 - 来源：`strix/skills/`（Apache License 2.0，见同目录 `LICENSE`）
-- 复制时间：2026-11-14
+- 复制时间：2026-11-15
 - 分类与篇数：
   analysis: 4
   cloud: 4

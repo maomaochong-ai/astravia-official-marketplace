@@ -50,7 +50,7 @@ export function locateSkills(): SkillLocation {
 - npm 依赖拉的是 JS 包，上游技能是 `.md`；
 - 复制是唯一能"装完就能用、离线也能用、版本可核对"的形态。
 
-代价是同步靠脚本：`node tools/vendor-skills.cjs`。`PROVENANCE.md` 里写明了"不要手改正文"，
+代价是同步靠脚本：`node scripts/dev/vendor-skills.cjs`。`PROVENANCE.md` 里写明了"不要手改正文"，
 因为手改会在下一次同步时丢失。
 
 ## 许可

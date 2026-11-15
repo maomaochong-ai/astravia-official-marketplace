@@ -38,9 +38,10 @@ describe("the manifest declares a team the host can run", () => {
 		}
 	});
 
-	it("narrows members to this plugin's own abilities", () => {
-		// 成员只需要 strix_* 工具与技能库；给它们宿主全部能力等于造第二套 AI（ADR 0003）。
-		for (const member of manifest.agent?.agents ?? []) expect(member.abilities).toBe("own");
+	it("gives members the host's full ability set", () => {
+		// 1.0.11：不再收窄到 own。ADR 0003 禁的是"插件自持模型循环"，不是"限制工具面"。
+		// 真实渗透要 shell、文件编辑、联网检索这些宿主能力；挡掉它们等于让成员缺一只手臂。
+		for (const member of manifest.agent?.agents ?? []) expect(member.abilities).toBe("all");
 	});
 
 	it("puts the lead first and gives the team a workflow", () => {
