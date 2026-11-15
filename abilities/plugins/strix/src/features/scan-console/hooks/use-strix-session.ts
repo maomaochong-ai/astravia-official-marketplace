@@ -21,7 +21,7 @@
  * and the plugin's job is to show the assessment as it happens and to hand the operator's
  * words to the only agent that can act on them.
  */
-import { digestAnswer, digestAsk } from "../../../domain/conversation-digest";
+import { digestAnswer, digestAsk, digestLive } from "../../../domain/conversation-digest";
 import { extractTargets, newTargets, type DerivedTarget } from "../../../domain/target-extraction";
 import { conversationShape, permitSend, permitStop } from "../../../domain/conversation-shape";
 import { evidenceRow, isServiceNarrated, strixToolName, toolRow, turnDivider } from "../../../domain/conversation-projection";
@@ -105,6 +105,13 @@ export interface StrixSessionModel {
 	send: (text: string) => Promise<boolean>;
 	/** 停止：只停面板正在显示的那个会话的当前一轮。 */
 	stop: () => Promise<void>;
+	/**
+	 * 这一轮进行中时，最后一句话的摘要（节流后的单行）。
+	 *
+	 * 为什么需要：一句话要跑十几秒，这段时间面板静止，用户以为插件罢工。
+	 * 完整答复到达时它被清掉，换成真正的要点。
+	 */
+	live?: string;
 	/** 停止按钮可用：这一轮在跑，且不是团队会话。 */
 	canStop: boolean;
 	/** 团队会话：面板只读（发送与停止都在团队输入框）。 */
@@ -137,6 +144,8 @@ export interface StrixSessionModel {
 	openWorkbench: () => void;
 	/** 在当前项目下新开一个会话（面板会跟过去）。 */
 	newSession: () => Promise<void>;
+	/** 读一条历史报告（按评估键）。空串表示那条没有留档。 */
+	onOpenReport: (key: string) => Promise<string>;
 	/** 打开一条笔记的正文（`strix_note_get`）。面板是唯一能读到它的地方。 */
 	onOpenNote: (id: string) => Promise<string>;
 	/** 服务给的分结果计数，不要用面板前 8 行自己算。 */
@@ -236,10 +245,17 @@ export function useStrixSession({
 	 */
 	const [candidates, setCandidates] = useState<DerivedTarget[]>([]);
 	const [hostStreaming, setHostStreaming] = useState<boolean>(Boolean(conversation?.isStreaming));
+	const [live, setLive] = useState<string | undefined>(undefined);
+	/** 流式累积：只用来算最后一句话，不保留正文。 */
+	const streamBuffer = useRef("");
+	const liveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [submitting, setSubmitting] = useState(false);
-	const [environmentMode, setEnvironmentModeState] = useState<"auto" | "host" | "docker">("host");
+	// 默认「自动」：有 docker 就用容器，没有就本机——这是绝大多数人想要的默认值。
+	const [environmentMode, setEnvironmentModeState] = useState<"auto" | "host" | "docker">("auto");
 	/** 用户手动回到首屏：此时不再被"宿主流一转就跳工作台"拽走。 */
 	const [showLaunch, setShowLaunch] = useState(false);
+	/** 偏好只读一次：它是用户的选择，不是每轮都会变的事实。 */
+	const preferenceRead = useRef(false);
 	const [docker, setDocker] = useState<{ ready: boolean; detail?: string; imagePresent: boolean | null } | null>(null);
 	/** 接续已有评估只提示一次：refresh 会被轮次反复叫到。 */
 	const resumed = useRef(false);
@@ -360,6 +376,16 @@ export function useStrixSession({
 			// 先向服务声明“我现在是哪个会话”：台账键与状态归属都靠它（1.0.7）。
 			// 拿不到归属不能阻断刷新：服务会退回沙箱 id，界面照常画。
 			await client.setConversation(conversationIdRef.current ?? null).catch(() => undefined);
+			if (!preferenceRead.current) {
+				preferenceRead.current = true;
+				// 服务端的偏好才是权威：面板重开时按它把下拉摆对。
+				void client
+					.preferences()
+					.then((preference) => {
+						if (preference?.environmentMode) setEnvironmentModeState(preference.environmentMode);
+					})
+					.catch(() => undefined);
+			}
 			const state = await client.state();
 			// 服务返回的可能是**另一个会话**的沙箱（一个进程只有一个容器）：那就不采纳。
 			//
@@ -369,8 +395,17 @@ export function useStrixSession({
 			const mine = conversationIdRef.current ?? null;
 			const foreign = typeof owner === "string" && owner !== mine;
 			if (foreign) {
-				// 环境探测是全局事实（docker 在不在与哪个会话无关），其余一律不采纳。
+				// 环境探测与技能索引是全局事实（docker 在不在、装了哪些工具与哪个会话无关），
+				// 其余一律不采纳——**并且要清空**：服务只有一个沙箱，A 的发现/笔记/覆盖留在
+				// B 的面板上就是用户说的"串会话"。清空比照搬诚实。
 				setEnvironment(normalizeProbe(state?.environment));
+				setFindings([]);
+				setTodos([]);
+				setNotes([]);
+				setCoverage([]);
+				setLiveSessions([]);
+				setScope(undefined);
+				setCandidates([]);
 				return;
 			}
 			bridgeState = (state ?? undefined) as (BridgeState & { threatModel?: { content?: string } }) | undefined;
@@ -503,7 +538,10 @@ export function useStrixSession({
 		setNotes(snapshot?.notes ?? []);
 		setCoverage(snapshot?.coverage ?? []);
 		setMcp(snapshot?.mcp ?? []);
-		setPhase(snapshot?.phase ?? "setup");
+		// 快照没有这个会话（刚建出来的）时不要退回 setup：宿主若正在这一轮里跑，
+		// 面板就该画工作台——否则表现就是「宿主已经在对话、插件还停在首屏」。
+		setPhase(conversation?.isStreaming ? "scanning" : (snapshot?.phase ?? "setup"));
+		setHostStreaming(Boolean(conversation?.isStreaming));
 		seq.current = (snapshot?.trace ?? []).reduce((max, entry) => {
 			const value = Number.parseInt(String(entry.id).replace(/^e/, ""), 10);
 			return Number.isFinite(value) && value > max ? value : max;
@@ -596,11 +634,17 @@ export function useStrixSession({
 				// 一条分隔行说清“这是第几轮、说明在对话里”，而不是把回复再抄一遍。
 				pushTrace(turnDivider(turnRef.current, t("scan.turnDivider", { turn: turnRef.current })));
 				setHostStreaming(true);
+				streamBuffer.current = "";
+				setLive(undefined);
+				// 宿主开始这一轮 = 现场可能已经变了（沙箱、发现、计划）。读一次，走缓存所以便宜。
+				void refresh();
 				return;
 			}
 
 			if (event.type === "turn-end") {
 				setHostStreaming(false);
+				streamBuffer.current = "";
+				setLive(undefined);
 				void refresh();
 				return;
 			}
@@ -615,6 +659,17 @@ export function useStrixSession({
 				pushTrace({ kind: "note", label: t("scan.compacted") });
 				return;
 			}
+			// 流式增量：不推行（那是把正文抄进来），但每 400ms 更新一行摘要。
+			if (event.type === "message-updated") {
+				streamBuffer.current = `${streamBuffer.current}${event.delta ?? ""}`.slice(-4000);
+				if (liveTimer.current === null) {
+					liveTimer.current = setTimeout(() => {
+						liveTimer.current = null;
+						setLive(digestLive(streamBuffer.current));
+					}, 400);
+				}
+				return;
+			}
 			if (event.type === "message-added" && event.message.role === "user") {
 				const ask = digestAsk(event.message.text);
 				if (ask) pushTrace({ kind: "say", label: ask, from: "you" });
@@ -623,13 +678,13 @@ export function useStrixSession({
 				return;
 			}
 			if (event.type === "message-added" && event.message.role === "assistant") {
+				streamBuffer.current = "";
+				setLive(undefined);
 				pushPoints(digestAnswer(event.message.text), "agent");
 				collectTargets(event.message.text);
 				return;
 			}
-			// `message-updated` 是流式增量：每一帧都推一行就等于把正文抄进来。
-			// 完整文本到 `message-added` 时才摘要一次。
-			if (event.type === "message-added" || event.type === "message-updated") return;
+			// 剩下的 message-* 不再处理：完整文本在 message-added 时已摘要，流式增量在上方节流成一行。
 
 			if (event.type === "tool-call-start") {
 				// `strix_exec` is narrated by the service, which has the output. Drawing it
@@ -865,6 +920,7 @@ export function useStrixSession({
 			modelFromConversation: resolved.fromConversation,
 			workspace: workspaceLabel(conversation?.cwd),
 			hostStreaming,
+			...(live ? { live } : {}),
 			// 停止只看“这一轮是不是本面板发起的”，不看宿主是不是在流：
 			// 宿主在流的可能是另一个会话的普通对话。
 			canStop: permitStop({ shape: conversationShape(conversation), streaming: hostStreaming }).ok,
@@ -887,6 +943,11 @@ export function useStrixSession({
 			openLaunch,
 			openWorkbench,
 			newSession,
+			// 历史报告：按评估键读留档；读不到就是空串（面板显示“没有留档”，不编内容）。
+			onOpenReport: async (key: string) => {
+				const result = (await client.report(key).catch(() => undefined)) as { markdown?: string } | undefined;
+				return result?.markdown ?? "";
+			},
 			onOpenNote: async (id: string) => {
 				const result = (await client.callTool("strix_note_get", { id })) as
 					| { note?: { content?: string } }

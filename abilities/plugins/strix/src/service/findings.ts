@@ -340,6 +340,9 @@ export async function report(
 		String(params.scope ?? ""),
 	);
 	const path = join(dataDir(), "report.md");
+	// 另一份按评估键留档：历史里的条目因此点得开（在此之前历史只知道“有报告”）。
+	await mkdir(join(dataDir(), "reports"), { recursive: true });
+	await writeFile(join(dataDir(), "reports", `${sessionId.replace(/[^\w.-]/g, "_")}.md`), markdown, "utf8");
 	await writeFile(path, markdown, "utf8");
 	return { markdown, path, count: findings.length, bySeverity: tally(findings) };
 }

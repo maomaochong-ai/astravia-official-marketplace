@@ -110,12 +110,16 @@ describe("install locations appear only in container mode", () => {
 });
 
 describe("the disclaimer sits under the facts", () => {
-	it("renders small print with a title and two paragraphs", () => {
+	it("renders small print as a bulleted list of six points", () => {
+		// 用户要的是"更丰富、用项目符号排列"：长段会被跳读，条目会被看完。
 		const { container } = renderLaunch();
 		const legal = container.querySelector(".astra-strix-disclaimer");
 		expect(legal).toBeTruthy();
 		expect(legal?.querySelector(".astra-strix-disclaimer-title")?.textContent).toBe("legal.title");
-		expect(legal?.querySelector(".astra-strix-disclaimer-body")?.textContent).toBe("legal.body");
+		const points = [...(legal?.querySelectorAll(".astra-strix-disclaimer-list > li") ?? [])];
+		expect(points).toHaveLength(6);
+		// 测试里的 t 只透传 key，所以断言 key 形状而不是中文标点。
+		expect(points.every((node) => (node.textContent ?? "").startsWith("legal.point"))).toBe(true);
 		expect(legal?.querySelector(".astra-strix-disclaimer-dim")?.textContent).toBe("legal.scope");
 	});
 

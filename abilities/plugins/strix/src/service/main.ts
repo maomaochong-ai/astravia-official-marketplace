@@ -17,8 +17,9 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFile, readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { join } from "node:path";
 import { SERVICE_TOOL_NAMES, STRIX_TOOL_SPECS } from "../agent/strix-tools";
 import { CoverageStore } from "./coverage";
 import { resolveEnvironment } from "./environment";
@@ -235,12 +236,20 @@ const mcpRosterCache = createProbeCache({
 async function environment() {
 	// 走缓存：它被 `/api/state` 与工具共用，TTL 由 probe-cache 决定。
 	const resolved = await environmentCache.get();
-	const docker = resolved.docker;
+	//
+	// 缓存里存的是 auto 的结果；用户选了容器就得按容器回答，否则面板拿到 mode=host，
+	// 「安装位置」那一块永远不出现（1.5.0 之前的真 bug）。
+	const preference = await readPreferences(DATA_DIR);
+	const effective =
+		preference.environmentMode !== "auto" && preference.environmentMode !== resolved.mode
+			? await resolveEnvironment(sandboxImage(), preference.environmentMode)
+			: resolved;
+	const docker = effective.docker;
 	const skills = await locateSkills();
 	// Only meaningful in `host` mode: in a container the toolchain is the image's.
-	const tools = resolved.mode === "host" ? await toolchainCache.get() : [];
+	const tools = effective.mode === "host" ? await toolchainCache.get() : [];
 	return {
-		mode: resolved.mode,
+		mode: effective.mode,
 		docker: { ready: docker.ready, detail: docker.detail, image: sandboxImage(), imagePresent: docker.imagePresent },
 		engine: {
 			// "installed" here means the skill library is reachable, which is all the
@@ -842,6 +851,16 @@ const server = createServer(async (req, res) => {
 			});
 		}
 		if (url.pathname === "/api/report") {
+			// ?key= 读历史留档：面板「历史评估」里点一条就预览它的报告。
+			const archivedKey = url.searchParams.get("key");
+			if (archivedKey) {
+				try {
+					const archived = readFileSync(join(DATA_DIR, "reports", `${archivedKey.replace(/[^\w.-]/g, "_")}.md`), "utf8");
+					return json(res, 200, { markdown: archived, count: 0, key: archivedKey });
+				} catch {
+					return json(res, 404, { error: "no report for that assessment", key: archivedKey });
+				}
+			}
 			// 之前传 {}：导出的报告没有范围段，等于把“测了什么”丢了一半。
 			return json(res, 200, await findings.report(sessionId(), { scope: describeScope(await scope.snapshot()) }, { version }));
 		}

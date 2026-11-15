@@ -289,19 +289,8 @@ export function LaunchScreen({
 						<span className="astra-strix-dim"> · {connections.length ? t("launch.toolsWired") : t("launch.toolsCold")}</span>
 					</Row>
 
-					{/* 技能库：随包副本，运行时不再扫上游。来源如实写出来。 */}
-					<Row label={t("launch.skills")}>
-						<span>
-							{t("launch.skillsCount", {
-								count: capabilities?.skills ?? 0,
-								categories: capabilities?.skillCategories ?? 0,
-							})}
-						</span>
-						<span className="astra-strix-dim">
-							{" · "}
-							{capabilities?.skillSource === "env" ? t("launch.skillsFromEnv") : t("launch.skillsBundled")}
-						</span>
-					</Row>
+					{/* 技能库那一行已移除：它只显示 0 篇 · 0 类，对用户没有信息量（1.5.0）。
+					    真实数量由 `strix_list_skills` 工具回答，面板不再占一行。 */}
 
 					{/* 连接：MCP 就绪情况 + 桥接状态。桥接状态原先独占首屏最底下一整行，
 					    信息只有"就绪"两个字；它属于这一组事实。 */}
@@ -398,10 +387,19 @@ export function LaunchScreen({
 				</div>
 
 				{/* 免责声明：小字、上边框、可读但不抢视线。工具会真的发起网络访问与命令执行，
-				    这一段是产品责任，不是免责套路。 */}
+				    这一段是产品责任，不是免责套路。
+				    用项目符号而不是一段长文：长句会被跳读，条目会被看完。 */}
 				<footer className="astra-strix-disclaimer" aria-label={t("legal.title")}>
 					<p className="astra-strix-disclaimer-title">{t("legal.title")}</p>
-					<p className="astra-strix-disclaimer-body">{t("legal.body")}</p>
+					<ul className="astra-strix-disclaimer-list">
+						{[1, 2, 3, 4, 5, 6]
+							.map((index) => t(`legal.point${index}`))
+							// 空串才丢：缺翻译时让 key 显形（与面板其他位置一致），而不是静默少一条。
+							.filter((line) => Boolean(line))
+							.map((line, index) => (
+								<li key={index}>{line}</li>
+							))}
+					</ul>
 					<p className="astra-strix-disclaimer-dim">{t("legal.scope")}</p>
 				</footer>
 			</div>

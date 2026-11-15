@@ -6,7 +6,7 @@
  * 落在 docker 上——偏好只有一份，写在服务侧才不会出现"面板显示容器、实际跑在本机"。
  *
  * 三种取值：
- *  - `host`：本机执行（无容器隔离），默认；
+ *  - `host`：本机执行（无容器隔离）；
  *  - `docker`：容器内执行，需要 docker 守护进程可用；
  *  - `auto`：有 docker 就用容器，没有就本机——**显式的选择**而不是静默回退。
  *
@@ -30,13 +30,14 @@ export interface Preferences {
 	budget?: { maxToolCalls: number; maxMinutes: number; maxFindings: number };
 }
 
-const DEFAULT: Preferences = { environmentMode: "host" };
+/** 默认「自动」：有 docker 就用容器，没有就本机。 */
+const DEFAULT: Preferences = { environmentMode: "auto" };
 
 function file(dataDir: string): string {
 	return join(dataDir, "preferences.json");
 }
 
-export function normalizeMode(value: unknown, fallback: EnvironmentMode = "host"): EnvironmentMode {
+export function normalizeMode(value: unknown, fallback: EnvironmentMode = "auto"): EnvironmentMode {
 	const text = String(value ?? "").trim().toLowerCase();
 	return (ENVIRONMENT_MODES as readonly string[]).includes(text) ? (text as EnvironmentMode) : fallback;
 }

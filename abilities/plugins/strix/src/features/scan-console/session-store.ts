@@ -68,6 +68,8 @@ export function forgetSnapshot(conversationId: string | null | undefined): void 
  * rather than accepting every event.
  */
 export function belongsTo(mountedConversationId: string | null, currentConversationId: string | null | undefined): boolean {
-	if (mountedConversationId === null) return currentConversationId === undefined || currentConversationId === "";
+	// 面板还没绑定到任何会话（在新会话页挂载，宿主随后才建出会话）：**接受第一个真会话**。
+	// 这里原本返回 false，代价是那一轮的所有事件被丢掉——"发出去了、宿主在跑、面板不动"。
+	if (mountedConversationId === null) return true;
 	return mountedConversationId === currentConversationId;
 }

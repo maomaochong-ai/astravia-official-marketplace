@@ -39,7 +39,9 @@ describe("scan screen truthfulness", () => {
 		expect(session).toContain('event.type === "turn-start"');
 		expect(session).toContain("scan.turnDivider");
 		// 文字事件显式忽略：不渲染是决定，不是遗漏。
-		expect(session).toContain('event.type === "message-added" || event.type === "message-updated"');
+		// 1.5.0：流式增量不再“直接丢弃”，而是节流成一行摘要（模型写字时面板不静止）。
+		expect(session).toContain('if (event.type === "message-updated") {');
+		expect(session).toContain("digestLive(streamBuffer.current)");
 		expect(session).not.toContain("ai.chat(");
 		expect(session).not.toContain("StrixAgent");
 	});

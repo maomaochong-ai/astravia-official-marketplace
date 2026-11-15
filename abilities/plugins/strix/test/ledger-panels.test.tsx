@@ -61,11 +61,11 @@ describe("notes panel is inspectable", () => {
 
 describe("coverage panel tells the truth about truncation", () => {
 	it("says how many rows are not shown", () => {
-		const coverage = Array.from({ length: 11 }, (_, index) => ({
+		const coverage = Array.from({ length: 27 }, (_, index) => ({
 			surface: `/api/thing-${index}`,
 			outcome: "clean" as const,
 		}));
-		render(<ArtefactPanels t={t} todos={[]} notes={[]} coverage={coverage} coverageTally={{ clean: 11, vulnerable: 0 }} />);
+		render(<ArtefactPanels t={t} todos={[]} notes={[]} coverage={coverage} coverageTally={{ clean: 27, vulnerable: 0 }} />);
 		expect(screen.getByText(/panels.moreRows/)).toBeTruthy();
 		expect(screen.getByText(/"count":3/)).toBeTruthy();
 	});

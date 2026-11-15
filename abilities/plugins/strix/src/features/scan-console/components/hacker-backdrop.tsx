@@ -23,9 +23,12 @@ export interface HackerBackdropProps {
 	density?: "splash" | "workbench";
 }
 
+import { usePageVisible } from "../../../shared/hooks/use-page-visible";
+
 export function HackerBackdrop({ density = "splash" }: HackerBackdropProps): React.ReactElement {
+	const visible = usePageVisible();
 	return (
-		<div className="astra-strix-backdrop" data-density={density} aria-hidden="true">
+		<div className="astra-strix-backdrop" data-density={density} data-quiet={visible ? "no" : "yes"} aria-hidden="true">
 			{/* 极光：三个色团在四角缓慢游动。绿/青/紫是同一族冷色，绿字仍是重心。 */}
 			<span className="astra-strix-aurora" />
 			{/* 网格：8px 点阵 + 64px 主格。它给"这是仪表"的感觉，比纯黑更有质地。 */}

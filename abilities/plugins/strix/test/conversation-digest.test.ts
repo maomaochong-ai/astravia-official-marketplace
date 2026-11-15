@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { digestAnswer, digestAsk, hasDigest } from "../src/domain/conversation-digest";
+import { digestAnswer, digestAsk, digestLive, hasDigest } from "../src/domain/conversation-digest";
 
 /**
  * 对话摘要的规则（见 domain/conversation-digest.ts 的注释）。
@@ -53,6 +53,22 @@ describe("the answer keeps conclusions, not prose", () => {
 		expect(digestAnswer("Sure\nOkay")).toEqual([]);
 	});
 
+	it("keeps a bullet list even when the lines carry no numbers", () => {
+		// 用户的原话是"关键信息渲染得太少"。列表项本身就是作者标出的重点，
+		// plain() 去掉标记之后仍要认出来并保留。
+		const points = digestAnswer("- 先看登录\n- 再看订单\n- 最后看导出");
+		expect(points).toHaveLength(3);
+		expect(points.join(" ")).toContain("订单");
+	});
+
+	it("gives a live one-liner while the answer is still streaming", () => {
+		const live = digestLive("先看一下路由。\n然后确认一处 IDOR：/api/orders");
+		expect(live).toContain("IDOR");
+		// 只取最后一段、不是整段正文。
+		expect(live).not.toContain("先看一下路由");
+		expect(digestLive("   ")).toBeUndefined();
+	});
+
 	it("falls back to the first lines when nothing is a conclusion", () => {
 		// 一句 20 字、没有数字也没有路径的回答，也该在面板上留个痕迹。
 		const points = digestAnswer("这是一段普通的说明文字，没有数字也没有路径");
@@ -62,7 +78,7 @@ describe("the answer keeps conclusions, not prose", () => {
 
 	it("never exceeds the per-turn budget", () => {
 		const many = Array.from({ length: 30 }, (_, index) => `发现 ${index} 处问题：/api/${index}`).join("\n");
-		expect(digestAnswer(many).length).toBeLessThanOrEqual(6);
+		expect(digestAnswer(many).length).toBeLessThanOrEqual(10);
 	});
 
 	it("does not repeat the same line twice", () => {

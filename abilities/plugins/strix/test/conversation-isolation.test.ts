@@ -70,7 +70,8 @@ describe("the panel refuses state that belongs to another conversation", () => {
 		expect(hook).toMatch(/const owner = \(state\?\.sandbox as \{ conversation\?: unknown \} \| undefined\)\?\.conversation;/);
 		expect(hook).toMatch(/const foreign = typeof owner === "string" && owner !== mine;/);
 		// 环境探测是全局事实，可以采纳；沙箱 / 台账一律不采纳。
-		expect(hook).toMatch(/if \(foreign\) \{[\s\S]{0,200}setEnvironment\([\s\S]{0,80}return;/);
+		// 1.5.0：外部沙箱不只是“不采纳”，还必须清空——否则 A 的发现/笔记/覆盖会留在 B 的侧栏里。
+		expect(hook).toMatch(/if \(foreign\) \{[\s\S]{0,900}setFindings\(\[\]\)[\s\S]{0,300}setNotes\(\[\]\)/);
 	});
 });
 

@@ -105,8 +105,8 @@ describe("interpolation", () => {
 		// 用户的原话：“没有就是 0 不要使用变量”。首屏三处计数都按 0 兜底。
 		const launch = readFileSync(join(plugin, "src/features/scan-console/components/launch-screen.tsx"), "utf8");
 		expect(launch).toContain("capabilities?.tools ?? 0");
-		expect(launch).toContain("capabilities?.skills ?? 0");
-		expect(launch).toContain("capabilities?.skillCategories ?? 0");
+		// 技能库那一行 1.5.0 删掉了（界面里恒为 0，没有信息量），所以只保留工具面的 0 兜底。
+		expect(launch).not.toContain("capabilities?.skills");
 		expect(launch).toContain("scope?.entries.length ?? 0");
 	});
 });

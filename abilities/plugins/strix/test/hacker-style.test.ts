@@ -36,8 +36,11 @@ describe("data rain on the first screen", () => {
 		const columns = /splash: (\d+)/.exec(rain)?.[1];
 		const workbench = /workbench: (\d+)/.exec(rain)?.[1];
 		const rows = /const ROWS = (\d+)/.exec(rain)?.[1];
-		expect(Number(columns)).toBeGreaterThanOrEqual(40);
-		expect(Number(workbench)).toBeGreaterThan(Number(columns));
+		// 首屏是主角：72 列、字号 13px（用户原话“过少和过小”）。
+		// 工作台反过来收：它后面就是要读的运行记录，40 列够做出“底子在动”的感觉。
+		expect(Number(columns)).toBeGreaterThanOrEqual(64);
+		expect(Number(workbench)).toBeLessThan(Number(columns));
+		expect(css).toMatch(/\.astra-strix-rain \{[^}]*font-size: 13px/s);
 		expect(Number(rows)).toBeGreaterThanOrEqual(30);
 		// 两档不透明度：工作台必须比首屏淡（它后面是要读的文本）
 		expect(css).toMatch(/\.astra-strix-rain\[data-density="workbench"\][^}]*opacity:\s*0\.0\d/s);

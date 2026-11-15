@@ -113,6 +113,8 @@ function StrixTabRoot({
 			model={session.model}
 			workspace={session.workspace}
 			hostStreaming={session.hostStreaming}
+			{...(session.live ? { live: session.live } : {})}
+			onOpenReport={session.onOpenReport}
 			canStop={session.canStop}
 			scope={session.scope}
 			candidates={session.candidates}

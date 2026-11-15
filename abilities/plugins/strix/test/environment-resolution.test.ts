@@ -50,7 +50,7 @@ describe("environment is a choice the user makes", () => {
 	it("accepts host / docker / auto and rejects anything else", () => {
 		expect(normalizeMode("docker")).toBe("docker");
 		expect(normalizeMode("HOST")).toBe("host");
-		expect(normalizeMode("nonsense")).toBe("host");
+		expect(normalizeMode("nonsense")).toBe("auto");
 		expect(normalizeMode(undefined, "auto")).toBe("auto");
 	});
 

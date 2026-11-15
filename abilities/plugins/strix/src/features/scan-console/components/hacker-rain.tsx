@@ -28,9 +28,16 @@ export interface HackerRainProps {
 }
 
 /** 列数：工作台比首屏更密（用户反馈首屏不够密，两处一起提上来）。 */
+/**
+ * 列数。
+ *
+ * 首屏是主角：72 列、字号也更大（用户的原话是“代码雨过少和过小”）。
+ * 工作台反过来收：它后面就是要读的运行记录，40 列够做出“底子在动”的感觉，
+ * 又不至于让每一帧多画两千个字形。
+ */
 const COLUMNS: Record<NonNullable<HackerRainProps["density"]>, number> = {
-	splash: 46,
-	workbench: 58,
+	splash: 72,
+	workbench: 40,
 };
 
 /** 每列的基准字数：实际长度在它上下浮动，见 `column()`。 */
@@ -90,11 +97,14 @@ function column(index: number, offset: number): Column {
 	return { text, duration, delay, opacity };
 }
 
+import { usePageVisible } from "../../../shared/hooks/use-page-visible";
+
 export function HackerRain({ density = "splash" }: HackerRainProps): React.ReactElement {
+	const visible = usePageVisible();
 	const count = COLUMNS[density];
 	const columns = Array.from({ length: count }, (_, index) => column(index, density === "workbench" ? 3 : 0));
 	return (
-		<div className="astra-strix-rain" data-density={density} aria-hidden="true">
+		<div className="astra-strix-rain" data-density={density} data-quiet={visible ? "no" : "yes"} aria-hidden="true">
 			{columns.map((entry, index) => (
 				<span
 					key={index}

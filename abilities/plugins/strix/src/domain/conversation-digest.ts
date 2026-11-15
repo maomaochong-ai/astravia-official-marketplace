@@ -15,11 +15,11 @@
  */
 
 /** 一行最多这么多字符；超出用省略号收尾（读者需要的是要点，不是全文）。 */
-const LINE_LIMIT = 140;
+const LINE_LIMIT = 200;
 /** 用户诉求那一行更短：它的作用是"我记得这轮在干什么"。 */
 const ASK_LIMIT = 96;
 /** 每轮最多留几条 agent 结论。 */
-const MAX_POINTS = 6;
+const MAX_POINTS = 10;
 
 /**
  * 寒暄与过渡：它们占的是篇幅，不是信息。
@@ -77,21 +77,27 @@ export function digestAsk(text: string): string | undefined {
  * 没有一行命中信号时退回"前两行非空文字"——一句 20 字的回答也该在面板上留个痕迹，
  * 否则用户会以为面板把这一轮丢掉了。
  */
+/** 一行是不是"列表项 / 标题"：它就是作者标出来的重点，不必再看信号词。 */
+function isMarked(line: string): boolean {
+	return /^\s{0,3}(?:[-*+]\s|\d+[.)]\s|#{1,6}\s|\|)/.test(line);
+}
+
 export function digestAnswer(text: string): string[] {
 	if (!text) return [];
-	// 先把寒暄与过渡剔掉：它们不是信息，也不该在“没有信息”的时候被当作退路。
-	const lines = text
-		.split(/\r?\n/)
-		.map(plain)
-		.filter((line) => line.length >= 4 && !FILLER.test(line));
-	if (lines.length === 0) return [];
+	const raw = text.split(/\r?\n/);
+	const rows = raw
+		.map((line, index) => ({ text: plain(line), index, marked: isMarked(line) }))
+		.filter((row) => row.text.length >= 4 && (row.marked || !FILLER.test(row.text)));
+	if (rows.length === 0) return [];
 
 	const points: string[] = [];
 	const seen = new Set<string>();
-	for (const line of lines) {
+	for (const row of rows) {
 		if (points.length >= MAX_POINTS) break;
-		if (line.length < 8 && !/[：:]/.test(line)) continue;
-		if (!SIGNAL.some((pattern) => pattern.test(line))) continue;
+		const line = row.text;
+		// 短行只有在带冒号（"严重级：high"）或是列表项时才留。
+		if (line.length < 8 && !/[：:]/.test(line) && !isMarked(raw[row.index] ?? "")) continue;
+		if (!row.marked && !SIGNAL.some((pattern) => pattern.test(line))) continue;
 		const next = clip(line, LINE_LIMIT);
 		if (seen.has(next)) continue;
 		seen.add(next);
@@ -99,7 +105,28 @@ export function digestAnswer(text: string): string[] {
 	}
 	if (points.length > 0) return points;
 
-	return lines.slice(0, 2).map((line) => clip(line, LINE_LIMIT));
+	// 一句 20 字、没有数字也没有路径的回答也该留个痕迹。
+	return rows.slice(0, 3).map((row) => clip(row.text, LINE_LIMIT));
+}
+
+/**
+ * 流式过程中的一行"正在说什么"。
+ *
+ * 为什么需要：模型一句话要跑十几秒，这段时间面板一片静止，用户以为插件罢工了。
+ * 这里取最后一段有内容的话并截断——它不是正文，只是一个"还在写"的证明；
+ * 完整答复到达时它会被摘要替换掉。
+ */
+export function digestLive(text: string): string | undefined {
+	if (!text) return undefined;
+	const rows = text
+		.split(/\r?\n/)
+		.map((line) => plain(line))
+		.filter((line) => line.length >= 2);
+	const last = rows[rows.length - 1];
+	if (!last) return undefined;
+	// 只看最后 120 字：读者要的是"现在在说什么"，不是整段。
+	const tail = last.length > 120 ? `…${last.slice(-120)}` : last;
+	return tail;
 }
 
 /**

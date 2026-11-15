@@ -47,6 +47,10 @@ export interface StrixTabProps {
 	hostStreaming: boolean;
 	/** 停止可用：这一轮是本面板发起的。 */
 	canStop: boolean;
+	/** 这一轮进行中：最后一句的摘要（宿主还在写）。 */
+	live?: string;
+	/** 读一条历史报告（按评估键）。 */
+	onOpenReport: (key: string) => Promise<string>;
 	/** 团队会话：面板只读，发送与停止都在团队输入框。 */
 	readOnly: boolean;
 	/** 已声明的范围（目标区把声明与候选分两组画）。 */
@@ -131,6 +135,8 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					{...(props.history ? { history: props.history } : {})}
 					{...(props.team ? { team: props.team } : {})}
 					onStop={() => void props.stop()}
+					{...(props.live ? { live: props.live } : {})}
+					onOpenReport={props.onOpenReport}
 					onSend={(value) => void props.send(value)}
 					{...(props.readOnly ? { readOnly: true } : {})}
 					busy={props.busy}

@@ -74,6 +74,10 @@ export interface ScanScreenProps {
 	 */
 	canStop?: boolean;
 	onStop: () => void;
+	/** 这一轮进行中：最后一句的摘要（宿主还在写，面板不静止）。 */
+	live?: string;
+	/** 读一条历史报告（`?key=`），返回 markdown。 */
+	onOpenReport?: (key: string) => Promise<string>;
 	/** 把这一句交给宿主对话。 */
 	onSend?: (text: string) => void;
 	/** 团队会话：面板只读。 */
@@ -170,6 +174,8 @@ export function ScanScreen({
 	team,
 	onOpenNote,
 	onStop,
+	live,
+	onOpenReport,
 	onSend,
 	readOnly,
 }: ScanScreenProps): React.ReactElement {
@@ -187,6 +193,8 @@ export function ScanScreen({
 	const steps = trace.filter((entry) => entry.kind === "tool").length;
 	// 运行记录永远停在最新一行；读者自己往上滚时不抢回（use-stick-to-bottom.ts）。
 	/** 默认展开“这一眼要看的”；连接与历史收起，需要时点开。 */
+	/** 历史报告的预览：`{ key, text }`，text 为空表示那条没有留档。 */
+	const [reportPreview, setReportPreview] = useState<{ key: string; text: string } | null>(null);
 	const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
 		targets: false,
 		findings: false,
@@ -287,6 +295,12 @@ export function ScanScreen({
 							<button type="button" className="astra-strix-new-rows" onClick={stick.jumpToBottom}>
 								{t("scan.newRows", { count: stick.pending })} ↓
 							</button>
+						) : null}
+						{/* 宿主还在写：把最后一句放出来，面板看起来就不是罢工。 */}
+						{live ? (
+							<div className="astra-strix-say-row" data-from="agent" data-live="yes">
+								<p className="astra-strix-say">{live}</p>
+							</div>
 						) : null}
 						{/* A live caret: without it a quiet stretch reads as "the run died". The timer
 						    says the same thing in words for anyone who misses the blink. */}
@@ -579,7 +593,26 @@ export function ScanScreen({
 						{history.length ? (
 							<ul className="astra-strix-history">
 								{history.map((entry) => (
-									<li key={entry.key} data-report={entry.report ? "yes" : "no"}>
+									<li
+										key={entry.key}
+										data-report={entry.report ? "yes" : "no"}
+										{...(entry.report && onOpenReport
+											? {
+													role: "button",
+													tabIndex: 0,
+													className: "astra-strix-history-row",
+													title: t("history.openReport"),
+													onClick: () => {
+														void onOpenReport(entry.key).then((text) => setReportPreview({ key: entry.key, text }));
+													},
+													onKeyDown: (event: React.KeyboardEvent) => {
+														if (event.key !== "Enter" && event.key !== " ") return;
+														event.preventDefault();
+														void onOpenReport(entry.key).then((text) => setReportPreview({ key: entry.key, text }));
+													},
+												}
+											: {})}
+									>
 										<span className="astra-strix-dim">{entry.at.slice(0, 10)}</span>
 										<span className="astra-strix-history-targets" title={entry.targets.join(", ")}>
 											{entry.targets.length ? entry.targets.join(", ") : entry.key}
@@ -596,6 +629,21 @@ export function ScanScreen({
 					</section>
 
 				</aside>
+
+				{/* 历史报告预览：面板里读 markdown，不下载、不开新窗。 */}
+				{reportPreview ? (
+					<div className="astra-strix-report" role="dialog" aria-modal="true" aria-label={t("history.report")}>
+						<div className="astra-strix-report-bar">
+							<span className="astra-strix-dim">{reportPreview.key}</span>
+							<button type="button" className="astra-strix-band-button" onClick={() => setReportPreview(null)}>
+								{t("history.closeReport")}
+							</button>
+						</div>
+						<pre className="astra-strix-report-body">
+							{reportPreview.text || t("history.reportMissing")}
+						</pre>
+					</div>
+				) : null}
 			</div>
 		</div>
 	);

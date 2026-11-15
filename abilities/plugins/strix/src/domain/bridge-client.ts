@@ -22,7 +22,8 @@ export interface BridgeClient {
 	 */
 	setConversation(conversationId: string | null): Promise<{ conversation: string | null }>;
 	findings(): Promise<StrixFinding[]>;
-	report(): Promise<{ markdown: string; count: number }>;
+	/** `key` 给了就读那条历史评估的留档（`?key=`），否则读当前会话。 */
+	report(key?: string): Promise<{ markdown: string; count: number }>;
 	stopSandbox(): Promise<{ stopped: boolean }>;
 	/** 面板选择的执行环境（host/docker/auto）与上次安装尝试。 */
 	preferences(): Promise<{ environmentMode: "auto" | "host" | "docker"; lastInstall?: { command: string; at: string; ok: boolean; detail?: string } }>;
@@ -90,9 +91,10 @@ export function createBridgeClient(baseUrl: () => Promise<string>): BridgeClient
 			const state = await readJson<BridgeState>(await fetch(`${base}/api/state`, { cache: "no-store" }));
 			return state.findings ?? [];
 		},
-		async report() {
+		async report(key?: string) {
 			const base = await baseUrl();
-			return readJson(await fetch(`${base}/api/report`));
+			const suffix = key ? `?key=${encodeURIComponent(key)}` : "";
+			return readJson(await fetch(`${base}/api/report${suffix}`));
 		},
 		async preferences() {
 			const base = await baseUrl();

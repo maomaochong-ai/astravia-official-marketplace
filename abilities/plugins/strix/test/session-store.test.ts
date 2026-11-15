@@ -45,8 +45,9 @@ describe("session scope", () => {
 	it("accepts events only from the conversation the panel mounted in", () => {
 		expect(belongsTo("conv-a", "conv-a")).toBe(true);
 		expect(belongsTo("conv-a", "conv-b")).toBe(false);
-		// A host that reports no id at all: the panel stays where it mounted.
-		expect(belongsTo(null, "conv-b")).toBe(false);
+		// 1.5.0：未绑定的面板接受第一个真会话。原实现返回 false，导致“发出去了、宿主在跑、
+		// 面板不动”——那一轮的 turn-start 与 tool-call 全被这一条挡掉。
+		expect(belongsTo(null, "conv-b")).toBe(true);
 		expect(belongsTo(null, undefined)).toBe(true);
 	});
 });

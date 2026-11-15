@@ -99,7 +99,11 @@ describe("direction two: the host's answers come back as points, not as prose", 
 
 	it("streams nothing: only the finished message is digested", () => {
 		// `message-updated` 是增量，每一帧推一行就等于抄正文。
-		expect(hook).toContain('if (event.type === "message-added" || event.type === "message-updated") return;');
+		// 1.5.0：流式增量不再直接丢弃，而是节流成一行摘要（面板在模型写字时不静止）；
+		// 完整文本仍只在 message-added 时摘要一次。
+		expect(hook).toContain('if (event.type === "message-updated") {');
+		expect(hook).toContain("digestLive(streamBuffer.current)");
+		expect(hook).toContain('if (event.type === "message-added" && event.message.role === "assistant") {');
 	});
 });
 

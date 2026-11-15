@@ -23,7 +23,13 @@ import { PanelBox } from "../../../shared/components/panel-box";
 
 const TODO_STATUS_ORDER = ["in_progress", "pending", "done"];
 /** How many rows a panel shows before it says there are more. */
-const ROW_LIMIT = 8;
+/**
+ * 一张列表最多画多少行。
+ *
+ * 原来是 8：真机上「覆盖」到第 8 行就写“还有 N 行”，而侧栏本来有滚动条，
+ * 等于白白藏掉内容。24 之后绝大多数评估一次看完，超出仍然给计数（不静默丢）。
+ */
+const ROW_LIMIT = 24;
 
 function TodoPanel({ t, todos }: { t: (key: string, params?: Record<string, string | number>) => string; todos: readonly TodoItem[] }): React.ReactElement {
 	if (!todos.length) return <p className="astra-strix-dim">{t("todos.empty")}</p>;
