@@ -283,7 +283,6 @@
 
 /* 输入框内部：上方是文本行，下方是底条（左键位、右发送）。
    按钮不再与文本同行——输入长高时它会被挤到文字中间（1.0.8 用户反馈）。 */
-   按钮不再与文本同行——输入长高时它会被挤到文字中间（1.0.8 用户反馈）。 */
 .astra-strix-composer-bar {
 	display: flex;
 	align-items: center;
@@ -1883,8 +1882,11 @@
 .astra-strix-row {
 	display: grid;
 	grid-template-columns: 5.2em minmax(0, 1fr);
-	align-items: baseline;
+	align-items: center;
 	column-gap: 10px;
+	/* 带 select / 按钮的行天生比纯文字行高 4px；给所有行同一个下限，
+	   一行行读下来才是等距的（1.2.0 之前是 18 / 22 交替）。 */
+	min-height: 22px;
 }
 
 .astra-strix-row-label {
@@ -2019,11 +2021,10 @@
 	font-size: 11.5px;
 }
 
-/* 正文行宽仍按 72ch 收，长命令不横穿整块。
-   对话框跟事实行共用同一条右边缘：它是这一列里最宽的控件，宽出 100 多像素就会显成“两大块”。 */
-.astra-strix-launch .astra-strix-tagline,
-.astra-strix-launch .astra-strix-rows,
-.astra-strix-launch .astra-strix-composer-panel {
+/* 首屏三块（标题 / 对话框 / 事实行）共用列宽，右边缘才是一条线。
+   1.2.0 把后两块收到 72ch，结果标题比它们宽 130px，看上去像两栏没对齐。
+   72ch 的可读性上限只留给正文（工作台的运行记录），配置页不需要。 */
+.astra-strix-launch .astra-strix-tagline {
 	max-width: 72ch;
 }
 

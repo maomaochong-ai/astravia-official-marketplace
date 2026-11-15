@@ -659,6 +659,10 @@ export function useStrixSession({
 						return false;
 					}
 				}
+				// 记下自己刚发的那句：宿主只转发 assistant 的消息（不转发用户发言），
+				// 所以“这一轮在干什么”只能由面板自己留一行摘要。截断到 96 字，它不是正文。
+				const ask = digestAsk(value);
+				if (ask && conversationIdRef.current) pushTrace({ kind: "say", label: ask, from: "you" });
 				// 离开首屏：用户按下的是“发出去”，不是“继续看配置”。
 				launchPinned.current = false;
 				setShowLaunch(false);
