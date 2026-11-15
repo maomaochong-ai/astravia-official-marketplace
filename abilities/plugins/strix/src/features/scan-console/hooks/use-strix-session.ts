@@ -133,6 +133,8 @@ export interface StrixSessionModel {
 	setEnvironmentMode: (mode: "auto" | "host" | "docker") => Promise<void>;
 	/** 让服务代跑 docker 安装命令；装完再 refresh() 就能看到新环境。 */
 	installDocker: () => Promise<void>;
+	/** 宿主正在安装 docker（面板据此把环境行切成“安装中”并轮询探针）。 */
+	installing: boolean;
 	/** 环境检测结果（docker 可用性 / 镜像是否已拉取）；切换环境后自动重探。 */
 	docker: { ready: boolean; detail?: string; imagePresent: boolean | null } | null;
 	/** 让宿主执行 docker pull（镜像缺失时面板上的「拉取镜像」）。 */
@@ -246,6 +248,8 @@ export function useStrixSession({
 	const [candidates, setCandidates] = useState<DerivedTarget[]>([]);
 	const [hostStreaming, setHostStreaming] = useState<boolean>(Boolean(conversation?.isStreaming));
 	const [live, setLive] = useState<string | undefined>(undefined);
+	/** 宿主正在装 docker：环境行据此切成“安装中”，并每 5 秒重探一次。 */
+	const [installing, setInstalling] = useState(false);
 	/** 流式累积：只用来算最后一句话，不保留正文。 */
 	const streamBuffer = useRef("");
 	const liveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -502,6 +506,41 @@ export function useStrixSession({
 		}
 	}, [refreshNow]);
 
+	/**
+	 * 安装中：每 5 秒探一次环境，docker 起来就把这一档切掉。
+	 *
+	 * 为什么轮询而不是等事件：安装是宿主那一轮的副产物，插件拿不到它的进度事件；
+	 * 探针是唯一可靠的事实源。20 分钟后放弃（安装器早该有结论）。
+	 */
+	useEffect(() => {
+		if (!installing) return;
+		let cancelled = false;
+		let attempts = 0;
+		const timer = setInterval(() => {
+			attempts += 1;
+			if (attempts > 240) {
+				setInstalling(false);
+				return;
+			}
+			void client
+				.probeEnvironment()
+				.then((probe) => {
+					if (cancelled) return;
+					setDocker(probe.docker);
+					if (probe.docker.ready) {
+						setInstalling(false);
+						note(t("log.dockerInstalled"), "ok");
+						void refresh();
+					}
+				})
+				.catch(() => undefined);
+		}, 5_000);
+		return () => {
+			cancelled = true;
+			clearInterval(timer);
+		};
+	}, [client, installing, note, refresh, t]);
+
 	// 模型与目录的出处不再写进日志（1.0.7）。它们已经是首屏事实表里的两行（模型 / 目录），
 	// 再在日志里“宣告”一遍，用户看到的是同一句话说两遍（截图里那三行）。
 	// 日志现在只放**事件**：拉镜像成功/失败、桥接错误、降级……那些事后不再成立的事。
@@ -643,6 +682,13 @@ export function useStrixSession({
 
 			if (event.type === "turn-end") {
 				setHostStreaming(false);
+				// 宿主这一轮结束了：它起过的后台命令不该继续在“工作单元”里显示为运行中。
+				void client
+					.stopShells()
+					.then((result) => {
+						if (result.stopped > 0) note(t("log.shellsStopped", { count: result.stopped }), "ok");
+					})
+					.catch(() => undefined);
 				streamBuffer.current = "";
 				setLive(undefined);
 				void refresh();
@@ -811,9 +857,33 @@ export function useStrixSession({
 		}
 	}, [client, note, t]);
 
+	/**
+	 * 让宿主安装 docker。
+	 *
+	 * 顺序是有意为之：先把命令回填到宿主对话，由宿主的 AI 在用户眼前执行——
+	 * 用户能看到进度、能中途取消，也能接着聊；服务里的静默安装只在拿不到命令或
+	 * 拿不到会话时兜底，并在日志里说清走的是哪条路。
+	 */
 	const installDocker = useCallback(async () => {
 		setSubmitting(true);
 		try {
+			const plan = await client.installPlan().catch(() => ({ available: false } as { available: boolean; command?: string }));
+			if (plan.available && plan.command) {
+				const sentence = t("log.dockerInstallHandoff", { command: plan.command });
+				setInstalling(true);
+				if (conversationIdRef.current) {
+					const receipt = await sendPrompt(sentence).catch(() => ({ status: "failed" as const }));
+					if (receipt.status !== "failed") {
+						note(t("log.dockerInstallingInHost"), "ok");
+						void refresh();
+						return;
+					}
+				}
+				// 没有会话可回填：交给宿主输入框，用户按一次回车就开始。
+				insertText(sentence);
+				note(t("log.handedToHost"), "ok");
+				return;
+			}
 			const result = await client.installDocker();
 			note(result.installed ? t("log.dockerInstalled") : t("log.dockerInstallFailed"), result.installed ? "ok" : "error");
 			await refresh();
@@ -822,7 +892,7 @@ export function useStrixSession({
 		} finally {
 			setSubmitting(false);
 		}
-	}, [client, note, refresh, t]);
+	}, [client, insertText, note, refresh, sendPrompt, t]);
 
 	/**
 	 * 进工作台（1.0.13）：不发送、不建会话，只把这一屏换过去。
@@ -939,6 +1009,7 @@ export function useStrixSession({
 			installDocker,
 			docker,
 			pullImage,
+			installing,
 			showLaunch,
 			openLaunch,
 			openWorkbench,
@@ -974,6 +1045,7 @@ export function useStrixSession({
 			hostStreaming,
 			conversation?.id,
 			submitting,
+			installing,
 			scope,
 			candidates,
 			capabilities,

@@ -737,6 +737,13 @@ const server = createServer(async (req, res) => {
 				entries,
 			});
 		}
+		if (url.pathname === "/api/environment/install-plan") {
+			// 只回命令，不执行：面板要把这条命令**回填到宿主对话**，由宿主的 AI 在用户眼前跑
+			// （用户能看到进度、能中途取消），而不是在服务里静默 sparwn 一个安装器。
+			const plan = dockerInstallCommand();
+			if (!plan) return json(res, 200, { available: false });
+			return json(res, 200, { available: true, command: `${plan.command} ${plan.argv.join(" ")}`, command_argv: plan });
+		}
 		if (url.pathname === "/api/environment/pull" && req.method === "POST") {
 			// 拉镜像交给宿主执行：docker pull 可能要几分钟、几百 MB，面板只等结果。
 			const image = sandboxImage();
@@ -863,6 +870,18 @@ const server = createServer(async (req, res) => {
 			}
 			// 之前传 {}：导出的报告没有范围段，等于把“测了什么”丢了一半。
 			return json(res, 200, await findings.report(sessionId(), { scope: describeScope(await scope.snapshot()) }, { version }));
+		}
+		if (url.pathname === "/api/shells/stop" && req.method === "POST") {
+			// 宿主的那一轮结束了，但它起过的后台命令还在跑——那正是“已停止生成、团队里还有进程”。
+			// 这里只收拾本服务持有的 shell 会话（面板能看见的那些），不碰宿主的进程。
+			let stopped = 0;
+			for (const session of sessions.list()) {
+				if (!session.running) continue;
+				await sessions.kill(session.id).catch(() => undefined);
+				stopped += 1;
+			}
+			mcpRosterCache.invalidate();
+			return json(res, 200, { stopped });
 		}
 		if (url.pathname === "/api/sandbox/stop" && req.method === "POST") {
 			mcpRosterCache.invalidate();

@@ -49,6 +49,7 @@ export interface StrixTabProps {
 	canStop: boolean;
 	/** 这一轮进行中：最后一句的摘要（宿主还在写）。 */
 	live?: string;
+	installing?: boolean;
 	/** 读一条历史报告（按评估键）。 */
 	onOpenReport: (key: string) => Promise<string>;
 	/** 团队会话：面板只读，发送与停止都在团队输入框。 */
@@ -117,6 +118,7 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					workspace={props.workspace}
 					hostStreaming={props.hostStreaming}
 					scope={props.scope}
+					{...(props.installing ? { installing: true } : {})}
 					candidates={props.candidates}
 					canStop={props.canStop}
 					environment={props.environment}

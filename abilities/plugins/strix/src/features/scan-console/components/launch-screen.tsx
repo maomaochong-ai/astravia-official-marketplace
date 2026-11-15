@@ -52,6 +52,8 @@ export interface LaunchScreenProps {
 	environmentReady?: boolean;
 	/** 环境检测结果：docker 可用性与镜像是否已在本地。 */
 	docker?: { ready: boolean; detail?: string; imagePresent: boolean | null } | null;
+	/** 宿主正在装 docker：环境行切成“安装中”，不再显示“没有 docker”。 */
+	installing?: boolean;
 	/** 服务解析出来的这次真实落点（`/api/environment` 的 mode）；没探测过时为空。 */
 	resolvedMode?: "host" | "docker";
 	onPullImage?: () => Promise<void>;
@@ -142,6 +144,7 @@ export function LaunchScreen({
 	environmentMode: environmentModeProp,
 	environmentReady,
 	docker,
+	installing,
 	resolvedMode,
 	onPullImage,
 	onEnvironmentMode,
@@ -162,6 +165,8 @@ export function LaunchScreen({
 		docker: docker ?? (environmentReady === false ? { ready: false, imagePresent: null } : null),
 	});
 
+	// 安装中压过一切：此刻“有没有 docker”正在被改写，说“没有”只会误导。
+	const shownEnvState = installing ? "installing" : envState;
 	const declared = scope?.entries.length ?? 0;
 	const connections = mcp ?? [];
 	const dockerMode = resolvedMode === "docker" || environmentMode === "docker";
@@ -237,7 +242,7 @@ export function LaunchScreen({
 					    noDocker    → 让宿主安装 docker
 					    noImage     → 让宿主拉取沙箱镜像
 					    ready       → 只说已就绪 */}
-					<Row label={t("env.choice")} state={envState}>
+					<Row label={t("env.choice")} state={shownEnvState}>
 						<span className="astra-strix-env-line">
 							<select
 								className="astra-strix-env-select"
@@ -250,21 +255,22 @@ export function LaunchScreen({
 								<option value="auto">{t("env.auto")}</option>
 							</select>
 							<span className="astra-strix-env-status" data-state={envState}>
-								{envState === "host" ? t("env.statusHost") : null}
-								{envState === "autoDocker" ? t("env.statusAutoDocker") : null}
-								{envState === "autoNoImage" ? t("env.statusAutoNoImage") : null}
-								{envState === "autoHost" ? t("env.statusAutoHost") : null}
-								{envState === "noDocker" ? t("env.statusNoDocker") : null}
-								{envState === "noImage" ? t("env.statusNoImage") : null}
-								{envState === "ready" ? t("env.statusReady") : null}
+								{shownEnvState === "installing" ? t("env.statusInstalling") : null}
+								{shownEnvState === "host" ? t("env.statusHost") : null}
+								{shownEnvState === "autoDocker" ? t("env.statusAutoDocker") : null}
+								{shownEnvState === "autoNoImage" ? t("env.statusAutoNoImage") : null}
+								{shownEnvState === "autoHost" ? t("env.statusAutoHost") : null}
+								{shownEnvState === "noDocker" ? t("env.statusNoDocker") : null}
+								{shownEnvState === "noImage" ? t("env.statusNoImage") : null}
+								{shownEnvState === "ready" ? t("env.statusReady") : null}
 							</span>
 							<span className="astra-strix-env-actions">
-								{envState === "noDocker" ? (
+								{shownEnvState === "noDocker" ? (
 									<button type="button" className="astra-strix-env-action" onClick={() => onInstallDocker?.()}>
 										{t("env.install")}
 									</button>
 								) : null}
-								{envState === "noImage" || envState === "autoNoImage" ? (
+								{shownEnvState === "noImage" || envState === "autoNoImage" ? (
 									onPullImage ? (
 										<button type="button" className="astra-strix-env-action" onClick={() => void onPullImage()}>
 											{t("env.pull")}
@@ -330,7 +336,9 @@ export function LaunchScreen({
 										<span className="astra-strix-green" aria-hidden="true">
 											●
 										</span>
-										<span className="astra-strix-dim">{t("boot.ready")}</span>
+										<span className="astra-strix-dim">
+										{t(dockerMode ? "boot.readyDocker" : "boot.readyHost")}
+									</span>
 									</>
 								)}
 								<span className="astra-strix-dim"> · v{version}</span>

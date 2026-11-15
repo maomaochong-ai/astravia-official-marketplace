@@ -40,6 +40,14 @@ export interface BridgeClient {
 	}>;
 	/** 「装在哪」：当前系统的 docker 位置、容器内落点、工具链与数据目录（服务已探过存在性）。 */
 	installPaths(): Promise<BridgeInstallPaths>;
+	/**
+	 * 只取 docker 的安装命令，不执行。
+	 *
+	 * 面板拿它回填到宿主对话里：用户要看着装，而不是让服务在后台悄悄装。
+	 */
+	installPlan(): Promise<{ available: boolean; command?: string }>;
+	/** 停掉这个会话里所有还在跑的后台命令（对话结束后不再显示“还在跑”）。 */
+	stopShells(): Promise<{ stopped: number }>;
 	/** 让宿主执行 docker pull，返回结果与最新环境探测。 */
 	pullImage(): Promise<{ ok: boolean; image?: string; tail?: string[]; error?: string }>;
 	/** Run one bridge tool by name; throws on an unknown name or a tool failure. */
@@ -123,6 +131,13 @@ export function createBridgeClient(baseUrl: () => Promise<string>): BridgeClient
 					body: JSON.stringify(patch),
 				}),
 			);
+		},
+		async installPlan() {
+			const base = await baseUrl();
+			return readJson(await fetch(`${base}/api/environment/install-plan`, { cache: "no-store" }));
+		},
+		async stopShells() {
+			return postJson(await baseUrl().then((base) => `${base}/api/shells/stop`), {});
 		},
 		async installDocker() {
 			const base = await baseUrl();
