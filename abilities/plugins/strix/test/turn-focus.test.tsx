@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const conversationState = {
 	id: "session-1",
 	cwd: "D:\\open-source-projects\\strix",
-	// 单智能体会话的标志：有会话文件。团队会话那边宿主写死 null（ADR 0020），
+	// 单智能体会话的标志：有会话文件。团队会话那边宿主写死 null，
 	// 下面那条团队用例会显式发一份 sessionPath: null 的 conversation-changed。
 	sessionPath: "D:\\open-source-projects\\strix\\.astravia\\session-1.jsonl",
 	model: "anthropic/claude-opus-5-5",
@@ -164,7 +164,7 @@ describe("a host turn brings the panel to the front", () => {
 		await flush();
 
 		// 团队会话：宿主把 sessionPath 写死为 null，输入框上也没有插件的胶囊入口。
-		// 没开关不等于拒绝（ADR 0020）——这一轮必须把面板带出来，否则用户看不到现场。
+		// 没开关不等于拒绝 ——这一轮必须把面板带出来，否则用户看不到现场。
 		await act(async () => {
 			host.emit({
 				type: "conversation-changed",

@@ -27,21 +27,21 @@ import { ConsoleBoundary } from "./console-boundary";
 import { LaunchScreen } from "./launch-screen";
 import type { BridgeBudget, BridgeHistoryEntry, BridgeTeam, BridgeTelemetry } from "../../../runtime-contract";
 import { ScanScreen } from "./scan-screen";
-import type { McpConnection } from "../../../service/mcp-roster";
+import type { McpConnection } from "../../../domain/mcp-roster";
 
 export interface StrixTabProps {
 	t: (key: string) => string;
 	version: string;
 	phase: SessionPhase;
 	log: readonly LogLine[];
-	/** Bridge boot state; a live line on the launch screen (ADR strix-0004). */
+	/** Bridge boot state; a live line on the launch screen. */
 	boot: { state: "connecting" | "ready" | "failed"; detail?: string };
 	model?: ModelChoice;
 	/** Folder name of the conversation workspace. */
 	workspace?: string;
 	/** The host conversation is generating right now. */
 	hostStreaming: boolean;
-	/** 停止可用：这一轮是本面板发起的（ADR 0020）。 */
+	/** 停止可用：这一轮是本面板发起的。 */
 	canStop: boolean;
 	/** 团队会话：面板只读，发送与停止都在团队输入框。 */
 	readOnly: boolean;
@@ -88,7 +88,7 @@ export interface StrixTabProps {
 function blockedReason(t: (key: string) => string, model: ModelChoice | undefined, environment: EnvironmentProbe | undefined): string | undefined {
 	if (!model) return t("launch.blocked.model");
 	// No daemon is no longer a gate: the tools run in the user's session instead
-	// (ADR strix-0001), with weaker isolation and a label that says so. The only real
+	// with weaker isolation and a label that says so. The only real
 	// block is an environment that reports itself unusable.
 	if (environment && environment.ready === false) return t("launch.blocked.docker");
 	return undefined;

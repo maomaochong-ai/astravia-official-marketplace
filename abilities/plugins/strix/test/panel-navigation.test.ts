@@ -5,10 +5,10 @@ import { join, resolve } from "node:path";
 const plugin = resolve(process.cwd());
 
 /**
- * 首屏 ↔ 工作台的导航契约（ADR 0014）：「返回首屏」是按钮不是推断，
+ * 首屏 ↔ 工作台的导航契约：「返回首屏」是按钮不是推断，
  * 「新会话」在当前目录建会话，拿不到目录不报错。
  */
-describe("navigation and instances (ADR 0014)", () => {
+describe("navigation and instances", () => {
 	it("lets the operator go back to the launch screen and stay there", () => {
 		const hook = readFileSync(join(plugin, "src/features/scan-console/hooks/use-strix-session.ts"), "utf8");
 		expect(hook).toContain("launchPinned");

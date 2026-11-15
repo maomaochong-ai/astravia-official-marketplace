@@ -56,7 +56,7 @@ export interface EnvironmentProbe {
 	python: { version: string; executable: string; found: boolean };
 	engine: { installed: boolean; version: string };
 	docker: { ready: boolean; detail: string; image: string; imagePresent?: boolean | null };
-	/** Which environment a scan will run in; `host` means no container (ADR strix-0001). */
+	/** Which environment a scan will run in; `host` means no container. */
 	mode?: "docker" | "host";
 	ready: boolean;
 }
@@ -67,9 +67,9 @@ export interface SandboxStatus {
 	targets?: string[];
 	image?: string | null;
 	uptimeSec?: number;
-	/** Which environment this session runs in (ADR strix-0001). */
+	/** Which environment this session runs in. */
 	mode?: "docker" | "host";
-	/** Scan depth chosen at start (ADR strix-0002). */
+	/** Scan depth chosen at start. */
 	scanMode?: string;
 	/** Caido proxy tools were enabled for this session. */
 	proxy?: boolean;
@@ -194,8 +194,7 @@ export interface NoteSummary {
  * 一个「工作单元」：agent 起的长任务会话（`strix_exec background:true`）。
  *
  * 上游的 agents 面板列出的是它自己派生的子智能体；本插件没有模型循环，
- * 所以面板上能诚实列出的是**在同一个沙箱里并行干活的东西**：保留的 shell 会话
- * 。
+ * 所以面板上能诚实列出的是**在同一个沙箱里并行干活的东西**：保留的 shell 会话。
  */
 export interface ShellSessionSummary {
 	id: string;
@@ -223,7 +222,7 @@ export interface TraceEntry {
 	 * 只有三种：工具（命令与结果）、agent 的说明（`note`）、它自己写的结论（`say`）。
 	 *
 	 * 曾经还有 `host` / `host-say` / `user`：把宿主对话里的用户发言与 agent 回复抄进面板。
-	 * 那正是“两处回复一模一样”的来源，0.7.1 删除（ADR strix-0007）。现在即使想抄也
+ * 那正是“两处回复一模一样”的来源，0.7.1 删除。现在即使想抄也
 	 * 抄不了：类型里没有这几个名字。
 	 */
 	kind: "tool" | "say" | "note";

@@ -5,7 +5,7 @@
  * arguments, then the status line. The two additions are the ones a pointer makes possible
  * — the output folds away, and the block keeps the exit code and duration it closed with.
  *
- * 这里**没有**用户发言、没有 agent 回复（ADR strix-0007）。宿主的聊天区已经把两样都渲染
+ * 这里**没有**用户发言、没有 agent 回复。宿主的聊天区已经把两样都渲染
  * 好了：markdown、可复制、可以滚很远；面板再画一遍就是同一段文字的第二份存在。轨迹
  * 存在的理由是聊天区没有的东西：命令原文、退出码、耗时、输出尾巴、哪一步在跑。
  */

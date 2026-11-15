@@ -7,8 +7,8 @@ import { normalizeSessions } from "../src/domain/bridge-payloads";
 
 /**
  * 两件事：
- *  1. `delete_vulnerability_report` 的对等物（ADR 0006 里最后一个未实现项）；
- *  2. 工作单元的数据源（ADR 0010）：`/api/state` 的 sessions 归一化。
+ * 1. `delete_vulnerability_report` 的对等物；
+ * 2. 工作单元的数据源：`/api/state` 的 sessions 归一化。
  */
 
 const session = () => `s-${Math.random().toString(36).slice(2, 8)}`;

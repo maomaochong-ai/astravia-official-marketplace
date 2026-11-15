@@ -5,7 +5,7 @@ import { presentTool, EXPANDABLE_FAMILIES } from "../src/features/scan-console/t
 import { SERVICE_TOOL_NAMES } from "../src/agent/strix-tools";
 
 /**
- * 逐工具渲染：与上游 `internal/render/*` 对齐的那一层（ADR 0009）。
+ * 逐工具渲染：与上游 `internal/render/*` 对齐的那一层。
  *
  * 上游给 24 种工具各写了一个渲染器；本插件用 12 个家族覆盖这 35 个工具，未登记的落到
  * generic（上游的 `_render_default_tool_widget`）。这条测试守两件事：

@@ -44,9 +44,9 @@ describe("environment resolution", () => {
 const plugin = resolve(process.cwd());
 
 /**
- * 环境是用户的选择（ADR 0013）：三个取值、安装命令交给宿主、与扫描深度分开。
+ * 环境是用户的选择：三个取值、安装命令交给宿主、与扫描深度分开。
  */
-describe("environment is a choice (ADR 0013)", () => {
+describe("environment is a choice the user makes", () => {
 	it("accepts host / docker / auto and rejects anything else", () => {
 		expect(normalizeMode("docker")).toBe("docker");
 		expect(normalizeMode("HOST")).toBe("host");

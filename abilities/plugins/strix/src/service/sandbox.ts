@@ -7,7 +7,7 @@
  *
  * Without a Docker daemon the same class runs commands in the user's own session
  * (`mode === "host"`): no container, no mount translation, weaker isolation. That
- * path exists so a scan can start at all — see ADR strix-0001.
+ * path exists so a scan can start at all.
  */
 
 import { execFile } from "node:child_process";
@@ -34,7 +34,7 @@ const DEFAULT_IMAGE = "ghcr.io/usestrix/strix-sandbox:1.4.0";
  * Process env for a host-mode command: the managed toolchain directory first.
  *
  * Prepend, not replace: a tool the user installed themselves still resolves if the
- * shipped bundle does not carry it (ADR strix-0005: bundled wins, user's PATH remains).
+ * shipped bundle does not carry it (bundled wins, user's PATH remains).
  */
 function withManagedToolchain(): NodeJS.ProcessEnv {
 	const managed = managedToolchainDir();
@@ -62,7 +62,7 @@ async function runLocal(
 			...(input === undefined ? {} : { input }),
 			maxBuffer: 16 * 1024 * 1024,
 			windowsHide: true,
-			// The toolchain shipped with the plugin comes first (ADR strix-0005): a machine
+			// The toolchain shipped with the plugin comes first: a machine
 			// with no package manager still runs the tools this build was tested against.
 			env: withManagedToolchain(),
 		});
@@ -87,7 +87,7 @@ export interface SandboxStatus {
 	startedAt?: string | null;
 	/** Which environment this session runs in; `host` means no container. */
 	mode?: EnvironmentMode;
-	/** Scan depth chosen when the session started (ADR strix-0002). */
+	/** Scan depth chosen when the session started. */
 	scanMode?: ScanMode;
 	/** Caido proxy tools were enabled for this session. */
 	proxy?: boolean;
@@ -144,10 +144,10 @@ export class Sandbox {
 	private sessionId: string | null = null;
 	/** 开这个沙箱的会话 id（1.0.7）；用于台账隔离与面板归属判定。 */
 	private conversation: string | null = null;
-	/** `host` means no container: commands run in the user's session (ADR strix-0001). */
+	/** `host` means no container: commands run in the user's session. */
 	private mode: EnvironmentMode = "docker";
 	private hostRoot: string | null = null;
-	/** Scan depth for this session; fixed at start (ADR strix-0002). */
+	/** Scan depth for this session; fixed at start. */
 	private scanMode: ScanMode = "standard";
 	/** Caido proxy tools are off unless the session asked for them. */
 	private proxyEnabled = false;
@@ -170,7 +170,7 @@ export class Sandbox {
 				this.container !== null || this.hostRoot !== null ? new Date(this.startedAt).toISOString() : null,
 			mode: this.mode,
 			scanMode: this.scanMode,
-			/** Whether the Caido proxy surface was enabled for this session (ADR strix-0002). */
+			/** Whether the Caido proxy surface was enabled for this session. */
 			proxy: this.proxyEnabled,
 			conversation: this.conversation,
 		};
@@ -180,13 +180,13 @@ export class Sandbox {
 		if (this.container || this.hostRoot) return this.status();
 
 		// Decided per start, not at process boot: a daemon that came up between two
-		// scans should be used by the second one (ADR strix-0001).
+		// scans should be used by the second one.
 		// `environment` 是执行环境偏好（host/docker/auto）；`mode` 是扫描深度（quick/standard/…）。
 		// 两者名字曾经撞在一起，导致"选了容器却跑在本机"——现在分开取值。
 		const preference = params.environment === "host" || params.environment === "docker" ? params.environment : "auto";
 		this.mode = (await resolveEnvironment(sandboxImage(), preference)).mode;
 		// Scan depth is snapshot here too: a step that changed the ceiling half-way
-		// through would make the report unexplainable (ADR strix-0002).
+		// through would make the report unexplainable.
 		this.scanMode = asScanMode(params.mode);
 		// Opt-in: a tool that can make the model request any URL is an attack surface.
 		this.proxyEnabled = params.proxy === true;
@@ -199,7 +199,7 @@ export class Sandbox {
 		const targets = Array.isArray(params.targets) ? params.targets.map(String).filter(Boolean) : [];
 		const mounts = mountsFrom(Array.isArray(params.localSources) ? (params.localSources as MountInput[]) : []);
 
-		// Host path (ADR strix-0001): no container, so there is no /workspace to mount. The
+		// Host path: no container, so there is no /workspace to mount. The
 		// first mount becomes the working root and `exec` runs commands there.
 		if (this.mode === "host") return this.beginHost({ sessionId, targets, mounts });
 
@@ -208,7 +208,7 @@ export class Sandbox {
 
 		// The image is not guaranteed to be reachable: ghcr.io can be blocked, rate limited, or
 		// simply not published for this tag. A pull failure used to end the session even though
-		// the same tools run fine on the host (ADR strix-0001: Docker is an accelerator, not a
+		// the same tools run fine on the host (Docker is an accelerator, not a
 		// prerequisite). So a failure here **degrades to host mode** and says why, instead of
 		const degraded = (reason: string): SandboxStatus => {
 			this.emit({ event: "sandbox_degraded", reason });
@@ -220,7 +220,7 @@ export class Sandbox {
 		try {
 			this.emit({ event: "sandbox_status", phase: "preparing image" });
 			if ((await imagePresent(image)) === false) {
-				// The image is the toolchain (ADR strix-0002), so it is worth one bounded attempt
+				// The image is the toolchain, so it is worth one bounded attempt
 				// before falling back: on a network that can reach ghcr this is what makes the
 				// panel useful, and on one that cannot, the fallback below still runs the scan.
 				this.emit({ event: "sandbox_status", phase: "pulling image" });

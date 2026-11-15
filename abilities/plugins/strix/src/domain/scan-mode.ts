@@ -1,7 +1,7 @@
 /**
  * What a scan mode actually changes.
  *
- * ADR strix-0002 gave the session a depth (`quick` / `standard` / `deep` / `diff`).
+ * The host gave the session a depth (`quick` / `standard` / `deep` / `diff`).
  * A depth that only changes a timeout is a label, not a mode: `deep` has to hold the
  * run to a higher standard before it may call itself finished, otherwise the report
  * reads the same as `quick` while the user waited longer.

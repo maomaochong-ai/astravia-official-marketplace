@@ -15,7 +15,7 @@
  * ever reads and writes its own conversation's entry.
  */
 
-import type { McpConnection } from "../../service/mcp-roster";
+import type { McpConnection } from "../../domain/mcp-roster";
 import type { CoverageOutcome, NoteSummary, SandboxStatus, StrixFinding, TodoItem, TraceEntry } from "../../runtime-contract";
 
 export interface SessionSnapshot {

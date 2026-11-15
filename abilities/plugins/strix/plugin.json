@@ -2,7 +2,7 @@
   "id": "strix",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -36,7 +36,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "7f9cf8e4ff116cf01ffbcaf6f77634314e3b7c3888a179acf8b3eca2ba93a0c5",
+                  "sha256": "3f889cd7da80e13a9ffb35da0cc8bb110e31a9bcd14d4e3e17fcdcd6eda9361a",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -46,7 +46,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "7f9cf8e4ff116cf01ffbcaf6f77634314e3b7c3888a179acf8b3eca2ba93a0c5",
+                  "sha256": "3f889cd7da80e13a9ffb35da0cc8bb110e31a9bcd14d4e3e17fcdcd6eda9361a",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -56,7 +56,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "7f9cf8e4ff116cf01ffbcaf6f77634314e3b7c3888a179acf8b3eca2ba93a0c5",
+                  "sha256": "3f889cd7da80e13a9ffb35da0cc8bb110e31a9bcd14d4e3e17fcdcd6eda9361a",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -66,7 +66,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "7f9cf8e4ff116cf01ffbcaf6f77634314e3b7c3888a179acf8b3eca2ba93a0c5",
+                  "sha256": "3f889cd7da80e13a9ffb35da0cc8bb110e31a9bcd14d4e3e17fcdcd6eda9361a",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -76,7 +76,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "7f9cf8e4ff116cf01ffbcaf6f77634314e3b7c3888a179acf8b3eca2ba93a0c5",
+                  "sha256": "3f889cd7da80e13a9ffb35da0cc8bb110e31a9bcd14d4e3e17fcdcd6eda9361a",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -272,21 +272,21 @@
         "members": [
           {
             "agent": "strix-lead",
-            "responsibility": "Compass: owns scope, budget and the report; the only member who talks to the user."
+            "responsibility": "%team.responsibility.lead%"
           },
           {
             "agent": "strix-recon",
-            "responsibility": "Probe: maps hosts, ports, services and web surface; records coverage before anything is exploited.",
+            "responsibility": "%team.responsibility.recon%",
             "instructionsPath": "agent/prompts/briefs/recon.md"
           },
           {
             "agent": "strix-exploit",
-            "responsibility": "Wedge: turns leads into reproducible proof; files findings with real evidence and signs them.",
+            "responsibility": "%team.responsibility.exploit%",
             "instructionsPath": "agent/prompts/briefs/exploit.md"
           },
           {
             "agent": "strix-auditor",
-            "responsibility": "Balance: weighs evidence, severity and coverage honesty; deletes what cannot be defended.",
+            "responsibility": "%team.responsibility.auditor%",
             "instructionsPath": "agent/prompts/briefs/auditor.md"
           }
         ]

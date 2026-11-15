@@ -1,7 +1,7 @@
 /**
  * The MCP connections a run is using, and whether each is still alive.
  *
- * Upstream keeps this as a roster in the report state (`record_mcp_connection_status`)
+ * Upstream keeps this as a roster in the report state (`record_mcp_connection_status`) 
  * and the TUI docks it as its own panel: one row per server with provider, tool count
  * and a dead flag. Without it a tool call in the trace cannot be attributed, and a
  * server that quietly died looks like the model "forgetting" tools.

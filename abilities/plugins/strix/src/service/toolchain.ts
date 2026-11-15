@@ -1,11 +1,11 @@
 /**
  * Which of Strix's tools are actually runnable on this machine.
  *
- * The container carries a fixed toolchain; without one (ADR strix-0001) a scan runs
+ * The container carries a fixed toolchain; without one a scan runs
  * in the user's session, where the tools are only there if they are installed. The
  * panel and the model both need to know that difference per tool rather than per
  * environment: "nmap is here, sqlmap is not" is what decides whether a step is worth
- * attempting (ADR strix-0002).
+ * attempting.
  *
  * Probing is bounded and never installs anything: one `--version`-style call per tool,
  * short timeout, failures are answers.
@@ -53,7 +53,7 @@ const BINARY: Record<string, string> = { nahttpx: "httpx" };
 
 async function probeOne(name: string): Promise<ToolProbe> {
 	const binary = BINARY[name] ?? name;
-	// The shipped copy wins over PATH (ADR strix-0005): it is the version this build was
+	// The shipped copy wins over PATH: it is the version this build was
 	// tested against, and it is the reason a machine with no package manager still works.
 	const managed = managedToolchainDir();
 	const managedBinary = managed ? join(managed, process.platform === "win32" ? `${binary}.exe` : binary) : null;
@@ -103,7 +103,7 @@ export function missingTools(probes: readonly ToolProbe[]): string[] {
  * How to install a missing tool on this platform, as a copyable command.
  *
  * The plugin does not install these itself: every package manager here needs
- * privileges, network policy or licence terms that belong to the user (ADR strix-0002).
+ * privileges, network policy or licence terms that belong to the user.
  * What it can do is stop the user from guessing — a copyable line per tool is the
  * difference between "nmap is missing" and "here is what to run".
  */

@@ -132,13 +132,21 @@ npm run check           # typecheck + test + 服务冒烟
   连 cwd 都拿不到时用 `ctx.conversation.insertText` 把话交回宿主输入框。
 - **加区块之前先看入口密度**（ADR 0019）：首屏事实表最后一行是团队（四个 chip，字形按角色取）；
 	  侧栏六个分区里，标题本身就是折叠开关（默认展开 目标/发现/统计/团队，收起 连接/历史）；
-	  “会话”那两条事实并入统计（ADR 0020），不再单独成区。
 	  分区标题用 `section-head` + `section-ico`，**不要**复用 `panel-box` 那颗 20px 的 `section-toggle`——
 	  一个是"收起一整块"，一个是"展开一段正文"。收起必须是 `display:none`，不是只藏视线。
+- **团队的称呼单一语言**（1.0.14）：团队叫「Strix 团队」，描述句说清产品定位（在会话里跑一次渗透测试，
+	  交带修复建议的报告），不写暗喻；成员名只写一种语言——中文宿主看到「罗盘」，英文宿主看到 Compass，
+	  **不要**“罗盘 · Compass”。名字与职责都是清单里的 `%key%`：面板用 `manifestLabel(t, …)` 按宿主语言解，
+	  服务用 `service/labels.ts` 读随包 `locales/` 解一次（按提示词语言），否则模型会看到 `%key%` 字面量。
+- **面板不得 import `src/service/**`**（1.0.14）：服务是 Node 进程，面板是 React。两边共享的东西放 `src/domain/`
+	  （形状、纯函数），HTTP 形状放 `runtime-contract.ts`。依赖方向只有一个：**UI → domain ← service**，
+	  `test/dependency-layers.test.ts` 守着。把服务搬进 `domain/service/` 或搬出 `src/` 都不是改进，理由见 ADR 0017 的修订节。
+- **代码注释不写决策文档编号**（1.0.14）：注释说"为什么这么做"，不说"见第几号文档"。文档改号或删档时，
+	  代码里的编号就是死链。决策文档本身照旧写在 `docs/adr/strix/`，`test/dependency-layers.test.ts` 扫代码里的编号。
 - **工具面是 40 个**（1.0.10）：36 个执行/台账工具 + 4 个会话与状态工具（`strix_budget` /
-  `strix_history` / `strix_update_check` / `strix_team_roster`）。新增工具要同时改：
-  `src/agent/strix-tools.ts`（规格）、`src/service/main.ts`（handler）、`tool-presentation.ts`（呈现）、
-  locales 两段提示词里的工具数，以及 `docs/adr/strix/ADR 0006` 的对照表。
+	  `strix_history` / `strix_update_check` / `strix_team_roster`）。新增工具要同时改：
+	  `src/agent/strix-tools.ts`（规格）、`src/service/main.ts`（handler）、`tool-presentation.ts`（呈现）、
+	  locales 两段提示词里的工具数，以及 `docs/adr/strix/` 里工具对照表的对应行。
 - **台账按会话分，不按沙箱分**（ADR 0015，1.0.7）：服务只有一个沙箱，所以"这是谁的事实"必须由
   `SandboxStatus.conversation`（开沙箱那一刻写入）加面板注册的会话共同决定；`/api/state` 里顶层那个
   `conversationKey` 就是面板刚注册的 id，**不能**拿它判归属。面板对不上就不采纳（环境探测例外，

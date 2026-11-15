@@ -50,7 +50,7 @@ describe("host sync", () => {
 	});
 
 	it("says nothing when the conversation has no model, instead of borrowing the default", () => {
-		// ADR strix-0003: the panel is not a second model picker. A host-wide default
+		// the panel is not a second model picker. A host-wide default
 		// named here would claim a model the chat is not running.
 		const resolved = resolveModel({
 			conversationModel: null,

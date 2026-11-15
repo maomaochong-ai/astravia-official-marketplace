@@ -1,7 +1,7 @@
 /**
  * One section of the artefact rail: a title row, an optional count, and content.
  *
- * Replaces the bordered card the panel used to stack six of (ADR strix-0004). Two
+ * Replaces the bordered card the panel used to stack six of. Two
  * rules from that decision live here:
  *
  *  - a count of zero is not a badge; it is an empty state;

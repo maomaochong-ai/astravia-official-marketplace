@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { readRoster } from "../src/service/team";
 
 /**
- * 团队成员（ADR 0016）：插件**声明**，宿主**运行**。
+ * 团队成员：插件**声明**，宿主**运行**。
  *
  * 这条决定的边界很窄但很重要：我们不复制上游的子智能体循环（那需要插件自己持模型），
  * 而是用宿主已有的 `agent.agents` / `agent.teams`——装好插件，输入框里就能 @ 到这几个人。
@@ -39,7 +39,7 @@ describe("the manifest declares a team the host can run", () => {
 	});
 
 	it("gives members the host's full ability set", () => {
-		// 1.0.11：不再收窄到 own。ADR 0003 禁的是"插件自持模型循环"，不是"限制工具面"。
+		// 1.0.11：不再收窄到 own。禁的是"插件自持模型循环"，不是"限制工具面"。
 		// 真实渗透要 shell、文件编辑、联网检索这些宿主能力；挡掉它们等于让成员缺一只手臂。
 		for (const member of manifest.agent?.agents ?? []) expect(member.abilities).toBe("all");
 	});

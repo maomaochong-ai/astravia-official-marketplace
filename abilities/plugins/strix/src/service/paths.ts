@@ -22,7 +22,7 @@ export function resolveDataDir(env: NodeJS.ProcessEnv = process.env): string {
 /**
  * Where the plugin's own toolchain lives once the host has unpacked it.
  *
- * ADR strix-0005: the toolchain ships with the plugin, so `host` mode must look here
+ * the toolchain ships with the plugin, so `host` mode must look here
  * before the user's PATH — a machine without scoop or brew still has nmap. The host
  * hands us this service's managed runtime root; the tools sit in `toolchain/bin` under
  * it. A missing root means "not prepared yet", which the panel can say out loud.

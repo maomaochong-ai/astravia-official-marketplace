@@ -5,7 +5,7 @@
  * composer with its model line inside the panel, the feedback log under it, and
  * the key hints closed by the version. What differs is who the model is: the chip
  * shows the host conversation's model. There is no model call in this plugin — the host
- * agent owns the loop and reaches us through the `strix_*` MCP tools (ADR strix-0003).
+ * agent owns the loop and reaches us through the `strix_*` MCP tools.
  *
  * The panel is a terminal surface - black, monospace, green accents - rather than
  * a host-themed card. That is the point of this tab: it looks like `strix` opening
@@ -15,6 +15,7 @@
 import { useState } from "react";
 import { useComposerHeight } from "../hooks/use-composer-height";
 import { HackerRain } from "./hacker-rain";
+import { manifestLabel } from "../../../domain/manifest-label";
 import type { ModelChoice } from "../../../domain/model-label";
 import type { BridgeTeam } from "../../../runtime-contract";
 import type { LogLine } from "../hooks/use-strix-session";
@@ -31,7 +32,7 @@ export interface LaunchScreenProps {
 	 */
 	team?: BridgeTeam | null;
 	log: readonly LogLine[];
-	/** Bridge boot state. A live line, not a log entry (ADR strix-0004). */
+	/** Bridge boot state. A live line, not a log entry. */
 	boot: { state: "connecting" | "ready" | "failed"; detail?: string };
 	version: string;
 	/** Why Enter cannot launch yet (no model, no Docker); empty when it can. */
@@ -55,7 +56,7 @@ export interface LaunchScreenProps {
 	 */
 	onOpenWorkbench?: () => void;
 	/**
-	 * 团队会话（ADR 0020）：面板在这条表面上只读。
+ * 团队会话：面板在这条表面上只读。
 	 *
 	 * 宿主的 `sendPrompt` / `insertText` 在团队会话里都指向错的会话（`pluginSendMessageRef`
 	 * 与 `inputValueAtom` 都不跟着团队切换），所以宁可把发送键换成一专说明，
@@ -186,7 +187,7 @@ export function LaunchScreen({
 								{t("nav.workbench")}
 							</button>
 						) : null}
-						{/* 团队会话：面板没有可写的落点（ADR 0020），发送键直接换成一专说明，
+						{/* 团队会话：面板没有可写的落点，发送键直接换成一专说明，
 						    而不是让用户按下去才发现。 */}
 						{readOnly ? (
 							<span className="astra-strix-amber astra-strix-readonly-note">{t("launch.teamReadOnly")}</span>
@@ -290,12 +291,12 @@ export function LaunchScreen({
 										key={member.id}
 										className="astra-strix-team-chip"
 										data-lead={member.lead ? "yes" : "no"}
-										title={member.responsibility}
+										title={manifestLabel(t, member.responsibility)}
 									>
 										<span className="astra-strix-team-chip-glyph" aria-hidden="true">
 											{TEAM_GLYPH[member.role ?? ""] ?? "·"}
 										</span>
-										{member.name.replace(/s*·s*[A-Za-z]+$/u, "")}
+										{manifestLabel(t, member.name)}
 									</span>
 								))}
 							</span>

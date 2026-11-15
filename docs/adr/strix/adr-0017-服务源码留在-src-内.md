@@ -54,6 +54,22 @@
 ## 配套约定（已生效）
 
 - 服务模块**不** import 任何 `.tsx` 或 React 运行时——它是 Node 进程；
-- 渲染层**不** import `service/` 的实现，只 import `runtime-contract.ts` 的类型（HTTP 形状）；
-- 唯一的跨层共享是 `agent/strix-tools.ts`（目录）与 `domain/scan-mode.ts`（门禁规则），
-  两个文件都必须保持"无副作用、纯数据/纯函数"。
+- 渲染层**不** import `service/` 的任何东西（连类型也不行）：形状放 `domain/`，HTTP 形状放 `runtime-contract.ts`；
+- 跨层共享只有三处：`agent/strix-tools.ts`（工具目录）、`domain/scan-mode.ts`（扫描深度）、
+  `domain/mcp-roster.ts`（连接名册形状）。三份都必须是“无副作用、纯数据/纯函数”。
+
+### 修订：为什么不在 `domain/`，也不搬出门（1.0.14）
+
+有人提出两个方向，都不采纳，理由不是偏好而是事实：
+
+| 方案 | 为什么不 |
+|---|---|
+| `src/domain/service/` | `domain/` 在本仓库的定义是“外部响应的收窄、持久化 schema、状态转换”——宿主侧模型。把一个 `http` + `child_process` + docker 的进程放进去，`domain/` 就变成“不是 UI 的东西”，正是结构规范里点名禁止的大杂烩 |
+| 搬到 `src/` 外的 `service/` | 服务与面板共享三个模块（见上），搬出去就变成两个根互相 import；`tsconfig` 单 rootDir、`build-service.mjs` 的 entry、`test/` 的相对路径、vite 的扫描范围全部跟着改，换来的是零用户价值 |
+
+真正的缺陷不是它住在哪，而是**面板反过来 import 服务实现**：`mcp-roster.ts` 在 `service/` 时，四个 UI 模块
+为了一个类型去拉服务目录。1.0.14 把它移到 `domain/`，边界变成单向：**UI → domain ← service**，
+由 `test/dependency-layers.test.ts` 守。服务仍住在 `src/service/`——与 `video-downloader/src/services`、
+`web-element-picker/src/kernel`（同样是独立打包产物）一致。
+
+以后真要搬出去，触发条件与迁移清单见上文“什么情况下会改主意”。

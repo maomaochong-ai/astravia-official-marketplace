@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 /**
  * The panel answers its own keys.
  *
- * Registered scopes (not a `document` listener, ADR strix-0004) and declared with the
+ * Registered scopes (not a `document` listener) and declared with the
  * permission the host gates them on. Without `ui.shortcuts.register` the registration
  * throws, which is why the assertion checks the manifest too rather than only the code.
  */

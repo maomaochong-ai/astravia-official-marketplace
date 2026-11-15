@@ -7,7 +7,7 @@
  * does the opposite: it builds a short Python program that imports upstream's module
  * and calls the same function, then reads back JSON.
  *
- * Two rules come from ADR strix-0002:
+ * Two rules come from the two ends of the same fact:
  *  - it only works in `docker` mode (Caido runs in the image), and
  *  - it is **off unless the session enabled it**: a tool that can make the model
  *    request any URL is an attack surface, so enabling it is a deliberate act.

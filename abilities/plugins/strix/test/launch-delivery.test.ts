@@ -114,7 +114,7 @@ describe("the tab comes to the front because a turn started", () => {
 	it("by conversation shape: capsule in a single chat, always in a team chat", () => {
 		// 单会话：胶囊没开 = 这一轮不是插件的活，抢焦点就是骚扰。
 		// 团队会话：宿主根本没有胶囊这个入口（团队用另一套 composer），缺席不是拒绝——
-		// 所以判据从“胶囊开着吗”换成“这种会话上该不该跟随”（ADR 0020）。
+		// 所以判据从“胶囊开着吗”换成“这种会话上该不该跟随”。
 		expect(activation).toContain("shouldFollowTurn(conversationShape(activeConversation), isStrixEngaged())");
 		expect(activation).toContain("sessionPath: event.conversation.sessionPath");
 	});

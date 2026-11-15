@@ -33,12 +33,13 @@ import { ShellSessions } from "./shell-sessions";
 import { dockerInstallCommand, readPreferences, writePreferences } from "./preferences";
 import { locateSkills, loadBodies, loadIndex } from "./skills";
 import { installHint, missingTools, probeToolchain } from "./toolchain";
-import { describeRoster, mergeRoster, normalizeRoster } from "./mcp-roster";
+import { describeRoster, mergeRoster, normalizeRoster } from "../domain/mcp-roster";
 import { TodoStore } from "./todo";
 import { Budget, normalizeLimits } from "./budget";
 import { Telemetry } from "./telemetry";
 import { listHistory } from "./history";
 import { checkFreshness, serviceBuiltAt } from "./freshness";
+import { loadLabels, resolveLabel } from "./labels";
 import { readRoster } from "./team";
 import { packagedPluginRoot } from "./plugin-root";
 
@@ -196,7 +197,7 @@ async function environment() {
 		missingTools: missingTools(tools).map((name) => ({ name, install: installHint(name) })),
 		// Ready means "a scan can start here": with a daemon the container carries the
 		// tools; without one the user's session does, so only the skill library has to
-		// be there (ADR strix-0001).
+		// be there.
 		ready: Boolean(skills) && (resolved.mode === "host" || docker.ready),
 	};
 }
@@ -234,7 +235,7 @@ const HANDLERS: Record<string, Handler> = {
 
 	// The MCP roster upstream docks as its own panel. Declared servers come from the
 	// manifest, reported ones from the run; the merge keeps both and never invents a
-	// "dead" state for a server that simply has not connected yet (service/mcp-roster.ts).
+	// "dead" state for a server that simply has not connected yet (domain/mcp-roster.ts).
 	strix_mcp: async () => {
 		const declared = [{ name: "strix" }];
 		const reported = normalizeRoster(await sandbox.mcpRoster().catch(() => null));
@@ -331,7 +332,7 @@ const HANDLERS: Record<string, Handler> = {
 	strix_delete_finding: (args) => findings.remove(sessionId(), args),
 	strix_report: async (args) => {
 		// `deep` promises more than a breadth pass; without a coverage gate the report
-		// would read the same as `standard` while the user waited longer (ADR strix-0002).
+		// would read the same as `standard` while the user waited longer.
 		// Only the human summary form is gated: the SARIF export is a format, not a close-out.
 		if (!args.format) {
 			const recorded = await coverage.list(sessionId());
@@ -400,7 +401,12 @@ const HANDLERS: Record<string, Handler> = {
 
 	/** 团队成员：插件声明的花名册，加上它们署名的发现数（对不上就如实说 0）。 */
 	strix_team_roster: async () => {
-		const roster = readRoster(packagedPluginRoot(), { findings: await findings.read(sessionId()) });
+		const labels = loadLabels(packagedPluginRoot());
+		const roster = readRoster(packagedPluginRoot(), {
+			findings: await findings.read(sessionId()),
+			// 模型只看得到文字，看不到 `%key%`：按提示词语言（中文）在服务侧解一次。
+			t: (key) => resolveLabel(labels, `%${key}%`),
+		});
 		return roster ?? { teamId: "", teamName: "", members: [], filed: {}, totalFiled: 0 };
 	},
 };
@@ -695,7 +701,7 @@ const server = createServer(async (req, res) => {
 				coverageTally: (cover as { byOutcome?: unknown }).byOutcome ?? {},
 				threatModel: threat,
 				preferences: await readPreferences(DATA_DIR),
-				// 工作单元：保留的 shell 会话（上游 agents 面板在本插件的诚实等价物，）。
+				// 工作单元：保留的 shell 会话（上游 agents 面板在本插件的诚实等价物）。
 				sessions: sessions.list().map(({ id, command, running, uptimeSec, tty }) => ({ id, command, running, uptimeSec, tty })),
 				// 范围是「这次允许触碰什么」的唯一权威；面板要能显示，报告要能带上（审查指出两处都漏了）。
 				scope: describeScope(await scope.snapshot()),

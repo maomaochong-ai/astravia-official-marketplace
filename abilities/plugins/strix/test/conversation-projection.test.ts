@@ -76,7 +76,7 @@ describe("rows", () => {
 		expect(evidenceRow({ event: "tool_end", tool: "strix_report", ok: true })).toBeUndefined();
 	});
 
-	it("never turns conversation prose into a row (ADR 0007)", () => {
+	it("never turns conversation prose into a row", () => {
 		// 面板不画用户的话与 agent 的回复：宿主聊天区已经渲染了它们，再画一遍就是
 		// 用户看到的那份「冗余」。这里断言的是“没有这个出口”。
 		expect(Object.keys(projection)).not.toContain("hostRowFor");

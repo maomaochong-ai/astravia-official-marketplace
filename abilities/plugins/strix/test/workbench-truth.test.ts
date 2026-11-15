@@ -35,7 +35,7 @@ describe("scan screen truthfulness", () => {
 	});
 
 	it("follows the host turn without copying its prose", () => {
-		// 宿主的那一轮就是本次运行：面板跟状态，不跟文字（ADR 0007）。
+		// 宿主的那一轮就是本次运行：面板跟状态，不跟文字。
 		expect(session).toContain('event.type === "turn-start"');
 		expect(session).toContain("scan.turnDivider");
 		// 文字事件显式忽略：不渲染是决定，不是遗漏。

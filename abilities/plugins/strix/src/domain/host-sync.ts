@@ -39,7 +39,7 @@ export interface ModelResolution {
 export function resolveModel(input: {
 	conversationModel: string | null | undefined;
 	models?: readonly PluginAiModel[];
-	/** Kept out of the resolution on purpose (ADR strix-0003): the conversation decides. */
+	/** Kept out of the resolution on purpose: the conversation decides. */
 	defaultModel?: string | null;
 }): ModelResolution {
 	const { conversationModel, models = [] } = input;
@@ -60,7 +60,7 @@ export function resolveModel(input: {
 		};
 	}
 
-	// No host-wide fallback (ADR strix-0003). The conversation is the only authority on
+	// No host-wide fallback. The conversation is the only authority on
 	// which model runs: picking `defaultModel` here made the panel claim a model the chart
 	// was not using, and switching model in the chat did not reach the panel. Without one
 	// the panel says so (log.noModel) instead of inventing a choice.

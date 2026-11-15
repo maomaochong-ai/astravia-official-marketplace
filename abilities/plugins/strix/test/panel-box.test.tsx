@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { PanelBox } from "../src/shared/components/panel-box";
 
 /**
- * ADR strix-0004, the two rules that live in this component:
+ * the two rules that live in this component:
  * a zero is not a badge, and an empty section collapses until asked.
  */
 afterEach(cleanup);

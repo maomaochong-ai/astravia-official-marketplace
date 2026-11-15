@@ -70,7 +70,7 @@ function upstreamRenderers() {
 
 // ---- 能力对照 ----------------------------------------------------------------
 
-/** 本宿主里不该由插件承担的能力（ADR 0003 / 0006）：不算进"在范围内"。 */
+/** 本宿主里不该由插件承担的能力：不算进"在范围内"。 */
 const DELEGATED = new Set(["模型路由（本宿主由宿主承担）", "多智能体编排（有意不做）", "云端与账号"]);
 
 const families = [
@@ -161,7 +161,7 @@ const families = [
 	{
 		name: "多智能体编排（有意不做）",
 		items: [
-			[3, "派生/等待/停止子智能体", "tools/agents_graph", false, "需要插件侧模型循环；团队成员改为声明（ADR 0016）"],
+			[3, "派生/等待/停止子智能体", "tools/agents_graph", false, "需要插件侧模型循环；团队成员改为声明"],
 			[1, "README 级 agent 图可视化", "interface/tui/internal/render/agents_graph.go", false, "同上"],
 		],
 	},
@@ -250,7 +250,7 @@ function runUi() {
 			// 上游画的是它自己派生出来的父子树；本插件画团队花名册 + 署名数。
 			// 成员身份与产出都是真的，但没有"谁正在跑"这层——所以记一半。
 			score: has("panel.team") && has("strix_team_roster") ? 0.5 : 0,
-			note: "agents_graph.go；本插件改为团队花名册（ADR 0016）",
+			note: "agents_graph.go；本插件改为团队花名册",
 		},
 		{ name: "计划 / 覆盖 / 笔记", weight: 6, score: has("ArtefactPanels") ? 1 : 0, note: "render/todo|coverage|notes.go" },
 		{ name: "威胁模型", weight: 2, score: has("strix_threat_model") ? 1 : 0, note: "threat_model.go" },
@@ -266,7 +266,7 @@ function runUi() {
 		},
 		{ name: "转写贴底跟随", weight: 3, score: has("useStickToBottom") ? 1 : 0, note: "上游 TUI 天然滚到底" },
 		{ name: "转写里的图片渲染", weight: 3, score: 0, note: "上游用 kitty/iTerm 协议内联图；插件只把图给模型" },
-		{ name: "markdown 渲染", weight: 3, score: 0, note: "上游渲染 markdown；插件把文字留给聊天区（ADR 0007）" },
+		{ name: "markdown 渲染", weight: 3, score: 0, note: "上游渲染 markdown；插件把文字留给聊天区" },
 	];
 
 	const total = items.reduce((sum, item) => sum + item.weight, 0);

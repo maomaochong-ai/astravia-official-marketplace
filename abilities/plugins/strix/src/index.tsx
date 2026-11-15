@@ -12,7 +12,7 @@ import { createServiceRuntime, type ServiceRuntime } from "./runtime";
 /**
  * The tab's own keys, registered while the tab is the surface in front.
  *
- * ADR strix-0004: a panel that behaves like an app has to answer keys even when the
+ * a panel that behaves like an app has to answer keys even when the
  * focus sits in its own textarea — the launch screen's Ctrl+C previously worked only
  * if the pointer had not moved focus elsewhere, which reads as "shortcuts do nothing".
  * These go through the host's shortcut stack rather than a `document` listener, so the
@@ -71,7 +71,7 @@ function StrixTabRoot({
 	});
 
 	// Keys the panel answers wherever focus sits inside it. Registered imperatively through
-	// the host's stack (not a `document` listener, ADR strix-0004) and re-reading the live
+	// the host's stack (not a `document` listener) and re-reading the live
 	// session through a ref, so the bindings do not need re-registering on every render.
 	// `when: "always"` on purpose: the composer is a textarea, and a scope that skipped
 	// editable targets would be dead exactly when the user is typing.
@@ -209,7 +209,7 @@ export default definePlugin({
 			}
 			if (event.type !== "turn-start") return;
 			// 门还是三道，但第一道问的不再是"胶囊开着吗"，而是"这种会话上该不该跟随"：
-			// 团队会话根本没有胶囊可开（团队用另一套 composer），缺席不是拒绝（ADR 0020）。
+			// 团队会话根本没有胶囊可开（团队用另一套 composer），缺席不是拒绝。
 			if (!shouldFollowTurn(conversationShape(activeConversation), isStrixEngaged())) return;
 			try {
 				// cwd 未知（团队会话很常见：override 的变化可能比我们订阅更早）时，

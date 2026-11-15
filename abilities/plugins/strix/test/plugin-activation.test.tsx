@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const conversationState = {
 	id: "session-1",
 	cwd: "D:\\open-source-projects\\strix",
-	// 单智能体会话必须有会话文件：`sessionPath` 为空在 ADR 0020 里是“团队会话”，
+	// 单智能体会话必须有会话文件：`sessionPath` 为空在 里是“团队会话”，
 	// 面板在那条形态上是只读的，写路径会被拦下。
 	sessionPath: "D:\\open-source-projects\\strix\\.astravia\\session-1.jsonl",
 	model: "anthropic/claude-opus-5-5",
@@ -239,7 +239,7 @@ describe("plugin activation", () => {
 		await disposeOf(disposable);
 	});
 
-	it("follows the host turn but renders no prose of its own (ADR 0007)", async () => {
+	it("follows the host turn but renders no prose of its own", async () => {
 		const host = fakeHost();
 		// The bridge is unreachable here; that only affects the environment probe.
 		const disposable = await plugin.activate(host.ctx);

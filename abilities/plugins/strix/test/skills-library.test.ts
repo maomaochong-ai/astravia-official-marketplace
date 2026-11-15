@@ -66,10 +66,10 @@ describe("one copy of the library", () => {
 });
 
 /**
- * 技能库随包这条决定的另两面（ADR 0012）：解析走打包目录、索引口径正确。
+ * 技能库随包这条决定的另两面：解析走打包目录、索引口径正确。
  * 与上面同属"library 是唯一副本"这一个域，所以并在一个文件里。
  */
-describe("skills are vendored, not scanned (ADR 0012)", () => {
+describe("skills are vendored, not scanned", () => {
 	it("resolves to the packaged library without touching python", () => {
 		const location = locateSkills();
 		expect(location.source).toBe("bundled");

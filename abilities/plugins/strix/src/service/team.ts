@@ -39,6 +39,7 @@ interface ManifestAgent {
 	id?: unknown;
 	name?: unknown;
 	roles?: unknown;
+	description?: unknown;
 }
 
 interface ManifestTeamMember {
@@ -93,7 +94,8 @@ export function readRoster(
 			id,
 			name: resolveLabel(profile?.name, options.t) || id,
 			...(typeof roles[0] === "string" ? { role: roles[0] } : {}),
-			responsibility: String(raw.responsibility ?? "").trim(),
+			// 职责也能本地化：清单里写 `%team.responsibility.*%`，没给 `t` 就原样交给调用方解。
+			responsibility: resolveLabel(raw.responsibility, options.t) || resolveLabel(profile?.description, options.t),
 			lead: index === 0,
 		});
 	}

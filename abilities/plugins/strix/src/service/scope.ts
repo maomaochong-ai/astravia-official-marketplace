@@ -16,7 +16,7 @@
  *  - the report prints the scope next to the findings.
  *
  * That keeps the honest contract: the operator declares scope, the tooling makes drift
- * visible, the human stays the authority (ADR strix-0004).
+ * visible, the human stays the authority.
  */
 
 import { randomUUID } from "node:crypto";

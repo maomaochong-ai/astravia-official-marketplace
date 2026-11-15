@@ -41,7 +41,7 @@ describe("nothing glues the tool surface to a CLI that is not needed", () => {
 
 	it("asks the host for no model surface at all", () => {
 		// The panel renders the conversation's run; the moment an `ai.*` permission comes
-		// back, someone has started growing a second agent here (ADR strix-0003).
+		// back, someone has started growing a second agent here.
 		const permissions = manifest.permissions ?? [];
 		expect(permissions.filter((permission) => permission.startsWith("ai."))).toEqual([]);
 		expect(permissions).toContain("agent.mcp.control");
@@ -89,7 +89,7 @@ describe("the panel follows the host conversation", () => {
 	it("leaves the launch screen when the host turn starts with the capsule on", () => {
 		expect(session).toContain('event.type === "turn-start"');
 		expect(session).toContain("isStrixEngaged()");
-		// 离开首屏的同时只留一条轮次分隔行，不抄正文（ADR 0007）。
+		// 离开首屏的同时只留一条轮次分隔行，不抄正文。
 		expect(session).toContain('t("scan.turnDivider", { turn: turnRef.current })');
 	});
 
@@ -119,7 +119,7 @@ describe("the panel follows the host conversation", () => {
 });
 
 describe("the transcript reads as a report, not a dump", () => {
-	it("renders no host rows at all (ADR 0007)", () => {
+	it("renders no host rows at all", () => {
 		// 面板不再画用户发言与 agent 回复：宿主聊天区已经画了。这里断言的是“没有这个出口”，
 		// 而不是把标签换了个名字。
 		expect(trace).not.toContain("hostSayLabel");

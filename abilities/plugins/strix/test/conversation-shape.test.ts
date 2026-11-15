@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { conversationShape, permitHostAction, shouldFollowTurn } from "../src/domain/conversation-shape";
 
 /**
- * 形态与授权（ADR 0020）。纯函数，不渲染任何东西：
+ * 形态与授权。纯函数，不渲染任何东西：
  * 这三条判断是面板全部写动作的入口，错了就是跨会话事故。
  */
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeRoster, mergeRoster, normalizeRoster } from "../src/service/mcp-roster";
+import { describeRoster, mergeRoster, normalizeRoster } from "../src/domain/mcp-roster";
 
 /**
  * Upstream docks an MCP panel because a dead connection otherwise looks like the model

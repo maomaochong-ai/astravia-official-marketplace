@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * 会话隔离（4.1，ADR 0020）。
+ * 会话隔离（4.1）。
  *
  * 用户报的是：在 A 项目开面板跑评估，切到 B 项目，在面板上按"停止生成"，
  * B 项目正在跑的普通对话被终止了。根因在宿主：`conversation.abort()` 不看面板，

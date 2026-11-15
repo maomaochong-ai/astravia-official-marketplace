@@ -10,7 +10,7 @@ import { join, resolve } from "node:path";
  *  - 速度只有 9/12/15/7s 四档 → 整屏周期性对齐成横波。
  *
  * 1.0.7 改成 xorshift32 扰动：每列独立的速度、相位、长度、亮度、断行位置。
- * 仍然**不用** `Math.random()`：截图与测试要可复现（ADR 0011）。
+ * 仍然**不用** `Math.random`：截图与测试要可复现。
  */
 
 const plugin = resolve(process.cwd());

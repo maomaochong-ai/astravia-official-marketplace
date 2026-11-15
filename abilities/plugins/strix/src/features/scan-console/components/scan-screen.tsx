@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useComposerHeight } from "../hooks/use-composer-height";
 import { useStickToBottom } from "../hooks/use-stick-to-bottom";
 import { HackerRain } from "./hacker-rain";
+import { manifestLabel } from "../../../domain/manifest-label";
 import type { ModelChoice } from "../../../domain/model-label";
 import type {
 	BridgeBudget,
@@ -34,7 +35,7 @@ import { FindingList } from "../../findings/components/finding-list";
 import { describeMode, type ScanMode } from "../../../domain/scan-mode";
 import type { SessionPhase } from "../hooks/use-strix-session";
 import { ArtefactPanels } from "./artefact-panels";
-import type { McpConnection } from "../../../service/mcp-roster";
+import type { McpConnection } from "../../../domain/mcp-roster";
 import { TraceBlock } from "./trace-block";
 
 export interface ScanScreenProps {
@@ -48,7 +49,7 @@ export interface ScanScreenProps {
 	todos: readonly TodoItem[];
 	notes: readonly NoteSummary[];
 	coverage: readonly CoverageOutcome[];
-	/** Kept shell sessions (ADR 0010). */
+	/** Kept shell sessions. */
 	sessions?: readonly ShellSessionSummary[];
 	mcp: readonly McpConnection[];
 	/** Folder name of the conversation workspace. */
@@ -57,12 +58,12 @@ export interface ScanScreenProps {
 	hostStreaming: boolean;
 	busy: boolean;
 	onSend: (value: string) => void;
-	/** 回到首屏看配置（ADR 0014：不被自动跟屏锁死）。 */
+	/** 回到首屏看配置（不被自动跟屏锁死）。 */
 	onOpenLaunch?: () => void;
 	/** 在当前项目下新开会话。 */
 	onNewSession?: () => void;
 	/**
-	 * 停止可用：这一轮是本面板发起的（ADR 0020）。
+ * 停止可用：这一轮是本面板发起的。
 	 *
 	 * 缺省就是不可停（fail-closed）：宁可这颗键是灰的，也不允许它去打穿别的会话。
 	 */
@@ -73,7 +74,7 @@ export interface ScanScreenProps {
 	onOpenNote?: (id: string) => Promise<string>;
 	/** Counts by outcome from the service, so the coverage title is the ledger's own numbers. */
 	coverageTally?: Record<string, number>;
-	/** 会话与状态四个面（ADR 0018），全部由服务计算。 */
+	/** 会话与状态四个面，全部由服务计算。 */
 	budget?: BridgeBudget;
 	telemetry?: BridgeTelemetry | null;
 	history?: readonly BridgeHistoryEntry[];
@@ -450,7 +451,7 @@ export function ScanScreen({
 							onToggle={() => toggleSection("stats")}
 						/>
 						<dl className="astra-strix-kv">
-							{/* 会话事实并入统计（ADR 0020）：没有沙箱时那两行不画，宁缺勿空。 */}
+							{/* 会话事实并入统计：没有沙箱时那两行不画，宁缺勿空。 */}
 							<div>
 								<dt>{t("session.where")}</dt>
 								<dd className={envMode === "docker" ? undefined : "astra-strix-amber"}>{environmentLabel}</dd>
@@ -505,7 +506,7 @@ export function ScanScreen({
 									<dd title={model.name}>{model.name}</dd>
 								</div>
 							) : null}
-							{/* 额度（ADR 0018）：读服务算出来的用量，面板不自己数。 */}
+							{/* 额度：读服务算出来的用量，面板不自己数。 */}
 							{budget ? (
 								<div data-exhausted={budget.exhausted.length ? "yes" : "no"}>
 									<dt>{t("panel.budget")}</dt>
@@ -527,7 +528,7 @@ export function ScanScreen({
 						{budget?.reason ? <p className="astra-strix-section-empty astra-strix-amber">{t("budget.exhausted", { reason: budget.reason })}</p> : null}
 					</section>
 
-					{/* 团队成员（ADR 0016）：名单来自 plugin.json，署名数来自发现台账。 */}
+					{/* 团队成员：名单来自 plugin.json，署名数来自发现台账。 */}
 					{team && team.members.length ? (
 
 						<section className="astra-strix-section" data-tone="team" data-collapsed={collapsed.team ? "yes" : "no"}>
@@ -545,7 +546,9 @@ export function ScanScreen({
 							<ul className="astra-strix-team">
 								{team.members.map((member) => (
 									<li key={member.id} data-lead={member.lead ? "yes" : "no"}>
-										<span className="astra-strix-team-name" title={member.responsibility}>{member.name}</span>
+										<span className="astra-strix-team-name" title={manifestLabel(t, member.responsibility)}>
+											{manifestLabel(t, member.name)}
+										</span>
 										{member.lead ? <span className="astra-strix-chip-live">{t("team.lead")}</span> : null}
 										<span className="astra-strix-dim astra-strix-team-filed">
 											{team.filed[member.id]

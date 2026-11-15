@@ -8,7 +8,7 @@ import { listHistory } from "../src/service/history";
 import { checkFreshness, skillsProvenance, stampedDigest } from "../src/service/freshness";
 
 /**
- * 会话与状态的四件事（ADR 0018）：预算 / 本机统计 / 历史 / 新鲜度。
+ * 会话与状态的四件事：预算 / 本机统计 / 历史 / 新鲜度。
  *
  * 它们对齐上游的四项能力，但**成本模型不同**：上游付模型费、发遥测、问服务器要更新；
  * 本插件没有模型调用、不联网。所以这四条钉的是"我们的版本"：

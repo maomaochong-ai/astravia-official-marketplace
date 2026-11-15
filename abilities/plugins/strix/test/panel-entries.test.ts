@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 /**
- * 面板的入口与密度（ADR 0019，1.0.12）。
+ * 面板的入口与密度。
  *
  * 原型（.tmp/prototypes/strix-panel-v2.html）里逐入口标了 21 处；这条只钉**结构性**的那几条，
  * 因为它们是"看下去像不像一回事"的来源，而不是配色细节：
@@ -26,13 +26,15 @@ describe("the launch screen says who is on the team", () => {
 	it("renders one chip per member, from the manifest's roster", () => {
 		expect(launch).toContain("astra-strix-team-chips");
 		expect(launch).toContain("team.members.map");
-		// 名字来自服务读回的 roster，不是面板里写死的四个字符串。
-		expect(launch).toContain("member.name");
+		// 名字来自服务读回的 roster，并由面板按宿主语言解 `%key%`（清单里不写死任何一种语言）。
+		expect(launch).toContain("manifestLabel(t, member.name)");
 	});
 
 	it("marks the lead and shows the responsibility on hover", () => {
 		expect(launch).toContain('data-lead={member.lead ? "yes" : "no"}');
-		expect(launch).toContain("title={member.responsibility}");
+		expect(launch).toContain("manifestLabel(t, member.responsibility)");
+		// 名单里不再出现“中文 · English”这种两头都写一半的形态。
+		expect(launch).not.toMatch(/replace\(\/\*?\s*·/);
 	});
 
 	it("picks the glyph by role, not by name", () => {
@@ -61,7 +63,7 @@ describe("the rail can be folded down", () => {
 
 	it("makes the whole section title the toggle", () => {
 		expect(screen).toContain("astra-strix-section-head");
-		// aria-expanded 用的是布尔取反：collapsed ? "false" : "true"。
+		// aria-expanded 用的是布尔取反：collapsed? "false": "true"。
 		expect(screen).toMatch(/aria-expanded=\{collapsed \? "false" : "true"\}/);
 		// 旧的那颗 20px +/− 按钮属于 panel-box，不该被这次改动复用或改样式。
 		expect(css).toContain(".astra-strix-section-head {");
@@ -69,8 +71,8 @@ describe("the rail can be folded down", () => {
 	});
 
 	it("gives every section a glyph", () => {
-		// 六个分区，每个一个字形（ADR 0019）。`▣` 原来是「会话」那一区，1.0.13 起它的两条事实
-		// 并进了「统计」（ADR 0020：会话在哪跑不是独立主题，是这一轮的状态），分区随之取消。
+		// 六个分区，每个一个字形。`▣` 原来是「会话」那一区，1.0.13 起它的两条事实
+		// 并进了「统计」（会话在哪跑不是独立主题，是这一轮的状态），分区随之取消。
 		for (const glyph of ["◎", "◈", "▦", "⚉", "◷", "⇄"]) {
 			expect(screen).toContain(glyph);
 		}

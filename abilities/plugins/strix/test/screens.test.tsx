@@ -135,7 +135,7 @@ const scanProps = {
 describe("scan screen", () => {
 	it("renders a completed tool the way the TUI does", () => {
 		render(<ScanScreen {...scanProps} />);
-		// 逐工具渲染（ADR 0009）：标题是家族名 `exec`，而不是原始 `strix_exec`。
+		// 逐工具渲染：标题是家族名 `exec`，而不是原始 `strix_exec`。
 		expect(screen.getByText("exec")).toBeTruthy();
 		expect(screen.getByText("nmap -sV example.com")).toBeTruthy();
 		expect(screen.getByText(/✓ Done/)).toBeTruthy();
@@ -157,7 +157,7 @@ describe("scan screen", () => {
 	});
 
 	it("has no You: row — the operator's words live in the chat", () => {
-		// 这一行曾经存在，和聊天区重复（ADR 0007）。轨迹只剩工具、说明、结论。
+		// 这一行曾经存在，和聊天区重复。轨迹只剩工具、说明、结论。
 		render(<ScanScreen {...scanProps} trace={[run({ kind: "note", label: "turn 1 · the words are in the chat" })]} />);
 		expect(screen.queryByText("You:")).toBeNull();
 		expect(screen.getByText(/turn 1/)).toBeTruthy();

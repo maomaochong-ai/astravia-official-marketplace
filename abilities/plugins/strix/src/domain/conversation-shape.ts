@@ -1,7 +1,7 @@
 import type { ConversationState } from "@astravia-org/plugin-sdk";
 
 /**
- * 会话的形态，以及面板对它到底能动什么（ADR 0020）。
+ * 会话的形态，以及面板对它到底能动什么。
  *
  * 宿主把两种会话塞进同一个 `ConversationState`，可见的区别只剩 `sessionPath`：
  *
