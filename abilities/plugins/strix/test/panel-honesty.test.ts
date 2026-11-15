@@ -35,25 +35,19 @@ describe("panel tells the truth about its own emptiness", () => {
 	});
 });
 
-describe("composer hands the prompt to the conversation", () => {
-	it("delivers panel input through the host conversation", () => {
-		expect(session).toContain("await sendPrompt(value)");
+describe("the panel does not speak on the user's behalf", () => {
+	it("has no delivery path: the host composer is the only place a turn starts", () => {
+		expect(session).not.toContain("await sendPrompt(value)");
+		expect(session).not.toContain("insertText(value)");
+		// 仍然保留的是面板自己的“新会话”（createSession）与停止（abort）。
 		expect(session).toContain("createSession(cwd)");
+		expect(session).toContain("await abort()");
 	});
 
-	it("does not echo what it sent into the panel", () => {
-		// 面板把话交给对话，自己不再画一份。之前它 push 一条 `kind: "user"`，
-		// 于是同一句话在聊天区和面板各出现一次——就是用户说的冗余。
+	it("does not echo the conversation into the panel", () => {
+		// 面板不画用户发言与 agent 回复；它只记关键点（say）与工具行。
 		expect(session).not.toContain('pushTrace({ kind: "user"');
-		expect(session).toContain("await sendPrompt(value)");
-	});
-
-	it("says so, and does nothing else, when sending fails", () => {
-		expect(session).toContain('note(t("log.sendFailed"), "error")');
-		// 没有目录不是失败：话交给宿主输入框，由宿主按当前目录建会话（1.0.4/1.0.6）。
-		expect(session).toContain('note(t("log.handedToHost"), "ok")');
-		expect(zh["log.sendFailed"]).toBeTruthy();
-		expect(zh["log.handedToHost"]).toBeTruthy();
+		expect(session).not.toContain('pushTrace({ kind: "host"');
 	});
 });
 

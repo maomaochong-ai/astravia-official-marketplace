@@ -321,15 +321,77 @@
 	gap: 4px 16px;
 	padding-top: 8px;
 	border-top: 1px solid var(--sx-rule);
-	/* 与值列同轴：脚注不另起第三条左边缘（标签列 5.2em + 列间距 10px）。 */
+	/* 与值列同轴：标签列宽用 `em` 表达，所以这里**不能**改字号——
+	   改了 em 的基准就变，脚注会向左错开十几像素（实测 78 → 67）。
+	   小字号交给里面的子元素自己声明。 */
 	padding-left: calc(5.2em + 10px);
-	font-size: 11px;
 	color: var(--sx-dim);
+}
+
+.astra-strix-launch-foot .astra-strix-hints,
+.astra-strix-launch-foot .astra-strix-boot-line,
+.astra-strix-launch-foot .astra-strix-go {
+	font-size: 11px;
+}
+
+.astra-strix-hints,
+.astra-strix-boot-line {
+	display: flex;
+	align-items: baseline;
+	gap: 4px 16px;
+}
+
+.astra-strix-hints {
+	flex-wrap: wrap;
+	gap: 4px 18px;
+}
+
+/* 首屏「话在对话里说」那条说明：它是替代输入框的那句话，语气是提示、不是错误。 */
+.astra-strix-launch-note {
+	margin: 0;
+	max-width: 72ch;
+	font-size: 11.5px;
+	line-height: 1.6;
+	color: var(--sx-dim);
+}
+
+/* 工作台底部：同样的意思，只一行——工作台里不需要再解释一次“这里不是聊天框”。 */
+.astra-strix-workbench-note {
+	margin: 0;
+	padding: 6px clamp(0px, 2vw, 14px) 8px;
+	border-top: 1px solid var(--sx-rule);
+	font-size: 11px;
+	line-height: 1.5;
+	color: var(--sx-dim);
+}
+
+/* 目标行末尾的来源标签：「声明」与「从对话」必须一眼能分开。 */
+.astra-strix-target-tag {
+	margin-left: 6px;
+	font-size: 10.5px;
+	opacity: 0.85;
+}
+
+/* 目标里从对话认出的候选：比声明那条轻一档，但仍然可读。 */
+.astra-strix-targets > li[data-derived="yes"] > span:nth-child(2) {
+	color: var(--sx-dim);
+}
+
+/* 连接列表：一行一枚，死的（dead）用琥珀点——与状态行同一套颜色语义。 */
+.astra-strix-conn-list {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: 4px 12px;
+}
+
+.astra-strix-conn {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 4px;
 }
 
 /* 右侧一组：桥接状态 + 版本。整组不换行——版本号单独掉到第二行是用户看到的那张截图。 */
 .astra-strix-boot-line {
-	display: inline-flex;
 	align-items: baseline;
 	gap: 8px;
 	margin-left: auto;
@@ -1703,7 +1765,9 @@
 /* ---- 首屏输入框以下：一条左边缘（1.0.3） -----------------------------------
    之前 model / env / hints / boot 各自带不同缩进，看起来像四段没对齐的文字。
    现在只定义一次 gutter，所有行都从它开始；行的内部间距由 gap 控制。 */
-.astra-strix-launch > * {
+/* 脚注例外：它的左内边距就是用来对齐值列的（5.2em + 列间距），
+   被这条重置清成 0 就会退到标签列上（实测 78 → 0）。 */
+.astra-strix-launch > *:not(.astra-strix-launch-foot) {
 	padding-left: 0;
 	padding-right: 0;
 }

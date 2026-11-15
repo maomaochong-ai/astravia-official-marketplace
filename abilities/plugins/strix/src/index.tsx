@@ -53,9 +53,7 @@ function StrixTabRoot({
 		client,
 		conversation,
 		subscribe: (listener) => ctx.conversation.on(listener),
-		sendPrompt: (text) => ctx.conversation.sendPrompt(text),
 		// 拿不到工作目录时的退路：把话放进宿主输入框，让宿主的"新会话页"自己建会话。
-		insertText: (text) => ctx.conversation.insertText(text),
 		createSession: (cwd) => ctx.conversation.createSession(cwd),
 		abort: () => ctx.conversation.abort(),
 		// 宿主打开的工作目录：会话没有 cwd 时（新会话页、刚切目录）用它，而不是报"先打开目录"。
@@ -109,6 +107,9 @@ function StrixTabRoot({
 			workspace={session.workspace}
 			hostStreaming={session.hostStreaming}
 			canStop={session.canStop}
+			scope={session.scope}
+			candidates={session.candidates}
+			{...(session.capabilities ? { capabilities: session.capabilities } : {})}
 			readOnly={session.readOnly}
 			environment={session.environment}
 			sandbox={session.sandbox}
@@ -137,8 +138,6 @@ function StrixTabRoot({
 			onOpenWorkbench={session.openWorkbench}
 			{...(session.coverageTally ? { coverageTally: session.coverageTally } : {})}
 			busy={session.busy}
-			start={session.start}
-			send={session.send}
 			stop={session.stop}
 			onQuit={onQuit}
 		/>

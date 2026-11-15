@@ -19,10 +19,11 @@ vi.mock("@astravia-org/plugin-sdk", async (importOriginal) => {
 import plugin from "../src/index";
 
 /**
- * 「对话区与面板的回复一模一样」这个问题，从 DOM 上验证已经消失。
+ * 面板不画对话正文（从 DOM 上验证）。
  *
- * 断言的是**同一段文字只出现在一个地方**：对话（宿主负责，这里看不到）——面板里搜不到。
- * 同时确认面板没有因此变成空白：轮次分隔行与命令块仍然在。
+ * 断言的是**同一段文字不会以正文形态出现两次**：宿主负责对话（markdown、可复制、可回滚），
+ * 面板只留摘要——用户这一轮要什么、agent 说出的带信息量的一两句。
+ * 同时确认面板没有因此变成空白：轮次分隔行、关键点与轨迹标题都在。
  */
 describe("panel shows the run, not the conversation", () => {
 	it("never renders the agent's answer, and still shows the turn divider", async () => {
@@ -68,7 +69,12 @@ describe("panel shows the run, not the conversation", () => {
 		action?.onToggle?.(true);
 		render(tab!.component());
 
-		const answer = "Four renditions found; one IDOR at /api/orders.";
+		// 真实答复是多句的：面板只该留带结论的那几句。
+		const answer = [
+			"我先看了登录页和订单接口，没有发现明显的注入。",
+			"Four renditions found; one IDOR at /api/orders — an authenticated user can read another user's order by changing the id in the path.",
+			"其余两个缺口需要有效凭据才能复现，我记在了笔记里，等这一轮结束后再补。",
+		].join("\n\n");
 		const userLine = "pentest staging.example.com, 443 only";
 
 		await act(async () => {
@@ -78,21 +84,22 @@ describe("panel shows the run, not the conversation", () => {
 			listener?.({ type: "message-added", message: { id: "a1", role: "assistant", text: answer } });
 		});
 
-		// 面板里搜不到对话正文——这是这一轮改动的全部意义。
-		expect(screen.queryByText(answer, { exact: false })).toBeNull();
-		expect(screen.queryByText(userLine, { exact: false })).toBeNull();
+		// 答复的正文不在面板里（多句、带过渡语的那段搜不到）。
+		expect(screen.queryByText(answer)).toBeNull();
+		// 用户的诉求保留一行：读者要能记起“这一轮在干什么”，但只有一行。
+		expect(screen.getByText(userLine)).toBeTruthy();
+		const points = [...document.querySelectorAll(".astra-strix-say")].map((node) => node.textContent ?? "");
+		expect(points.some((line) => line.includes("IDOR"))).toBe(true);
+		expect(points.every((line) => line.length <= 140)).toBe(true);
+		// 一行诉求 + 一行结论：不是把三个段落搬过来。
+		expect(points.length).toBeLessThanOrEqual(2);
 		// 但读者仍知道“这是第几轮”：分隔行在。
 		expect(screen.getByText(/scan\.turnDivider/)).toBeTruthy();
 		// 轨迹栏有标题，说明自己是运行记录而不是对话。
 		expect(screen.getByText(/scan\.traceTitle/)).toBeTruthy();
 
-		// 用户在面板输入框敲的话也不再回显。
-		const input = screen.getByLabelText("scan.label") as HTMLTextAreaElement;
-		await act(async () => {
-			fireEvent.change(input, { target: { value: "continue on /admin" } });
-			fireEvent.keyDown(input, { key: "Enter" });
-		});
-		expect(screen.queryByText("continue on /admin", { exact: false })).toBeNull();
+		// 面板没有输入框：这条冗余在结构上就不存在了（发消息是宿主的事）。
+		expect(document.querySelector("textarea")).toBeNull();
 
 		if (typeof disposable === "function") await disposable();
 		else await (disposable as { dispose(): void | Promise<void> }).dispose();

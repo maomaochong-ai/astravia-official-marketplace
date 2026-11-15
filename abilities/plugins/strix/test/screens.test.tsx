@@ -17,28 +17,29 @@ const model = { modelKey: "openrouter/z-ai/glm-5.3", name: "glm-5.3", provider: 
 
 describe("launch screen", () => {
 	it("draws the wordmark, the tagline and the key hints", () => {
-		render(
+		const { container } = render(
 			<LaunchScreen
 				t={t}
-	boot={{ state: "ready" }}
+				boot={{ state: "ready" }}
 				model={model}
 				log={[]}
 				version="0.4.0"
-				onSubmit={() => undefined}
+				{...{ onOpenWorkbench: () => undefined }}
 				onQuit={() => undefined}
 			/>,
 		);
 		expect(screen.getByLabelText("Strix")).toBeTruthy();
 		expect(screen.getByText("launch.tagline")).toBeTruthy();
-		expect(screen.getByText("enter")).toBeTruthy();
-		expect(screen.getByText("launch.hint.enter")).toBeTruthy();
+		// 首屏不再有输入框与「Enter 提交」：唯一的前进动作是进工作台（见决策记录）。
+		expect(screen.getByText("nav.workbench")).toBeTruthy();
+		expect(container.querySelector("textarea")).toBeNull();
 		expect(screen.getByText("v0.4.0")).toBeTruthy();
 	});
 
 	it("shows the host's model the way upstream shows STRIX_LLM", () => {
 		render(
 			<LaunchScreen t={t}
- boot={{ state: "ready" }} model={model} log={[]} version="0.4.0" onSubmit={() => undefined} onQuit={() => undefined} />,
+ boot={{ state: "ready" }} model={model} log={[]} version="0.4.0"  onQuit={() => undefined} />,
 		);
 		expect(screen.getByText("glm-5.3")).toBeTruthy();
 		expect(screen.getByText(/openrouter\/z-ai/)).toBeTruthy();
@@ -47,55 +48,22 @@ describe("launch screen", () => {
 	it("says there is no model instead of showing a blank chip", () => {
 		render(
 			<LaunchScreen t={t}
- boot={{ state: "ready" }} log={[]} version="0.4.0" onSubmit={() => undefined} onQuit={() => undefined} />,
+ boot={{ state: "ready" }} log={[]} version="0.4.0"  onQuit={() => undefined} />,
 		);
 		expect(screen.getByText("launch.noModel")).toBeTruthy();
 		expect(screen.getByText(/launch.noModelHint/)).toBeTruthy();
-	});
-
-	it("hands the prompt over on Enter and keeps Shift+Enter for a newline", async () => {
-		const onSubmit = vi.fn();
-		render(
-			<LaunchScreen t={t}
- boot={{ state: "ready" }} model={model} log={[]} version="0.4.0" onSubmit={onSubmit} onQuit={() => undefined} />,
-		);
-		const input = screen.getByLabelText("launch.label");
-		await userEvent.type(input, "example.com");
-		await userEvent.type(input, "{shift>}{enter}{/shift}");
-		expect(onSubmit).not.toHaveBeenCalled();
-		await userEvent.type(input, "{enter}");
-		// Shift+Enter inserts a newline; Enter alone hands the (multi-line) value over.
-		expect(onSubmit).toHaveBeenCalledTimes(1);
-		expect((onSubmit.mock.calls[0]?.[0] as string).replace(/\s+$/, "")).toBe("example.com");
 	});
 
 	it("quits on ctrl+c, the way the CLI does", () => {
 		const onQuit = vi.fn();
 		render(
 			<LaunchScreen t={t}
- boot={{ state: "ready" }} model={model} log={[]} version="0.4.0" onSubmit={() => undefined} onQuit={onQuit} />,
+ boot={{ state: "ready" }} model={model} log={[]} version="0.4.0"  onQuit={onQuit} />,
 		);
-		fireEvent.keyDown(screen.getByLabelText("launch.label"), { key: "c", ctrlKey: true });
+		fireEvent.keyDown(screen.getByLabelText("Strix"), { key: "c", ctrlKey: true });
 		expect(onQuit).toHaveBeenCalled();
 	});
 
-	it("prints the feedback log and names what is blocking the launch", () => {
-		render(
-			<LaunchScreen
-				t={t}
-	boot={{ state: "ready" }}
-				model={model}
-				log={[{ text: "log.connecting" }, { text: "log.dockerDown", tone: "error" }]}
-				version="0.4.0"
-				blocked="launch.blocked.docker"
-				onSubmit={() => undefined}
-				onQuit={() => undefined}
-			/>,
-		);
-		expect(screen.getByText("log.connecting")).toBeTruthy();
-		expect(screen.getByText("log.dockerDown")).toBeTruthy();
-		expect(screen.getByText("launch.blocked.docker")).toBeTruthy();
-	});
 });
 
 const run = (overrides: Partial<TraceEntry> = {}): TraceEntry => ({

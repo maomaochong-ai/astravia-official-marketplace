@@ -10,15 +10,14 @@
  * witnesses — the conversation's events and the bridge's command feed — and "running" means
  * the host is generating right now, not that this component has a loop of its own.
  */
-
 import { useCallback, useEffect, useState } from "react";
-import { useComposerHeight } from "../hooks/use-composer-height";
 import { useStickToBottom } from "../hooks/use-stick-to-bottom";
 import { HackerRain } from "./hacker-rain";
 import { manifestLabel } from "../../../domain/manifest-label";
 import type { ModelChoice } from "../../../domain/model-label";
 import type {
 	BridgeBudget,
+	BridgeScope,
 	BridgeHistoryEntry,
 	BridgeTeam,
 	BridgeTelemetry,
@@ -36,6 +35,7 @@ import { describeMode, type ScanMode } from "../../../domain/scan-mode";
 import type { SessionPhase } from "../hooks/use-strix-session";
 import { ArtefactPanels } from "./artefact-panels";
 import type { McpConnection } from "../../../domain/mcp-roster";
+import type { DerivedTarget } from "../../../domain/target-extraction";
 import { TraceBlock } from "./trace-block";
 
 export interface ScanScreenProps {
@@ -54,10 +54,13 @@ export interface ScanScreenProps {
 	mcp: readonly McpConnection[];
 	/** Folder name of the conversation workspace. */
 	workspace?: string;
+	/** 已声明的范围（服务给）。目标区把声明与候选分两组画。 */
+	scope?: BridgeScope;
+	/** 从对话里认出的候选目标（已剔除声明过的）。 */
+	candidates?: readonly DerivedTarget[];
 	/** The host conversation is generating a turn right now — drives running/idle only. */
 	hostStreaming: boolean;
 	busy: boolean;
-	onSend: (value: string) => void;
 	/** 回到首屏看配置（不被自动跟屏锁死）。 */
 	onOpenLaunch?: () => void;
 	/** 在当前项目下新开会话。 */
@@ -139,6 +142,8 @@ export function ScanScreen({
 	phase,
 	model,
 	workspace,
+	scope,
+	candidates,
 	hostStreaming,
 	canStop,
 	sandbox,
@@ -151,7 +156,6 @@ export function ScanScreen({
 	mcp,
 	trace,
 	busy,
-	onSend,
 	onOpenLaunch,
 	onNewSession,
 	coverageTally,
@@ -162,21 +166,22 @@ export function ScanScreen({
 	onOpenNote,
 	onStop,
 }: ScanScreenProps): React.ReactElement {
-	const targets = sandbox.targets ?? [];
+	const declared = scope?.entries ?? [];
+	const derived = candidates ?? [];
+	// 目标区分两组：声明的（权威，来自 `strix_scope`）与候选的（从对话里认出的）。
+	// 沙箱自带的 targets 也算声明：那是 agent 明说“这次要打这些”。
+	const sandboxTargets = sandbox.targets ?? [];
 	// A live run is the host generating; an open assessment whose turn already ended is
 	// idle, not "running" and not "done" — the distinction the band used to blur.
 	const running = phase === "scanning" && hostStreaming;
 	const critical = findings.filter((item) => item.severity === "critical").length;
 	const steps = trace.filter((entry) => entry.kind === "tool").length;
-	const [draft, setDraft] = useState("");
-	// 高度与拖拽方向：两个屏共用一份状态（composer-height.ts），否则一边对一边错。
-	const composer = useComposerHeight();
 	// 运行记录永远停在最新一行；读者自己往上滚时不抢回（use-stick-to-bottom.ts）。
-	/** 默认展开"这一眼要看的"；连接与历史收起，需要时点开。 */
+	/** 默认展开“这一眼要看的”；连接与历史收起，需要时点开。 */
 	const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
-		session: false,
 		targets: false,
 		findings: false,
+		plan: false,
 		stats: false,
 		team: false,
 		mcp: true,
@@ -187,14 +192,6 @@ export function ScanScreen({
 		[],
 	);
 	const stick = useStickToBottom(`${trace.length}:${trace[trace.length - 1]?.ok ?? ""}`, trace.length);
-
-	/** Enter 与发送键走同一条路：清空草稿、把话交给宿主。 */
-	const send = (): void => {
-		// 流式中发送也是合法的（宿主排队）；发送键与 Enter 共用这一条。
-		if (!draft.trim()) return;
-		setDraft("");
-		onSend(draft);
-	};
 	const mode: ScanMode = (sandbox.scanMode as ScanMode | undefined) ?? "standard";
 	const envMode = sandbox.mode ?? environment?.mode;
 	const environmentLabel = envMode === "docker" ? t("env.docker") : t("env.host");
@@ -207,8 +204,8 @@ export function ScanScreen({
 		return () => clearInterval(timer);
 	}, [running]);
 
-	// The one thing a new assessment should say: what to do, not what is missing.
-	const emptyHint = targets.length ? t("scan.emptyWithTargets") : t("scan.emptyNoTargets");
+	// 新建评估时该说的一件事：做什么，而不是缺什么。无目标时提示可以在对话里点名目标。
+	const emptyHint = declared.length || derived.length || sandboxTargets.length ? t("scan.emptyWithTargets") : t("scan.emptyNoTargets");
 
 	return (
 		<div className="astra-strix-term astra-strix-phosphor astra-strix-workbench">
@@ -228,7 +225,7 @@ export function ScanScreen({
 				</span>
 				{/* 状态带只留**这一眼里就要的**：跑了没、多少目标、什么深度、跑在哪。
 				    模型 / 步数 / 发现数在右栏的「统计」里已经有一份，同一件事写两遍是噪声（1.0.7）。 */}
-				<Fact label={t("targets.title")} value={String(targets.length)} />
+				<Fact label={t("targets.title")} value={String(declared.length + derived.length + sandboxTargets.length)} />
 				<Fact label={t("scan.mode")} value={describeMode(mode)} />
 				<Fact
 					label={t("scan.environment")}
@@ -292,50 +289,10 @@ export function ScanScreen({
 						) : null}
 					</div>
 
-					{/* 拖拽手柄在盒子顶边：向上拖 = 变高（方向定义在 composer-height.ts，
-					    不在 CSS 里猜）。用 separator 而不是 button，因为它是尺寸控件。 */}
-					<div
-						className="astra-strix-composer"
-						data-busy={busy ? "yes" : "no"}
-						{...(composer.height ? { style: { "--sx-composer-h": `${composer.height}px` } as React.CSSProperties } : {})}
-					>
-						<div
-							className="astra-strix-resize-handle"
-							role="separator"
-							aria-orientation="horizontal"
-							aria-label={t("composer.resize")}
-							tabIndex={0}
-							{...composer.handleProps}
-						/>
-						<div className="astra-strix-prompt-row">
-							<span className="astra-strix-prompt-caret" aria-hidden="true">
-								&gt;
-							</span>
-							<textarea
-								className="astra-strix-prompt-input"
-								aria-label={t("scan.label")}
-								placeholder={t("scan.placeholder")}
-								rows={1}
-								spellCheck={false}
-								value={draft}
-								onChange={(event) => setDraft(event.target.value)}
-								onKeyDown={(event) => {
-									if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-										event.preventDefault();
-										send();
-									}
-								}}
-							/>
-						</div>
-						{/* 框内底条：与首屏同形——左键位、右发送。说明文字从框下小字收进这条里。 */}
-						<div className="astra-strix-composer-bar">
-							<span className="astra-strix-dim">{t("launch.hint.send")}</span>
-							<button type="button" className="astra-strix-send" onClick={send} disabled={!draft.trim()}>
-								{t("composer.send")}
-							</button>
-						</div>
-						{/* 框下不再重复一行说明：键位提示已经在框内的底条里（1.0.8）。 */}
-					</div>
+					{/* 这里以前是工作台的输入框。它存在的理由已经消失：发消息是宿主的事，
+					    面板再收一次只是在同一件事上开两个入口（见决策记录）。
+					    改成一条只读说明：话在哪里说，说清楚。 */}
+					<p className="astra-strix-workbench-note">{t("scan.speakInChat")}</p>
 				</section>
 
 				<aside className="astra-strix-rail" aria-label={t("rail.title")}>
@@ -346,17 +303,37 @@ export function ScanScreen({
 							collapsed={Boolean(collapsed.targets)}
 							onToggle={() => toggleSection("targets")}
 							count={
-								<span className="astra-strix-count" data-empty={targets.length ? "no" : "yes"}>
-									{targets.length}
+								<span
+									className="astra-strix-count"
+									data-empty={declared.length || derived.length || sandboxTargets.length ? "no" : "yes"}
+								>
+									{declared.length + derived.length + sandboxTargets.length}
 								</span>
 							}
 						/>
-						{targets.length ? (
+						{/* 两组合在一栏里：上面是声明（权威，agent 写的），下面是候选（从对话里认出的）。
+						    候选不属于授权，所以带标签、排在后面，且已声明过的不重复出现。 */}
+						{declared.length || derived.length || sandboxTargets.length ? (
 							<ul className="astra-strix-targets">
-								{targets.map((target) => (
-									<li key={target}>
+								{sandboxTargets.map((target) => (
+									<li key={`sandbox-${target}`}>
 										<span className="astra-strix-dim">▸ </span>
 										<span title={target}>{target}</span>
+										<span className="astra-strix-dim astra-strix-target-tag">{t("targets.declared")}</span>
+									</li>
+								))}
+								{declared.map((entry) => (
+									<li key={entry.id}>
+										<span className="astra-strix-dim">{entry.kind === "cidr" ? "▨ " : "▸ "}</span>
+										<span title={entry.note ?? entry.value}>{entry.value}</span>
+										<span className="astra-strix-dim astra-strix-target-tag">{t("targets.declared")}</span>
+									</li>
+								))}
+								{derived.map((target) => (
+									<li key={`derived-${target.value}`} data-derived="yes">
+										<span className="astra-strix-dim">◇ </span>
+										<span title={target.value}>{target.value}</span>
+										<span className="astra-strix-dim astra-strix-target-tag">{t("targets.derived")}</span>
 									</li>
 								))}
 							</ul>
@@ -486,7 +463,7 @@ export function ScanScreen({
 							</div>
 							<div>
 								<dt>{t("targets.title")}</dt>
-								<dd>{targets.length}</dd>
+								<dd>{declared.length + derived.length + sandboxTargets.length}</dd>
 							</div>
 							<div>
 								<dt>{t("scan.steps")}</dt>

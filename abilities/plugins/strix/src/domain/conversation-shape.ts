@@ -1,31 +1,22 @@
-import type { ConversationState } from "@astravia-org/plugin-sdk";
-
 /**
- * 会话的形态，以及面板对它到底能动什么。
+ * 面板能对宿主会话做什么（纯函数）。
  *
- * 宿主把两种会话塞进同一个 `ConversationState`，可见的区别只剩 `sessionPath`：
+ * 1.0.16 起面板不再发消息：`send` 这条路整个删掉，`insertText` 也不再需要。
+ * 剩下的唯一写动作是「停止」，而它的判据变了——
  *
- * | | 单智能体会话 | 团队会话 |
- * |---|---|---|
- * | 来源 | `activeSessionAtom` | `pluginConversationOverrideAtom` |
- * | `id` | 会话 runtimeId | 团队会话 id |
- * | `cwd` | 会话目录 | 团队工作区 |
- * | `sessionPath` | 有（`ActiveSession.sessionPath`） | **恒 null**（`snapshot()` 里写死） |
- * | `turn-start` | `session.subscribe` 翻译而来 | 团队输入框发送时直报 |
- * | 输入框上的插件入口 | 胶囊 + 行内条目 | **没有**（团队用另一套 composer） |
- * | `sendPrompt` 落到哪 | 本会话 | 上一个单会话（`pluginSendMessageRef` 没跟着切） |
- * | `abort()` 打到谁 | 本会话（`activeSessionAtom.runtimeId`） | 上一个单会话（同上） |
+ *   **停止的对象永远等于面板正在显示的那个会话。**
  *
- * 最后两行是这一版要处理的缺陷来源：面板的三条写路径（发、停、abort）都不是
- * "发给你正在看的这个会话"，而是"发给宿主此刻的活跃单会话"。在团队会话里，
- * 那个"活跃单会话"是**另一个项目的普通对话**——在 A 项目跑评估、在 B 项目点停止，
- * B 的对话被终止，就是这个。所以规则不是"小心一点"，而是按形态分别授权：
+ * 为什么这就够了：面板拿到的是宿主的活动会话快照（`useActiveConversation()`），
+ * 而 `abort()` 打的是同一个活动会话（`activeSessionAtom`）。两者同源，所以"我看到的"
+ * 与"我停掉的"是同一个会话，跨会话误伤在结构上不成立。
  *
- *  - 单会话：面板可以写，但只能写自己发起的那一轮；
- *  - 团队会话：面板只读，写入与停止交给团队输入框自己；
- *  - 跟随与否：单会话看胶囊（用户把这一轮交给了插件），团队会话没有可看的开关
- *    （缺席不是拒绝），直接跟随。
+ * 早期版本靠 `runOwner`（本面板发起过运行）来判，是因为面板当时能发消息；现在没有
+ * 发起方，那个判据只会让停止键一直灰着。真机验证过：能看到这一轮、却停不了它，
+ * 比"按了才发现停错"更让人困惑。
+ *
+ * 团队会话仍然只读：`abort()` 在那边指向的是上一个单会话，不是团队这一轮。
  */
+
 export type ConversationShape = "none" | "single" | "team";
 
 /**
@@ -36,7 +27,7 @@ export type ConversationShape = "none" | "single" | "team";
  * 当单会话则会让面板在团队会话里写进别的会话——两害相权取前者。
  */
 export function conversationShape(
-	conversation: Pick<ConversationState, "id" | "sessionPath"> | null | undefined,
+	conversation: { id: string | null; sessionPath: string | null } | null | undefined,
 ): ConversationShape {
 	if (!conversation?.id) return "none";
 	return conversation.sessionPath ? "single" : "team";
@@ -49,42 +40,32 @@ export function conversationShape(
  * 拿它当唯一条件是"没有开关 = 用户拒绝"，而事实是"这个地方根本没有开关"。
  */
 export function shouldFollowTurn(shape: ConversationShape, engaged: boolean): boolean {
-	// 团队会话没有这颗胶囊可开，它在那里恒为 false；拿它当唯一条件就是“没有开关 = 用户拒绝”。
+	// 团队会话没有这颗胶囊可开，它在那里恒为 false。
 	if (shape === "team") return true;
-	// 其余（单会话，以及“还没收到 conversation-changed”的未知态）一律看胶囊：
-	// 未知不等于团队，不能因为一帧没拿到形态就把团队会话的跟随再搞丢。
+	// 其余（单会话，以及"还没收到 conversation-changed"的未知态）一律看胶囊。
 	return engaged;
 }
 
-/** 面板能对宿主会话做的动作。 */
-export type HostAction = "send" | "stop";
-
-export type ActionRefusal = "team-surface" | "not-this-conversation" | "no-run";
-
-export interface ActionDecision {
+export interface StopDecision {
 	ok: boolean;
-	reason?: ActionRefusal;
+	/** 拒绝的原因，给界面出一句话。 */
+	reason?: "team-surface" | "no-run" | "not-this-conversation";
 }
 
 /**
- * 授权一次写动作。
+ * 停止按钮能不能用。
  *
- * `runOwner` 是"本面板在哪一个会话里发起过运行"，`boundTo` 是"本面板此刻绑在哪个会话"。
- * 两者相等才停——这是会话隔离的唯一判据：插件只能收拾自己摆出来的东西。
+ * - 团队会话：不能（`abort()` 不指向团队这一轮）；
+ * - 这一轮没在跑：不能（没有可停的东西）；
+ * - 其余：能——面板显示的会话就是宿主的活动会话。
  */
-export function permitHostAction(input: {
+export function permitStop(input: {
 	shape: ConversationShape;
-	action: HostAction;
-	/** 本面板发起运行的那个会话；没发起过就是 null。 */
-	runOwner: string | null;
-	/** 本面板此刻绑定的会话。 */
-	boundTo: string | null;
-}): ActionDecision {
-	const { shape, action, runOwner, boundTo } = input;
-	if (shape === "team") return { ok: false, reason: "team-surface" };
-	if (shape === "none") return { ok: false, reason: "not-this-conversation" };
-	if (action === "send") return { ok: true };
-	if (!runOwner) return { ok: false, reason: "no-run" };
-	if (!boundTo || runOwner !== boundTo) return { ok: false, reason: "not-this-conversation" };
+	/** 这个会话此刻是否正在生成（宿主给的会话级信号）。 */
+	streaming: boolean;
+}): StopDecision {
+	if (input.shape === "team") return { ok: false, reason: "team-surface" };
+	if (input.shape === "none") return { ok: false, reason: "not-this-conversation" };
+	if (!input.streaming) return { ok: false, reason: "no-run" };
 	return { ok: true };
 }

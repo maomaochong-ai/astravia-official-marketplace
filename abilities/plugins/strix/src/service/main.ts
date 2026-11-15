@@ -688,6 +688,12 @@ const server = createServer(async (req, res) => {
 				findings: (list as { findings?: Array<{ member?: string }> }).findings ?? [],
 			});
 			const historyEntries = listHistory(DATA_DIR, 8);
+			// 范围条目与能力面：两件都是本地事实，跟上面那批并发取，不另开一次请求。
+			const skillLocation = locateSkills();
+			const [scopeSnapshot, skillIndex] = await Promise.all([
+				scope.snapshot().catch(() => ({ entries: [], rules: { ports: [], notes: [], updatedAt: null } })),
+				loadIndex(skillLocation).catch(() => undefined),
+			]);
 			return json(res, 200, {
 				environment: env,
 				sandbox: sandbox.status(),
@@ -703,8 +709,25 @@ const server = createServer(async (req, res) => {
 				preferences: await readPreferences(DATA_DIR),
 				// 工作单元：保留的 shell 会话（上游 agents 面板在本插件的诚实等价物）。
 				sessions: sessions.list().map(({ id, command, running, uptimeSec, tty }) => ({ id, command, running, uptimeSec, tty })),
-				// 范围是「这次允许触碰什么」的唯一权威；面板要能显示，报告要能带上（审查指出两处都漏了）。
-				scope: describeScope(await scope.snapshot()),
+				// 范围是「这次允许触碰什么」的唯一权威；面板需要的是**条目**（能逐行画、
+				// 能与对话里的候选去重），不是给报告用的那段文字，所以这里给结构体。
+				scope: (() => {
+					const snapshot = scopeSnapshot;
+					return {
+						entries: snapshot.entries.map(({ id, kind, value, note }) => ({ id, kind, value, ...(note ? { note } : {}) })),
+						ports: snapshot.rules.ports,
+						notes: snapshot.rules.notes,
+						text: describeScope(snapshot),
+					};
+				})(),
+				// 配置页要回答“装了什么”：工具面来自随包目录，技能库来自本地文件，
+				// 两者都是本地事实，不需要再发一次 MCP 或扫描。
+				capabilities: {
+					tools: SERVICE_TOOL_NAMES.length,
+					skills: skillIndex?.entries.length ?? 0,
+					skillCategories: skillIndex?.categories.length ?? 0,
+					skillSource: skillLocation.source,
+				},
 				budget: budgetState,
 				telemetry: telemetryState,
 				team: teamState,

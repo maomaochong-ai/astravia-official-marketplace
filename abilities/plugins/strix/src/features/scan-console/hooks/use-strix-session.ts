@@ -21,7 +21,9 @@
  * and the plugin's job is to show the assessment as it happens and to hand the operator's
  * words to the only agent that can act on them.
  */
-import { conversationShape, permitHostAction } from "../../../domain/conversation-shape";
+import { digestAnswer, digestAsk } from "../../../domain/conversation-digest";
+import { extractTargets, newTargets, type DerivedTarget } from "../../../domain/target-extraction";
+import { conversationShape, permitStop } from "../../../domain/conversation-shape";
 import { evidenceRow, isServiceNarrated, strixToolName, toolRow, turnDivider } from "../../../domain/conversation-projection";
 import { foldTrace, type TraceDraft } from "../../../domain/trace-log";
 import type { ConversationEvent, ConversationState } from "@astravia-org/plugin-sdk";
@@ -40,6 +42,8 @@ import type {
 	BridgeTelemetry,
 	BridgeHistoryEntry,
 	BridgeTeam,
+	BridgeScope,
+	BridgeCapabilities,
 	CoverageOutcome,
 	ShellSessionSummary,
 	EnvironmentProbe,
@@ -97,16 +101,18 @@ export interface StrixSessionModel {
 	/** An assistant answer arriving token by token; rendered as a live row. */
 	streaming?: string;
 	busy: boolean;
-	/** Deliver the launch prompt into the host conversation. */
-	start: (prompt: string) => Promise<void>;
-	/** Continue the assessment from the scan composer. */
-	send: (text: string) => Promise<void>;
 	/** 只停本面板发起的那一轮；不是它发起的就不动。 */
 	stop: () => Promise<void>;
 	/** 停止按钮可用：这一轮确实是本面板发起的，且宿主正看着这个会话。 */
 	canStop: boolean;
-	/** 团队会话：面板只读，发送与停止都在团队输入框。 */
+	/** 团队会话：面板只读（发送与停止都在团队输入框）。 */
 	readOnly: boolean;
+	/** 声明的范围（服务给），面板用它去重候选。 */
+	scope?: BridgeScope;
+	/** 从对话里认出的候选目标（未声明的那部分）。 */
+	candidates: readonly DerivedTarget[];
+	/** 配置页的能力面：工具面与技能库的数量与来源。 */
+	capabilities?: BridgeCapabilities;
 	/** Re-read state after a failure. */
 	refresh: () => Promise<void>;
 	/** 面板选的执行环境。 */
@@ -143,10 +149,8 @@ export interface StrixSessionOptions {
 	conversation: ConversationState | null;
 	/** `ctx.conversation.on`: the host's turn, message and tool events. */
 	subscribe: (listener: (event: ConversationEvent) => void) => { dispose(): void };
-	/** Host conversation API: the only path by which this panel speaks. */
-	sendPrompt: (text: string) => Promise<{ status: "sent" | "queued" | "failed" }>;
-	/** 把文字放进宿主输入框（拿不到 cwd 时，让宿主自己建会话）。 */
-	insertText: (text: string) => void;
+	// 不再有 sendPrompt / insertText：面板不发消息。唯一的写入口是 abort（供 stop），
+	// 与 createSession（面板自己的“新会话”）。
 	/**
 	 * 宿主当前打开的工作目录（`ctx.fileExplorer.getWorkspaceRoots()`，需要 workspace.read）。
 	 *
@@ -166,8 +170,6 @@ export function useStrixSession({
 	client,
 	conversation,
 	subscribe,
-	sendPrompt,
-	insertText,
 	createSession,
 	abort,
 	workspaceRoot,
@@ -205,6 +207,17 @@ export function useStrixSession({
 	const [telemetry, setTelemetry] = useState<BridgeTelemetry | null>(null);
 	const [history, setHistory] = useState<BridgeHistoryEntry[]>([]);
 	const [team, setTeam] = useState<BridgeTeam | null>(null);
+	/** 声明的范围（服务给）。 */
+	const [scope, setScope] = useState<BridgeScope | undefined>(undefined);
+	/** 配置页的能力面：工具面 / 技能库的数量与来源。 */
+	const [capabilities, setCapabilities] = useState<BridgeCapabilities | undefined>(undefined);
+	/**
+	 * 从对话里认出的目标（候选）。
+	 *
+	 * 为什么在面板侧算而不是服务侧：认的是“宿主对话里提到了什么”，而那段文字只存在
+	 * 于渲染进程（服务看不到会话）。声明仍然只来自 `strix_scope`，两者分开。
+	 */
+	const [candidates, setCandidates] = useState<DerivedTarget[]>([]);
 	const [hostStreaming, setHostStreaming] = useState<boolean>(Boolean(conversation?.isStreaming));
 	const [submitting, setSubmitting] = useState(false);
 	const [environmentMode, setEnvironmentModeState] = useState<"auto" | "host" | "docker">("host");
@@ -232,26 +245,10 @@ export function useStrixSession({
 	// 形态每帧重算：`sessionPath` 为空 = 团队会话，宿主那边是写死的。
 	const shapeRef = useRef(conversationShape(conversation));
 	shapeRef.current = conversationShape(conversation);
-	/**
- * 本面板在哪一个会话里发起过运行（1.0.13）。
-	 *
-	 * 为什么必须记它：宿主的 `conversation.abort()` 打的是 `activeSessionAtom` 里的会话
-	 * （plugin-host-bridge），不是面板正在看的那个。不记就只能在“停止”时盲打，
-	 * 真机上表现为：在 A 项目跑评估，到 B 项目点停止，B 的普通对话被终止。
-	 */
-	const runOwner = useRef<string | null>(null);
-	/** 已发出、但会话 id 还没出现的运行（宿主草稿态会稍后才建会话）。 */
-	const pendingRun = useRef(false);
-	const [ownsRun, setOwnsRun] = useState<string | null>(null);
-	const claimRun = useCallback((id: string | null) => {
-		runOwner.current = id;
-		setOwnsRun(id);
-	}, []);
-	// 草稿态发出、会话随后才落地：等到 id 出现再认领，否则停止按钮永远是灰的。
-	if (pendingRun.current && runOwner.current === null && conversation?.id) {
-		pendingRun.current = false;
-		runOwner.current = conversation.id;
-	}
+	// 停止的判据靠会话级信号：面板显示的会话就是宿主的活动会话，`abort()` 打的也是它。
+	// 所以只要“这一轮在跑、且不是团队会话”就能停——没有“谁发起的”这回事了（面板不发消息）。
+	const streamingRef = useRef<boolean>(Boolean(conversation?.isStreaming));
+	streamingRef.current = Boolean(conversation?.isStreaming);
 	// The host replays `conversation-changed` in a microtask, so a tab can mount before
 	// any id exists. Adopting the first real id is what stops the panel from ignoring
 	// every event for the rest of its life.
@@ -361,6 +358,8 @@ export function useStrixSession({
 			setTelemetry(((state as { telemetry?: BridgeTelemetry | null } | undefined)?.telemetry) ?? null);
 			setHistory(((state as { history?: BridgeHistoryEntry[] } | undefined)?.history) ?? []);
 			setTeam(((state as { team?: BridgeTeam | null } | undefined)?.team) ?? null);
+			setScope((state as { scope?: BridgeScope } | undefined)?.scope);
+			setCapabilities((state as { capabilities?: BridgeCapabilities } | undefined)?.capabilities);
 			if (probe) {
 				setEnvironment(probe);
 				// A missing daemon is the working state in `host` mode, not an
@@ -454,7 +453,6 @@ export function useStrixSession({
 		resumed.current = false;
 		void refresh();
 	}, [conversation?.id, refresh]);
-
 	/**
 	 * The bridge's own feed: what actually ran.
 	 *
@@ -542,20 +540,34 @@ export function useStrixSession({
 
 			if (event.type === "turn-end") {
 				setHostStreaming(false);
-				// 这一轮结束了：本面板不再拥有它。留着会让停止按钮继续亮，
-				// 而那时按下去只会把别的东西停下来。
-				claimRun(null);
 				void refresh();
 				return;
 			}
 
-			// 文字属于对话，不属于面板。显式忽略而不是默默不处理：读到这里的人要知道
-			// 不渲染是决定，不是遗漏。
+			// 文字属于对话；面板只留**关键点**。
+			//
+			// 1.0.7 是“一句不留”（两个可滚正文太冗余），1.0.16 是“只留结论与诉求”：
+			// 用户这一轮要什么（一行）、agent 说出的带信息量的几句（每轮 ≤ 6 行），
+			// 其余过渡句与寒暄丢掉。判据在 domain/conversation-digest.ts，不在渲染里。
 			if (event.type === "message-added" && event.message.role === "compaction") {
 				// 压缩是状态，不是对话正文：不记它，用户会以为“说过的证据突然没了”。
 				pushTrace({ kind: "note", label: t("scan.compacted") });
 				return;
 			}
+			if (event.type === "message-added" && event.message.role === "user") {
+				const ask = digestAsk(event.message.text);
+				if (ask) pushTrace({ kind: "say", label: ask, detail: t("scan.sayAsk") });
+				// 目标候选就来自人写的句子：这是“我说了域名，面板却显示 0 个目标”的修法。
+				collectTargets(event.message.text);
+				return;
+			}
+			if (event.type === "message-added" && event.message.role === "assistant") {
+				pushPoints(digestAnswer(event.message.text));
+				collectTargets(event.message.text);
+				return;
+			}
+			// `message-updated` 是流式增量：每一帧都推一行就等于把正文抄进来。
+			// 完整文本到 `message-added` 时才摘要一次。
 			if (event.type === "message-added" || event.type === "message-updated") return;
 
 			if (event.type === "tool-call-start") {
@@ -576,78 +588,28 @@ export function useStrixSession({
 		return () => subscription.dispose();
 	}, [closeRow, pushTrace, refresh, subscribe, t]);
 
-	/**
-	 * Deliver one prompt into the host conversation.
+/**
+	 * 把一段文字里认出的目标并入候选。
 	 *
-	 * The only write path. On a fresh-session page there is nothing to send into yet, so a
-	 * conversation is created in the current folder first — the same two steps the user
-	 * would take by hand, and no model of our own.
+	 * 候选只存在面板里：它是“这轮大概在打什么”的提示，不是授权。声明仍然只有一条路
+	 * （agent 调 `strix_scope`），所以这里不写服务、不改范围。
 	 */
-	const deliver = useCallback(
-		async (text: string): Promise<boolean> => {
-			const value = text.trim();
-			if (!value) return false;
-			// 写之前先问形态：团队会话里 `sendPrompt` 落到的是上一个单会话
-			// （`pluginSendMessageRef` 不跟着团队切换），`insertText` 写进的 atom 团队输入框也不读。
-			// 三条路都指错会话，所以这条表面就不写，把话交给团队输入框。
-			if (!permitHostAction({ shape: shapeRef.current, action: "send", runOwner: null, boundTo: null }).ok) {
-				note(t("log.teamReadOnly"), "error");
-				return false;
-			}
-			if (!value) return false;
-			setSubmitting(true);
-			let sendError: string | undefined;
-			try {
-				// 顺序很重要：**先直接发**。
-				//
-				// 宿主自己的输入框在"新会话页"也能发——发出去就按当前目录建会话。面板复用同一条路，
-				// 于是插件根本不需要知道目录在哪。之前反过来（先 createSession 再 send），只要拿不到
-				// cwd 就报"先在宿主里打开一个工作目录"，而用户明明已经打开了——那是插件的盲区，
-				// 不是用户的问题（1.0.4）。
-				const receipt = await sendPrompt(value).catch((cause: unknown) => {
-					sendError = cause instanceof Error ? cause.message : String(cause);
-					return { status: "failed" as const };
-				});
+	const collectTargets = useCallback((text: string) => {
+		const found = extractTargets(text);
+		if (found.length === 0) return;
+		setCandidates((previous) => {
+			const seen = new Set(previous.map((target) => target.value));
+			const next = found.filter((target) => !seen.has(target.value));
+			return next.length === 0 ? previous : [...previous, ...next].slice(-40);
+		});
+	}, []);
 
-				if (receipt.status === "failed") {
-					// 宿主没有可用会话，也没有可发的草稿：才需要自己建一个。
-					// cwd 依次取：当前会话 → 宿主打开的工作目录 → 宿主最近用过的目录。
-					const cwd = cwdRef.current ?? workspaceRoot?.() ?? null;
-					if (!cwd) {
-						// 连目录都拿不到：把话交给宿主的输入框，让宿主的"新会话页"自己建会话。
-						// 这比报错有用——用户按下 Enter 就能继续，插件不再假装"你没有打开目录"。
-						insertText(value);
-						note(t("log.handedToHost"), "ok");
-						return true;
-					}
-					const created = await createSession(cwd);
-					conversationIdRef.current = created.id ?? conversationIdRef.current;
-					const retry = await sendPrompt(value);
-					if (retry.status === "failed") {
-						note(t("log.sendFailed"), "error");
-						return false;
-					}
-				}
-				// 不在面板里回显这句：宿主对话已经渲染了它，面板再画一次就是冗余。
-				// 面板跟着这一句离开首屏：用户按下的是「开始」，不是「继续看首屏」。
-				// 没有这一步时，只有宿主回一个 turn-start 才会切屏——而宿主在草稿态下
-				// 并不一定马上发事件，于是面板看起来像没反应（1.0.5）。
-				// 这一轮是面板发起的：记下来，停止按钮只能停它。
-				claimRun(conversationIdRef.current ?? null);
-				pendingRun.current = conversationIdRef.current === null || conversationIdRef.current === undefined;
-				launchPinned.current = false;
-				setShowLaunch(false);
-				if (phaseRef.current !== "scanning") setPhase("scanning");
-				return true;
-			} catch (cause) {
-				const detail = cause instanceof Error ? cause.message : String(cause);
-				note(`${t("log.sendFailed")}: ${detail}`, "error");
-				return false;
-			} finally {
-				setSubmitting(false);
-			}
+	/** 把一条答复的关键点推成若干 `say` 行（紧跟在 turn 分隔行后面）。 */
+	const pushPoints = useCallback(
+		(points: readonly string[]) => {
+			for (const point of points) pushTrace({ kind: "say", label: point });
 		},
-		[createSession, insertText, note, pushTrace, sendPrompt, t, workspaceRoot],
+		[pushTrace],
 	);
 
 	const setEnvironmentMode = useCallback(
@@ -726,8 +688,6 @@ export function useStrixSession({
 		}
 	}, [createSession, note, t, workspaceRoot]);
 
-	const start = useCallback(async (prompt: string) => void deliver(prompt), [deliver]);
-	const send = useCallback(async (text: string) => void deliver(text), [deliver]);
 
 	/**
 	 * 停止 = “停掉面板发起的那一轮”，不是“停掉宿主的活跃会话”。
@@ -737,23 +697,17 @@ export function useStrixSession({
 	 * 这里先问授权：形态不对话（团队会话）或者这一轮不是本面板发起的，就不动手。
 	 */
 	const stop = useCallback(async () => {
-		const decision = permitHostAction({
-			shape: shapeRef.current,
-			action: "stop",
-			runOwner: runOwner.current,
-			boundTo: conversationIdRef.current ?? null,
-		});
+		const decision = permitStop({ shape: shapeRef.current, streaming: streamingRef.current });
 		if (!decision.ok) {
 			note(t(decision.reason === "team-surface" ? "log.stopInTeam" : "log.stopNotMine"), "error");
 			return;
 		}
-		claimRun(null);
 		await abort().catch(() => undefined);
 		await client.stopSandbox().catch(() => undefined);
 		setSandbox({ running: false, targets: [] });
 		setHostStreaming(false);
 		setPhase("done");
-	}, [abort, claimRun, client, note, t]);
+	}, [abort, client, note, t]);
 
 	// Persist after every change so a remount resumes rather than restarts.
 	useEffect(() => {
@@ -796,11 +750,12 @@ export function useStrixSession({
 			hostStreaming,
 			// 停止只看“这一轮是不是本面板发起的”，不看宿主是不是在流：
 			// 宿主在流的可能是另一个会话的普通对话。
-			canStop: Boolean(hostStreaming && ownsRun && ownsRun === (conversation?.id ?? null)),
+			canStop: permitStop({ shape: conversationShape(conversation), streaming: hostStreaming }).ok,
 			readOnly: conversationShape(conversation) === "team",
 			busy: submitting || hostStreaming,
-			start,
-			send,
+			scope,
+			candidates: scope ? newTargets(candidates, scope.entries.map((entry) => entry.value)) : candidates,
+			capabilities,
 			stop,
 			refresh,
 			environmentMode,
@@ -836,11 +791,11 @@ export function useStrixSession({
 			resolved,
 			conversation?.cwd,
 			hostStreaming,
-			ownsRun,
 			conversation?.id,
 			submitting,
-			start,
-			send,
+			scope,
+			candidates,
+			capabilities,
 			stop,
 			refresh,
 		],

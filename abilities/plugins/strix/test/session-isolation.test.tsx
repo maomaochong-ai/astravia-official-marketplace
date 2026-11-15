@@ -2,14 +2,14 @@ import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * 会话隔离（4.1）。
+ * 停止键的边界（1.0.16）。
  *
- * 用户报的是：在 A 项目开面板跑评估，切到 B 项目，在面板上按"停止生成"，
- * B 项目正在跑的普通对话被终止了。根因在宿主：`conversation.abort()` 不看面板，
- * 打的是 `activeSessionAtom` 里的会话（plugin-host-bridge）。所以插件侧必须自己收口：
- * **停只能停本面板发起的那一轮，且只在它绑定的那个会话里。**
+ * 1.0.13 修过一次跨会话误伤：在 A 跑评估、到 B 点停止，B 的普通对话被终止。当时的判据是
+ * "这一轮是本面板发起的"。现在面板不发消息了（没有输入框），那个判据会把键永远按灰，
+ * 所以判据换成"这一轮在跑 + 这不是团队会话"：
  *
- * 这里钉住可观察的两条：换到别的会话后停止键是灰的、按下去不会触发 abort。
+ *  - 面板显示的会话 = 宿主的活动会话（同一个快照），`abort()` 打的也是它；
+ *  - 团队会话里 `abort()` 指向的是上一个单会话，所以要拒绝。
  */
 
 const conversationState = {
@@ -21,7 +21,6 @@ const conversationState = {
 };
 
 const aborted: string[] = [];
-const sent: string[] = [];
 
 vi.mock("@astravia-org/plugin-sdk", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("@astravia-org/plugin-sdk")>();
@@ -36,14 +35,11 @@ afterEach(cleanup);
 
 const realRaf = globalThis.requestAnimationFrame;
 beforeEach(() => {
-	// 先归位再清快照：上一条用例可能把 id 改成了 session-b 或 team-1，
-	// 用旧的 id 去 forget 会漏掉 session-a，下一条用例就会从“上一个用例的现场”开局。
 	for (const id of ["session-a", "session-b", "team-1"]) forgetSnapshot(id);
 	conversationState.id = "session-a";
 	conversationState.sessionPath = "D:\\open-source-projects\\alpha\\.astravia\\a.jsonl";
 	conversationState.isStreaming = false;
 	aborted.length = 0;
-	sent.length = 0;
 	setStrixEngaged(false);
 	globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) => {
 		callback(0);
@@ -58,7 +54,7 @@ function mount() {
 	const listeners: Array<(event: unknown) => void> = [];
 	let tab: { component: () => React.ReactElement } | undefined;
 	const ctx = {
-		plugin: { id: "strix", version: "1.0.13" },
+		plugin: { id: "strix", version: "1.0.16" },
 		i18n: { t: (key: string) => key },
 		ui: {
 			registerActivityTab: (contribution: { component: () => React.ReactElement }) => {
@@ -80,10 +76,6 @@ function mount() {
 						if (index >= 0) listeners.splice(index, 1);
 					},
 				};
-			},
-			sendPrompt: async (text: string) => {
-				sent.push(text);
-				return { status: "sent" };
 			},
 			insertText: () => undefined,
 			abort: async () => {
@@ -116,132 +108,91 @@ const flush = async (): Promise<void> => {
 	}
 };
 
-function stopButton(container: HTMLElement): HTMLButtonElement {
-	const node = container.querySelector(".astra-strix-band-stop");
-	if (!node) throw new Error("no stop button rendered");
-	return node as HTMLButtonElement;
+function stopButton(container: HTMLElement): HTMLButtonElement | null {
+	return container.querySelector(".astra-strix-band-stop") as HTMLButtonElement | null;
 }
 
-/** 面板发一句话，让这一轮归它所有（这是停止键唯一的合法性来源）。 */
-async function startRunFromPanel(container: HTMLElement): Promise<void> {
-	const box = container.querySelector("textarea");
-	if (!box) throw new Error("no composer textarea");
-	fireEvent.change(box, { target: { value: "scan this" } });
-	const send = [...container.querySelectorAll("button")].find((button) => button.textContent === "composer.send");
-	if (!send) throw new Error("no send button");
-	fireEvent.click(send);
-	await flush();
-	await flush();
-}
-
-describe("stop belongs to the run, not to whatever the host is streaming", () => {
-	it("stays enabled in the conversation that started the run", async () => {
+describe("stop belongs to the conversation on screen", () => {
+	it("is live while this conversation is generating", async () => {
+		conversationState.isStreaming = true;
 		const host = mount();
 		await plugin.activate(host.ctx);
 		const utils = render(host.tab()!.component());
 		await flush();
-
-		await startRunFromPanel(utils.container);
 		await act(async () => {
 			host.emit({ type: "turn-start" });
 		});
 		await flush();
 
-		expect(sent).toHaveLength(1);
-		expect(stopButton(utils.container).disabled).toBe(false);
+		const button = stopButton(utils.container);
+		expect(button, "the workbench should show a stop control").toBeTruthy();
+		expect(button!.disabled).toBe(false);
 	});
 
-	it("goes grey when the host starts a turn of its own", async () => {
+	it("goes grey when the turn has ended", async () => {
+		conversationState.isStreaming = true;
 		const host = mount();
 		await plugin.activate(host.ctx);
 		const utils = render(host.tab()!.component());
 		await flush();
-
-		// 同一个会话，但这一轮是用户在宿主自己的输入框里发的：
-		// 面板没有发起它，就没有资格停它（真机上被终止的普通对话就是这个）。
-		await startRunFromPanel(utils.container);
 		await act(async () => {
 			host.emit({ type: "turn-start" });
 		});
 		await flush();
-		expect(stopButton(utils.container).disabled).toBe(false);
+		expect(stopButton(utils.container)?.disabled).toBe(false);
 
+		conversationState.isStreaming = false;
 		await act(async () => {
 			host.emit({ type: "turn-end", stopReason: "end" });
-			host.emit({ type: "turn-start" });
 		});
 		await flush();
 
-		expect(stopButton(utils.container).disabled).toBe(true);
-		fireEvent.click(stopButton(utils.container));
+		expect(stopButton(utils.container)?.disabled).toBe(true);
+		fireEvent.click(stopButton(utils.container)!);
 		await flush();
 		expect(aborted).toHaveLength(0);
 	});
 
-	it("never reaches across conversations after the host switches", async () => {
-		const host = mount();
-		await plugin.activate(host.ctx);
-		const utils = render(host.tab()!.component());
-		await flush();
-
-		await startRunFromPanel(utils.container);
-		await act(async () => {
-			host.emit({ type: "turn-start" });
-		});
-		await flush();
-
-		// 用户切到另一个项目：面板重绑到那个会话，自己的运行留在 A。
-		conversationState.id = "session-b";
-		conversationState.sessionPath = "D:\\open-source-projects\\beta\\.astravia\\b.jsonl";
-		conversationState.isStreaming = true;
-		await act(async () => {
-			host.emit({ type: "turn-start" });
-		});
-		await flush();
-
-		// 面板画的是 B 自己的现场（它是空的），而不是替 A 接着发光；
-		// 更关键的是：没有任何东西能停到 B 这一轮。
-		expect(aborted).toHaveLength(0);
-		const button = utils.container.querySelector(".astra-strix-band-stop") as HTMLButtonElement | null;
-		if (button) {
-			expect(button.disabled).toBe(true);
-			fireEvent.click(button);
-			await flush();
-			expect(aborted).toHaveLength(0);
-		}
-	});
-});
-
-describe("the launch screen has a way in that does not send anything", () => {
-	it("opens the workbench from the button instead of from a prompt", async () => {
-		const host = mount();
-		await plugin.activate(host.ctx);
-		const utils = render(host.tab()!.component());
-		await flush();
-
-		// 1.0.13：以前进工作台只有"发一句话"一条路，于是"看看刚才跑到哪了"也得先编一句话。
-		const go = [...utils.container.querySelectorAll("button")].find((button) => button.textContent === "nav.workbench");
-		expect(go).toBeTruthy();
-		fireEvent.click(go as HTMLButtonElement);
-		await flush();
-
-		expect(utils.container.querySelector(".astra-strix-workbench")).not.toBeNull();
-		expect(sent).toHaveLength(0);
-	});
-});
-
-describe("a team chat is a read-only surface for this panel", () => {
-	it("does not send into the host: the team composer owns the prompt", async () => {
+	it("is never offered in a team chat, where abort points elsewhere", async () => {
 		conversationState.id = "team-1";
 		conversationState.sessionPath = null as unknown as string;
+		conversationState.isStreaming = true;
+		const host = mount();
+		await plugin.activate(host.ctx);
+		const utils = render(host.tab()!.component());
+		await flush();
+		await act(async () => {
+			host.emit({ type: "turn-start" });
+		});
+		await flush();
+
+		const button = stopButton(utils.container);
+		expect(button?.disabled).toBe(true);
+		if (button) {
+			fireEvent.click(button);
+			await flush();
+		}
+		expect(aborted).toHaveLength(0);
+	});
+});
+
+describe("the panel has no composer", () => {
+	it("offers no textarea and no send button on either screen", async () => {
 		const host = mount();
 		await plugin.activate(host.ctx);
 		const utils = render(host.tab()!.component());
 		await flush();
 
-		// 宿主在团队会话里没有给插件任何写入口：发送键换成一句说明。
-		expect(utils.container.textContent).toContain("launch.teamReadOnly");
+		// 首屏：配置页。
+		expect(utils.container.querySelector("textarea")).toBeNull();
 		expect([...utils.container.querySelectorAll("button")].some((button) => button.textContent === "composer.send")).toBe(false);
-		expect(sent).toHaveLength(0);
+
+		// 工作台：也是只读现场。
+		await act(async () => {
+			host.emit({ type: "turn-start" });
+		});
+		await flush();
+		expect(utils.container.querySelector(".astra-strix-workbench")).not.toBeNull();
+		expect(utils.container.querySelector("textarea")).toBeNull();
 	});
 });

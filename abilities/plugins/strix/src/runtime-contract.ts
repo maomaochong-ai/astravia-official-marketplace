@@ -107,10 +107,36 @@ export interface BridgeState {
 	 * 它们都由服务计算，面板只读——两边各算一遍就会出现两个真相。
 	 */
 	budget?: BridgeBudget;
+	/** 声明的范围（条目可逐行画、可与对话里的候选去重）。 */
+	scope?: BridgeScope;
+	/** 配置页要回答“装了什么”：工具面与技能库的数量与来源。 */
+	capabilities?: BridgeCapabilities;
 	telemetry?: BridgeTelemetry | null;
 	history?: BridgeHistoryEntry[];
 	team?: BridgeTeam | null;
 	logTail: BridgeEvent[];
+}
+
+export interface BridgeScopeEntry {
+	id: string;
+	kind: "domain" | "ip" | "cidr" | "url";
+	value: string;
+	note?: string;
+}
+
+export interface BridgeScope {
+	entries: BridgeScopeEntry[];
+	ports: string[];
+	notes: string[];
+	/** 报告里的那段文字（需要看原句时用）。 */
+	text: string;
+}
+
+export interface BridgeCapabilities {
+	tools: number;
+	skills: number;
+	skillCategories: number;
+	skillSource: "bundled" | "env";
 }
 
 export interface BridgeBudget {

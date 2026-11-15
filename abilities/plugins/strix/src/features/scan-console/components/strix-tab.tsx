@@ -12,7 +12,10 @@
  */
 
 import type { ModelChoice } from "../../../domain/model-label";
+import type { DerivedTarget } from "../../../domain/target-extraction";
 import type {
+	BridgeCapabilities,
+	BridgeScope,
 	CoverageOutcome,
 	ShellSessionSummary,
 	EnvironmentProbe,
@@ -45,6 +48,12 @@ export interface StrixTabProps {
 	canStop: boolean;
 	/** 团队会话：面板只读，发送与停止都在团队输入框。 */
 	readOnly: boolean;
+	/** 已声明的范围（目标区把声明与候选分两组画）。 */
+	scope?: BridgeScope;
+	/** 从对话里认出的候选目标。 */
+	candidates?: readonly DerivedTarget[];
+	/** 配置页的能力面：工具面与技能库的数量与来源。 */
+	capabilities?: BridgeCapabilities;
 	environment?: EnvironmentProbe;
 	sandbox: SandboxStatus;
 	findings: readonly StrixFinding[];
@@ -55,8 +64,6 @@ export interface StrixTabProps {
 	sessions: readonly ShellSessionSummary[];
 	mcp: readonly McpConnection[];
 	busy: boolean;
-	start: (prompt: string) => Promise<void>;
-	send: (text: string) => Promise<void>;
 	/** Reads a note's body for the panel's expander (`strix_note_get`). */
 	onOpenNote: (id: string) => Promise<string>;
 	/** 会话与状态四个面，由 useStrixSession 从服务读回。 */
@@ -84,15 +91,6 @@ export interface StrixTabProps {
 	/** 首屏「进入工作台」：不发送消息，直接看现场（1.0.13）。 */
 	onOpenWorkbench?: () => void;
 }
-/** Why Enter cannot launch yet, in the order the user would fix them. */
-function blockedReason(t: (key: string) => string, model: ModelChoice | undefined, environment: EnvironmentProbe | undefined): string | undefined {
-	if (!model) return t("launch.blocked.model");
-	// No daemon is no longer a gate: the tools run in the user's session instead
-	// with weaker isolation and a label that says so. The only real
-	// block is an environment that reports itself unusable.
-	if (environment && environment.ready === false) return t("launch.blocked.docker");
-	return undefined;
-}
 export function StrixTab(props: StrixTabProps): React.ReactElement {
 	const { t, phase } = props;
 	const scanning = !props.forceLaunch && (phase === "scanning" || phase === "done");
@@ -105,6 +103,8 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					model={props.model}
 					workspace={props.workspace}
 					hostStreaming={props.hostStreaming}
+					scope={props.scope}
+					candidates={props.candidates}
 					canStop={props.canStop}
 					environment={props.environment}
 					sandbox={props.sandbox}
@@ -115,7 +115,6 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					sessions={props.sessions}
 					mcp={props.mcp}
 					trace={props.trace}
-					onSend={(value) => void props.send(value)}
 					onOpenNote={props.onOpenNote}
 					{...(props.coverageTally ? { coverageTally: props.coverageTally } : {})}
 					{...(props.budget ? { budget: props.budget } : {})}
@@ -135,11 +134,11 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					{...(props.team ? { team: props.team } : {})}
 					log={props.log}
 					version={props.version}
-					blocked={blockedReason(t, props.model, props.environment)}
+					scope={props.scope}
+					mcp={props.mcp}
 					boot={props.boot}
-					onSubmit={(value) => void props.start(value)}
 					{...(props.onOpenWorkbench ? { onOpenWorkbench: props.onOpenWorkbench } : {})}
-					readOnly={props.readOnly}
+					{...(props.capabilities ? { capabilities: props.capabilities } : {})}
 					onQuit={props.onQuit}
 					environmentMode={props.environmentMode}
 					environmentReady={props.environmentReady}

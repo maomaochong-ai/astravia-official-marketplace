@@ -1,42 +1,42 @@
 /**
- * Strix's launch screen, reproduced for the activity tab.
+ * 首屏 = 配置页。
  *
- * Shape and wording are upstream's (setup.go:setupBody): wordmark, tagline, the
- * composer with its model line inside the panel, the feedback log under it, and
- * the key hints closed by the version. What differs is who the model is: the chip
- * shows the host conversation's model. There is no model call in this plugin — the host
- * agent owns the loop and reaches us through the `strix_*` MCP tools.
+ * 这里曾经是一个输入框（"描述要测什么" + 发送键）。它存在的问题不是样式，而是职责：
+ * 面板发出去的话，效果与用户直接在宿主输入框回车完全相同——那 120 行的投递逻辑
+ * （先发、失败建会话、再失败交给宿主输入框）只是把同一件事做了三遍。
  *
- * The panel is a terminal surface - black, monospace, green accents - rather than
- * a host-themed card. That is the point of this tab: it looks like `strix` opening
- * in a terminal, so the launch screen has to be the one upstream ships.
+ * 现在这一屏回答的是另一个问题：**这台机器、这次会话、这套工具，准备到哪一步了。**
+ *
+ *   模型 / 目录 / 执行环境（四态 + 检测与安装） / 团队 / 工具面 / 技能库 / 连接 / 运行日志
+ *
+ * 末尾一个「进入工作台」，不发送任何东西。说话的地方是宿主对话，这里不代劳。
  */
 
-import { useState } from "react";
-import { useComposerHeight } from "../hooks/use-composer-height";
 import { HackerRain } from "./hacker-rain";
 import { manifestLabel } from "../../../domain/manifest-label";
 import type { ModelChoice } from "../../../domain/model-label";
-import type { BridgeTeam } from "../../../runtime-contract";
+import type { McpConnection } from "../../../domain/mcp-roster";
+import type { BridgeCapabilities, BridgeScope, BridgeTeam } from "../../../runtime-contract";
 import type { LogLine } from "../hooks/use-strix-session";
 import { StrixWordmark } from "./strix-wordmark";
 
 export interface LaunchScreenProps {
-	t: (key: string) => string;
+	t: (key: string, params?: Record<string, string | number>) => string;
 	model?: ModelChoice;
 	/** 宿主打开的工作目录名：它是事实，放在事实表里，而不是日志里的一行。 */
 	workspace?: string;
-	/**
-	 * 本次团队（1.0.12）：安装之后用户看不到有谁，只能被告知。
-	 * 四个 chip 让人在开始前就知道这次谁上场，hover 给出职责。
-	 */
+	/** 本次团队：安装之后用户看不到有谁，只能被告知。四个 chip，hover 给出职责。 */
 	team?: BridgeTeam | null;
+	/** 配置页的能力面：工具面与技能库的数量与来源（服务读的本地事实）。 */
+	capabilities?: BridgeCapabilities;
+	/** 已声明的范围：开始前要能看清"这次允许碰什么"。 */
+	scope?: BridgeScope;
+	/** MCP 连接：工具面能不能用，取决于这些连接是否活着。 */
+	mcp?: readonly McpConnection[];
 	log: readonly LogLine[];
 	/** Bridge boot state. A live line, not a log entry. */
 	boot: { state: "connecting" | "ready" | "failed"; detail?: string };
 	version: string;
-	/** Why Enter cannot launch yet (no model, no Docker); empty when it can. */
-	blocked?: string;
 	/** 面板选的执行环境。 */
 	environmentMode?: "auto" | "host" | "docker";
 	/** docker 是否就绪——决定「容器」选项能不能选、「安装」按钮要不要出来。 */
@@ -47,22 +47,13 @@ export interface LaunchScreenProps {
 	onEnvironmentMode?: (mode: "auto" | "host" | "docker") => void;
 	onInstallDocker?: () => void;
 	onRefreshEnvironment?: () => void;
-	onSubmit: (value: string) => void;
 	/**
-	 * 直接进工作台（1.0.13）：不发送消息，只是去看现场。
+	 * 进工作台：不发送、不建会话。
 	 *
-	 * 为什么需要它：首屏此前只有"发一句话"这一条路进工作台，于是"我想看看刚才那轮跑到哪了"
-	 * 也必须先编一句话。团队会话尤其明显——那边没有胶囊开关，用户没有别的入口。
+	 * 首屏唯一的前进动作。以前这里是"发送键"，它同时承担了"开始"和"说一句话"，
+	 * 于是用户想看一眼现场也必须先编一句话。
 	 */
 	onOpenWorkbench?: () => void;
-	/**
- * 团队会话：面板在这条表面上只读。
-	 *
-	 * 宿主的 `sendPrompt` / `insertText` 在团队会话里都指向错的会话（`pluginSendMessageRef`
-	 * 与 `inputValueAtom` 都不跟着团队切换），所以宁可把发送键换成一专说明，
-	 * 也不发出去再说。
-	 */
-	readOnly?: boolean;
 	onQuit: () => void;
 }
 
@@ -76,15 +67,35 @@ const TEAM_GLYPH: Record<string, string> = {
 	auditor: "≡",
 };
 
+/** 一行事实：左标签 + 右值，所有行共用两个栅格列（左边缘必须是一条线）。 */
+function Row({
+	label,
+	children,
+	state,
+}: {
+	label: string;
+	children: React.ReactNode;
+	state?: string;
+}): React.ReactElement {
+	return (
+		<div className="astra-strix-row" {...(state ? { "data-state": state } : {})}>
+			<span className="astra-strix-row-label">{label}</span>
+			<span className="astra-strix-row-value">{children}</span>
+		</div>
+	);
+}
+
 export function LaunchScreen({
 	t,
 	model,
 	workspace,
 	team,
+	capabilities,
+	scope,
+	mcp,
 	log,
 	boot,
 	version,
-	blocked,
 	environmentMode: environmentModeProp,
 	environmentReady,
 	docker,
@@ -92,35 +103,23 @@ export function LaunchScreen({
 	onEnvironmentMode,
 	onInstallDocker,
 	onRefreshEnvironment,
-	onSubmit,
 	onOpenWorkbench,
-	readOnly,
 	onQuit,
 }: LaunchScreenProps): React.ReactElement {
-	const [value, setValue] = useState("");
 	// 环境选择只影响「下一次」sandbox 启动：已经在跑的扫描不中途换环境。
 	const environmentMode = environmentModeProp ?? "host";
-	// 三态：本机 / docker 缺失 / docker 就绪但镜像未拉 / 全就绪。
-	const envState: "host" | "noDocker" | "noImage" | "ready" =
-		environmentMode === "host"
+	// 四态：host / noDocker / noImage / ready。判断顺序就是用户要做的决定顺序。
+	const envState =
+		environmentMode === "host" || environmentMode === "auto"
 			? "host"
 			: environmentMode === "docker" && (docker ? !docker.ready : environmentReady === false)
 				? "noDocker"
 				: docker?.imagePresent === false
 					? "noImage"
 					: "ready";
-	// 同一个高度状态，两个屏共用：启动页与扫描屏的输入框行为必须一致。
-	const composer = useComposerHeight();
 
-	const submit = (): void => {
-		// 流式中发送是合法的：宿主会排队（sendPrompt → queued），不是错。
-		// 真正不能发的只有空文本——发送键与 Enter 共用这一条。
-		if (!value.trim()) return;
-		onSubmit(value);
-	};
-
-	// 一行起步、最多六行：多行输入是例外，不是常态（1.0.7 收窄了初版的三行）。
-	const rows = Math.min(6, Math.max(1, value.split("\n").length));
+	const declared = scope?.entries.length ?? 0;
+	const connections = mcp ?? [];
 
 	return (
 		<div
@@ -132,7 +131,6 @@ export function LaunchScreen({
 				}
 			}}
 		>
-			
 			<HackerRain density="splash" />
 			<div className="astra-strix-launch">
 				<div className="astra-strix-launch-head">
@@ -140,152 +138,129 @@ export function LaunchScreen({
 					<p className="astra-strix-tagline">{t("launch.tagline")}</p>
 				</div>
 
-				{/* One panel holds the prompt and the model line, flush under it, the way
-				    upstream's composer panel reads as a single unit. The handle on its top edge
-				    is the same control as the scan screen's: drag up = taller. */}
-				<div
-					className="astra-strix-prompt"
-					data-blocked={blocked ? "yes" : "no"}
-					{...(composer.height ? { style: { "--sx-composer-h": `${composer.height}px` } as React.CSSProperties } : {})}
-				>
-					<div
-						className="astra-strix-resize-handle"
-						role="separator"
-						aria-orientation="horizontal"
-						aria-label={t("composer.resize")}
-						tabIndex={0}
-						{...composer.handleProps}
-					/>
-					<div className="astra-strix-prompt-row">
-						<span className="astra-strix-prompt-caret" aria-hidden="true">
-							&gt;
-						</span>
-						<label className="astra-strix-prompt-field">
-							<textarea
-								className="astra-strix-prompt-input"
-								aria-label={t("launch.label")}
-								placeholder={t("launch.placeholder")}
-								rows={rows}
-								autoFocus
-								value={value}
-								onChange={(event) => setValue(event.target.value)}
-								onKeyDown={(event) => {
-									if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-										event.preventDefault();
-										submit();
-									}
-								}}
-							/>
-						</label>
-					</div>
-					{/* 框内底条：左边告诉你键位，右边是发送键。与文本分开一行，
-					    即使输入多行长高，按钮也不会被挤到文字中间（用户指出的“输入框内部按钮重新布局”）。 */}
-					<div className="astra-strix-composer-bar">
-						<span className="astra-strix-dim">{t("launch.hint.send")}</span>
-						{onOpenWorkbench ? (
-							<button type="button" className="astra-strix-go" onClick={onOpenWorkbench}>
-								{t("nav.workbench")}
-							</button>
-						) : null}
-						{/* 团队会话：面板没有可写的落点，发送键直接换成一专说明，
-						    而不是让用户按下去才发现。 */}
-						{readOnly ? (
-							<span className="astra-strix-amber astra-strix-readonly-note">{t("launch.teamReadOnly")}</span>
-						) : (
-							<button type="button" className="astra-strix-send" onClick={submit} disabled={!value.trim()}>
-								{t("composer.send")}
-							</button>
-						)}
-					</div>
+				{/* 一条说明替代了原来的输入框：话在哪里说，说清楚，且不假装自己也能收。 */}
+				<p className="astra-strix-launch-note">{t("launch.speakInChat")}</p>
 
-
-				</div>
-
-				{/* 输入框以下：两列 facts（标签列 + 值列）。所有行共用两个栅格列，
-				    所以文字、下拉、按钮都落在同一条左边缘上——之前每行各自缩进，看起来参差。 */}
+				{/* 事实表：所有行共用两个栅格列，所以文字、下拉、按钮都落在同一条左边缘上。 */}
 				<div className="astra-strix-rows">
-					<div className="astra-strix-row" data-missing={model ? "no" : "yes"}>
-						<span className="astra-strix-row-label">{t("scan.model")}</span>
-						<span className="astra-strix-row-value">
-							{model ? (
-								<>
-									<span className="astra-strix-meta-name">{model.name}</span>
-									{/* provider 常常就是模型族名（deepseek-flash · deepseek-v4-flash）：
-									    当它包含在名字里就不再写一遍——一行里两个相似串只是噪声。 */}
-									{model.provider && !model.name.toLowerCase().includes(model.provider.toLowerCase()) ? (
-										<span className="astra-strix-dim"> · {model.provider}</span>
-									) : null}
-									<span className="astra-strix-dim"> · {t("launch.modelScope")}</span>
-								</>
-							) : (
-								<>
-									<span>{t("launch.noModel")}</span>
-									<span className="astra-strix-dim"> · {t("launch.noModelHint")}</span>
-								</>
-							)}
-						</span>
-					</div>
+					<Row label={t("scan.model")}>
+						{model ? (
+							<>
+								<span className="astra-strix-meta-name">{model.name}</span>
+								{/* provider 常常就是模型族名：包含在名字里就不再写一遍。 */}
+								{model.provider && !model.name.toLowerCase().includes(model.provider.toLowerCase()) ? (
+									<span className="astra-strix-dim"> · {model.provider}</span>
+								) : null}
+								<span className="astra-strix-dim"> · {t("launch.modelScope")}</span>
+							</>
+						) : (
+							<>
+								<span className="astra-strix-amber">{t("launch.noModel")}</span>
+								<span className="astra-strix-dim"> · {t("launch.noModelHint")}</span>
+							</>
+						)}
+					</Row>
 
-					{/* 工作目录：以前它是**日志里的一行**（“已挂载工作目录: xxx”），现在它是事实，
-					    就放在事实表里；没有目录时这一行不画。 */}
 					{workspace ? (
-						<div className="astra-strix-row">
-							<span className="astra-strix-row-label">{t("launch.folder")}</span>
-							<span className="astra-strix-row-value astra-strix-dim">{workspace}</span>
-						</div>
+						<Row label={t("launch.folder")}>
+							<span className="astra-strix-dim">{workspace}</span>
+						</Row>
 					) : null}
 
 					{/* 执行环境：四态。
-					    host        → 本机执行，无容器隔离
-					    noDocker    → 让宿主安装 docker
-					    noImage    → 让宿主拉取沙箱镜像
-					    ready       → 只说已就绪 */}
-					<div className="astra-strix-row" data-state={envState}>
-						<span className="astra-strix-row-label">{t("env.choice")}</span>
-						<span className="astra-strix-row-value">
-							<span className="astra-strix-env-line">
-								<select
-									className="astra-strix-env-select"
-									value={environmentMode}
-									onChange={(event) => onEnvironmentMode?.(event.target.value as "auto" | "host" | "docker")}
-									aria-label={t("env.choice")}
-								>
-									<option value="host">{t("env.host")}</option>
-									<option value="docker">{t("env.docker")}</option>
-									<option value="auto">{t("env.auto")}</option>
-								</select>
-								<span className="astra-strix-env-status">
-									{envState === "host" ? t("env.statusHost") : null}
-									{envState === "noDocker" ? t("env.statusNoDocker") : null}
-									{envState === "noImage" ? t("env.statusNoImage") : null}
-									{envState === "ready" ? t("env.statusReady") : null}
-								</span>
-								{/* 动作跟下拉在同一条 flex 行上（1.0.8）：另起一行就是“刷新环境”单独掉下去。 */}
-								<span className="astra-strix-env-actions">
-									{envState === "noDocker" ? (
-										<button type="button" className="astra-strix-env-action" onClick={() => onInstallDocker?.()}>
-											{t("env.install")}
-										</button>
-									) : null}
-									{envState === "noImage" && onPullImage ? (
-										<button type="button" className="astra-strix-env-action" onClick={() => void onPullImage()}>
-											{t("env.pull")}
-										</button>
-									) : null}
-									<button type="button" className="astra-strix-env-action" onClick={() => onRefreshEnvironment?.()}>
-										{t("env.refresh")}
+					    host     → 本机执行，无容器隔离
+					    noDocker → 让宿主安装 docker
+					    noImage  → 让宿主拉取沙箱镜像
+					    ready    → 只说已就绪 */}
+					<Row label={t("env.choice")} state={envState}>
+						<span className="astra-strix-env-line">
+							<select
+								className="astra-strix-env-select"
+								value={environmentMode}
+								onChange={(event) => onEnvironmentMode?.(event.target.value as "auto" | "host" | "docker")}
+								aria-label={t("env.choice")}
+							>
+								<option value="host">{t("env.host")}</option>
+								<option value="docker">{t("env.docker")}</option>
+								<option value="auto">{t("env.auto")}</option>
+							</select>
+							<span className="astra-strix-env-status">
+								{envState === "host" ? t("env.statusHost") : null}
+								{envState === "noDocker" ? t("env.statusNoDocker") : null}
+								{envState === "noImage" ? t("env.statusNoImage") : null}
+								{envState === "ready" ? t("env.statusReady") : null}
+							</span>
+							<span className="astra-strix-env-actions">
+								{envState === "noDocker" ? (
+									<button type="button" className="astra-strix-env-action" onClick={() => onInstallDocker?.()}>
+										{t("env.install")}
 									</button>
-								</span>
+								) : null}
+								{envState === "noImage" && onPullImage ? (
+									<button type="button" className="astra-strix-env-action" onClick={() => void onPullImage()}>
+										{t("env.pull")}
+									</button>
+								) : null}
+								<button type="button" className="astra-strix-env-action" onClick={() => onRefreshEnvironment?.()}>
+									{t("env.refresh")}
+								</button>
 							</span>
 						</span>
-					</div>
+					</Row>
 
+					{/* 工具面：随包 40 个。数字来自服务读的本地目录，不是写死的文案。 */}
+					<Row label={t("launch.tools")}>
+						<span>{t("launch.toolsCount", { count: capabilities?.tools ?? 0 })}</span>
+						<span className="astra-strix-dim"> · {connections.length ? t("launch.toolsWired") : t("launch.toolsCold")}</span>
+					</Row>
 
-					{/* 团队：名单来自 plugin.json，不是面板编的。队长高亮，其余按角色给字形。 */}
+					{/* 技能库：随包副本，运行时不再扫上游。来源如实写出来。 */}
+					<Row label={t("launch.skills")}>
+						<span>
+							{t("launch.skillsCount", {
+								count: capabilities?.skills ?? 0,
+								categories: capabilities?.skillCategories ?? 0,
+							})}
+						</span>
+						<span className="astra-strix-dim">
+							{" · "}
+							{capabilities?.skillSource === "env" ? t("launch.skillsFromEnv") : t("launch.skillsBundled")}
+						</span>
+					</Row>
+
+					{/* 连接：MCP 就绪情况。没有连接时如实说没有，不画一个空壳。 */}
+					<Row label={t("launch.connections")}>
+						{connections.length ? (
+							<span className="astra-strix-conn-list">
+								{connections.map((entry) => (
+									<span key={entry.name} className="astra-strix-conn" data-dead={entry.dead ? "yes" : "no"}>
+										<span aria-hidden="true" className={entry.dead ? "astra-strix-amber" : "astra-strix-green"}>
+											●
+										</span>
+										<span title={entry.provider}>{entry.name}</span>
+										<span className="astra-strix-dim">{entry.toolCount}</span>
+									</span>
+								))}
+							</span>
+						) : (
+							<span className="astra-strix-dim">{t("launch.connectionsNone")}</span>
+						)}
+					</Row>
+
+					{/* 范围：声明过的目标。没声明就说没声明——那是"开始前该确认的事"。 */}
+					<Row label={t("targets.title")}>
+						{declared ? (
+							<span className="astra-strix-dim">
+								{t("launch.scopeDeclared", { count: declared })} · {scope?.entries.slice(0, 3).map((entry) => entry.value).join(" · ")}
+							</span>
+						) : (
+							<span className="astra-strix-dim">{t("launch.scopeUndeclared")}</span>
+						)}
+					</Row>
+
 					{team && team.members.length ? (
-						<div className="astra-strix-row">
-							<span className="astra-strix-row-label">{t("panel.team")}</span>
-							<span className="astra-strix-row-value astra-strix-team-chips">
+						<Row label={t("panel.team")}>
+							<span className="astra-strix-team-chips">
 								{team.members.map((member) => (
 									<span
 										key={member.id}
@@ -300,37 +275,34 @@ export function LaunchScreen({
 									</span>
 								))}
 							</span>
-						</div>
+						</Row>
 					) : null}
 
 					{log.length ? (
-						<div className="astra-strix-row">
-							<span className="astra-strix-row-label" />
-							<span className="astra-strix-row-value astra-strix-launch-log" role="status">
+						<Row label="">
+							<span className="astra-strix-launch-log" role="status">
 								{log.slice(-MAX_LOG_ROWS).map((line, index) => (
 									<span key={`${index}-${line.text}`} className={line.tone ? `astra-strix-${line.tone}` : "astra-strix-dim"}>
 										{line.text}
 									</span>
 								))}
 							</span>
-						</div>
+						</Row>
 					) : null}
-
 				</div>
 
-				{/* 底部小字：快捷键、版本、桥接状态。这些东西每帧都在，但不是每帧都要看，
-				    所以从“一行一条”收成一条脚注——上面只留决策需要的东西（模型 / 环境）。 */}
+				{/* 唯一的前进动作：进工作台看现场。不发送任何东西。 */}
 				<div className="astra-strix-launch-foot">
+					{onOpenWorkbench ? (
+						<button type="button" className="astra-strix-go" onClick={onOpenWorkbench}>
+							{t("nav.workbench")}
+						</button>
+					) : null}
 					<span className="astra-strix-hints">
-						<span className="astra-strix-hint">
-							<span className="astra-strix-key">enter</span>
-							<span className="astra-strix-dim">{t("launch.hint.enter")}</span>
-						</span>
 						<span className="astra-strix-hint">
 							<span className="astra-strix-key">ctrl+c</span>
 							<span className="astra-strix-dim">{t("launch.hint.quit")}</span>
 						</span>
-						{/* Shift+Enter 已经在输入框底条里说了一次，此处不重复（1.0.8）。 */}
 					</span>
 
 					<span className="astra-strix-boot-line">
@@ -358,10 +330,7 @@ export function LaunchScreen({
 						<span className="astra-strix-dim astra-strix-hints-version">v{version}</span>
 					</span>
 				</div>
-
-				{blocked ? <p className="astra-strix-launch-blocked">{blocked}</p> : null}
 			</div>
 		</div>
 	);
 }
-

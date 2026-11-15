@@ -1,21 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { conversationShape, permitHostAction, shouldFollowTurn } from "../src/domain/conversation-shape";
+import { conversationShape, permitStop, shouldFollowTurn } from "../src/domain/conversation-shape";
 
 /**
- * 形态与授权。纯函数，不渲染任何东西：
- * 这三条判断是面板全部写动作的入口，错了就是跨会话事故。
+ * 形态与授权（纯函数，不渲染任何东西）。
+ *
+ * 1.0.16 起面板不再发消息，所以授权只剩一条：能不能停。
+ * 判据是"这一轮在跑 + 这不是团队会话"——面板显示的会话就是宿主的活动会话，
+ * `abort()` 打的也是它，两者同源。
  */
 
 describe("conversationShape", () => {
 	it("names a team chat by its missing session file", () => {
-		// 宿主在 override 那一支写死 `sessionPath: null`，这是唯一的形态信号。
 		expect(conversationShape({ id: "team-1", sessionPath: null })).toBe("team");
 		expect(conversationShape({ id: "s1", sessionPath: "/w/a.jsonl" })).toBe("single");
 	});
 
 	it("treats an empty path as a team chat, not as a single one", () => {
-		// 新会话在文件落地前可能是空串。误判成团队只会"多跟随一轮"；
-		// 误判成单会话则会让面板往错的会话里写——两害相权取前者。
+		// 新会话在文件落地前可能是空串：误判成团队只会"多跟随一轮"，
+		// 误判成单会话则会让面板往错的会话里写。
 		expect(conversationShape({ id: "s1", sessionPath: "" })).toBe("team");
 	});
 
@@ -27,8 +29,6 @@ describe("conversationShape", () => {
 
 describe("shouldFollowTurn", () => {
 	it("follows a team chat even though there is no capsule to switch on", () => {
-		// 团队 composer 上没有插件的输入栏动作，engaged 在那边恒为 false。
-		// 缺席不是拒绝：这一轮必须把面板带出来。
 		expect(shouldFollowTurn("team", false)).toBe(true);
 	});
 
@@ -38,38 +38,25 @@ describe("shouldFollowTurn", () => {
 	});
 
 	it("falls back to the capsule while the shape is still unknown", () => {
-		// 还没收到 conversation-changed 时不能假装是团队会话。
 		expect(shouldFollowTurn("none", false)).toBe(false);
 		expect(shouldFollowTurn("none", true)).toBe(true);
 	});
 });
 
-describe("permitHostAction", () => {
-	it("refuses every write on a team surface", () => {
-		for (const action of ["send", "stop"] as const) {
-			expect(permitHostAction({ shape: "team", action, runOwner: "team-1", boundTo: "team-1" })).toEqual({
-				ok: false,
-				reason: "team-surface",
-			});
-		}
+describe("permitStop", () => {
+	it("lets you stop the turn that is running in the conversation you are looking at", () => {
+		expect(permitStop({ shape: "single", streaming: true })).toEqual({ ok: true });
 	});
 
-	it("lets a single chat send, because a user asking the panel to start is the permission", () => {
-		expect(permitHostAction({ shape: "single", action: "send", runOwner: null, boundTo: "s1" })).toEqual({ ok: true });
+	it("says nothing is running when the turn already ended", () => {
+		expect(permitStop({ shape: "single", streaming: false })).toEqual({ ok: false, reason: "no-run" });
 	});
 
-	it("stops only what this panel started, in the conversation it started it in", () => {
-		expect(permitHostAction({ shape: "single", action: "stop", runOwner: null, boundTo: "s1" })).toEqual({
-			ok: false,
-			reason: "no-run",
-		});
-		// A 里发起的运行，面板现在停在 B：abort 会打到 B，必须拦下。
-		expect(permitHostAction({ shape: "single", action: "stop", runOwner: "session-a", boundTo: "session-b" })).toEqual({
-			ok: false,
-			reason: "not-this-conversation",
-		});
-		expect(permitHostAction({ shape: "single", action: "stop", runOwner: "session-a", boundTo: "session-a" })).toEqual({
-			ok: true,
-		});
+	it("refuses on a team surface, where abort points at another conversation", () => {
+		expect(permitStop({ shape: "team", streaming: true })).toEqual({ ok: false, reason: "team-surface" });
+	});
+
+	it("refuses when there is no conversation at all", () => {
+		expect(permitStop({ shape: "none", streaming: true })).toEqual({ ok: false, reason: "not-this-conversation" });
 	});
 });

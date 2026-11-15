@@ -109,12 +109,6 @@ function fakeHost(services: Record<string, unknown> = {}) {
 	};
 }
 
-/** Fill the launch column's prompt and press Enter, the way a user launches a scan. */
-function launchWith(text: string): void {
-	const input = screen.getByLabelText("launch.label") as HTMLTextAreaElement;
-	fireEvent.change(input, { target: { value: text } });
-	fireEvent.keyDown(input, { key: "Enter" });
-}
 
 describe("plugin activation", () => {
 	it("registers a tab and an input action, and the tab renders without throwing", async () => {
@@ -128,7 +122,9 @@ describe("plugin activation", () => {
 		// launch screen with a failure line instead of crashing.
 		render(tab!.component());
 		expect(screen.getByText("launch.tagline")).toBeTruthy();
-		expect(screen.getByLabelText("launch.label")).toBeTruthy();
+		// 首屏是配置页：没有输入框，只有「进工作台」那一个前进动作。
+		expect(screen.queryByLabelText("launch.label")).toBeNull();
+		expect(screen.getByText("nav.workbench")).toBeTruthy();
 
 		await disposeOf(disposable);
 	});
@@ -192,53 +188,6 @@ describe("plugin activation", () => {
 		await disposeOf(disposable);
 	});
 
-	it("hands the launch prompt to the host conversation and never calls a model itself", async () => {
-		const host = fakeHost();
-		const listModels = vi.fn(async () => {
-			throw new Error("the panel must not ask for a model list");
-		});
-		const chat = vi.fn(async () => {
-			throw new Error("the panel must not run its own loop");
-		});
-		Object.assign(host.ctx.ai as unknown as Record<string, unknown>, { listModels, chat });
-		const sent: string[] = [];
-		Object.assign(host.ctx.conversation as unknown as Record<string, unknown>, {
-			sendPrompt: async (text: string) => {
-				sent.push(text);
-				return { status: "sent" as const };
-			},
-		});
-
-		const disposable = await plugin.activate(host.ctx);
-		render(host.tab()!.component());
-		launchWith("pentest staging.example.com");
-
-		// The conversation is the only AI in the picture: the prompt lands there, and the
-		// panel's own model surface is never touched.
-		await vi.waitFor(() => expect(sent).toEqual(["pentest staging.example.com"]));
-		expect(chat).not.toHaveBeenCalled();
-		expect(listModels).not.toHaveBeenCalled();
-
-		await disposeOf(disposable);
-	});
-
-	it("reports a failed delivery instead of inventing output", async () => {
-		const host = fakeHost();
-		Object.assign(host.ctx.conversation as unknown as Record<string, unknown>, {
-			sendPrompt: async () => {
-				throw new Error("No active conversation to send to");
-			},
-		});
-		const disposable = await plugin.activate(host.ctx);
-		render(host.tab()!.component());
-		launchWith("scan a.test");
-
-		// The failure is reported in the launch log; no transcript row is fabricated.
-		expect(await screen.findByText(/log.sendFailed/)).toBeTruthy();
-
-		await disposeOf(disposable);
-	});
-
 	it("follows the host turn but renders no prose of its own", async () => {
 		const host = fakeHost();
 		// The bridge is unreachable here; that only affects the environment probe.
@@ -255,12 +204,14 @@ describe("plugin activation", () => {
 			host.emit({ type: "message-updated", delta: "; one IDOR filed." });
 		});
 
-		// The panel left the launch column, but the words are not here: they are in the chat,
-		// rendered better there. Rendering them twice is the redundancy this change removes.
+		// 面板不再抄写对话，但也不再一句不留：它把带信息量的句子摘要成关键点。
+		// 判据在 `domain/conversation-digest.ts`：流式增量（message-updated）不推行，
+		// 完整文本（message-added）才摘要一次。
 		expect(screen.queryByText("launch.tagline")).toBeNull();
+		// 流式增量阶段一行都不应该有——那就等于把正文抄进来了。
 		expect(screen.queryByText(/Four renditions found/)).toBeNull();
 
-		// 3. The finished message changes nothing on the panel either.
+		// 3. 完整答复到达时，结论被压成一行关键点；正文仍然不在面板里。
 		await act(async () => {
 			host.emit({
 				type: "message-added",
@@ -269,7 +220,10 @@ describe("plugin activation", () => {
 			host.emit({ type: "turn-end", stopReason: "stop" });
 		});
 
-		expect(screen.queryByText(/Four renditions found/)).toBeNull();
+		const points = [...document.querySelectorAll(".astra-strix-say")].map((node) => node.textContent ?? "");
+		expect(points.some((line) => line.includes("IDOR"))).toBe(true);
+		// 摘要行短于原文：它不是正文的副本。
+		expect(points.every((line) => line.length <= 140)).toBe(true);
 		// State still follows the turn: running while it runs, idle after it ends.
 		expect(screen.getByText("scan.idle")).toBeTruthy();
 

@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import {
-	COMPOSER_MIN_PX,
-	composerHeightBounds,
-	nudgeComposerHeight,
-	nextComposerHeight,
-} from "../src/features/scan-console/composer-height";
 
 const css = readFileSync(resolve(process.cwd(), "src/style.css"), "utf8");
 /**
@@ -17,78 +11,14 @@ const css = readFileSync(resolve(process.cwd(), "src/style.css"), "utf8");
 const rules = css.replace(/\/\*[\s\S]*?\*\//g, "");
 
 /**
- * Two reported defects, pinned.
+ * 首屏的自适应，钉在 CSS 规则上。
  *
- *  1. "拖动底部输入框，方向相反" — the box answered the gesture backwards. The sign of a
- *     drag belongs in one place, and the assertion here is that dragging **up** grows the
- *     box; anything else is the bug again.
- *  2. "首屏在不同宽度下不自适应" — the launch column was centred on a scrolling surface,
- *     which hides the overflowing start edge and slides the composer the wrong way when
- *     the panel grows. The CSS assertions below are the parts that produced it.
+ * 曾经这里还握着一件事："拖动底部输入框，方向相反"。1.0.12 面板没有输入框了，
+ * 那条用例连同它的纯函数一起退役（半调子的保留只会让后来者以为还有个可拖的框）。
+ * 剩下的都是仍在生效的约束：不要居中一个可滚动的表面、markdown 按视口缩、
+ * 运行记录左对齐、窄屏与矮屏各有断点。
  */
 
-const launch = readFileSync(resolve(process.cwd(), "src/features/scan-console/components/launch-screen.tsx"), "utf8");
-const scan = readFileSync(resolve(process.cwd(), "src/features/scan-console/components/scan-screen.tsx"), "utf8");
-
-describe("drag direction", () => {
-	it("grows when the pointer moves up", () => {
-		// dy is negative going up: 120 → 180 on a 60px upward drag.
-		expect(nextComposerHeight({ start: 120, dy: -60, min: 64, max: 400 })).toBe(180);
-	});
-
-	it("shrinks when the pointer moves down", () => {
-		expect(nextComposerHeight({ start: 180, dy: 60, min: 64, max: 400 })).toBe(120);
-	});
-
-	it("clamps at both ends instead of inverting past them", () => {
-		// Dragging far past the floor must not wrap to "tallest", which is what a
-		// modulus or a sign flip produces.
-		expect(nextComposerHeight({ start: 70, dy: 400, min: 64, max: 400 })).toBe(64);
-		expect(nextComposerHeight({ start: 380, dy: -400, min: 64, max: 400 })).toBe(400);
-	});
-
-	it("keeps the keyboard on the same convention", () => {
-		expect(nudgeComposerHeight({ start: 120, delta: 16, min: 64, max: 400 })).toBe(136);
-		expect(nudgeComposerHeight({ start: 70, delta: -16, min: 64, max: 400 })).toBe(64);
-	});
-
-	it("bounds the box to a share of the panel, never to nothing", () => {
-		const tall = composerHeightBounds(1000);
-		expect(tall.max).toBe(450);
-		expect(tall.min).toBe(COMPOSER_MIN_PX);
-		// A very short panel still gets a usable box rather than a negative cap.
-		const short = composerHeightBounds(90);
-		expect(short.max).toBeGreaterThanOrEqual(COMPOSER_MIN_PX);
-		expect(short.min).toBeLessThanOrEqual(short.max);
-	});
-});
-
-describe("both composers carry the same handle", () => {
-	for (const [name, source] of [
-		["launch", launch],
-		["scan", scan],
-	] as const) {
-		it(`${name} renders a separator with the shared hook`, () => {
-			expect(source).toContain("useComposerHeight");
-			expect(source).toContain('className="astra-strix-resize-handle"');
-			expect(source).toContain('role="separator"');
-			expect(source).toContain("--sx-composer-h");
-		});
-	}
-
-	it("the handle is a real hit area, not a hairline", () => {
-		expect(css).toContain(".astra-strix-resize-handle");
-		expect(css).toMatch(/\.astra-strix-resize-handle\s*\{[^}]*cursor: ns-resize/s);
-		expect(css).toMatch(/\.astra-strix-resize-handle\s*\{[^}]*height: 8px/s);
-		// Touch scrolling must not steal the gesture mid-drag.
-		expect(css).toMatch(/\.astra-strix-resize-handle\s*\{[^}]*touch-action: none/s);
-	});
-
-	it("the textarea takes its height from the variable and scrolls inside it", () => {
-		expect(css).toMatch(/\.astra-strix-prompt-input\s*\{[^}]*height: var\(--sx-composer-h, auto\)/s);
-		expect(css).toMatch(/\.astra-strix-prompt-input\s*\{[^}]*overflow-y: auto/s);
-	});
-});
 
 describe("the first screen adapts instead of hiding its own head", () => {
 	it("does not centre a scrolling surface", () => {

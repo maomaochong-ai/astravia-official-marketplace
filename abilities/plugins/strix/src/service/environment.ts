@@ -1,8 +1,7 @@
 /**
  * Where a scan actually runs.
  *
- * See `docs/adr/strix/strix-0001-environment-without-docker.md`: Docker is an
- * accelerator, not a prerequisite. Without a daemon the same tools run in the
+ * Docker is an accelerator, not a prerequisite. Without a daemon the same tools run in the
  * user's own session — weaker isolation, still usable — and that difference is
  * reported instead of blocking the launch.
  */
