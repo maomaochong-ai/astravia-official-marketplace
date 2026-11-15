@@ -249,13 +249,15 @@ export function ScanScreen({
 									}
 								}}
 							/>
-							{/* 发送键：回车能发，但一个只有占位符的框看不出“发出去”。 */}
+						</div>
+						{/* 框内底条：与首屏同形——左键位、右发送。说明文字从框下小字收进这条里。 */}
+						<div className="astra-strix-composer-bar">
+							<span className="astra-strix-dim">{t("launch.hint.send")}</span>
 							<button type="button" className="astra-strix-send" onClick={send} disabled={!draft.trim()}>
 								{t("composer.send")}
 							</button>
 						</div>
-						{/* 说明不再是框里的一大块：框下小字，盒子高度因此只剩一行。 */}
-						<p className="astra-strix-prompt-hint">{t("scan.inputHint")}</p>
+						{/* 框下不再重复一行说明：键位提示已经在框内的底条里（1.0.8）。 */}
 					</div>
 				</section>
 

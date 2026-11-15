@@ -144,13 +144,12 @@ export function LaunchScreen({
 								}}
 							/>
 						</label>
-						{/* 发送键与工作台同形：只靠回车的手感看不出“发出去”。 */}
-						<button
-							type="button"
-							className="astra-strix-send"
-							onClick={submit}
-							disabled={!value.trim()}
-						>
+					</div>
+					{/* 框内底条：左边告诉你键位，右边是发送键。与文本分开一行，
+					    即使输入多行长高，按钮也不会被挤到文字中间（用户指出的“输入框内部按钮重新布局”）。 */}
+					<div className="astra-strix-composer-bar">
+						<span className="astra-strix-dim">{t("launch.hint.send")}</span>
+						<button type="button" className="astra-strix-send" onClick={submit} disabled={!value.trim()}>
 							{t("composer.send")}
 						</button>
 					</div>
@@ -217,22 +216,22 @@ export function LaunchScreen({
 									{envState === "noImage" ? t("env.statusNoImage") : null}
 									{envState === "ready" ? t("env.statusReady") : null}
 								</span>
-							</span>
-							{/* 动作另起一行，但仍缩进在值列里：不会把状态文字挤到下一行，也不会跨出左边缘。 */}
-							<span className="astra-strix-env-actions">
-								{envState === "noDocker" ? (
-									<button type="button" className="astra-strix-env-action" onClick={() => onInstallDocker?.()}>
-										{t("env.install")}
+								{/* 动作跟下拉在同一条 flex 行上（1.0.8）：另起一行就是“刷新环境”单独掉下去。 */}
+								<span className="astra-strix-env-actions">
+									{envState === "noDocker" ? (
+										<button type="button" className="astra-strix-env-action" onClick={() => onInstallDocker?.()}>
+											{t("env.install")}
+										</button>
+									) : null}
+									{envState === "noImage" && onPullImage ? (
+										<button type="button" className="astra-strix-env-action" onClick={() => void onPullImage()}>
+											{t("env.pull")}
+										</button>
+									) : null}
+									<button type="button" className="astra-strix-env-action" onClick={() => onRefreshEnvironment?.()}>
+										{t("env.refresh")}
 									</button>
-								) : null}
-								{envState === "noImage" && onPullImage ? (
-									<button type="button" className="astra-strix-env-action" onClick={() => void onPullImage()}>
-										{t("env.pull")}
-									</button>
-								) : null}
-								<button type="button" className="astra-strix-env-action" onClick={() => onRefreshEnvironment?.()}>
-									{t("env.refresh")}
-								</button>
+								</span>
 							</span>
 						</span>
 					</div>
@@ -264,9 +263,7 @@ export function LaunchScreen({
 							<span className="astra-strix-key">ctrl+c</span>
 							<span className="astra-strix-dim">{t("launch.hint.quit")}</span>
 						</span>
-						<span className="astra-strix-hint">
-							<span className="astra-strix-dim">{t("launch.hint.send")}</span>
-						</span>
+						{/* Shift+Enter 已经在输入框底条里说了一次，此处不重复（1.0.8）。 */}
 					</span>
 
 					<span className="astra-strix-boot-line">

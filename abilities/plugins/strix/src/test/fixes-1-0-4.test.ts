@@ -62,8 +62,11 @@ describe("the rows under the composer line up", () => {
 	it("keeps the environment controls inside the value column", () => {
 		expect(launch).toContain("astra-strix-env-line");
 		expect(launch).toContain("astra-strix-env-actions");
-		// 动作在值列里换行，不跨出左边缘
-		expect(css).toMatch(/\.astra-strix-env-actions\s*\{[^}]*margin-top:\s*5px/s);
+		// 1.0.8：动作与下拉在同一条 flex 行上（不再 margin-top 另起一行，
+		// 那正是用户截图里"刷新环境"单独掉下去的样子）。
+		const actions = /\.astra-strix-env-actions\s*\{([^}]*)\}/s.exec(css)?.[1] ?? "";
+		expect(actions).toContain("inline-flex");
+		expect(actions).not.toMatch(/margin-top/);
 	});
 
 	it("gives the select and buttons one height, so the line reads as one row", () => {

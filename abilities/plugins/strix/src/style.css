@@ -240,7 +240,24 @@
 	transition: border-color 120ms ease;
 }
 
-/* 发送键：与环境下拉同高同圆角，右侧固定。禁用时压到 40%——它同时是“还没写东西”的信号。 */
+/* 输入框内部：上方是文本行，下方是底条（左键位、右发送）。
+   按钮不再与文本同行——输入长高时它会被挤到文字中间（1.0.8 用户反馈）。 */
+.astra-strix-composer-bar {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 11px;
+}
+
+.astra-strix-composer-bar > .astra-strix-dim {
+	/* 键位提示占住左侧，发送键永远贴在右下角。 */
+	margin-right: auto;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* 发送键：与环境下拉同高同圆角。禁用时压到 40%——它同时是“还没写东西”的信号。 */
 .astra-strix-send {
 	flex: 0 0 auto;
 	height: 24px;
@@ -281,8 +298,13 @@
 	color: var(--sx-dim);
 }
 
+/* 右侧一组：桥接状态 + 版本。整组不换行——版本号单独掉到第二行是用户看到的那张截图。 */
 .astra-strix-boot-line {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 8px;
 	margin-left: auto;
+	white-space: nowrap;
 }
 
 .astra-strix-prompt:focus-within {
@@ -1701,12 +1723,13 @@
 	color: var(--sx-amber);
 }
 
-/* 环境：选择器 + 状态同一行；动作另起一行但仍在值列内。 */
+/* 环境：下拉 + 状态 + 动作**一行**（宽度不够才换行）。
+   1.0.7 把动作另起一行，用户看到的就是“刷新环境”单独掉到下面（1.0.8）。 */
 .astra-strix-env-line {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 4px 10px;
+	gap: 6px 10px;
 	font-size: 11.5px;
 }
 
@@ -1724,11 +1747,11 @@
 	color: var(--sx-green);
 }
 
+/* 动作与下拉同在同一条 flex 行上：不 margin-top、不另起一行。 */
 .astra-strix-env-actions {
-	display: flex;
+	display: inline-flex;
 	flex-wrap: wrap;
 	gap: 6px;
-	margin-top: 5px;
 }
 
 /* 下拉：与正文同高、同字色；底色自己带，不靠父级背景。 */
@@ -1803,7 +1826,8 @@
 }
 
 .astra-strix-hints-version {
-	margin-left: auto;
+	/* 与桥接状态同组，由 .astra-strix-boot-line 的 gap 排开（1.0.8）。 */
+	flex: 0 0 auto;
 }
 
 .astra-strix-row-value .astra-strix-boot {
