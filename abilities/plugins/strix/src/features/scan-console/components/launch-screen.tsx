@@ -15,6 +15,7 @@
 import { useState } from "react";
 import { PanelComposer } from "../../../shared/components/panel-composer";
 import { COMPOSER_HINTS } from "../../../shared/components/use-typewriter";
+import { HackerBackdrop } from "./hacker-backdrop";
 import { HackerRain } from "./hacker-rain";
 import { InstallPathsPanel } from "./install-paths-panel";
 import { manifestLabel } from "../../../domain/manifest-label";
@@ -175,6 +176,8 @@ export function LaunchScreen({
 				}
 			}}
 		>
+			{/* 底子：极光 + 网格 + 扫光。颜色取自 --sx-aurora-*，与绿字同族。 */}
+			<HackerBackdrop density="splash" />
 			<HackerRain density="splash" />
 			<div className="astra-strix-launch">
 				{/* 标题与副标题与对话框同轴居中：这一列的重心在上面。 */}

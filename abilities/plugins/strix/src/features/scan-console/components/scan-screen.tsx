@@ -12,6 +12,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { useStickToBottom } from "../hooks/use-stick-to-bottom";
+import { HackerBackdrop } from "./hacker-backdrop";
 import { HackerRain } from "./hacker-rain";
 import { manifestLabel } from "../../../domain/manifest-label";
 import type { ModelChoice } from "../../../domain/model-label";
@@ -218,6 +219,8 @@ export function ScanScreen({
 	return (
 		<div className="astra-strix-term astra-strix-phosphor astra-strix-workbench">
 			{/* 工作台也铺数据流（用户要求）：更密、更淡，永远压在所有内容之下。 */}
+			{/* 氛围层同样减半：它后面是要读的字。 */}
+			<HackerBackdrop density="workbench" />
 			<HackerRain density="workbench" />
 			<header className="astra-strix-band">
 				<span className="astra-strix-band-state" data-state={running ? "running" : "idle"}>
