@@ -41,6 +41,10 @@ export interface StrixTabProps {
 	workspace?: string;
 	/** The host conversation is generating right now. */
 	hostStreaming: boolean;
+	/** 停止可用：这一轮是本面板发起的（ADR 0020）。 */
+	canStop: boolean;
+	/** 团队会话：面板只读，发送与停止都在团队输入框。 */
+	readOnly: boolean;
 	environment?: EnvironmentProbe;
 	sandbox: SandboxStatus;
 	findings: readonly StrixFinding[];
@@ -77,6 +81,8 @@ export interface StrixTabProps {
 	forceLaunch: boolean;
 	onOpenLaunch: () => void;
 	onNewSession: () => void;
+	/** 首屏「进入工作台」：不发送消息，直接看现场（1.0.13）。 */
+	onOpenWorkbench?: () => void;
 }
 /** Why Enter cannot launch yet, in the order the user would fix them. */
 function blockedReason(t: (key: string) => string, model: ModelChoice | undefined, environment: EnvironmentProbe | undefined): string | undefined {
@@ -99,6 +105,7 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					model={props.model}
 					workspace={props.workspace}
 					hostStreaming={props.hostStreaming}
+					canStop={props.canStop}
 					environment={props.environment}
 					sandbox={props.sandbox}
 					findings={props.findings}
@@ -131,6 +138,8 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					blocked={blockedReason(t, props.model, props.environment)}
 					boot={props.boot}
 					onSubmit={(value) => void props.start(value)}
+					{...(props.onOpenWorkbench ? { onOpenWorkbench: props.onOpenWorkbench } : {})}
+					readOnly={props.readOnly}
 					onQuit={props.onQuit}
 					environmentMode={props.environmentMode}
 					environmentReady={props.environmentReady}

@@ -21,6 +21,7 @@
  * and the plugin's job is to show the assessment as it happens and to hand the operator's
  * words to the only agent that can act on them.
  */
+import { conversationShape, permitHostAction } from "../../../domain/conversation-shape";
 import { evidenceRow, isServiceNarrated, strixToolName, toolRow, turnDivider } from "../../../domain/conversation-projection";
 import { foldTrace, type TraceDraft } from "../../../domain/trace-log";
 import type { ConversationEvent, ConversationState } from "@astravia-org/plugin-sdk";
@@ -100,8 +101,12 @@ export interface StrixSessionModel {
 	start: (prompt: string) => Promise<void>;
 	/** Continue the assessment from the scan composer. */
 	send: (text: string) => Promise<void>;
-	/** Abort the host turn and stop the sandbox. */
+	/** 只停本面板发起的那一轮；不是它发起的就不动（ADR 0020）。 */
 	stop: () => Promise<void>;
+	/** 停止按钮可用：这一轮确实是本面板发起的，且宿主正看着这个会话。 */
+	canStop: boolean;
+	/** 团队会话：面板只读，发送与停止都在团队输入框。 */
+	readOnly: boolean;
 	/** Re-read state after a failure. */
 	refresh: () => Promise<void>;
 	/** 面板选的执行环境。 */
@@ -116,6 +121,8 @@ export interface StrixSessionModel {
 	/** 首屏 / 工作台：用户可以随时回去看一眼配置，不被"自动跟屏"锁住。 */
 	showLaunch: boolean;
 	openLaunch: () => void;
+	/** 进工作台：不发送、不建会话（1.0.13）。 */
+	openWorkbench: () => void;
 	/** 在当前项目下新开一个会话（面板会跟过去）。 */
 	newSession: () => Promise<void>;
 	/** 打开一条笔记的正文（`strix_note_get`）。面板是唯一能读到它的地方。 */
@@ -171,7 +178,7 @@ export function useStrixSession({
 	const initial = useRef(readSnapshot(conversation?.id)).current;
 	// 面板至少在这个会话里出现过一次：activate() 的抢焦点订阅靠它排除
 	// “在 A 会话开着的胶囊把 B 会话的面板拽出来”（engagement.ts）。
-	markPanelSeen(conversation?.id);
+	markPanelSeen(conversation?.id, conversation?.cwd ?? null);
 	// 宿主正在跑这一轮的时候挂载：首屏是给“还没开始”的，不是给“正在跑”的。
 	// 快照里第一轮往往还是 `setup`（agent 还没有任何 finding/todo 可查），只信快照会把
 	// 正在跑的评估画成首屏——用户把那看成“没跳过去”（1.0.6）。
@@ -222,6 +229,29 @@ export function useStrixSession({
 	// 只认挂载那一刻的 id，面板就会一直画着上一个会话的沙箱与命令，而新会话的事件
 	// 被自己挡掉。用户看到的“数据串会话”就是这个（rebindEffect 见下）。
 	const mountedIn = useRef<string | null>(conversation?.id ?? null);
+	// 形态每帧重算（ADR 0020）：`sessionPath` 为空 = 团队会话，宿主那边是写死的。
+	const shapeRef = useRef(conversationShape(conversation));
+	shapeRef.current = conversationShape(conversation);
+	/**
+	 * 本面板在哪一个会话里发起过运行（1.0.13，ADR 0020）。
+	 *
+	 * 为什么必须记它：宿主的 `conversation.abort()` 打的是 `activeSessionAtom` 里的会话
+	 * （plugin-host-bridge），不是面板正在看的那个。不记就只能在“停止”时盲打，
+	 * 真机上表现为：在 A 项目跑评估，到 B 项目点停止，B 的普通对话被终止。
+	 */
+	const runOwner = useRef<string | null>(null);
+	/** 已发出、但会话 id 还没出现的运行（宿主草稿态会稍后才建会话）。 */
+	const pendingRun = useRef(false);
+	const [ownsRun, setOwnsRun] = useState<string | null>(null);
+	const claimRun = useCallback((id: string | null) => {
+		runOwner.current = id;
+		setOwnsRun(id);
+	}, []);
+	// 草稿态发出、会话随后才落地：等到 id 出现再认领，否则停止按钮永远是灰的。
+	if (pendingRun.current && runOwner.current === null && conversation?.id) {
+		pendingRun.current = false;
+		runOwner.current = conversation.id;
+	}
 	// The host replays `conversation-changed` in a microtask, so a tab can mount before
 	// any id exists. Adopting the first real id is what stops the panel from ignoring
 	// every event for the rest of its life.
@@ -512,6 +542,9 @@ export function useStrixSession({
 
 			if (event.type === "turn-end") {
 				setHostStreaming(false);
+				// 这一轮结束了：本面板不再拥有它。留着会让停止按钮继续亮，
+				// 而那时按下去只会把别的东西停下来。
+				claimRun(null);
 				void refresh();
 				return;
 			}
@@ -554,6 +587,14 @@ export function useStrixSession({
 		async (text: string): Promise<boolean> => {
 			const value = text.trim();
 			if (!value) return false;
+			// 写之前先问形态（ADR 0020）：团队会话里 `sendPrompt` 落到的是上一个单会话
+			// （`pluginSendMessageRef` 不跟着团队切换），`insertText` 写进的 atom 团队输入框也不读。
+			// 三条路都指错会话，所以这条表面就不写，把话交给团队输入框。
+			if (!permitHostAction({ shape: shapeRef.current, action: "send", runOwner: null, boundTo: null }).ok) {
+				note(t("log.teamReadOnly"), "error");
+				return false;
+			}
+			if (!value) return false;
 			setSubmitting(true);
 			let sendError: string | undefined;
 			try {
@@ -591,6 +632,9 @@ export function useStrixSession({
 				// 面板跟着这一句离开首屏：用户按下的是「开始」，不是「继续看首屏」。
 				// 没有这一步时，只有宿主回一个 turn-start 才会切屏——而宿主在草稿态下
 				// 并不一定马上发事件，于是面板看起来像没反应（1.0.5）。
+				// 这一轮是面板发起的：记下来，停止按钮只能停它（ADR 0020）。
+				claimRun(conversationIdRef.current ?? null);
+				pendingRun.current = conversationIdRef.current === null || conversationIdRef.current === undefined;
 				launchPinned.current = false;
 				setShowLaunch(false);
 				if (phaseRef.current !== "scanning") setPhase("scanning");
@@ -646,6 +690,18 @@ export function useStrixSession({
 		}
 	}, [client, note, refresh, t]);
 
+	/**
+	 * 进工作台（1.0.13）：不发送、不建会话，只把这一屏换过去。
+	 *
+	 * 与 `openLaunch` 相反的一步：那边 pin 住不再跟随，这边主动解除 pin ——
+	 * 用户按了"看现场"，就不该再被自己的旧选择挡在首屏。
+	 */
+	const openWorkbench = useCallback(() => {
+		launchPinned.current = false;
+		setShowLaunch(false);
+		if (phaseRef.current !== "scanning") setPhase("scanning");
+	}, []);
+
 	const openLaunch = useCallback(() => {
 		launchPinned.current = true;
 		setShowLaunch(true);
@@ -673,14 +729,31 @@ export function useStrixSession({
 	const start = useCallback(async (prompt: string) => void deliver(prompt), [deliver]);
 	const send = useCallback(async (text: string) => void deliver(text), [deliver]);
 
-	/** Stop means "stop the run": abort the host turn, then release the container. */
+	/**
+	 * 停止 = “停掉面板发起的那一轮”，不是“停掉宿主的活跃会话”。
+	 *
+	 * 宿主那个 `abort()` 不看面板：它打 `activeSessionAtom`（plugin-host-bridge），
+	 * 所以在别的项目里按停止会掐掉那个项目正在跑的普通对话（真机 bug，ADR 0020）。
+	 * 这里先问授权：形态不对话（团队会话）或者这一轮不是本面板发起的，就不动手。
+	 */
 	const stop = useCallback(async () => {
+		const decision = permitHostAction({
+			shape: shapeRef.current,
+			action: "stop",
+			runOwner: runOwner.current,
+			boundTo: conversationIdRef.current ?? null,
+		});
+		if (!decision.ok) {
+			note(t(decision.reason === "team-surface" ? "log.stopInTeam" : "log.stopNotMine"), "error");
+			return;
+		}
+		claimRun(null);
 		await abort().catch(() => undefined);
 		await client.stopSandbox().catch(() => undefined);
 		setSandbox({ running: false, targets: [] });
 		setHostStreaming(false);
 		setPhase("done");
-	}, [abort, client]);
+	}, [abort, claimRun, client, note, t]);
 
 	// Persist after every change so a remount resumes rather than restarts.
 	useEffect(() => {
@@ -721,6 +794,10 @@ export function useStrixSession({
 			modelFromConversation: resolved.fromConversation,
 			workspace: workspaceLabel(conversation?.cwd),
 			hostStreaming,
+			// 停止只看“这一轮是不是本面板发起的”，不看宿主是不是在流：
+			// 宿主在流的可能是另一个会话的普通对话（ADR 0020）。
+			canStop: Boolean(hostStreaming && ownsRun && ownsRun === (conversation?.id ?? null)),
+			readOnly: conversationShape(conversation) === "team",
 			busy: submitting || hostStreaming,
 			start,
 			send,
@@ -733,6 +810,7 @@ export function useStrixSession({
 			pullImage,
 			showLaunch,
 			openLaunch,
+			openWorkbench,
 			newSession,
 			onOpenNote: async (id: string) => {
 				const result = (await client.callTool("strix_note_get", { id })) as
@@ -758,6 +836,8 @@ export function useStrixSession({
 			resolved,
 			conversation?.cwd,
 			hostStreaming,
+			ownsRun,
+			conversation?.id,
 			submitting,
 			start,
 			send,

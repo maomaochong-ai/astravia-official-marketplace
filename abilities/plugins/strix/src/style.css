@@ -257,6 +257,35 @@
 	text-overflow: ellipsis;
 }
 
+/* 「工作台」是次要动作：同高、无填充、只在 hover 时给描边。 */
+.astra-strix-go {
+	flex: 0 0 auto;
+	height: 24px;
+	padding: 0 10px;
+	border: 1px solid transparent;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--sx-dim);
+	font: inherit;
+	font-size: 11.5px;
+	line-height: 1;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.astra-strix-go:hover {
+	border-color: var(--sx-rule);
+	color: var(--sx-green);
+}
+
+/* 团队会话的只读说明：占发送键那个位置，但它是字，不是键。 */
+.astra-strix-readonly-note {
+	font-size: 11.5px;
+	line-height: 1.2;
+	max-width: 22em;
+	text-align: right;
+}
+
 /* 发送键：与环境下拉同高同圆角。禁用时压到 40%——它同时是“还没写东西”的信号。 */
 .astra-strix-send {
 	flex: 0 0 auto;

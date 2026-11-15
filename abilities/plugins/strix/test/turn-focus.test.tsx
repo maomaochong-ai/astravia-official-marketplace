@@ -17,11 +17,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const conversationState = {
 	id: "session-1",
 	cwd: "D:\\open-source-projects\\strix",
-	sessionPath: null,
+	// 单智能体会话的标志：有会话文件。团队会话那边宿主写死 null（ADR 0020），
+	// 下面那条团队用例会显式发一份 sessionPath: null 的 conversation-changed。
+	sessionPath: "D:\\open-source-projects\\strix\\.astravia\\session-1.jsonl",
 	model: "anthropic/claude-opus-5-5",
 	isStreaming: false,
 };
-
 vi.mock("@astravia-org/plugin-sdk", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("@astravia-org/plugin-sdk")>();
 	return { ...actual, useActiveConversation: () => conversationState };
@@ -138,7 +139,7 @@ describe("a host turn brings the panel to the front", () => {
 		expect(host.calls).toContain("open");
 	});
 
-	it("stays put when the capsule is off", async () => {
+	it("stays put in a single-agent chat when the capsule is off", async () => {
 		const host = mount();
 		await plugin.activate(host.ctx);
 		host.toggle(true);
@@ -154,6 +155,29 @@ describe("a host turn brings the panel to the front", () => {
 		await flush();
 
 		expect(host.calls).not.toContain("open");
+	});
+
+	it("follows a team chat even though it has no capsule to turn on", async () => {
+		const host = mount();
+		await plugin.activate(host.ctx);
+		render(host.tab()!.component());
+		await flush();
+
+		// 团队会话：宿主把 sessionPath 写死为 null，输入框上也没有插件的胶囊入口。
+		// 没开关不等于拒绝（ADR 0020）——这一轮必须把面板带出来，否则用户看不到现场。
+		await act(async () => {
+			host.emit({
+				type: "conversation-changed",
+				conversation: { ...conversationState, id: "team-1", sessionPath: null },
+			});
+		});
+		host.calls.length = 0;
+		await act(async () => {
+			host.emit({ type: "turn-start" });
+		});
+		await flush();
+
+		expect(host.calls).toContain("open");
 	});
 
 	it("leaves the launch screen on that same turn, capsule or not", async () => {

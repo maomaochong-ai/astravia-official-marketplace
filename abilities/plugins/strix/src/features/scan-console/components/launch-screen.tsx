@@ -47,6 +47,21 @@ export interface LaunchScreenProps {
 	onInstallDocker?: () => void;
 	onRefreshEnvironment?: () => void;
 	onSubmit: (value: string) => void;
+	/**
+	 * 直接进工作台（1.0.13）：不发送消息，只是去看现场。
+	 *
+	 * 为什么需要它：首屏此前只有"发一句话"这一条路进工作台，于是"我想看看刚才那轮跑到哪了"
+	 * 也必须先编一句话。团队会话尤其明显——那边没有胶囊开关，用户没有别的入口。
+	 */
+	onOpenWorkbench?: () => void;
+	/**
+	 * 团队会话（ADR 0020）：面板在这条表面上只读。
+	 *
+	 * 宿主的 `sendPrompt` / `insertText` 在团队会话里都指向错的会话（`pluginSendMessageRef`
+	 * 与 `inputValueAtom` 都不跟着团队切换），所以宁可把发送键换成一专说明，
+	 * 也不发出去再说。
+	 */
+	readOnly?: boolean;
 	onQuit: () => void;
 }
 
@@ -77,6 +92,8 @@ export function LaunchScreen({
 	onInstallDocker,
 	onRefreshEnvironment,
 	onSubmit,
+	onOpenWorkbench,
+	readOnly,
 	onQuit,
 }: LaunchScreenProps): React.ReactElement {
 	const [value, setValue] = useState("");
@@ -164,9 +181,20 @@ export function LaunchScreen({
 					    即使输入多行长高，按钮也不会被挤到文字中间（用户指出的“输入框内部按钮重新布局”）。 */}
 					<div className="astra-strix-composer-bar">
 						<span className="astra-strix-dim">{t("launch.hint.send")}</span>
-						<button type="button" className="astra-strix-send" onClick={submit} disabled={!value.trim()}>
-							{t("composer.send")}
-						</button>
+						{onOpenWorkbench ? (
+							<button type="button" className="astra-strix-go" onClick={onOpenWorkbench}>
+								{t("nav.workbench")}
+							</button>
+						) : null}
+						{/* 团队会话：面板没有可写的落点（ADR 0020），发送键直接换成一专说明，
+						    而不是让用户按下去才发现。 */}
+						{readOnly ? (
+							<span className="astra-strix-amber astra-strix-readonly-note">{t("launch.teamReadOnly")}</span>
+						) : (
+							<button type="button" className="astra-strix-send" onClick={submit} disabled={!value.trim()}>
+								{t("composer.send")}
+							</button>
+						)}
 					</div>
 
 

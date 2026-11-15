@@ -1,9 +1,10 @@
 import "./style.css";
-import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
+import type { ConversationState, Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { definePlugin, useActiveConversation } from "@astravia-org/plugin-sdk";
 import { useEffect, useRef } from "react";
 import { createBridgeClient } from "./domain/bridge-client";
-import { hasPanelBeenSeen, isStrixEngaged, setStrixEngaged } from "./domain/engagement";
+import { conversationShape, shouldFollowTurn } from "./domain/conversation-shape";
+import { hasPanelBeenSeen, isStrixEngaged, lastSeenConversation, setStrixEngaged } from "./domain/engagement";
 import { StrixTab } from "./features/scan-console/components/strix-tab";
 import { useStrixSession } from "./features/scan-console/hooks/use-strix-session";
 import { createServiceRuntime, type ServiceRuntime } from "./runtime";
@@ -107,6 +108,8 @@ function StrixTabRoot({
 			model={session.model}
 			workspace={session.workspace}
 			hostStreaming={session.hostStreaming}
+			canStop={session.canStop}
+			readOnly={session.readOnly}
 			environment={session.environment}
 			sandbox={session.sandbox}
 			findings={session.findings}
@@ -131,6 +134,7 @@ function StrixTabRoot({
 			forceLaunch={session.showLaunch}
 			onOpenLaunch={session.openLaunch}
 			onNewSession={() => void session.newSession()}
+			onOpenWorkbench={session.openWorkbench}
 			{...(session.coverageTally ? { coverageTally: session.coverageTally } : {})}
 			busy={session.busy}
 			start={session.start}
@@ -189,17 +193,29 @@ export default definePlugin({
 		 * 不带 `width`：`openActivityTab` 已经把“上栏 + 激活 + 展开”做完了，再指定 max
 		 * 等于每轮把用户手动拖的宽度覆掉，那不是“跳过去”。
 		 */
-		let activeConversation: { id: string | null; cwd: string | null } = { id: null, cwd: null };
+		let activeConversation: Pick<ConversationState, "id" | "cwd" | "sessionPath"> = {
+			id: null,
+			cwd: null,
+			sessionPath: null,
+		};
 		const turnFocus: Disposable = ctx.conversation.on((event) => {
 			if (event.type === "conversation-changed") {
-				activeConversation = { id: event.conversation.id, cwd: event.conversation.cwd };
+				activeConversation = {
+					id: event.conversation.id,
+					cwd: event.conversation.cwd,
+					sessionPath: event.conversation.sessionPath,
+				};
 				return;
 			}
 			if (event.type !== "turn-start") return;
-			if (!isStrixEngaged()) return;
-			if (!hasPanelBeenSeen(activeConversation.id)) return;
+			// 门还是三道，但第一道问的不再是"胶囊开着吗"，而是"这种会话上该不该跟随"：
+			// 团队会话根本没有胶囊可开（团队用另一套 composer），缺席不是拒绝（ADR 0020）。
+			if (!shouldFollowTurn(conversationShape(activeConversation), isStrixEngaged())) return;
 			try {
-				ctx.ui.openActivityTab(TAB_ID, activeConversation.cwd ? { cwd: activeConversation.cwd } : undefined);
+				// cwd 未知（团队会话很常见：override 的变化可能比我们订阅更早）时，
+				// 退回面板上次记住的会话——它比"什么都不传"更可能落进正确的抽屉。
+				const cwd = activeConversation.cwd ?? lastSeenConversation()?.cwd ?? null;
+				ctx.ui.openActivityTab(TAB_ID, cwd ? { cwd } : undefined);
 			} catch {
 				// 老宿主没有这个方法：拿不到焦点不影响评估本身，不报错。
 			}

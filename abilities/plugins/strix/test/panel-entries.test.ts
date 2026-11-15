@@ -69,9 +69,13 @@ describe("the rail can be folded down", () => {
 	});
 
 	it("gives every section a glyph", () => {
-		for (const glyph of ["◎", "◈", "▦", "⚉", "◷", "⇄", "▣"]) {
+		// 六个分区，每个一个字形（ADR 0019）。`▣` 原来是「会话」那一区，1.0.13 起它的两条事实
+		// 并进了「统计」（ADR 0020：会话在哪跑不是独立主题，是这一轮的状态），分区随之取消。
+		for (const glyph of ["◎", "◈", "▦", "⚉", "◷", "⇄"]) {
 			expect(screen).toContain(glyph);
 		}
+		// 会话不再单独成区：确认它真的没了，而不是换了个地方又长回来。
+		expect(screen).not.toContain('data-tone="session"');
 	});
 
 	it("actually hides the body when collapsed", () => {

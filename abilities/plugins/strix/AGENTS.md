@@ -131,7 +131,8 @@ npm run check           # typecheck + test + 服务冒烟
   所以不要先 `createSession`——那会把"拿不到 cwd"变成一次假的"你没打开目录"。只有发送真的失败才建会话；
   连 cwd 都拿不到时用 `ctx.conversation.insertText` 把话交回宿主输入框。
 - **加区块之前先看入口密度**（ADR 0019）：首屏事实表最后一行是团队（四个 chip，字形按角色取）；
-	  侧栏七个分区里，标题本身就是折叠开关（默认展开 目标/发现/统计/团队，收起 连接/历史）。
+	  侧栏六个分区里，标题本身就是折叠开关（默认展开 目标/发现/统计/团队，收起 连接/历史）；
+	  “会话”那两条事实并入统计（ADR 0020），不再单独成区。
 	  分区标题用 `section-head` + `section-ico`，**不要**复用 `panel-box` 那颗 20px 的 `section-toggle`——
 	  一个是"收起一整块"，一个是"展开一段正文"。收起必须是 `display:none`，不是只藏视线。
 - **工具面是 40 个**（1.0.10）：36 个执行/台账工具 + 4 个会话与状态工具（`strix_budget` /
@@ -165,14 +166,19 @@ npm run check           # typecheck + test + 服务冒烟
 - **“面板画什么”不要掺胶囊状态，“抢不抢焦点”必须掺**（1.0.5 / 1.0.6）。两件事常被当成一件：
   - `phase`（画首屏还是工作台）：只问“用户按过返回首屏吗”。旧实现还要 `isStrixEngaged()`，
     胶囊没开就停在首屏，看起来像“发出去了面板没反应”。`deliver` 成功自己也切屏并销 pin。
-  - 把标签卡带到前面（`openActivityTab`）：只在胶囊开着时做——那是“这一轮交给我”。
-    但还要多一道 `hasPanelBeenSeen(conversationId)`：胶囊在状态机里也是模块级布尔，
-    不然在 A 会话开着胶囊会让 **B 会话**的面板被拽出来。
+  - 把标签卡带到前面（`openActivityTab`）：**按会话形态判**（ADR 0020）。单会话看胶囊——
+    那是“这一轮交给我”；团队会话总是跟随，因为团队 composer 上没有插件的胶囊可开，
+    缺席不是拒绝。判据在 `domain/conversation-shape.ts`，不要在 `index.tsx` 里另写条件。
   - 抢焦点的订阅必须在 `activate()` 里，不在组件里：docked 面板关着时插件子树整体不挂载
     （`ActivityPanelView` 的 `renderDockedPanel = model.isOpen`），组件根本收不到事件。
   - 调 `openActivityTab` 时要传 `cwd`：宿主在没有活动工作区时是**静默跳过**的
     （`resolveActivityTabScopeKey` 返回 null → `no-activity-workspace`）。不要传 `width`，
     那是把用户手动拖的宽度每轮覆掉，不叫“跳过去”。
+- **写动作按会话形态授权，停止只看归属**（ADR 0020）：宿主的 `sendPrompt` / `abort` 打的是
+  `pluginSendMessageRef` / `activeSessionAtom`，**不是面板正在看的那个会话**。所以在 A 项目
+  跑评估、到 B 项目按停止，会掐死 B 的普通对话。规则：团队会话里面板只读（不发送、不停止）；
+  停止只在 `runOwner === 当前会话 id` 时可用，`turn-end` 与成功的停止都要销掉它。
+  判据在 `domain/conversation-shape.ts` 的 `permitHostAction`，`test/session-isolation.test.tsx` 守着。
 - **环境下拉要有自己的底色**：它压在磷光绿背景上，透明背景会让字看不清；`option` 也要单独设色。
 - **测试一律在 `test/`，按域命名**（1.0.9）：不写 `src/test`、不写 `tests/`，也不按版本号
   或 ADR 编号命名（`fixes-1-0-7.test.ts` 这种名字一个月后没人知道它守什么）。文件名表达被守的行为：

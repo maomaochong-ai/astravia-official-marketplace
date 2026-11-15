@@ -61,6 +61,13 @@ export interface ScanScreenProps {
 	onOpenLaunch?: () => void;
 	/** 在当前项目下新开会话。 */
 	onNewSession?: () => void;
+	/**
+	 * 停止可用：这一轮是本面板发起的（ADR 0020）。
+	 *
+	 * 缺省就是不可停（fail-closed）：宁可这颗键是灰的，也不允许它去打穿别的会话。
+	 */
+	canStop?: boolean;
+	/** 停止：只停面板发起的那一轮（见 use-strix-session 的守卫）。 */
 	onStop: () => void;
 	/** Fetches a note's body on demand (`strix_note_get`) — the panel is the only place it can be read. */
 	onOpenNote?: (id: string) => Promise<string>;
@@ -132,6 +139,7 @@ export function ScanScreen({
 	model,
 	workspace,
 	hostStreaming,
+	canStop,
 	sandbox,
 	environment,
 	findings,
@@ -239,7 +247,7 @@ export function ScanScreen({
 					</button>
 				) : null}
 				{hostStreaming ? <span className="astra-strix-blue astra-strix-band-note">{t("scan.hostTurn")}</span> : null}
-				<button type="button" className="astra-strix-band-stop" onClick={onStop} disabled={!hostStreaming}>
+				<button type="button" className="astra-strix-band-stop" onClick={onStop} disabled={!canStop}>
 					{t("scan.stop")}
 				</button>
 			</header>
@@ -330,51 +338,6 @@ export function ScanScreen({
 				</section>
 
 				<aside className="astra-strix-rail" aria-label={t("rail.title")}>
-					<section className="astra-strix-section" data-tone="session" data-collapsed={collapsed.session ? "yes" : "no"}>
-						<SectionTitle
-							glyph="▣"
-							label={t("session.title")}
-							collapsed={Boolean(collapsed.session)}
-							onToggle={() => toggleSection("session")}
-						>
-							{sandbox.running ? <span className="astra-strix-chip-live">{t("session.running")}</span> : null}
-						</SectionTitle>
-						{sandbox.sessionId || sandbox.uptimeSec || envMode ? (
-							<dl className="astra-strix-kv">
-								<div>
-									<dt>{t("session.where")}</dt>
-									<dd className={envMode === "docker" ? undefined : "astra-strix-amber"}>{environmentLabel}</dd>
-								</div>
-								{sandbox.sessionId ? (
-									<div>
-										<dt>{t("session.id")}</dt>
-										<dd>{sandbox.sessionId}</dd>
-									</div>
-								) : null}
-								{sandbox.uptimeSec ? (
-									<div>
-										<dt>{t("session.uptime")}</dt>
-										<dd>{sandbox.uptimeSec}s</dd>
-									</div>
-								) : null}
-								{envMode === "docker" && sandbox.image ? (
-									<div>
-										<dt>{t("session.image")}</dt>
-										<dd title={sandbox.image}>{sandbox.image}</dd>
-									</div>
-								) : null}
-								{envMode === "docker" && environment?.docker.imagePresent === false ? (
-									<div>
-										<dt>{t("session.imageState")}</dt>
-										<dd className="astra-strix-dim">{t("session.imageNotUsed")}</dd>
-									</div>
-								) : null}
-							</dl>
-						) : (
-							<p className="astra-strix-section-empty">{t("session.noneYet")}</p>
-						)}
-					</section>
-
 					<section className="astra-strix-section" data-tone="targets" data-collapsed={collapsed.targets ? "yes" : "no"}>
 						<SectionTitle
 							glyph="◎"
@@ -401,18 +364,51 @@ export function ScanScreen({
 						)}
 					</section>
 
-					<ArtefactPanels
-						t={t}
-						todos={todos}
-						notes={notes}
-						coverage={coverage}
-						{...(sessions ? { sessions } : {})}
-						{...coverageTally ? { coverageTally } : {}}
-						{...onOpenNote ? { onOpenNote } : {}}
-					/>
+
+					<section className="astra-strix-section" data-tone="findings" data-collapsed={collapsed.findings ? "yes" : "no"}>
+						<SectionTitle
+							glyph="◈"
+							label={t("findings.title")}
+							collapsed={Boolean(collapsed.findings)}
+							onToggle={() => toggleSection("findings")}
+							count={
+								<span className="astra-strix-count" data-empty={findings.length ? "no" : "yes"}>
+									{findings.length}
+								</span>
+							}
+						/>
+						<FindingList t={t} findings={findings} runStatus={running ? "running" : "completed"} />
+					</section>
+
+					{/* 计划 / 覆盖 / 笔记（原型第三节）：这三件是同一类东西——"这一轮打算做什么、
+					    做过哪些面、留了什么话"，所以共用一颗分区头。以前它们直接摊在栏里，
+					    标题的左沿和字号跟其他分区不在一条线上，看起来像没对齐的列表（1.0.13）。 */}
+					<section className="astra-strix-section" data-tone="plan" data-collapsed={collapsed.plan ? "yes" : "no"}>
+						<SectionTitle
+							glyph="☰"
+							label={t("rail.plan")}
+							collapsed={Boolean(collapsed.plan)}
+							onToggle={() => toggleSection("plan")}
+							count={
+								<span className="astra-strix-count" data-empty={todos.length + coverage.length + notes.length ? "no" : "yes"}>
+									{todos.length + coverage.length + notes.length}
+								</span>
+							}
+						/>
+						<ArtefactPanels
+							t={t}
+							todos={todos}
+							notes={notes}
+							coverage={coverage}
+							{...(sessions ? { sessions } : {})}
+							{...coverageTally ? { coverageTally } : {}}
+							{...onOpenNote ? { onOpenNote } : {}}
+						/>
+					</section>
 
 					{/* Upstream docks the run's MCP connections as its own panel: a dead server looks
 					    exactly like the model forgetting its tools. */}
+
 					<section className="astra-strix-section" data-tone="mcp" data-collapsed={collapsed.mcp ? "yes" : "no"}>
 						<SectionTitle
 							glyph="⇄"
@@ -445,6 +441,7 @@ export function ScanScreen({
 					</section>
 					{/* Upstream's sidebar ends in a Stats panel; without it the panel has no single
 					    place that answers "how is this run going". */}
+
 					<section className="astra-strix-section" data-tone="stats" data-collapsed={collapsed.stats ? "yes" : "no"}>
 						<SectionTitle
 							glyph="▦"
@@ -453,6 +450,35 @@ export function ScanScreen({
 							onToggle={() => toggleSection("stats")}
 						/>
 						<dl className="astra-strix-kv">
+							{/* 会话事实并入统计（ADR 0020）：没有沙箱时那两行不画，宁缺勿空。 */}
+							<div>
+								<dt>{t("session.where")}</dt>
+								<dd className={envMode === "docker" ? undefined : "astra-strix-amber"}>{environmentLabel}</dd>
+							</div>
+							{sandbox.sessionId ? (
+								<div>
+									<dt>{t("session.id")}</dt>
+									<dd title={sandbox.sessionId}>{sandbox.sessionId}</dd>
+								</div>
+							) : null}
+							{sandbox.uptimeSec ? (
+								<div>
+									<dt>{t("session.uptime")}</dt>
+									<dd>{sandbox.uptimeSec}s</dd>
+								</div>
+							) : null}
+							{envMode === "docker" && sandbox.image ? (
+								<div>
+									<dt>{t("session.image")}</dt>
+									<dd title={sandbox.image}>{sandbox.image}</dd>
+								</div>
+							) : null}
+							{envMode === "docker" && environment?.docker.imagePresent === false ? (
+								<div>
+									<dt>{t("session.imageState")}</dt>
+									<dd className="astra-strix-dim">{t("session.imageNotUsed")}</dd>
+								</div>
+							) : null}
 							<div>
 								<dt>{t("scan.mode")}</dt>
 								<dd>{mode}</dd>
@@ -503,6 +529,7 @@ export function ScanScreen({
 
 					{/* 团队成员（ADR 0016）：名单来自 plugin.json，署名数来自发现台账。 */}
 					{team && team.members.length ? (
+
 						<section className="astra-strix-section" data-tone="team" data-collapsed={collapsed.team ? "yes" : "no"}>
 							<SectionTitle
 								glyph="⚉"
@@ -532,6 +559,7 @@ export function ScanScreen({
 					) : null}
 
 					{/* 历史评估（上游 viewer 的等价物）：只读清单，点不进旧会话——那是宿主的事。 */}
+
 					<section className="astra-strix-section" data-tone="history" data-collapsed={collapsed.history ? "yes" : "no"}>
 						<SectionTitle
 							glyph="◷"
@@ -563,20 +591,6 @@ export function ScanScreen({
 						)}
 					</section>
 
-					<section className="astra-strix-section" data-tone="findings" data-collapsed={collapsed.findings ? "yes" : "no"}>
-						<SectionTitle
-							glyph="◈"
-							label={t("findings.title")}
-							collapsed={Boolean(collapsed.findings)}
-							onToggle={() => toggleSection("findings")}
-							count={
-								<span className="astra-strix-count" data-empty={findings.length ? "no" : "yes"}>
-									{findings.length}
-								</span>
-							}
-						/>
-						<FindingList t={t} findings={findings} runStatus={running ? "running" : "completed"} />
-					</section>
 				</aside>
 			</div>
 		</div>
