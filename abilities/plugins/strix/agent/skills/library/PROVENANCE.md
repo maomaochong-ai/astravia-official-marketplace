@@ -18,4 +18,4 @@
   vulnerabilities: 29
 - 未复制：9 个已在 `agent/skills/<name>/SKILL.md` 里作为宿主入口技能的那一批
 
-**同步方式**：上游升级技能库时重跑 `node tools/vendor-skills.mjs`，不要手改这里的正文——手改会在下一次同步时丢失，也让「与上游一致」这句话失效。
+**同步方式**：上游升级技能库时重跑 `node scripts/dev/vendor-skills.cjs`，不要手改这里的正文——手改会在下一次同步时丢失，也让「与上游一致」这句话失效。
