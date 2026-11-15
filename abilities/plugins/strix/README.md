@@ -49,8 +49,8 @@ tool. Only `astra-strix-*` classes are defined.
 The panel is designed against upstream's TUI (`strix/interface/tui`), as ADR 0009 records: tool rows are **family-rendered** (14 families over 35 tools, glyphs and colours taken from `internal/render/*`), the status band replaces upstream's sweep and key hints, and the composer keeps upstream's one-narrow-column reading rhythm. Two numbers are reproducible, not impressions:
 
 ```bash
-node scripts/dev/ui-parity.mjs          # interface surfaces, weighted  → 85.4%
-node scripts/dev/capability-parity.mjs  # capability families, weighted  → 84.7% in scope
+npm run parity:ui            # interface surfaces, weighted → 87.6%
+npm run parity:capability    # capability families, weighted → 100% in scope
 ```
 
 The side-by-side prototype (upstream TUI vs this panel, same events) is at `docs/prototypes/strix-panel-vs-tui.html`, with a rendered PNG beside it.
