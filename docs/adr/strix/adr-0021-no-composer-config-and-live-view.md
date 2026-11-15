@@ -1,9 +1,10 @@
 # ADR 0021：面板没有输入框，只有配置与现场
 
-- 状态：已采纳
+- 状态：**部分被取代**：“面板没有输入框”一条由 [ADR 0022](adr-0022-composer-is-bidirectional.md) 取代；
+  “首屏是配置页”“对话只留要点”“目标分声明与候选”仍然生效
 - 日期：2026-11-15
 - 关联：[ADR 0003](adr-0003-panel-reuses-host-session-and-model.md)（不造第二个 AI）、[ADR 0007](adr-0007-panel-is-a-dashboard.md)（不是第二份对话）、[ADR 0008](adr-0008-three-roles-of-the-panel.md)（三种职责）、[ADR 0013](adr-0013-environment-is-the-users-choice.md)（环境是用户的选择）、[ADR 0020](adr-0020-two-kinds-of-conversation-one-boundary.md)（两种会话一套边界）
-- 取代：无
+- 取代：输入框一节被 ADR 0022 取代
 
 ## 背景
 

@@ -98,8 +98,9 @@ describe("panel shows the run, not the conversation", () => {
 		// 轨迹栏有标题，说明自己是运行记录而不是对话。
 		expect(screen.getByText(/scan\.traceTitle/)).toBeTruthy();
 
-		// 面板没有输入框：这条冗余在结构上就不存在了（发消息是宿主的事）。
-		expect(document.querySelector("textarea")).toBeNull();
+		// 输入框回来了（双向对话），但"不抄正文"没变：面板里没有输出框，也没有第二份回复。
+		expect(document.querySelector(".astra-strix-say-row, .astra-strix-say")).toBeTruthy();
+		expect(document.querySelectorAll(".astra-strix-say").length).toBeLessThanOrEqual(3);
 
 		if (typeof disposable === "function") await disposable();
 		else await (disposable as { dispose(): void | Promise<void> }).dispose();

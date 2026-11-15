@@ -12,6 +12,8 @@
  * 末尾一个「进入工作台」，不发送任何东西。说话的地方是宿主对话，这里不代劳。
  */
 
+import { useState } from "react";
+import { PanelComposer } from "../../../shared/components/panel-composer";
 import { HackerRain } from "./hacker-rain";
 import { manifestLabel } from "../../../domain/manifest-label";
 import type { ModelChoice } from "../../../domain/model-label";
@@ -54,6 +56,10 @@ export interface LaunchScreenProps {
 	 * 于是用户想看一眼现场也必须先编一句话。
 	 */
 	onOpenWorkbench?: () => void;
+	/** 把这一句交给宿主对话（宿主的会话、模型与权限执行它）。 */
+	onSend?: (text: string) => void;
+	/** 团队会话：面板没有正确的落点，输入框换成一句说明。 */
+	readOnly?: boolean;
 	onQuit: () => void;
 }
 
@@ -104,8 +110,12 @@ export function LaunchScreen({
 	onInstallDocker,
 	onRefreshEnvironment,
 	onOpenWorkbench,
+	onSend,
+	readOnly,
 	onQuit,
 }: LaunchScreenProps): React.ReactElement {
+	// 草稿存在这一屏：离开首屏再回来时，没发出去的话还在（与宿主的草稿互不干扰）。
+	const [draft, setDraft] = useState("");
 	// 环境选择只影响「下一次」sandbox 启动：已经在跑的扫描不中途换环境。
 	const environmentMode = environmentModeProp ?? "host";
 	// 四态：host / noDocker / noImage / ready。判断顺序就是用户要做的决定顺序。
@@ -138,8 +148,24 @@ export function LaunchScreen({
 					<p className="astra-strix-tagline">{t("launch.tagline")}</p>
 				</div>
 
-				{/* 一条说明替代了原来的输入框：话在哪里说，说清楚，且不假装自己也能收。 */}
-				<p className="astra-strix-launch-note">{t("launch.speakInChat")}</p>
+				{/* 对话框：说一句就交给宿主会话。面板不持有模型调用，只做入口。 */}
+				{onSend ? (
+					<PanelComposer
+						t={t}
+						value={draft}
+						onChange={setDraft}
+						onSend={() => {
+							if (!draft.trim()) return;
+							onSend(draft);
+							setDraft("");
+						}}
+						labelKey="launch.label"
+						placeholderKey="launch.placeholder"
+						hintKey="launch.hint.bidi"
+						{...(readOnly ? { readOnly } : {})}
+						{...(onOpenWorkbench ? { onOpenWorkbench } : {})}
+					/>
+				) : null}
 
 				{/* 事实表：所有行共用两个栅格列，所以文字、下拉、按钮都落在同一条左边缘上。 */}
 				<div className="astra-strix-rows">
@@ -293,11 +319,6 @@ export function LaunchScreen({
 
 				{/* 唯一的前进动作：进工作台看现场。不发送任何东西。 */}
 				<div className="astra-strix-launch-foot">
-					{onOpenWorkbench ? (
-						<button type="button" className="astra-strix-go" onClick={onOpenWorkbench}>
-							{t("nav.workbench")}
-						</button>
-					) : null}
 					<span className="astra-strix-hints">
 						<span className="astra-strix-hint">
 							<span className="astra-strix-key">ctrl+c</span>

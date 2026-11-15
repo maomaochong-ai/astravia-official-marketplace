@@ -21,6 +21,7 @@ const conversationState = {
 };
 
 const aborted: string[] = [];
+const sent: string[] = [];
 
 vi.mock("@astravia-org/plugin-sdk", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("@astravia-org/plugin-sdk")>();
@@ -40,6 +41,7 @@ beforeEach(() => {
 	conversationState.sessionPath = "D:\\open-source-projects\\alpha\\.astravia\\a.jsonl";
 	conversationState.isStreaming = false;
 	aborted.length = 0;
+	sent.length = 0;
 	setStrixEngaged(false);
 	globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) => {
 		callback(0);
@@ -78,6 +80,10 @@ function mount() {
 				};
 			},
 			insertText: () => undefined,
+			sendPrompt: async (text: string) => {
+				sent.push(text);
+				return { status: "sent" as const };
+			},
 			abort: async () => {
 				aborted.push(conversationState.id);
 			},
@@ -112,87 +118,35 @@ function stopButton(container: HTMLElement): HTMLButtonElement | null {
 	return container.querySelector(".astra-strix-band-stop") as HTMLButtonElement | null;
 }
 
-describe("stop belongs to the conversation on screen", () => {
-	it("is live while this conversation is generating", async () => {
-		conversationState.isStreaming = true;
+describe("the composer sends through the host", () => {
+	it("hands its words to sendPrompt when a conversation exists", async () => {
 		const host = mount();
 		await plugin.activate(host.ctx);
 		const utils = render(host.tab()!.component());
 		await flush();
-		await act(async () => {
-			host.emit({ type: "turn-start" });
-		});
+
+		const input = utils.container.querySelector("textarea");
+		expect(input, "首屏应该有一个输入框").toBeTruthy();
+		fireEvent.change(input!, { target: { value: "测 staging.example.com" } });
+		const send = [...utils.container.querySelectorAll("button")].find((button) => button.textContent === "composer.send");
+		expect(send).toBeTruthy();
+		fireEvent.click(send!);
 		await flush();
 
-		const button = stopButton(utils.container);
-		expect(button, "the workbench should show a stop control").toBeTruthy();
-		expect(button!.disabled).toBe(false);
+		expect(sent).toEqual(["测 staging.example.com"]);
 	});
 
-	it("goes grey when the turn has ended", async () => {
-		conversationState.isStreaming = true;
-		const host = mount();
-		await plugin.activate(host.ctx);
-		const utils = render(host.tab()!.component());
-		await flush();
-		await act(async () => {
-			host.emit({ type: "turn-start" });
-		});
-		await flush();
-		expect(stopButton(utils.container)?.disabled).toBe(false);
-
-		conversationState.isStreaming = false;
-		await act(async () => {
-			host.emit({ type: "turn-end", stopReason: "end" });
-		});
-		await flush();
-
-		expect(stopButton(utils.container)?.disabled).toBe(true);
-		fireEvent.click(stopButton(utils.container)!);
-		await flush();
-		expect(aborted).toHaveLength(0);
-	});
-
-	it("is never offered in a team chat, where abort points elsewhere", async () => {
+	it("does not send in a team chat, where sendPrompt points elsewhere", async () => {
 		conversationState.id = "team-1";
 		conversationState.sessionPath = null as unknown as string;
-		conversationState.isStreaming = true;
-		const host = mount();
-		await plugin.activate(host.ctx);
-		const utils = render(host.tab()!.component());
-		await flush();
-		await act(async () => {
-			host.emit({ type: "turn-start" });
-		});
-		await flush();
-
-		const button = stopButton(utils.container);
-		expect(button?.disabled).toBe(true);
-		if (button) {
-			fireEvent.click(button);
-			await flush();
-		}
-		expect(aborted).toHaveLength(0);
-	});
-});
-
-describe("the panel has no composer", () => {
-	it("offers no textarea and no send button on either screen", async () => {
 		const host = mount();
 		await plugin.activate(host.ctx);
 		const utils = render(host.tab()!.component());
 		await flush();
 
-		// 首屏：配置页。
-		expect(utils.container.querySelector("textarea")).toBeNull();
-		expect([...utils.container.querySelectorAll("button")].some((button) => button.textContent === "composer.send")).toBe(false);
-
-		// 工作台：也是只读现场。
-		await act(async () => {
-			host.emit({ type: "turn-start" });
-		});
-		await flush();
-		expect(utils.container.querySelector(".astra-strix-workbench")).not.toBeNull();
-		expect(utils.container.querySelector("textarea")).toBeNull();
+		const input = utils.container.querySelector("textarea") as HTMLTextAreaElement | null;
+		expect(input?.readOnly).toBe(true);
+		expect(utils.container.textContent).toContain("launch.teamReadOnly");
+		expect(sent).toEqual([]);
 	});
 });

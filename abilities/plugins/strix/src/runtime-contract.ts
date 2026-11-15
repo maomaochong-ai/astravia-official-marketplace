@@ -254,6 +254,13 @@ export interface TraceEntry {
 	kind: "tool" | "say" | "note";
 	/** For tools: the tool name. For chat: the message body. For notes: the line. */
 	label: string;
+	/**
+	 * 这一行是谁说的：`you` = 用户这一轮的诉求（摘要自宿主对话），`agent` = 它给出的结论。
+	 *
+	 * 只用于摘要行（`say`）：面板不再显示正文，所以“谁说的”不能靠长短文风去猜。
+	 * 工具行与状态行没有这个字段。
+	 */
+	from?: "you" | "agent";
 	/** 相邻同文 note 被合并了几次（≥2 时面板显示 ×N）。 */
 	count?: number;
 	/** Arguments, exit code and duration, rendered under a tool name. */

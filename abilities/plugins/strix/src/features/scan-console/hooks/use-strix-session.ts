@@ -23,7 +23,7 @@
  */
 import { digestAnswer, digestAsk } from "../../../domain/conversation-digest";
 import { extractTargets, newTargets, type DerivedTarget } from "../../../domain/target-extraction";
-import { conversationShape, permitStop } from "../../../domain/conversation-shape";
+import { conversationShape, permitSend, permitStop } from "../../../domain/conversation-shape";
 import { evidenceRow, isServiceNarrated, strixToolName, toolRow, turnDivider } from "../../../domain/conversation-projection";
 import { foldTrace, type TraceDraft } from "../../../domain/trace-log";
 import type { ConversationEvent, ConversationState } from "@astravia-org/plugin-sdk";
@@ -101,9 +101,11 @@ export interface StrixSessionModel {
 	/** An assistant answer arriving token by token; rendered as a live row. */
 	streaming?: string;
 	busy: boolean;
-	/** 只停本面板发起的那一轮；不是它发起的就不动。 */
+	/** 把面板输入框里的话交给宿主对话。返回是否真的交出去了。 */
+	send: (text: string) => Promise<boolean>;
+	/** 停止：只停面板正在显示的那个会话的当前一轮。 */
 	stop: () => Promise<void>;
-	/** 停止按钮可用：这一轮确实是本面板发起的，且宿主正看着这个会话。 */
+	/** 停止按钮可用：这一轮在跑，且不是团队会话。 */
 	canStop: boolean;
 	/** 团队会话：面板只读（发送与停止都在团队输入框）。 */
 	readOnly: boolean;
@@ -149,8 +151,15 @@ export interface StrixSessionOptions {
 	conversation: ConversationState | null;
 	/** `ctx.conversation.on`: the host's turn, message and tool events. */
 	subscribe: (listener: (event: ConversationEvent) => void) => { dispose(): void };
-	// 不再有 sendPrompt / insertText：面板不发消息。唯一的写入口是 abort（供 stop），
-	// 与 createSession（面板自己的“新会话”）。
+	/**
+	 * 把面板输入框里的话交给宿主对话（`ctx.conversation.sendPrompt`）。
+	 *
+	 * 这是面板唯一的"说"路径，而它只是宿主那条路的入口：文字由宿主的会话、模型与权限执行——
+	 * 插件不持有模型调用，也不存自己的一份 transcript。
+	 */
+	sendPrompt: (text: string) => Promise<{ status: "sent" | "queued" | "failed" }>;
+	/** 连会话都没有时，把话放回宿主输入框（宿主自己会按当前目录建会话）。 */
+	insertText: (text: string) => void;
 	/**
 	 * 宿主当前打开的工作目录（`ctx.fileExplorer.getWorkspaceRoots()`，需要 workspace.read）。
 	 *
@@ -170,6 +179,8 @@ export function useStrixSession({
 	client,
 	conversation,
 	subscribe,
+	sendPrompt,
+	insertText,
 	createSession,
 	abort,
 	workspaceRoot,
@@ -556,13 +567,13 @@ export function useStrixSession({
 			}
 			if (event.type === "message-added" && event.message.role === "user") {
 				const ask = digestAsk(event.message.text);
-				if (ask) pushTrace({ kind: "say", label: ask, detail: t("scan.sayAsk") });
+				if (ask) pushTrace({ kind: "say", label: ask, from: "you" });
 				// 目标候选就来自人写的句子：这是“我说了域名，面板却显示 0 个目标”的修法。
 				collectTargets(event.message.text);
 				return;
 			}
 			if (event.type === "message-added" && event.message.role === "assistant") {
-				pushPoints(digestAnswer(event.message.text));
+				pushPoints(digestAnswer(event.message.text), "agent");
 				collectTargets(event.message.text);
 				return;
 			}
@@ -604,12 +615,64 @@ export function useStrixSession({
 		});
 	}, []);
 
-	/** 把一条答复的关键点推成若干 `say` 行（紧跟在 turn 分隔行后面）。 */
+	/** 把一条答复的关键点推成若干 `say` 行（紧跟在 turn 分隔行后面），标上来源。 */
 	const pushPoints = useCallback(
-		(points: readonly string[]) => {
-			for (const point of points) pushTrace({ kind: "say", label: point });
+		(points: readonly string[], from: "you" | "agent" = "agent") => {
+			for (const point of points) pushTrace({ kind: "say", label: point, from });
 		},
 		[pushTrace],
+	);
+
+	/**
+	 * 面板自己的一句话：交给宿主对话，与用户直接在聊天框打字是同一条路。
+	 *
+	 * 三道次序与 1.0.4 一致：**先发**（新会话页也能发，宿主按当前目录建会话）→
+	 * 失败才 `createSession`（拿得到 cwd 时）→ 再失败就把话放回宿主输入框。
+	 * 三道全部失败才报 `sendFailed`；任何一步成功就不报错，因为那一步确实把话交出去了。
+	 */
+	const send = useCallback(
+		async (text: string): Promise<boolean> => {
+			const value = text.trim();
+			if (!value) return false;
+			if (!permitSend({ shape: shapeRef.current }).ok) {
+				// 团队会话：宿主在那边没有给插件写入口，说清楚而不是丢掉这句话。
+				note(t("log.teamReadOnly"), "error");
+				return false;
+			}
+			setSubmitting(true);
+			try {
+				const first = await sendPrompt(value).catch(() => ({ status: "failed" as const }));
+				if (first.status === "failed") {
+					const cwd = cwdRef.current ?? workspaceRoot?.() ?? null;
+					if (!cwd) {
+						insertText(value);
+						note(t("log.handedToHost"), "ok");
+						launchPinned.current = false;
+						setShowLaunch(false);
+						return true;
+					}
+					const created = await createSession(cwd);
+					conversationIdRef.current = created.id ?? conversationIdRef.current;
+					const retry = await sendPrompt(value).catch(() => ({ status: "failed" as const }));
+					if (retry.status === "failed") {
+						note(t("log.sendFailed"), "error");
+						return false;
+					}
+				}
+				// 离开首屏：用户按下的是“发出去”，不是“继续看配置”。
+				launchPinned.current = false;
+				setShowLaunch(false);
+				if (phaseRef.current !== "scanning") setPhase("scanning");
+				return true;
+			} catch (cause) {
+				const detail = cause instanceof Error ? cause.message : String(cause);
+				note(`${t("log.sendFailed")}: ${detail}`, "error");
+				return false;
+			} finally {
+				setSubmitting(false);
+			}
+		},
+		[createSession, insertText, note, sendPrompt, t, workspaceRoot],
 	);
 
 	const setEnvironmentMode = useCallback(
@@ -756,6 +819,7 @@ export function useStrixSession({
 			scope,
 			candidates: scope ? newTargets(candidates, scope.entries.map((entry) => entry.value)) : candidates,
 			capabilities,
+			send,
 			stop,
 			refresh,
 			environmentMode,
@@ -796,6 +860,7 @@ export function useStrixSession({
 			scope,
 			candidates,
 			capabilities,
+			send,
 			stop,
 			refresh,
 		],

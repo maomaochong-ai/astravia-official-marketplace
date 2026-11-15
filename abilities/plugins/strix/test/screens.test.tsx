@@ -24,15 +24,15 @@ describe("launch screen", () => {
 				model={model}
 				log={[]}
 				version="0.4.0"
-				{...{ onOpenWorkbench: () => undefined }}
+				{...{ onOpenWorkbench: () => undefined, onSend: () => undefined }}
 				onQuit={() => undefined}
 			/>,
 		);
 		expect(screen.getByLabelText("Strix")).toBeTruthy();
 		expect(screen.getByText("launch.tagline")).toBeTruthy();
-		// 首屏不再有输入框与「Enter 提交」：唯一的前进动作是进工作台（见决策记录）。
+		// 首屏有一个对话框（双向对话的入口），底条上还有一个「工作台」。
+		expect(container.querySelector("textarea")).toBeTruthy();
 		expect(screen.getByText("nav.workbench")).toBeTruthy();
-		expect(container.querySelector("textarea")).toBeNull();
 		expect(screen.getByText("v0.4.0")).toBeTruthy();
 	});
 

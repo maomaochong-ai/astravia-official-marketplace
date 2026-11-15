@@ -53,6 +53,10 @@ function StrixTabRoot({
 		client,
 		conversation,
 		subscribe: (listener) => ctx.conversation.on(listener),
+		// 面板唯一的“说”入口：文字交给宿主会话执行，插件不持有模型调用。
+		sendPrompt: (text) => ctx.conversation.sendPrompt(text),
+		// 连会话都没有时的退路：把话放回宿主输入框，宿主自己按当前目录建会话。
+		insertText: (text) => ctx.conversation.insertText(text),
 		// 拿不到工作目录时的退路：把话放进宿主输入框，让宿主的"新会话页"自己建会话。
 		createSession: (cwd) => ctx.conversation.createSession(cwd),
 		abort: () => ctx.conversation.abort(),
@@ -139,6 +143,7 @@ function StrixTabRoot({
 			{...(session.coverageTally ? { coverageTally: session.coverageTally } : {})}
 			busy={session.busy}
 			stop={session.stop}
+			send={session.send}
 			onQuit={onQuit}
 		/>
 	);

@@ -35,13 +35,15 @@ describe("panel tells the truth about its own emptiness", () => {
 	});
 });
 
-describe("the panel does not speak on the user's behalf", () => {
-	it("has no delivery path: the host composer is the only place a turn starts", () => {
-		expect(session).not.toContain("await sendPrompt(value)");
-		expect(session).not.toContain("insertText(value)");
-		// 仍然保留的是面板自己的“新会话”（createSession）与停止（abort）。
+describe("the panel speaks only through the host conversation", () => {
+	it("reuses the host send path instead of a model of its own", () => {
+		// 方向一：面板 → 宿主。只有这一条路：sendPrompt，失败才建会话，再失败交给宿主输入框。
+		expect(session).toContain("await sendPrompt(value)");
 		expect(session).toContain("createSession(cwd)");
+		expect(session).toContain("insertText(value)");
 		expect(session).toContain("await abort()");
+		// 插件侧没有模型调用。
+		expect(session).not.toContain("ctx.ai");
 	});
 
 	it("does not echo the conversation into the panel", () => {

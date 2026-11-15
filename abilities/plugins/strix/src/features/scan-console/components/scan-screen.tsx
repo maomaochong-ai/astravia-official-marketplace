@@ -36,6 +36,7 @@ import type { SessionPhase } from "../hooks/use-strix-session";
 import { ArtefactPanels } from "./artefact-panels";
 import type { McpConnection } from "../../../domain/mcp-roster";
 import type { DerivedTarget } from "../../../domain/target-extraction";
+import { PanelComposer } from "../../../shared/components/panel-composer";
 import { TraceBlock } from "./trace-block";
 
 export interface ScanScreenProps {
@@ -71,8 +72,11 @@ export interface ScanScreenProps {
 	 * 缺省就是不可停（fail-closed）：宁可这颗键是灰的，也不允许它去打穿别的会话。
 	 */
 	canStop?: boolean;
-	/** 停止：只停面板发起的那一轮（见 use-strix-session 的守卫）。 */
 	onStop: () => void;
+	/** 把这一句交给宿主对话。 */
+	onSend?: (text: string) => void;
+	/** 团队会话：面板只读。 */
+	readOnly?: boolean;
 	/** Fetches a note's body on demand (`strix_note_get`) — the panel is the only place it can be read. */
 	onOpenNote?: (id: string) => Promise<string>;
 	/** Counts by outcome from the service, so the coverage title is the ledger's own numbers. */
@@ -165,7 +169,11 @@ export function ScanScreen({
 	team,
 	onOpenNote,
 	onStop,
+	onSend,
+	readOnly,
 }: ScanScreenProps): React.ReactElement {
+	// 工作台也留着草稿：切标签页回来不会丢半句话。
+	const [draft, setDraft] = useState("");
 	const declared = scope?.entries ?? [];
 	const derived = candidates ?? [];
 	// 目标区分两组：声明的（权威，来自 `strix_scope`）与候选的（从对话里认出的）。
@@ -289,10 +297,23 @@ export function ScanScreen({
 						) : null}
 					</div>
 
-					{/* 这里以前是工作台的输入框。它存在的理由已经消失：发消息是宿主的事，
-					    面板再收一次只是在同一件事上开两个入口（见决策记录）。
-					    改成一条只读说明：话在哪里说，说清楚。 */}
-					<p className="astra-strix-workbench-note">{t("scan.speakInChat")}</p>
+					{/* 对话框：看着现场补一句（"继续""换成 443"）不必切回聊天区。
+					    发出去的文字由宿主会话执行，回复以摘要回到上面的运行记录。 */}
+					<PanelComposer
+						t={t}
+						value={draft}
+						onChange={setDraft}
+						onSend={() => {
+							if (!draft.trim() || !onSend) return;
+							onSend(draft);
+							setDraft("");
+						}}
+						labelKey="scan.label"
+						placeholderKey="scan.placeholder"
+						busy={hostStreaming}
+						{...(readOnly ? { readOnly } : {})}
+						{...(onNewSession ? { onNewSession } : {})}
+					/>
 				</section>
 
 				<aside className="astra-strix-rail" aria-label={t("rail.title")}>

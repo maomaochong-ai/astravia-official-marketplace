@@ -122,8 +122,8 @@ describe("plugin activation", () => {
 		// launch screen with a failure line instead of crashing.
 		render(tab!.component());
 		expect(screen.getByText("launch.tagline")).toBeTruthy();
-		// 首屏是配置页：没有输入框，只有「进工作台」那一个前进动作。
-		expect(screen.queryByLabelText("launch.label")).toBeNull();
+		// 首屏：配置 + 对话框；对话框把话交给宿主会话。
+		expect(screen.getByLabelText("launch.label")).toBeTruthy();
 		expect(screen.getByText("nav.workbench")).toBeTruthy();
 
 		await disposeOf(disposable);

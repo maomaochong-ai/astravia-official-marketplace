@@ -74,6 +74,8 @@ export interface StrixTabProps {
 	/** Counts by outcome from the service, for the coverage panel's title. */
 	coverageTally?: Record<string, number>;
 	stop: () => Promise<void>;
+	/** 把面板输入框里的话交给宿主对话。 */
+	send: (text: string) => Promise<boolean>;
 	onQuit: () => void;
 	/** 面板选的执行环境。 */
 	environmentMode: "auto" | "host" | "docker";
@@ -122,6 +124,8 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					{...(props.history ? { history: props.history } : {})}
 					{...(props.team ? { team: props.team } : {})}
 					onStop={() => void props.stop()}
+					onSend={(value) => void props.send(value)}
+					{...(props.readOnly ? { readOnly: true } : {})}
 					busy={props.busy}
 					onOpenLaunch={props.onOpenLaunch}
 					onNewSession={props.onNewSession}
@@ -136,6 +140,8 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					version={props.version}
 					scope={props.scope}
 					mcp={props.mcp}
+					onSend={(value) => void props.send(value)}
+					{...(props.readOnly ? { readOnly: true } : {})}
 					boot={props.boot}
 					{...(props.onOpenWorkbench ? { onOpenWorkbench: props.onOpenWorkbench } : {})}
 					{...(props.capabilities ? { capabilities: props.capabilities } : {})}

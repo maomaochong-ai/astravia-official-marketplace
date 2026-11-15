@@ -46,6 +46,24 @@ export function shouldFollowTurn(shape: ConversationShape, engaged: boolean): bo
 	return engaged;
 }
 
+export interface SendDecision {
+	ok: boolean;
+	/** 拒绝的原因，给界面出一句话。 */
+	reason?: "team-surface";
+}
+
+/**
+ * 面板能不能替用户发一句话。
+ *
+ * 单会话与"还没有会话"都可以：没会话时 `sendPrompt` 会失败，随后由 `createSession`
+ * 在同一个目录里建一个，再发一次——这与用户自己在宿主新会话页打字是同一条路。
+ * 团队会话不行：宿主的 `sendPrompt` 打的是上一个单会话，插件侧没有正确的落点。
+ */
+export function permitSend(input: { shape: ConversationShape }): SendDecision {
+	if (input.shape === "team") return { ok: false, reason: "team-surface" };
+	return { ok: true };
+}
+
 export interface StopDecision {
 	ok: boolean;
 	/** 拒绝的原因，给界面出一句话。 */

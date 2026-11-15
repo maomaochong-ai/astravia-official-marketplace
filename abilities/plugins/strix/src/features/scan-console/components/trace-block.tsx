@@ -99,5 +99,13 @@ export function TraceBlock({ entry }: TraceBlockProps): React.ReactElement {
 			</p>
 		);
 	}
+	// 摘要是双向的：同一行字，"你说的"与"它总结的"必须一眼分开（左边一条竖线 + 数据属性）。
+	if (entry.from) {
+		return (
+			<div className="astra-strix-say-row" data-from={entry.from}>
+				<Prose text={entry.label} className="astra-strix-say" />
+			</div>
+		);
+	}
 	return <Prose text={entry.label} className="astra-strix-say" />;
 }

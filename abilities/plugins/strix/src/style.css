@@ -240,7 +240,49 @@
 	transition: border-color 120ms ease;
 }
 
+/* 对话框外壳：说明在上、框在下。说明是“这句话会被谁执行”，不是装饰。 */
+.astra-strix-composer-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+}
+
+.astra-strix-composer-hint {
+	margin: 0;
+	font-size: 11px;
+	line-height: 1.5;
+	color: var(--sx-dim);
+}
+
+/* 团队会话：输入框在，但不可写；内边距与可写态一致，不让布局跳。 */
+.astra-strix-prompt[data-readonly="yes"] {
+	border-style: dashed;
+}
+
+.astra-strix-prompt[data-readonly="yes"] .astra-strix-prompt-input {
+	cursor: not-allowed;
+}
+
+/* 摘要是双向的：左边一条竖线区分“你说的”与“它总结的”。 */
+.astra-strix-say-row {
+	display: flex;
+	flex-direction: column;
+	border-left: 2px solid var(--sx-rule);
+	padding-left: 8px;
+}
+
+.astra-strix-say-row[data-from="you"] {
+	/* 用户的话是这一轮的起点：亮一档，但不用红色（红只给失败）。 */
+	border-left-color: color-mix(in srgb, var(--sx-green) 55%, transparent);
+}
+
+.astra-strix-say-row[data-from="you"] .astra-strix-say {
+	color: var(--sx-text);
+}
+
 /* 输入框内部：上方是文本行，下方是底条（左键位、右发送）。
+   按钮不再与文本同行——输入长高时它会被挤到文字中间（1.0.8 用户反馈）。 */
    按钮不再与文本同行——输入长高时它会被挤到文字中间（1.0.8 用户反馈）。 */
 .astra-strix-composer-bar {
 	display: flex;
@@ -1977,9 +2019,11 @@
 	font-size: 11.5px;
 }
 
-/* 正文行宽仍按 72ch 收，长命令不横穿整块。 */
+/* 正文行宽仍按 72ch 收，长命令不横穿整块。
+   对话框跟事实行共用同一条右边缘：它是这一列里最宽的控件，宽出 100 多像素就会显成“两大块”。 */
 .astra-strix-launch .astra-strix-tagline,
-.astra-strix-launch .astra-strix-rows {
+.astra-strix-launch .astra-strix-rows,
+.astra-strix-launch .astra-strix-composer-panel {
 	max-width: 72ch;
 }
 
