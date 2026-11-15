@@ -49,8 +49,8 @@ tool. Only `astra-strix-*` classes are defined.
 The panel is designed against upstream's TUI (`strix/interface/tui`), as ADR 0009 records: tool rows are **family-rendered** (14 families over 35 tools, glyphs and colours taken from `internal/render/*`), the status band replaces upstream's sweep and key hints, and the composer keeps upstream's one-narrow-column reading rhythm. Two numbers are reproducible, not impressions:
 
 ```bash
-node tools/ui-parity.mjs          # interface surfaces, weighted  → 85.4%
-node tools/capability-parity.mjs  # capability families, weighted  → 84.7% in scope
+node scripts/dev/ui-parity.mjs          # interface surfaces, weighted  → 85.4%
+node scripts/dev/capability-parity.mjs  # capability families, weighted  → 84.7% in scope
 ```
 
 The side-by-side prototype (upstream TUI vs this panel, same events) is at `docs/prototypes/strix-panel-vs-tui.html`, with a rendered PNG beside it.
@@ -173,6 +173,13 @@ npm run build           # Vite first (empties dist), then the service bundle
 npm run check:service   # host-node service: health, /mcp, /api/state, /api/tool
 npm run check           # typecheck + tests + service smoke
 ```
+
+Tests live in `test/`, named by the behaviour they guard (`launch-delivery`, `launch-screen`,
+`composer`, `workbench-screen`, `session-store`, `conversation-isolation`, …) — never by version or
+ADR number. The real-browser centring check is `npm run check:browser` (`test/browser/`).
+Alignment scripts stayed under `scripts/dev/`: `tools/` in the structure spec means
+`ctx.agent.registerTool`, which this plugin does not use (its tools are declared as MCP in
+`plugin.json`).
 
 Repository-level checks:
 
