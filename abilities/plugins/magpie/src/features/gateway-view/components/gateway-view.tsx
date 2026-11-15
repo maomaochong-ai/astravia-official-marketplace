@@ -5,7 +5,7 @@ import { GatewayConnectionForm } from "./gateway-connection-form";
 import { GatewayModelList } from "./gateway-model-list";
 import { GatewaySetupCard } from "./gateway-setup-card";
 import { GatewayStatusCard } from "./gateway-status-card";
-import { Button, Card, StatusDot } from "./ui";
+import { Button, StatusDot } from "./ui";
 
 const MODEL_ROW_LIMIT = 200;
 
@@ -16,17 +16,13 @@ interface GatewayViewProps {
 /**
  * 工作区视图：一整页，不绑定某一个对话。
  *
- * 布局按「先看结论、再看目录、出事再看运行环境」排：
+ * 0.3.0 重排的三条规矩：
  *
- *   ┌───────────────────────────────────────────────┐
- *   │ 标题 · 状态胶囊 · 主行动（检测 / 一键装并启动） │  固定头部
- *   ├──────────────────────────┬────────────────────┤
- *   │ 网关状态 + 一键发布      │ 运行环境（诊断）    │
- *   │ 模型目录（滚动，可过滤）  │ 连接设置            │
- *   └──────────────────────────┴────────────────────┘
- *
- * 宽屏两栏、窄屏单栏；卡片本身只吃宿主的主题令牌（`bg-card` / `border-border` /
- * `text-muted-foreground` …），没有一处写死的背景色，所以跟随宿主亮/暗与主题包。
+ *  1. **嵌套而不是平铺**：每列是一个带外框的容器，里面的卡片彼此只隔一条发丝线，
+ *     不再用 `gap-4` 在卡与卡之间留白——留白在窄屏里就是被浪费的高度。
+ *  2. **头部只占一条**：标题、状态、两个动作同一行；窗口窄了动作换行，但头部本身不涨高。
+ *  3. **一列一职责**：左列「现在能不能用 + 有哪些模型」，右列「怎么装/怎么连 + 说明」。
+ *     宽屏 1.45fr / 1fr，窄屏单列，顺序不变（先结论后设置）。
  */
 export function GatewayView({ controller }: GatewayViewProps) {
 	const { t } = useTranslation();
@@ -53,26 +49,20 @@ export function GatewayView({ controller }: GatewayViewProps) {
 
 	return (
 		<div className="flex h-full flex-col overflow-hidden bg-background text-foreground">
-			<div className="drag-region h-6 shrink-0" />
+			<div className="drag-region h-5 shrink-0" />
 
-			{/* 固定头部：状态与主行动永远在视野里，滚目录时也不会消失。 */}
-			<header className="shrink-0 border-b border-border px-4 pb-3 sm:px-6">
-				<div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-3">
-					<div className="min-w-0 flex-1">
-						<h1 className="flex items-center gap-2 text-base font-semibold">
-							<StatusDot
-								tone={online ? "ok" : state.phase === "probing" ? "working" : "bad"}
-								pulse={state.phase === "probing"}
-							/>
-							<span className="truncate">{t("view.label")}</span>
-						</h1>
-						<p className="mt-0.5 truncate text-xs text-muted-foreground">
-							{online
-								? t("view.subtitleOnline", { count: state.summary.total, provider: state.summary.providers.length })
-								: t("view.description")}
+			{/* 头部一条：状态与主行动永远在视野里，滚目录时也不会消失。 */}
+			<header className="shrink-0 border-b border-border px-3 py-2 sm:px-4">
+				<div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-3 gap-y-1.5">
+					<div className="flex min-w-0 flex-1 items-center gap-2">
+						<StatusDot tone={online ? "ok" : state.phase === "probing" ? "working" : "bad"} pulse={state.phase === "probing"} />
+						<h1 className="truncate text-sm font-semibold">{t("view.label")}</h1>
+						{/* 副标题跟在标题后面而不是下面：省一行高度，宽屏读起来也更连贯。 */}
+						<p className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
+							{online ? t("view.subtitleOnline", { count: state.summary.total, provider: state.summary.providers.length }) : t("view.description")}
 						</p>
 					</div>
-					<div className="flex shrink-0 items-center gap-2">
+					<div className="flex shrink-0 items-center gap-1.5">
 						<Button tone="outline" size="sm" onClick={() => void controller.refresh()} disabled={state.busy}>
 							{t("actions.refresh")}
 						</Button>
@@ -83,9 +73,10 @@ export function GatewayView({ controller }: GatewayViewProps) {
 				</div>
 			</header>
 
-			<div className="min-h-0 flex-1 overflow-auto px-4 pb-8 pt-4 sm:px-6">
-				<div className="mx-auto grid w-full max-w-5xl gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-					<div className="flex min-w-0 flex-col gap-4">
+			<div className="min-h-0 flex-1 overflow-auto px-3 py-2.5 sm:px-4">
+				<div className="mx-auto grid w-full max-w-6xl items-start gap-2.5 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+					{/* 左列：结论 + 目录。两块合成一个外框，中间一条线。 */}
+					<div className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border/70 bg-muted/20">
 						<GatewayStatusCard
 							state={state}
 							onRefresh={() => void controller.refresh()}
@@ -93,10 +84,13 @@ export function GatewayView({ controller }: GatewayViewProps) {
 							onDisconnect={() => void controller.disconnect()}
 							onOpenConsole={() => void controller.openConsole()}
 						/>
-						<GatewayModelList state={state} limit={MODEL_ROW_LIMIT} />
+						<div className="min-h-0 flex-1">
+							<GatewayModelList state={state} limit={MODEL_ROW_LIMIT} />
+						</div>
 					</div>
 
-					<div className="flex min-w-0 flex-col gap-4">
+					{/* 右列：怎么装、怎么连、看什么。同一外框，三节用发丝线隔开。 */}
+					<div className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-border/70 bg-muted/20">
 						{needsSetup ? (
 							<GatewaySetupCard
 								state={state}
@@ -106,9 +100,7 @@ export function GatewayView({ controller }: GatewayViewProps) {
 							/>
 						) : null}
 						<GatewayConnectionForm controller={controller} disabled={state.busy} />
-						<Card title={t("note.title")}>
-							<p className="text-xs leading-relaxed text-muted-foreground">{t("note.body")}</p>
-						</Card>
+						<p className="border-t border-border/70 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">{t("note.body")}</p>
 					</div>
 				</div>
 			</div>

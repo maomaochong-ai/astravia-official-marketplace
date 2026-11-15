@@ -86,9 +86,11 @@ export function Card({
 	className?: string;
 }): ReactNode {
 	return (
-		<section className={`rounded-xl border border-border bg-card p-4 text-card-foreground ${className}`}>
+		/* 0.3.0：卡片变成「外框里的一节」——不再自带圆角与边框，
+		   只留内边距与一条上分隔线。嵌进 gateway-view 的列容器后，视觉上是同一条面板里的几段。 */
+		<section className={`border-t border-border/70 bg-transparent p-3 text-card-foreground first:border-t-0 ${className}`}>
 			{title || aside ? (
-				<div className="mb-3 flex items-start justify-between gap-3">
+				<div className="mb-2 flex items-start justify-between gap-3">
 					<div className="min-w-0 text-sm font-medium">{title}</div>
 					{aside ? <div className="shrink-0">{aside}</div> : null}
 				</div>
@@ -106,6 +108,63 @@ export function Fact({ label, value, mono = true }: { label: string; value: Reac
 			<dd className={`mt-0.5 truncate text-xs ${mono ? "font-mono" : ""}`} title={typeof value === "string" ? value : undefined}>
 				{value}
 			</dd>
+		</div>
+	);
+}
+
+/**
+ * 外框：一张面板里放多段内容，用发丝线分隔。
+ *
+ * 为什么不再用一堆 Card：卡与卡之间的 gap 是纯留白，越窄越明显。嵌套容器把留白变成
+ * **分隔线**——同样的信息占更少的像素，读起来也更像一个工具而不是一排便签。
+ */
+export function Panel({
+	title,
+	aside,
+	children,
+	className = "",
+}: {
+	title?: ReactNode;
+	aside?: ReactNode;
+	children: ReactNode;
+	className?: string;
+}): ReactNode {
+	return (
+		<section className={`flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground ${className}`}>
+			{title || aside ? (
+				<div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2">
+					<div className="min-w-0 truncate text-xs font-medium">{title}</div>
+					{aside ? <div className="flex shrink-0 items-center gap-1.5">{aside}</div> : null}
+				</div>
+			) : null}
+			{children}
+		</section>
+	);
+}
+
+/** 面板里的一节：与上一条发丝线相隔，内边距一致（3 = 12px，比 Card 的 16 更紧凑）。 */
+export function PanelSection({
+	title,
+	aside,
+	children,
+	className = "",
+	padded = true,
+}: {
+	title?: ReactNode;
+	aside?: ReactNode;
+	children: ReactNode;
+	className?: string;
+	padded?: boolean;
+}): ReactNode {
+	return (
+		<div className={`min-w-0 border-t border-border/70 first:border-t-0 ${padded ? "px-3 py-2.5" : ""} ${className}`}>
+			{title || aside ? (
+				<div className="mb-1.5 flex items-center justify-between gap-2">
+					<span className="min-w-0 truncate text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{title}</span>
+					{aside ? <span className="flex shrink-0 items-center gap-1.5">{aside}</span> : null}
+				</div>
+			) : null}
+			{children}
 		</div>
 	);
 }
