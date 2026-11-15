@@ -14,7 +14,7 @@
  *  - 计划：标题给 `done/total`，行内保留优先级。
  *
  * 面板只读：写入属于 agent（它才有工具），这里不提供"帮我加一条"——那会变成第二个
- * 决定计划的地方（ADR 0008 的职责表）。
+ * 决定计划的地方。
  */
 
 import { useState } from "react";
@@ -154,10 +154,10 @@ function NotesPanel({
 }
 
 /**
- * 工作单元（ADR 0010）：上游 agents 面板在本插件的诚实等价物。
+ * 工作单元：上游 agents 面板在本插件的诚实等价物。
  *
  * 上游列的是它自己派生的子智能体（名字、状态、任务、携带的技能）。本插件没有模型循环
- * （ADR 0003），所以**不存在**可派生的子智能体；能如实列出的是同一个沙箱里并行干活的东西：
+ * ，所以**不存在**可派生的子智能体；能如实列出的是同一个沙箱里并行干活的东西：
  * agent 用 `strix_exec background:true` 留下、用 `strix_write_stdin` 驱动的 shell 会话。
  *
  * 它只读：启动/写入/停止都走工具（那是 agent 的动作）。面板不提供按钮，
@@ -204,7 +204,7 @@ export function ArtefactPanels({
 	notes: readonly NoteSummary[];
 	coverage: readonly CoverageOutcome[];
 	/** Counts by outcome, from the service; shown on the coverage title. */
-	/** Kept shell sessions; empty when the bridge has none (ADR 0010). */
+	/** Kept shell sessions; empty when the bridge has none . */
 	sessions?: readonly ShellSessionSummary[];
 	coverageTally?: Record<string, number>;
 	/** Fetches a note's body on demand (`strix_note_get`). */

@@ -1909,3 +1909,85 @@
 	margin-top: 8px;
 	max-width: 52ch;
 }
+
+/* ---- 首屏「团队」行（1.0.12） --------------------------------------------------
+   chip 而不是一行文字：四个名字要能"扫一眼认出谁上场"，hover 才需要看职责。 */
+.astra-strix-team-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.astra-strix-team-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	height: 20px;
+	padding: 0 8px;
+	border: 1px solid var(--sx-rule);
+	border-radius: 10px;
+	font-size: 11px;
+	color: var(--sx-text);
+	cursor: default;
+}
+
+/* 队长是唯一对用户说话的人：给一档更亮的边框，不额外加标签。 */
+.astra-strix-team-chip[data-lead="yes"] {
+	border-color: color-mix(in srgb, var(--sx-green) 55%, transparent);
+	color: var(--sx-green-bright, var(--sx-green));
+}
+
+.astra-strix-team-chip-glyph {
+	color: var(--sx-green);
+	font-size: 11px;
+}
+
+/* ---- 侧栏分区标题 = 折叠开关（1.0.12） ---------------------------------------
+   与 panel-box 里那个 20px 的 +/− 按钮不是同一个东西：这里整条标题可点，
+   收起时只留"字形 + 名称 + 计数 + 一个 +"。 */
+.astra-strix-section-head {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 6px;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	cursor: pointer;
+}
+
+.astra-strix-section-head:hover {
+	color: var(--sx-white, var(--sx-text));
+}
+
+.astra-strix-section-head:focus-visible {
+	outline: 1px solid var(--sx-green);
+	outline-offset: 2px;
+}
+
+.astra-strix-section-ico {
+	color: var(--sx-green);
+	font-size: 11px;
+}
+
+.astra-strix-section[data-collapsed="yes"] > *:not(.astra-strix-section-title) {
+	display: none;
+}
+
+.astra-strix-section[data-collapsed="yes"] .astra-strix-section-head::after {
+	content: "+";
+	margin-left: 6px;
+	color: var(--sx-dim);
+}
+
+.astra-strix-section:not([data-collapsed="yes"]) .astra-strix-section-head::after {
+	content: "−";
+	margin-left: 6px;
+	color: color-mix(in srgb, var(--sx-green) 36%, transparent);
+}

@@ -24,12 +24,12 @@ export interface BridgeClient {
 	findings(): Promise<StrixFinding[]>;
 	report(): Promise<{ markdown: string; count: number }>;
 	stopSandbox(): Promise<{ stopped: boolean }>;
-	/** 面板选择的执行环境（host/docker/auto）与上次安装尝试（ADR 0013）。 */
+	/** 面板选择的执行环境（host/docker/auto）与上次安装尝试。 */
 	preferences(): Promise<{ environmentMode: "auto" | "host" | "docker"; lastInstall?: { command: string; at: string; ok: boolean; detail?: string } }>;
 	setPreferences(patch: { environmentMode?: "auto" | "host" | "docker" }): Promise<{ environmentMode: "auto" | "host" | "docker" }>;
 	/** 让服务代跑 docker 安装命令；返回是否成功与它跑的是哪条。 */
 	installDocker(): Promise<{ installed: boolean; lastInstall?: { command: string; at: string; ok: boolean; detail?: string }; error?: string }>;
-	/** 环境检测：docker 是否可用、沙箱镜像是否已在本地（ADR 0013）。 */
+	/** 环境检测：docker 是否可用、沙箱镜像是否已在本地。 */
 	probeEnvironment(): Promise<{
 		mode: "host" | "docker";
 		ready: boolean;

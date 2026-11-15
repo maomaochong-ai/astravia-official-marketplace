@@ -11,7 +11,7 @@
  * the host is generating right now, not that this component has a loop of its own.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useComposerHeight } from "../hooks/use-composer-height";
 import { useStickToBottom } from "../hooks/use-stick-to-bottom";
 import { HackerRain } from "./hacker-rain";
@@ -73,6 +73,47 @@ export interface ScanScreenProps {
 	team?: BridgeTeam | null;
 }
 
+
+/**
+ * 侧栏分区的标题（1.0.12）。
+ *
+ * 七个分区在 19rem 宽的栏里排成一列，滚动条比内容还长。标题同时是折叠开关：
+ * 字形说明"这块是什么"，计数说明"有没有东西"，点一下收起——收起时只剩这三样。
+ */
+function SectionTitle({
+	glyph,
+	label,
+	count,
+	collapsed,
+	onToggle,
+	children,
+}: {
+	glyph: string;
+	label: string;
+	count?: React.ReactNode;
+	collapsed: boolean;
+	onToggle: () => void;
+	children?: React.ReactNode;
+}): React.ReactElement {
+	return (
+		<h3 className="astra-strix-section-title">
+			<button
+				type="button"
+				className="astra-strix-section-head"
+				aria-expanded={collapsed ? "false" : "true"}
+				onClick={onToggle}
+			>
+				<span className="astra-strix-section-ico" aria-hidden="true">
+					{glyph}
+				</span>
+				{label}
+				{children}
+			</button>
+			{count === undefined ? null : count}
+		</h3>
+	);
+}
+
 /** One label/value pair in the status band; omitted entirely when there is no value. */
 function Fact({ label, value, tone }: { label: string; value: string; tone?: string }): React.ReactElement {
 	return (
@@ -122,6 +163,20 @@ export function ScanScreen({
 	// 高度与拖拽方向：两个屏共用一份状态（composer-height.ts），否则一边对一边错。
 	const composer = useComposerHeight();
 	// 运行记录永远停在最新一行；读者自己往上滚时不抢回（use-stick-to-bottom.ts）。
+	/** 默认展开"这一眼要看的"；连接与历史收起，需要时点开。 */
+	const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
+		session: false,
+		targets: false,
+		findings: false,
+		stats: false,
+		team: false,
+		mcp: true,
+		history: true,
+	});
+	const toggleSection = useCallback(
+		(key: string) => setCollapsed((previous) => ({ ...previous, [key]: !previous[key] })),
+		[],
+	);
 	const stick = useStickToBottom(`${trace.length}:${trace[trace.length - 1]?.ok ?? ""}`, trace.length);
 
 	/** Enter 与发送键走同一条路：清空草稿、把话交给宿主。 */
@@ -275,11 +330,15 @@ export function ScanScreen({
 				</section>
 
 				<aside className="astra-strix-rail" aria-label={t("rail.title")}>
-					<section className="astra-strix-section" data-tone="session">
-						<h3 className="astra-strix-section-title">
-							{t("session.title")}
+					<section className="astra-strix-section" data-tone="session" data-collapsed={collapsed.session ? "yes" : "no"}>
+						<SectionTitle
+							glyph="▣"
+							label={t("session.title")}
+							collapsed={Boolean(collapsed.session)}
+							onToggle={() => toggleSection("session")}
+						>
 							{sandbox.running ? <span className="astra-strix-chip-live">{t("session.running")}</span> : null}
-						</h3>
+						</SectionTitle>
 						{sandbox.sessionId || sandbox.uptimeSec || envMode ? (
 							<dl className="astra-strix-kv">
 								<div>
@@ -316,13 +375,18 @@ export function ScanScreen({
 						)}
 					</section>
 
-					<section className="astra-strix-section" data-tone="targets">
-						<h3 className="astra-strix-section-title">
-							{t("targets.title")}
-							<span className="astra-strix-count" data-empty={targets.length ? "no" : "yes"}>
-								{targets.length}
-							</span>
-						</h3>
+					<section className="astra-strix-section" data-tone="targets" data-collapsed={collapsed.targets ? "yes" : "no"}>
+						<SectionTitle
+							glyph="◎"
+							label={t("targets.title")}
+							collapsed={Boolean(collapsed.targets)}
+							onToggle={() => toggleSection("targets")}
+							count={
+								<span className="astra-strix-count" data-empty={targets.length ? "no" : "yes"}>
+									{targets.length}
+								</span>
+							}
+						/>
 						{targets.length ? (
 							<ul className="astra-strix-targets">
 								{targets.map((target) => (
@@ -349,13 +413,18 @@ export function ScanScreen({
 
 					{/* Upstream docks the run's MCP connections as its own panel: a dead server looks
 					    exactly like the model forgetting its tools. */}
-					<section className="astra-strix-section" data-tone="mcp">
-						<h3 className="astra-strix-section-title">
-							{t("mcp.title")}
-							<span className="astra-strix-count" data-empty={mcp.length ? "no" : "yes"}>
-								{mcp.length}
-							</span>
-						</h3>
+					<section className="astra-strix-section" data-tone="mcp" data-collapsed={collapsed.mcp ? "yes" : "no"}>
+						<SectionTitle
+							glyph="⇄"
+							label={t("mcp.title")}
+							collapsed={Boolean(collapsed.mcp)}
+							onToggle={() => toggleSection("mcp")}
+							count={
+								<span className="astra-strix-count" data-empty={mcp.length ? "no" : "yes"}>
+									{mcp.length}
+								</span>
+							}
+						/>
 						{mcp.length ? (
 							<ul className="astra-strix-mcp">
 								{mcp.map((server) => (
@@ -376,8 +445,13 @@ export function ScanScreen({
 					</section>
 					{/* Upstream's sidebar ends in a Stats panel; without it the panel has no single
 					    place that answers "how is this run going". */}
-					<section className="astra-strix-section" data-tone="stats">
-						<h3 className="astra-strix-section-title">{t("stats.title")}</h3>
+					<section className="astra-strix-section" data-tone="stats" data-collapsed={collapsed.stats ? "yes" : "no"}>
+						<SectionTitle
+							glyph="▦"
+							label={t("stats.title")}
+							collapsed={Boolean(collapsed.stats)}
+							onToggle={() => toggleSection("stats")}
+						/>
 						<dl className="astra-strix-kv">
 							<div>
 								<dt>{t("scan.mode")}</dt>
@@ -429,11 +503,18 @@ export function ScanScreen({
 
 					{/* 团队成员（ADR 0016）：名单来自 plugin.json，署名数来自发现台账。 */}
 					{team && team.members.length ? (
-						<section className="astra-strix-section" data-tone="team">
-							<h3 className="astra-strix-section-title">
-								{t("panel.team")}
-								<span className="astra-strix-count" data-empty={team.totalFiled ? "no" : "yes"}>{team.members.length}</span>
-							</h3>
+						<section className="astra-strix-section" data-tone="team" data-collapsed={collapsed.team ? "yes" : "no"}>
+							<SectionTitle
+								glyph="⚉"
+								label={t("panel.team")}
+								collapsed={Boolean(collapsed.team)}
+								onToggle={() => toggleSection("team")}
+								count={
+									<span className="astra-strix-count" data-empty={team.totalFiled ? "no" : "yes"}>
+										{team.members.length}
+									</span>
+								}
+							/>
 							<ul className="astra-strix-team">
 								{team.members.map((member) => (
 									<li key={member.id} data-lead={member.lead ? "yes" : "no"}>
@@ -451,11 +532,18 @@ export function ScanScreen({
 					) : null}
 
 					{/* 历史评估（上游 viewer 的等价物）：只读清单，点不进旧会话——那是宿主的事。 */}
-					<section className="astra-strix-section" data-tone="history">
-						<h3 className="astra-strix-section-title">
-							{t("panel.history")}
-							<span className="astra-strix-count" data-empty={history.length ? "no" : "yes"}>{history.length}</span>
-						</h3>
+					<section className="astra-strix-section" data-tone="history" data-collapsed={collapsed.history ? "yes" : "no"}>
+						<SectionTitle
+							glyph="◷"
+							label={t("panel.history")}
+							collapsed={Boolean(collapsed.history)}
+							onToggle={() => toggleSection("history")}
+							count={
+								<span className="astra-strix-count" data-empty={history.length ? "no" : "yes"}>
+									{history.length}
+								</span>
+							}
+						/>
 						{history.length ? (
 							<ul className="astra-strix-history">
 								{history.map((entry) => (
@@ -475,13 +563,18 @@ export function ScanScreen({
 						)}
 					</section>
 
-					<section className="astra-strix-section" data-tone="findings">
-						<h3 className="astra-strix-section-title">
-							{t("findings.title")}
-							<span className="astra-strix-count" data-empty={findings.length ? "no" : "yes"}>
-								{findings.length}
-							</span>
-						</h3>
+					<section className="astra-strix-section" data-tone="findings" data-collapsed={collapsed.findings ? "yes" : "no"}>
+						<SectionTitle
+							glyph="◈"
+							label={t("findings.title")}
+							collapsed={Boolean(collapsed.findings)}
+							onToggle={() => toggleSection("findings")}
+							count={
+								<span className="astra-strix-count" data-empty={findings.length ? "no" : "yes"}>
+									{findings.length}
+								</span>
+							}
+						/>
 						<FindingList t={t} findings={findings} runStatus={running ? "running" : "completed"} />
 					</section>
 				</aside>

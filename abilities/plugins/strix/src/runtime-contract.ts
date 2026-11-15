@@ -103,7 +103,7 @@ export interface BridgeState {
 	todos?: TodoItem[];
 	coverage?: CoverageOutcome[];
 	/**
-	 * 会话与状态的四个面（ADR 0018）：预算 / 本机统计 / 历史 / 团队成员。
+	 * 会话与状态的四个面：预算 / 本机统计 / 历史 / 团队成员。
 	 * 它们都由服务计算，面板只读——两边各算一遍就会出现两个真相。
 	 */
 	budget?: BridgeBudget;
@@ -193,9 +193,9 @@ export interface NoteSummary {
 /**
  * 一个「工作单元」：agent 起的长任务会话（`strix_exec background:true`）。
  *
- * 上游的 agents 面板列出的是它自己派生的子智能体；本插件没有模型循环（ADR 0003），
+ * 上游的 agents 面板列出的是它自己派生的子智能体；本插件没有模型循环，
  * 所以面板上能诚实列出的是**在同一个沙箱里并行干活的东西**：保留的 shell 会话
- * （ADR 0010）。
+ * 。
  */
 export interface ShellSessionSummary {
 	id: string;

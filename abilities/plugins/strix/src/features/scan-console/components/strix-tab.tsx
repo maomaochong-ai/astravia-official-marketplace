@@ -55,7 +55,7 @@ export interface StrixTabProps {
 	send: (text: string) => Promise<void>;
 	/** Reads a note's body for the panel's expander (`strix_note_get`). */
 	onOpenNote: (id: string) => Promise<string>;
-	/** 会话与状态四个面（ADR 0018），由 useStrixSession 从服务读回。 */
+	/** 会话与状态四个面，由 useStrixSession 从服务读回。 */
 	budget?: BridgeBudget;
 	telemetry?: BridgeTelemetry | null;
 	history?: readonly BridgeHistoryEntry[];
@@ -64,7 +64,7 @@ export interface StrixTabProps {
 	coverageTally?: Record<string, number>;
 	stop: () => Promise<void>;
 	onQuit: () => void;
-	/** 面板选的执行环境（ADR 0013）。 */
+	/** 面板选的执行环境。 */
 	environmentMode: "auto" | "host" | "docker";
 	environmentReady: boolean;
 	/** 环境检测结果（docker / 镜像）。 */
@@ -73,7 +73,7 @@ export interface StrixTabProps {
 	onEnvironmentMode: (mode: "auto" | "host" | "docker") => void;
 	onInstallDocker: () => void;
 	onRefreshEnvironment: () => void;
-	/** 用户按了「返回首屏」：即使有评估在进行也先显示首屏（ADR 0014）。 */
+	/** 用户按了「返回首屏」：即使有评估在进行也先显示首屏。 */
 	forceLaunch: boolean;
 	onOpenLaunch: () => void;
 	onNewSession: () => void;
@@ -125,6 +125,7 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					t={t}
 					model={props.model}
 					{...(props.workspace ? { workspace: props.workspace } : {})}
+					{...(props.team ? { team: props.team } : {})}
 					log={props.log}
 					version={props.version}
 					blocked={blockedReason(t, props.model, props.environment)}

@@ -170,7 +170,8 @@ describe("run log follows the newest row", () => {
 		expect(body.scrollTop).toBe(body.scrollHeight - body.clientHeight);
 		// 读者没离开底部，就不该有“未读”提示。
 		expect(screen.queryByText(/scan\.newRows/)).toBeNull();
-	});
+		// 20 次 rAF + 事件回放：全量并行跑时默认 5s 会偶发超时（单独跑 0.9s）。
+	}, 20_000);
 
 	it("stops following after the reader scrolls up, and offers a jump back", async () => {
 		const { host, body } = await openScanScreen();

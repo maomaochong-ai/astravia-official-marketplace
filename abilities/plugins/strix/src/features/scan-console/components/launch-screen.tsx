@@ -16,6 +16,7 @@ import { useState } from "react";
 import { useComposerHeight } from "../hooks/use-composer-height";
 import { HackerRain } from "./hacker-rain";
 import type { ModelChoice } from "../../../domain/model-label";
+import type { BridgeTeam } from "../../../runtime-contract";
 import type { LogLine } from "../hooks/use-strix-session";
 import { StrixWordmark } from "./strix-wordmark";
 
@@ -24,17 +25,22 @@ export interface LaunchScreenProps {
 	model?: ModelChoice;
 	/** 宿主打开的工作目录名：它是事实，放在事实表里，而不是日志里的一行。 */
 	workspace?: string;
+	/**
+	 * 本次团队（1.0.12）：安装之后用户看不到有谁，只能被告知。
+	 * 四个 chip 让人在开始前就知道这次谁上场，hover 给出职责。
+	 */
+	team?: BridgeTeam | null;
 	log: readonly LogLine[];
 	/** Bridge boot state. A live line, not a log entry (ADR strix-0004). */
 	boot: { state: "connecting" | "ready" | "failed"; detail?: string };
 	version: string;
 	/** Why Enter cannot launch yet (no model, no Docker); empty when it can. */
 	blocked?: string;
-	/** 面板选的执行环境（ADR 0013）。 */
+	/** 面板选的执行环境。 */
 	environmentMode?: "auto" | "host" | "docker";
 	/** docker 是否就绪——决定「容器」选项能不能选、「安装」按钮要不要出来。 */
 	environmentReady?: boolean;
-	/** 环境检测结果：docker 可用性与镜像是否已在本地（ADR 0013）。 */
+	/** 环境检测结果：docker 可用性与镜像是否已在本地。 */
 	docker?: { ready: boolean; detail?: string; imagePresent: boolean | null } | null;
 	onPullImage?: () => Promise<void>;
 	onEnvironmentMode?: (mode: "auto" | "host" | "docker") => void;
@@ -46,10 +52,19 @@ export interface LaunchScreenProps {
 
 const MAX_LOG_ROWS = 6;
 
+/** 角色 → 字形（与工具行同一套语义：字形说明"这是干什么的"）。 */
+const TEAM_GLYPH: Record<string, string> = {
+	master: "◉",
+	researcher: "◎",
+	developer: "◈",
+	auditor: "≡",
+};
+
 export function LaunchScreen({
 	t,
 	model,
 	workspace,
+	team,
 	log,
 	boot,
 	version,
@@ -65,7 +80,7 @@ export function LaunchScreen({
 	onQuit,
 }: LaunchScreenProps): React.ReactElement {
 	const [value, setValue] = useState("");
-	// 环境选择只影响「下一次」sandbox 启动（ADR 0013）：已经在跑的扫描不中途换环境。
+	// 环境选择只影响「下一次」sandbox 启动：已经在跑的扫描不中途换环境。
 	const environmentMode = environmentModeProp ?? "host";
 	// 三态：本机 / docker 缺失 / docker 就绪但镜像未拉 / 全就绪。
 	const envState: "host" | "noDocker" | "noImage" | "ready" =
@@ -191,7 +206,7 @@ export function LaunchScreen({
 						</div>
 					) : null}
 
-					{/* 执行环境（ADR 0013）：四态。
+					{/* 执行环境：四态。
 					    host        → 本机执行，无容器隔离
 					    noDocker    → 让宿主安装 docker
 					    noImage    → 让宿主拉取沙箱镜像
@@ -235,6 +250,29 @@ export function LaunchScreen({
 							</span>
 						</span>
 					</div>
+
+
+					{/* 团队：名单来自 plugin.json，不是面板编的。队长高亮，其余按角色给字形。 */}
+					{team && team.members.length ? (
+						<div className="astra-strix-row">
+							<span className="astra-strix-row-label">{t("panel.team")}</span>
+							<span className="astra-strix-row-value astra-strix-team-chips">
+								{team.members.map((member) => (
+									<span
+										key={member.id}
+										className="astra-strix-team-chip"
+										data-lead={member.lead ? "yes" : "no"}
+										title={member.responsibility}
+									>
+										<span className="astra-strix-team-chip-glyph" aria-hidden="true">
+											{TEAM_GLYPH[member.role ?? ""] ?? "·"}
+										</span>
+										{member.name.replace(/s*·s*[A-Za-z]+$/u, "")}
+									</span>
+								))}
+							</span>
+						</div>
+					) : null}
 
 					{log.length ? (
 						<div className="astra-strix-row">

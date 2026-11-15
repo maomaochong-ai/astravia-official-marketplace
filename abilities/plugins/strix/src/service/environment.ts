@@ -25,7 +25,7 @@ export interface ResolvedEnvironment {
 /**
  * 解析这次要用哪种执行环境。
  *
- * `preference` 来自面板的下拉（ADR 0013）：
+ * `preference` 来自面板的下拉：
  *  - `host`：**显式要求**本机——即使 docker 可用也不进容器（用户可能就是要更快的本机执行）；
  *  - `docker`：显式要求容器——即使 daemon 没起来也如实说不可用，而不是静默退回本机
  *    （"我选了容器但实际跑在本机"是这类工具最危险的一种沉默）；
@@ -50,7 +50,7 @@ export async function resolveEnvironment(
 	}
 
 	if (preference === "docker" && !probe.ready) {
-		// 选了容器但起不来：说清为什么，交给面板去提示安装（ADR 0013）。
+		// 选了容器但起不来：说清为什么，交给面板去提示安装。
 		return {
 			mode: "docker",
 			ready: false,

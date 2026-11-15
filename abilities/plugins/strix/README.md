@@ -57,7 +57,7 @@ The side-by-side prototype (upstream TUI vs this panel, same events) is at `docs
 
 Aligned with upstream in 0.7.0: the screen, and the tool surface the host agent actually drives —
 including kept shell sessions (`exec_command(background/tty)` + `write_stdin`), `patch`, `view_image`,
-`think` and `scope`. See ADR `strix-0006` for the item-by-item table.
+`think` and `scope`. See ADR 0006 for the item-by-item table.
 Markdown or SARIF, notes, todos, coverage, threat model), and honest coverage in the
 report.
 
@@ -65,7 +65,7 @@ Not aligned, on purpose:
 
 - **The agent loop and its model.** Upstream runs its own Python agent with its own key;
   here the host conversation is the loop, using the same tools over MCP. That is the one
-  deliberate divergence the whole plugin is built around (ADR `strix-0003`).
+  deliberate divergence the whole plugin is built around (ADR 0003).
 - **Multi-agent orchestration.** Upstream's `create_agent` / `send_message_to_agent` /
   `wait_for_agents` / `view_agent_graph` need a side that can run a sub-loop. Without a
   plugin-side model there is nothing to run it; use the host's own subagents instead, which

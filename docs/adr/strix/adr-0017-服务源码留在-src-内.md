@@ -1,9 +1,9 @@
-# strix-0017 — `src/service/` 留在 `src/` 里
+# ADR 0017：服务源码留在 src 内
 
-- **Status:** Accepted
-- **Date:** 2026-11-15
-- **Context:** 用户要求评估「`src/service/` 的归集是否合理，放 `src` 外还是内更好」
-- **Related:** 项目结构规范 `docs/plugin-project-structure.md`、[0018](strix-0018-session-state-reuses-the-host.md)
+- **状态：** 已接受
+- **日期：** 2026-11-15
+- **背景：** 用户要求评估「`src/service/` 的归集是否合理，放 `src` 外还是内更好」
+- **关联：** 项目结构规范 `docs/plugin-project-structure.md`、[0018](adr-0018-会话与状态复用宿主.md)
 
 ## 事实
 
@@ -28,7 +28,7 @@
 | B. 提到插件根 `service/`（与 `src/`、`test/` 平级） | 视觉上"两个入口"很清楚 | 三处共享代码变成 `../src/...` 跨根 import；tsconfig 要加第二个 rootDir；`esbuild`/`tsc` 各多一层配置；`test/` 里再区分"测哪个根" |
 | C. 拆成独立 npm 包（workspace） | 边界最硬 | 市场发布是**单包归档**，多一个包就多一套构建与版本同步；收益只是理论上的复用 |
 
-## The decision
+## 决定
 
 **A：留在 `src/` 内。**
 

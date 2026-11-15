@@ -62,7 +62,7 @@ const coverage = new CoverageStore(DATA_DIR);
 const scope = new ScopeStore(DATA_DIR);
 /** Long-running shells the agent chose not to wait for (service/shell-sessions.ts). */
 const sessions = new ShellSessions(record);
-/** 这一轮的预算（ADR 0018）：agent 才是花额度的人，所以拒绝发生在服务侧。 */
+/** 这一轮的预算：agent 才是花额度的人，所以拒绝发生在服务侧。 */
 /** 偏好里的额度：启动时读一次，新沙箱时再读（用户可能刚改过）。 */
 let pendingLimits = normalizeLimits({});
 const budget = new Budget();
@@ -246,11 +246,11 @@ const HANDLERS: Record<string, Handler> = {
 		// 归属写在**开沙箱的那一刻**：一个进程只有一个沙箱，“这是谁的”不能到读取时再猜。
 		// 依据是面板注册的会话：宿主同一时刻只有一个活动轮次。
 		const owned: Record<string, unknown> = activeConversation ? { ...args, conversation: activeConversation } : args;
-		// 没指定 mode 就用面板选的偏好：面板显示“容器”，这里就必须真的跑在容器里（ADR 0013）。
+		// 没指定 mode 就用面板选的偏好：面板显示“容器”，这里就必须真的跑在容器里。
 		if (owned.environment === undefined) {
 			const preference = await readPreferences(DATA_DIR);
 			const chosen = preference.environmentMode === "auto" ? undefined : preference.environmentMode;
-			// 注意：绝不能把它塞进 `mode`——那是扫描深度（ADR 0013）。
+			// 注意：绝不能把它塞进 `mode`——那是扫描深度。
 			if (chosen) return sandbox.start({ ...owned, environment: chosen });
 		}
 		return sandbox.start(owned);
@@ -310,7 +310,7 @@ const HANDLERS: Record<string, Handler> = {
 	},
 
 	strix_list_skills: async () => {
-		// 库已经随包（ADR 0012），不再有"上游没装"这种失败——只有包坏了才会空。
+		// 库已经随包，不再有"上游没装"这种失败——只有包坏了才会空。
 		const skills = locateSkills();
 		const { entries, categories } = await loadIndex(skills);
 		return {
@@ -359,7 +359,7 @@ const HANDLERS: Record<string, Handler> = {
 	strix_coverage_update: (args) => coverage.update(sessionId(), args),
 	strix_threat_model: (args) => coverage.threatModel(sessionId(), args),
 
-	// ---- 会话与状态（ADR 0018）：预算 / 历史 / 新鲜度 / 花名册 ----------------
+	// ---- 会话与状态：预算 / 历史 / 新鲜度 / 花名册 ----------------
 
 	/** 预算：读快照，或改限额（`maxToolCalls` / `maxMinutes` / `maxFindings`， 0 = 不限）。 */
 	strix_budget: async (args) => {
@@ -410,7 +410,7 @@ const HANDLERS: Record<string, Handler> = {
  *
  * 为什么必须合流：宿主 agent 走的是 MCP 的 `tools/call`，面板走的是 `/api/tool`。
  * 预算只挂在后者上时，真正花额度的那条路完全不计——面板上额度恒为 0，
- * 拒绝永远不会触发（ADR 0018 的决定在真机拿不到证据）。
+ * 拒绝永远不会触发。
  */
 const METERED = new Set([
 	"strix_exec",
@@ -455,7 +455,7 @@ async function gateTool(name: string, args: Record<string, unknown>, handler: (a
 			void telemetry.findingRecorded();
 		}
 		if (name === "strix_sandbox_start") {
-			// 新沙箱 = 新一轮评估：计数归零，额度随偏好重新读一次（ADR 0018 第 3 条）。
+			// 新沙箱 = 新一轮评估：计数归零，额度随偏好重新读一次。
 			budget.reset(pendingLimits);
 			void telemetry.assessmentStarted();
 		}
@@ -612,7 +612,7 @@ const server = createServer(async (req, res) => {
 			}
 		}
 		if (url.pathname === "/api/environment") {
-			// 环境检测（ADR 0013）：面板切换环境后要能立刻知道"有没有 docker / 镜像在不在"。
+			// 环境检测：面板切换环境后要能立刻知道"有没有 docker / 镜像在不在"。
 			const preference = await readPreferences(DATA_DIR);
 			const resolved = await resolveEnvironment(sandboxImage(), preference.environmentMode);
 			return json(res, 200, { ...resolved, preference: preference.environmentMode });
@@ -672,7 +672,7 @@ const server = createServer(async (req, res) => {
 				coverage.list(sessionId()).catch(() => ({ count: 0, byOutcome: {}, entries: [] })),
 				coverage.threatModel(sessionId()).catch(() => ({ content: "", targets: [], updated_at: null })),
 			]);
-			// 会话与状态（ADR 0018）：预算 / 本机统计 / 历史 / 团队成员四块由同一处给出，
+			// 会话与状态：预算 / 本机统计 / 历史 / 团队成员四块由同一处给出，
 			// 面板不必为它们各发一个请求。
 			const [budgetState, telemetryState] = await Promise.all([
 				Promise.resolve(budget.snapshot()),
@@ -695,7 +695,7 @@ const server = createServer(async (req, res) => {
 				coverageTally: (cover as { byOutcome?: unknown }).byOutcome ?? {},
 				threatModel: threat,
 				preferences: await readPreferences(DATA_DIR),
-				// 工作单元：保留的 shell 会话（上游 agents 面板在本插件的诚实等价物，ADR 0010）。
+				// 工作单元：保留的 shell 会话（上游 agents 面板在本插件的诚实等价物，）。
 				sessions: sessions.list().map(({ id, command, running, uptimeSec, tty }) => ({ id, command, running, uptimeSec, tty })),
 				// 范围是「这次允许触碰什么」的唯一权威；面板要能显示，报告要能带上（审查指出两处都漏了）。
 				scope: describeScope(await scope.snapshot()),

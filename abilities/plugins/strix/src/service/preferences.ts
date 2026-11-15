@@ -1,5 +1,5 @@
 /**
- * 面板级偏好：用哪种执行环境（ADR 0013）。
+ * 面板级偏好：用哪种执行环境。
  *
  * 为什么存在服务端而不是 localStorage：**agent 也要读它**。用户在面板上把环境选成
  * 「容器（docker）」，接着在对话里说「开始扫描」，`strix_sandbox_start` 不传 mode 时必须
@@ -10,8 +10,7 @@
  *  - `docker`：容器内执行，需要 docker 守护进程可用；
  *  - `auto`：有 docker 就用容器，没有就本机——**显式的选择**而不是静默回退。
  *
- * 一个约束：偏好只影响**下一次** sandbox 启动。已经在跑的扫描不中途换环境（ADR 0002：
- * environment mode 属于会话快照）。
+ * 一个约束：偏好只影响**下一次** sandbox 启动。已经在跑的扫描不中途换环境。
  */
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -25,7 +24,7 @@ export interface Preferences {
 	/** 最近一次由面板发起的安装尝试，用于「装完刷新」这一句有据可依。 */
 	lastInstall?: { command: string; at: string; ok: boolean; detail?: string };
 	/**
-	 * 一轮评估的额度（ADR 0018）。存服务端而不是面板：agent 花额度，服务拒绝，
+	 * 一轮评估的额度。存服务端而不是面板：agent 花额度，服务拒绝，
 	 * 重启服务后仍该是同一份额度。
 	 */
 	budget?: { maxToolCalls: number; maxMinutes: number; maxFindings: number };
@@ -68,7 +67,7 @@ export async function writePreferences(dataDir: string, patch: Partial<Preferenc
  * 装 docker 的命令，按平台。
  *
  * 这不是"帮用户装好"——安装器会要管理员权限、可能重启、可能装一个几 GB 的 GUI。
- * 面板做的是**把命令摆出来并可代跑**，剩下的是用户与宿主的事（ADR 0013 的代价一节）。
+ * 面板做的是**把命令摆出来并可代跑**，剩下的是用户与宿主的事。
  */
 export function dockerInstallCommand(platform: NodeJS.Platform = process.platform): { command: string; argv: string[] } {
 	if (platform === "win32") {

@@ -82,7 +82,7 @@ export interface StrixSessionModel {
 	todos: TodoItem[];
 	notes: NoteSummary[];
 	coverage: CoverageOutcome[];
-	/** 保留的 shell 会话：面板上的「工作单元」（ADR 0010）。 */
+	/** 保留的 shell 会话：面板上的「工作单元」。 */
 	sessions: ShellSessionSummary[];
 	/** MCP connections as last reported; docked like upstream's Mcp panel. */
 	mcp: McpConnection[];
@@ -104,7 +104,7 @@ export interface StrixSessionModel {
 	stop: () => Promise<void>;
 	/** Re-read state after a failure. */
 	refresh: () => Promise<void>;
-	/** 面板选的执行环境（ADR 0013）。 */
+	/** 面板选的执行环境。 */
 	environmentMode: "auto" | "host" | "docker";
 	setEnvironmentMode: (mode: "auto" | "host" | "docker") => Promise<void>;
 	/** 让服务代跑 docker 安装命令；装完再 refresh() 就能看到新环境。 */
@@ -122,7 +122,7 @@ export interface StrixSessionModel {
 	onOpenNote: (id: string) => Promise<string>;
 	/** 服务给的分结果计数，不要用面板前 8 行自己算。 */
 	coverageTally?: Record<string, number>;
-	/** 会话与状态四个面（ADR 0018）：预算 / 本机统计 / 历史 / 团队成员。 */
+	/** 会话与状态四个面：预算 / 本机统计 / 历史 / 团队成员。 */
 	budget?: BridgeBudget;
 	telemetry?: BridgeTelemetry | null;
 	history?: readonly BridgeHistoryEntry[];
@@ -193,7 +193,7 @@ export function useStrixSession({
 	const [mcp, setMcp] = useState<McpConnection[]>(initial?.mcp ?? []);
 	/** 覆盖台账的分结果计数，来自服务（`/api/state` 的 coverageTally）。 */
 	const [tally, setTally] = useState<Record<string, number> | undefined>(undefined);
-	/** 会话与状态四个面（ADR 0018）：服务算，面板读。 */
+	/** 会话与状态四个面：服务算，面板读。 */
 	const [budget, setBudget] = useState<BridgeBudget | undefined>(undefined);
 	const [telemetry, setTelemetry] = useState<BridgeTelemetry | null>(null);
 	const [history, setHistory] = useState<BridgeHistoryEntry[]>([]);
@@ -201,7 +201,7 @@ export function useStrixSession({
 	const [hostStreaming, setHostStreaming] = useState<boolean>(Boolean(conversation?.isStreaming));
 	const [submitting, setSubmitting] = useState(false);
 	const [environmentMode, setEnvironmentModeState] = useState<"auto" | "host" | "docker">("host");
-	/** 用户手动回到首屏：此时不再被"宿主流一转就跳工作台"拽走（ADR 0014）。 */
+	/** 用户手动回到首屏：此时不再被"宿主流一转就跳工作台"拽走。 */
 	const [showLaunch, setShowLaunch] = useState(false);
 	const [docker, setDocker] = useState<{ ready: boolean; detail?: string; imagePresent: boolean | null } | null>(null);
 	/** 接续已有评估只提示一次：refresh 会被轮次反复叫到。 */
@@ -496,7 +496,7 @@ export function useStrixSession({
 				// 打字）面板就停在首屏，用户看到的就是「发出去了，面板没动」。面板挂在本对话上、
 				// 这一轮又是本对话在跑，两个事实合起来就够了，与胶囊无关。
 				//
-				// 例外是「返回首屏」那颗按钮（ADR 0014）：pin 立着就不拓。但 pin 只算一次查看，
+				// 例外是「返回首屏」那颗按钮：pin 立着就不拓。但 pin 只算一次查看，
 				// 而胶囊开着意味着用户把这一轮交给了 Strix——那份“先看一眼”的意图到此为止，
 				// 否则会出现“面板被带到前面、却还画着首屏”这种自相矛盾的落地。
 				if (isStrixEngaged()) launchPinned.current = false;
@@ -519,7 +519,7 @@ export function useStrixSession({
 			// 文字属于对话，不属于面板。显式忽略而不是默默不处理：读到这里的人要知道
 			// 不渲染是决定，不是遗漏。
 			if (event.type === "message-added" && event.message.role === "compaction") {
-				// 压缩是状态，不是对话正文：不记它，用户会以为“说过的证据突然没了”（ADR 0018）。
+				// 压缩是状态，不是对话正文：不记它，用户会以为“说过的证据突然没了”。
 				pushTrace({ kind: "note", label: t("scan.compacted") });
 				return;
 			}
@@ -587,7 +587,7 @@ export function useStrixSession({
 						return false;
 					}
 				}
-				// 不在面板里回显这句：宿主对话已经渲染了它，面板再画一次就是冗余（ADR 0007）。
+				// 不在面板里回显这句：宿主对话已经渲染了它，面板再画一次就是冗余。
 				// 面板跟着这一句离开首屏：用户按下的是「开始」，不是「继续看首屏」。
 				// 没有这一步时，只有宿主回一个 turn-start 才会切屏——而宿主在草稿态下
 				// 并不一定马上发事件，于是面板看起来像没反应（1.0.5）。
@@ -651,7 +651,7 @@ export function useStrixSession({
 		setShowLaunch(true);
 	}, []);
 
-	/** 新会话：在当前 cwd 建一个，面板跟过去（多开的最小可行形态，ADR 0014）。 */
+	/** 新会话：在当前 cwd 建一个，面板跟过去（多开的最小可行形态，）。 */
 	const newSession = useCallback(async () => {
 		const cwd = cwdRef.current ?? workspaceRoot?.() ?? null;
 		if (!cwd) {
@@ -712,7 +712,7 @@ export function useStrixSession({
 			coverage,
 			sessions: liveSessions,
 			mcp,
-			// 会话与状态四个面（ADR 0018）：服务的计算结果，面板只读。
+			// 会话与状态四个面：服务的计算结果，面板只读。
 			budget,
 			telemetry,
 			history,

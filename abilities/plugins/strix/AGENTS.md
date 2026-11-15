@@ -1,6 +1,6 @@
 # Strix 插件 · 开发说明
 
-工作目录就是本目录，所有命令在这里执行。上游引擎是 [usestrix/strix](https://github.com/usestrix/strix)，本插件把它的 **界面** 搬进标签页；模型、循环与工具调用都归宿主，插件只提供沙箱、工具面与窗口（ADR `strix-0003`）。
+工作目录就是本目录，所有命令在这里执行。上游引擎是 [usestrix/strix](https://github.com/usestrix/strix)，本插件把它的 **界面** 搬进标签页；模型、循环与工具调用都归宿主，插件只提供沙箱、工具面与窗口（ADR 0003）。
 
 ## 命令
 
@@ -58,7 +58,7 @@ npm run check           # typecheck + test + 服务冒烟
 - **工作目录来自 `conversation.cwd`**：它就是宿主 agent 在干活的目录，也是沙箱挂的目录。
 - **没有插件侧子智能体**：需要并行分工就用宿主自己的 subagent，共享同一个沙箱与台账。
 - 工具目录只有一份：`agent/strix-tools.ts` 的 `STRIX_TOOL_SPECS`（33 个，全部 `handler: "service"`）；
-  服务端启动时校验 handler 齐备。与上游的逐项对照写在 ADR `strix-0006`：
+  服务端启动时校验 handler 齐备。与上游的逐项对照写在 ADR 0006：
   - 已补齐：`strix_exec` 的 `background`/`tty`、`strix_write_stdin`、`strix_shell_sessions`、
     `strix_kill_session`、`strix_patch`、`strix_view_image`、`strix_think`、`strix_scope`。
   - 有意不补：`agents_graph`（子智能体需要有人跑模型——那是宿主）、`web_search`（宿主有）、
@@ -102,7 +102,7 @@ npm run check           # typecheck + test + 服务冒烟
 
 1. **全仓 TypeScript，生成物在 `dist/`。** 服务端没有 Python 层：沙箱走 docker CLI，技能从已安装的 `strix-agent` 包里读 Markdown。宿主只认 JavaScript 入口，`scripts/build-service.mjs` 用 esbuild 打成 `dist/service/main.mjs`，并拒绝产物目录出现 `.py`。
 2. **界面照抄，模型借用。** 复刻启动页与扫描页的排版、文案与配色（包括词标与 `enter launch scan` 这行提示），差异只有一处：模型那行显示的是宿主模型，而不是 `STRIX_LLM`。
-3. **插件里没有 loop。** 宿主 agent 是唯一会推理的一侧（ADR strix-0003）；服务是无状态的容器管理者，面板是窗口。之前那份 `strix-agent` loop 已删：它需要模型，而多一份模型就是多一套结论。
+3. **插件里没有 loop。** 宿主 agent 是唯一会推理的一侧（ADR 0003）；服务是无状态的容器管理者，面板是窗口。之前那份 `strix-agent` loop 已删：它需要模型，而多一份模型就是多一套结论。
 4. **工具目录只有一份。** `STRIX_TOOL_SPECS` 同时供给 MCP 面与 `/api/tool`，服务端启动时校验「声明的都接上了」，缺一个 handler 直接起不来。
 5. **失败不弹给用户，交给模型。** 工具抛错变成 `isError` 的 tool result 回到宿主 agent 手里，让它换一条路；面板不帮它收尾。
 6. **服务声明全部工件。** 宿主 `resolve()` 拒绝启动未经 `install()` 写入的运行时，`install()` 要求 payload 与 `platform.artifacts` 一一对应并校验 SHA-256。
@@ -130,10 +130,14 @@ npm run check           # typecheck + test + 服务冒烟
 - **投递顺序：先发、后建、最后交给宿主**（1.0.4）。`sendPrompt` 在宿主的新会话页也能发（宿主自己按当前目录建会话），
   所以不要先 `createSession`——那会把"拿不到 cwd"变成一次假的"你没打开目录"。只有发送真的失败才建会话；
   连 cwd 都拿不到时用 `ctx.conversation.insertText` 把话交回宿主输入框。
+- **加区块之前先看入口密度**（ADR 0019）：首屏事实表最后一行是团队（四个 chip，字形按角色取）；
+	  侧栏七个分区里，标题本身就是折叠开关（默认展开 目标/发现/统计/团队，收起 连接/历史）。
+	  分区标题用 `section-head` + `section-ico`，**不要**复用 `panel-box` 那颗 20px 的 `section-toggle`——
+	  一个是"收起一整块"，一个是"展开一段正文"。收起必须是 `display:none`，不是只藏视线。
 - **工具面是 40 个**（1.0.10）：36 个执行/台账工具 + 4 个会话与状态工具（`strix_budget` /
   `strix_history` / `strix_update_check` / `strix_team_roster`）。新增工具要同时改：
   `src/agent/strix-tools.ts`（规格）、`src/service/main.ts`（handler）、`tool-presentation.ts`（呈现）、
-  locales 两段提示词里的工具数，以及 `docs/adr/strix/strix-0006` 的对照表。
+  locales 两段提示词里的工具数，以及 `docs/adr/strix/ADR 0006` 的对照表。
 - **台账按会话分，不按沙箱分**（ADR 0015，1.0.7）：服务只有一个沙箱，所以"这是谁的事实"必须由
   `SandboxStatus.conversation`（开沙箱那一刻写入）加面板注册的会话共同决定；`/api/state` 里顶层那个
   `conversationKey` 就是面板刚注册的 id，**不能**拿它判归属。面板对不上就不采纳（环境探测例外，

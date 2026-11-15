@@ -1,13 +1,13 @@
-# strix-0001 — 沙箱环境由宿主代备，用户不装 Docker
+# ADR 0001：沙箱环境由宿主代备，用户不装 Docker
 
-- **Status:** Proposed
-- **Date:** 2026-11-13
-- **Context:** strix 插件 0.5.x；宿主 0.5.93
-- **Related:** 宿主 `providers.cli`（probe/install）与 `providers.services.runtime.artifacts`
+- **状态：** 提议
+- **日期：** 2026-11-13
+- **背景：** strix 插件 0.5.x；宿主 0.5.93
+- **关联：** 宿主 `providers.cli`（probe/install）与 `providers.services.runtime.artifacts`
   （按平台下载并校验 sha256 的运行时归档）；rea 用前者装 CLI，free-model-gateway /
   open-ai-canvas / dbx-pro / video-downloader 用后者装服务
 
-## The situation
+## 现状
 
 Strix 要跑渗透测试，就得有能执行 nmap / nuclei / sqlmap 这类工具的环境。上游的做法是
 起一个 Docker 容器，把工具和样本一起放进去。插件因此隐含了两个前置条件：
@@ -33,7 +33,7 @@ Strix 要跑渗透测试，就得有能执行 nmap / nuclei / sqlmap 这类工�
 - **就绪（ready）**：某一层真的可用，而不是「插件被加载」。这个词以前被混用，是本 ADR
   要拆开的第一个歧义。
 
-## The decision
+## 决定
 
 **把「装环境」从用户身上移走，拆成宿主能做的三段；Docker 从「前置条件」降级为「加速器」。**
 
@@ -62,7 +62,7 @@ Strix 要跑渗透测试，就得有能执行 nmap / nuclei / sqlmap 这类工�
 5. **一次扫描开始时快照环境形态，中途不再切换。** 否则同一份报告里的证据来自两种隔离，
    无法解释。
 
-## Considered options
+## 考虑过的方案
 
 - **让插件自己 `docker pull` 并顺手装 Docker Desktop**：需要管理员权限、要重启、要开
   BIOS 虚拟化。用户在终端之外没有任何预期，失败率高且无法回滚。**否。**
@@ -74,14 +74,14 @@ Strix 要跑渗透测试，就得有能执行 nmap / nuclei / sqlmap 这类工�
   一次误操作影响用户整机。保留 `docker` / `wsl` 作为优先形态是必要的。**否（作为唯一方案），
   但作为退化形态接受。**
 
-## What this does not do
+## 不做什么
 
 - **不在 `host` 形态下提供同等隔离。** 面板必须写明这一点，不能让人以为换个形态还是一样安全。
 - **不保证 `host` 形态在所有平台都能凑齐工具。** 缺什么就报什么，不假装装好了。
 - **不改变上游 Strix 的报告格式与工具行为**，只换执行场所。
 - **不替用户改系统设置**（虚拟化、防火墙、代理）。
 
-## The cost
+## 代价
 
 - 三条执行路径意味着三套启动参数与三套失败文案；`docker.ts` 之外要再补 `wsl.ts` 与
   `host.ts`，由同一个 `environment.resolve()` 收口，避免三处各写一遍判断。

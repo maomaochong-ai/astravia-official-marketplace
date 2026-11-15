@@ -182,7 +182,7 @@ export class Sandbox {
 		// Decided per start, not at process boot: a daemon that came up between two
 		// scans should be used by the second one (ADR strix-0001).
 		// `environment` 是执行环境偏好（host/docker/auto）；`mode` 是扫描深度（quick/standard/…）。
-		// 两者名字曾经撞在一起，导致"选了容器却跑在本机"——现在分开取值（ADR 0013）。
+		// 两者名字曾经撞在一起，导致"选了容器却跑在本机"——现在分开取值。
 		const preference = params.environment === "host" || params.environment === "docker" ? params.environment : "auto";
 		this.mode = (await resolveEnvironment(sandboxImage(), preference)).mode;
 		// Scan depth is snapshot here too: a step that changed the ceiling half-way
