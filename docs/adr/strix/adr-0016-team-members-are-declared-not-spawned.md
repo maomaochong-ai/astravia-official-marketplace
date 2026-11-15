@@ -3,7 +3,7 @@
 - **状态：** 已接受
 - **日期：** 2026-11-15
 - **背景：** 插件 strix 1.0.9；用户要求「参考宿主侧边栏智能体团队 / 麻花小说插件的形式，形成合适的团队成员，装好插件就能在对话框选择团队成员」
-- **关联：** [0003](adr-0003-面板复用宿主会话与模型.md)（一个 AI）、[0010](adr-0010-智能体栏改为工作单元.md)（agents 栏改成工作单元）
+- **关联：** [ADR 0003](adr-0003-panel-reuses-host-session-and-model.md)（一个 AI）、[ADR 0010](adr-0010-agents-column-becomes-working-units.md)（agents 栏改成工作单元）
 
 ## 上游有什么，我们缺什么
 
@@ -65,10 +65,24 @@ id 是数据的键（发现上的 `member` 署名、面板对账、测试断言�
 
 落地细节：
 
-- 名字与职责都是清单里的 `%key%`，正文在 `locales/<lang>.json`；
-- 职责以前是清单里的英文长句，模型与界面看同一句；现在是 `%team.responsibility.*%`，
-  服务按提示词语言解一次（给模型），面板按宿主语言解一次（给人看）；
+- 名字是清单里的 `%agent.*.name%`，正文在 `locales/<lang>.json`；
 - 面板不再需要把“· English”剪掉的正则：名字单语之后那条正则就是死代码。
+
+### 修订二：职责只能是字面文本（1.0.15）
+
+第一版把 `responsibility` 也写成 `%team.responsibility.*%`，真机上就在团队设置里漏出了变量名
+（`plugin-agent-settings` 的“本团队内职责”一行）。原因是宿主只对四个字段调 `resolvePluginText`：
+
+| 字段 | 宿主处理 |
+|---|---|
+| `agent.name` / `agent.description` | `resolvePluginText` + `textKeys`（渲染层可按语言重解） |
+| `team.name` / `team.description` | 同上 |
+| `team.members[].responsibility` | **原样拷贝**（`plugin-agent-presets.ts:334`），面板也原样渲染（`TeamSettingsSheet.tsx:498/622`） |
+
+所以职责回到字面中文：它在这一层本来就是**作者内容**（用户可以在团队设置里改它、存进 `team.json`、
+随团队走），不是可本地化的标签。与名字不同，它不会因为切语言而变——这是宿主的边界，
+不是插件的选择；宿主哪天给这个字段加上 `textKeys`，这里再换回 `%key%`。
+
 
 
 ## 已知边界

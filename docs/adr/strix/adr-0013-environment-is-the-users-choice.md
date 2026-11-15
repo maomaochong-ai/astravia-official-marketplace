@@ -3,7 +3,7 @@
 - **状态：** 已接受
 - **日期：** 2026-11-14
 - **背景：** 插件 strix 0.9.1；用户反馈「扫描中的环境默认本机，但我要能选容器；没有容器时一键安装，装完能刷新」
-- **关联：** [0001](adr-0001-无-docker-时的执行环境.md)（无 docker 的降级）、[0002](adr-0002-与上游的能力对照.md)（scan mode 与 environment mode 分离）
+- **关联：** [ADR 0001](adr-0001-runtime-without-docker.md)（无 docker 的降级）、[ADR 0002](adr-0002-capability-parity-with-upstream.md)（scan mode 与 environment mode 分离）
 
 ## 问题不只是一个下拉框
 

@@ -136,8 +136,11 @@ npm run check           # typecheck + test + 服务冒烟
 	  一个是"收起一整块"，一个是"展开一段正文"。收起必须是 `display:none`，不是只藏视线。
 - **团队的称呼单一语言**（1.0.14）：团队叫「Strix 团队」，描述句说清产品定位（在会话里跑一次渗透测试，
 	  交带修复建议的报告），不写暗喻；成员名只写一种语言——中文宿主看到「罗盘」，英文宿主看到 Compass，
-	  **不要**“罗盘 · Compass”。名字与职责都是清单里的 `%key%`：面板用 `manifestLabel(t, …)` 按宿主语言解，
+	  **不要**“罗盘 · Compass”。名字是清单里的 `%key%`：面板用 `manifestLabel(t, …)` 按宿主语言解，
 	  服务用 `service/labels.ts` 读随包 `locales/` 解一次（按提示词语言），否则模型会看到 `%key%` 字面量。
+	  **职责（`team.members[].responsibility`）必须是字面文本**：宿主只对 agent/team 的 name 与 description
+	  调 `resolvePluginText`，这个字段是原样拷贝（`plugin-agent-presets.ts:334`）并直接渲染到团队设置里，
+	  写成 `%key%` 就会漏出变量名；`test/team-copy.test.ts` 守着这条。
 - **面板不得 import `src/service/**`**（1.0.14）：服务是 Node 进程，面板是 React。两边共享的东西放 `src/domain/`
 	  （形状、纯函数），HTTP 形状放 `runtime-contract.ts`。依赖方向只有一个：**UI → domain ← service**，
 	  `test/dependency-layers.test.ts` 守着。把服务搬进 `domain/service/` 或搬出 `src/` 都不是改进，理由见 ADR 0017 的修订节。

@@ -4,8 +4,8 @@
 - **日期：** 2026-11-15
 - **背景：** 上游 `llm/compaction.py`、`interface/cloud/billing + budget`、`telemetry/`、
   `interface/update_check.py` 四项能力在插件里都缺；用户要求范围内能力做到 100%
-- **关联：** [0003](adr-0003-面板复用宿主会话与模型.md)（一个 AI）、
-  [0015](adr-0015-台账按会话分.md)（台账按会话）
+- **关联：** [ADR 0003](adr-0003-panel-reuses-host-session-and-model.md)（一个 AI）、
+  [ADR 0015](adr-0015-ledgers-are-per-conversation.md)（台账按会话）
 
 ## 四条能力，四种成本模型
 
@@ -19,7 +19,7 @@
 | telemetry | 厂商怎么知道功能有没有被用？ | 同样的问题，但答案**只留在本机** | `telemetry.json` + 面板「本机统计」 |
 | update_check | 有没有新版本？ | 我们跑的组件**是不是当前的** | `strix_update_check`：服务摘要/技能来源/镜像日期 |
 
-## 术语（与术语表同步）
+## 术语
 
 - **额度（budget）**：一轮评估的三条上限——工具调用次数、墙钟分钟、发现条数。`0` = 不限。
 - **本机统计（local stats）**：只写本机数据目录的计数：工具名 → 调用次数、评估次数、发现数、

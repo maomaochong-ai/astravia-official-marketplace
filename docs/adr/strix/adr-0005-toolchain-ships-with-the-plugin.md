@@ -4,8 +4,8 @@
 - **日期：** 2026-11-13
 - **背景：** 插件 strix 0.5.8；用户反馈「装完还要自己准备环境」，宿主报
   `Stop the service before installing its runtime`
-- **关联：** [0001](adr-0001-无-docker-时的执行环境.md) — 执行环境由宿主代备、
-  Docker 降级为加速器；[0002](adr-0002-与上游的能力对照.md) — host 模式
+- **关联：** [ADR 0001](adr-0001-runtime-without-docker.md) — 执行环境由宿主代备、
+  Docker 降级为加速器；[ADR 0002](adr-0002-capability-parity-with-upstream.md) — host 模式
   的工具清单
 
 ## 现状

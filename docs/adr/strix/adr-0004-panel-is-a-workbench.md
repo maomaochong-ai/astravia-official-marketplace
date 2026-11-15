@@ -3,7 +3,7 @@
 - **状态：** 提议
 - **日期：** 2026-11-13
 - **背景：** 插件 strix 0.5.6；上游 `strix/interface`（TUI + viewer 前端）
-- **关联：** [0003](adr-0003-面板复用宿主会话与模型.md) — 面板只做展示与操作
+- **关联：** [ADR 0003](adr-0003-panel-reuses-host-session-and-model.md) — 面板只做展示与操作
 
 ## 现状
 

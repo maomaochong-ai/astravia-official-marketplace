@@ -3,7 +3,7 @@
 - **状态：** 已接受
 - **日期：** 2026-11-14
 - **背景：** 插件 strix 0.7.0，工具 33 个；上游 `D:/open-source-projects/strix`（Python + `agents` SDK）
-- **关联：** [0003](adr-0003-面板复用宿主会话与模型.md) — 一个 AI：宿主会话即循环
+- **关联：** [ADR 0003](adr-0003-panel-reuses-host-session-and-model.md) — 一个 AI：宿主会话即循环
 
 ## 现状
 

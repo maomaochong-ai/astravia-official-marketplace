@@ -94,7 +94,8 @@ export function readRoster(
 			id,
 			name: resolveLabel(profile?.name, options.t) || id,
 			...(typeof roles[0] === "string" ? { role: roles[0] } : {}),
-			// 职责也能本地化：清单里写 `%team.responsibility.*%`，没给 `t` 就原样交给调用方解。
+			// 职责是作者内容（宿主原样拷贝并允许用户改），所以只在它恰是 `%key%` 时才解；
+			// 没给则退回成员自己的描述——两句都是给人看的，不编第三句。
 			responsibility: resolveLabel(raw.responsibility, options.t) || resolveLabel(profile?.description, options.t),
 			lead: index === 0,
 		});

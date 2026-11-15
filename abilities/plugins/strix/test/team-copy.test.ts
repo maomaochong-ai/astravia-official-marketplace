@@ -68,25 +68,27 @@ describe("a member is named in one language", () => {
 	});
 });
 
-describe("responsibility is localisable", () => {
-	it("declares every member responsibility as a locale key", () => {
+describe("responsibility is authored content, not a label", () => {
+	it("writes literal text, because the host copies that field verbatim", () => {
+		// 宿主只对 agent.name/description 与 team.name/description 调 resolvePluginText；
+		// member.responsibility 原样拷贝（plugin-agent-presets.ts:334），面板也原样渲染
+		// （TeamSettingsSheet.tsx:498/622）。写成 %key% 就会在“本团队内职责”里漏出变量名。
 		for (const member of team.members) {
-			expect(member.responsibility, member.agent).toMatch(/^%team\.responsibility\.[a-z]+%$/);
+			expect(member.responsibility, member.agent).not.toContain("%");
+			expect(member.responsibility.trim().length, member.agent).toBeGreaterThan(0);
+			// 一句话，不是一段说明：面板把它放在 chip 的 title 里。
+			expect(member.responsibility.length, member.agent).toBeLessThanOrEqual(64);
 		}
 	});
 
-	it("has text for every key in both locales", () => {
-		for (const member of team.members) {
-			const key = member.responsibility.replaceAll("%", "");
-			expect(zh[key], key).toBeTruthy();
-			expect(en[key], key).toBeTruthy();
-			// 职责是一句话，不是一段说明：面板把它放在 chip 的 title 里。
-			expect((zh[key] ?? "").length).toBeLessThanOrEqual(64);
+	it("keeps no stale responsibilities in the locale tables", () => {
+		for (const table of [zh, en]) {
+			expect(Object.keys(table).filter((key) => key.startsWith("team.responsibility."))).toEqual([]);
 		}
 	});
 
-	it("resolves through the service for the model, and through the panel for the reader", () => {
-		// 服务没有 i18n 上下文，读随包的文案表；面板用自己的 t。
+	it("resolves names through the service for the model, and through the panel for the reader", () => {
+		// 名字是 %key%，两边各解一次：服务读随包 locales（给模型与名册），面板用宿主 t（给人看）。
 		const service = read("src/service/labels.ts");
 		expect(service).toContain("loadLabels");
 		expect(service).toContain("locales");
@@ -94,5 +96,7 @@ describe("responsibility is localisable", () => {
 		expect(main).toContain("t: (key) => resolveLabel(labels");
 		const panel = read("src/domain/manifest-label.ts");
 		expect(panel).toContain("%(.+)%");
+		// 字面文本会原样穿过去，不会被当成占位符二次解释。
+		expect(panel).toContain("if (!wrapped) return text");
 	});
 });

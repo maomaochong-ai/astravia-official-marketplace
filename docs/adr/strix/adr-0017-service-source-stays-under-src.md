@@ -3,7 +3,7 @@
 - **状态：** 已接受
 - **日期：** 2026-11-15
 - **背景：** 用户要求评估「`src/service/` 的归集是否合理，放 `src` 外还是内更好」
-- **关联：** 项目结构规范 `docs/plugin-project-structure.md`、[0018](adr-0018-会话与状态复用宿主.md)
+- **关联：** 项目结构规范 `docs/plugin-project-structure.md`、[ADR 0018](adr-0018-session-state-reuses-the-host.md)
 
 ## 事实
 

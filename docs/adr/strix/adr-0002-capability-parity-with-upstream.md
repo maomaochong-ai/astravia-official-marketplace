@@ -3,7 +3,7 @@
 - **状态：** 提议
 - **日期：** 2026-11-13
 - **背景：** 插件 strix 0.5.1；上游 `D:\open-source-projects\strix`（Python + Docker）
-- **关联：** [0001](adr-0001-无-docker-时的执行环境.md) — 执行环境由宿主代备
+- **关联：** [ADR 0001](adr-0001-runtime-without-docker.md) — 执行环境由宿主代备
 
 ## 现状
 

@@ -2,7 +2,7 @@
   "id": "strix",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -36,7 +36,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "3f889cd7da80e13a9ffb35da0cc8bb110e31a9bcd14d4e3e17fcdcd6eda9361a",
+                  "sha256": "cbbcd045aca01dbbcb402a86d128beeac673ed2277c20da497fb3124e20cb693",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -46,7 +46,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "3f889cd7da80e13a9ffb35da0cc8bb110e31a9bcd14d4e3e17fcdcd6eda9361a",
+                  "sha256": "cbbcd045aca01dbbcb402a86d128beeac673ed2277c20da497fb3124e20cb693",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -56,7 +56,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "3f889cd7da80e13a9ffb35da0cc8bb110e31a9bcd14d4e3e17fcdcd6eda9361a",
+                  "sha256": "cbbcd045aca01dbbcb402a86d128beeac673ed2277c20da497fb3124e20cb693",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -66,7 +66,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "3f889cd7da80e13a9ffb35da0cc8bb110e31a9bcd14d4e3e17fcdcd6eda9361a",
+                  "sha256": "cbbcd045aca01dbbcb402a86d128beeac673ed2277c20da497fb3124e20cb693",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -76,7 +76,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "3f889cd7da80e13a9ffb35da0cc8bb110e31a9bcd14d4e3e17fcdcd6eda9361a",
+                  "sha256": "cbbcd045aca01dbbcb402a86d128beeac673ed2277c20da497fb3124e20cb693",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -272,21 +272,21 @@
         "members": [
           {
             "agent": "strix-lead",
-            "responsibility": "%team.responsibility.lead%"
+            "responsibility": "定范围与额度、分派、验收，最后出报告；用户只跟这位说话"
           },
           {
             "agent": "strix-recon",
-            "responsibility": "%team.responsibility.recon%",
+            "responsibility": "先摸清暴露面：主机、端口、服务、Web 路径与认证入口，看到的一律记进覆盖台账",
             "instructionsPath": "agent/prompts/briefs/recon.md"
           },
           {
             "agent": "strix-exploit",
-            "responsibility": "%team.responsibility.exploit%",
+            "responsibility": "把线索打成可复现的证据，登记发现并署名；打不开也记下为什么",
             "instructionsPath": "agent/prompts/briefs/exploit.md"
           },
           {
             "agent": "strix-auditor",
-            "responsibility": "%team.responsibility.auditor%",
+            "responsibility": "核证据、核严重级、核覆盖有没有说谎；核不住的发现删掉",
             "instructionsPath": "agent/prompts/briefs/auditor.md"
           }
         ]
