@@ -61,7 +61,8 @@ describe("one copy of the library", () => {
 		expect(categories.length).toBe(11);
 		// 每条目录项都要有描述：只有名字的目录等于让人盲选。
 		expect(entries.every((entry) => entry.description.length > 0)).toBe(true);
-	});
+		// 76 篇真实文件 I/O：并行负载下默认 5s 会偶发超时，给足时间而不是缩小样本。
+	}, 20_000);
 });
 
 /**

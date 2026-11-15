@@ -102,7 +102,57 @@ export interface BridgeState {
 	notes?: NoteSummary[];
 	todos?: TodoItem[];
 	coverage?: CoverageOutcome[];
+	/**
+	 * 会话与状态的四个面（ADR 0018）：预算 / 本机统计 / 历史 / 团队成员。
+	 * 它们都由服务计算，面板只读——两边各算一遍就会出现两个真相。
+	 */
+	budget?: BridgeBudget;
+	telemetry?: BridgeTelemetry | null;
+	history?: BridgeHistoryEntry[];
+	team?: BridgeTeam | null;
 	logTail: BridgeEvent[];
+}
+
+export interface BridgeBudget {
+	limits: { maxToolCalls: number; maxMinutes: number; maxFindings: number };
+	used: { toolCalls: number; minutes: number; findings: number };
+	exhausted: Array<"toolCalls" | "minutes" | "findings">;
+	reason?: string;
+}
+
+export interface BridgeTelemetry {
+	serviceStarts: number;
+	assessments: number;
+	toolCalls: Record<string, number>;
+	findings: number;
+	longestAssessmentMinutes: number;
+	updatedAt: string;
+	topTools: Array<{ name: string; calls: number }>;
+}
+
+export interface BridgeHistoryEntry {
+	key: string;
+	at: string;
+	findings: number;
+	targets: string[];
+	report: boolean;
+}
+
+export interface BridgeTeamMember {
+	id: string;
+	name: string;
+	role?: string;
+	responsibility: string;
+	lead: boolean;
+}
+
+export interface BridgeTeam {
+	teamId: string;
+	teamName: string;
+	workflow?: string;
+	members: BridgeTeamMember[];
+	filed: Record<string, number>;
+	totalFiled: number;
 }
 
 export type BridgeEvent =

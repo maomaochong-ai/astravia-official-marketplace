@@ -25,6 +25,7 @@ import type {
 import type { LogLine, SessionPhase } from "../hooks/use-strix-session";
 import { ConsoleBoundary } from "./console-boundary";
 import { LaunchScreen } from "./launch-screen";
+import type { BridgeBudget, BridgeHistoryEntry, BridgeTeam, BridgeTelemetry } from "../../../runtime-contract";
 import { ScanScreen } from "./scan-screen";
 import type { McpConnection } from "../../../service/mcp-roster";
 
@@ -54,6 +55,11 @@ export interface StrixTabProps {
 	send: (text: string) => Promise<void>;
 	/** Reads a note's body for the panel's expander (`strix_note_get`). */
 	onOpenNote: (id: string) => Promise<string>;
+	/** 会话与状态四个面（ADR 0018），由 useStrixSession 从服务读回。 */
+	budget?: BridgeBudget;
+	telemetry?: BridgeTelemetry | null;
+	history?: readonly BridgeHistoryEntry[];
+	team?: BridgeTeam | null;
 	/** Counts by outcome from the service, for the coverage panel's title. */
 	coverageTally?: Record<string, number>;
 	stop: () => Promise<void>;
@@ -105,6 +111,10 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					onSend={(value) => void props.send(value)}
 					onOpenNote={props.onOpenNote}
 					{...(props.coverageTally ? { coverageTally: props.coverageTally } : {})}
+					{...(props.budget ? { budget: props.budget } : {})}
+					{...(props.telemetry ? { telemetry: props.telemetry } : {})}
+					{...(props.history ? { history: props.history } : {})}
+					{...(props.team ? { team: props.team } : {})}
 					onStop={() => void props.stop()}
 					busy={props.busy}
 					onOpenLaunch={props.onOpenLaunch}

@@ -2,7 +2,7 @@
   "id": "strix",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -36,7 +36,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "089ddb274467b91a5e2add38df1e72ba35412369da7083c61d32cd5c04032b09",
+                  "sha256": "18c55b82ac08b43c2f47e7dab41e2d077ef468fd9b1799403547c639b56d9b13",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -46,7 +46,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "089ddb274467b91a5e2add38df1e72ba35412369da7083c61d32cd5c04032b09",
+                  "sha256": "18c55b82ac08b43c2f47e7dab41e2d077ef468fd9b1799403547c639b56d9b13",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -56,7 +56,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "089ddb274467b91a5e2add38df1e72ba35412369da7083c61d32cd5c04032b09",
+                  "sha256": "18c55b82ac08b43c2f47e7dab41e2d077ef468fd9b1799403547c639b56d9b13",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -66,7 +66,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "089ddb274467b91a5e2add38df1e72ba35412369da7083c61d32cd5c04032b09",
+                  "sha256": "18c55b82ac08b43c2f47e7dab41e2d077ef468fd9b1799403547c639b56d9b13",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -76,7 +76,7 @@
               "executable": "dist/service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "089ddb274467b91a5e2add38df1e72ba35412369da7083c61d32cd5c04032b09",
+                  "sha256": "18c55b82ac08b43c2f47e7dab41e2d077ef468fd9b1799403547c639b56d9b13",
                   "archive": "file",
                   "destination": "dist/service/main.mjs"
                 }
@@ -216,7 +216,82 @@
         "displayName": "Strix security toolkit",
         "description": "Strix sandbox, its skill library, and a findings ledger, for the agent to drive."
       }
-    }
+    },
+    "agents": [
+      {
+        "id": "strix-lead",
+        "name": "%agent.lead.name%",
+        "description": "%agent.lead.description%",
+        "mentionHandle": "strix",
+        "abilities": "own",
+        "roles": [
+          "master"
+        ],
+        "systemPromptPath": "agent/agents/lead.md"
+      },
+      {
+        "id": "strix-recon",
+        "name": "%agent.recon.name%",
+        "description": "%agent.recon.description%",
+        "mentionHandle": "recon",
+        "abilities": "own",
+        "roles": [
+          "researcher"
+        ],
+        "systemPromptPath": "agent/agents/recon.md"
+      },
+      {
+        "id": "strix-exploit",
+        "name": "%agent.exploit.name%",
+        "description": "%agent.exploit.description%",
+        "mentionHandle": "exploit",
+        "abilities": "own",
+        "roles": [
+          "developer"
+        ],
+        "systemPromptPath": "agent/agents/exploit.md"
+      },
+      {
+        "id": "strix-auditor",
+        "name": "%agent.auditor.name%",
+        "description": "%agent.auditor.description%",
+        "mentionHandle": "auditor",
+        "abilities": "own",
+        "roles": [
+          "auditor"
+        ],
+        "systemPromptPath": "agent/agents/auditor.md"
+      }
+    ],
+    "teams": [
+      {
+        "id": "strix-assessment",
+        "name": "%team.assessment.name%",
+        "description": "%team.assessment.description%",
+        "workflowPath": "agent/prompts/team-workflow.md",
+        "members": [
+          {
+            "agent": "strix-lead",
+            "responsibility": "Owns scope, budget and the report; the only member who talks to the user."
+          },
+          {
+            "agent": "strix-recon",
+            "responsibility": "Maps hosts, ports, services and web surface; records coverage before anything is exploited.",
+            "instructionsPath": "agent/prompts/briefs/recon.md"
+          },
+          {
+            "agent": "strix-exploit",
+            "responsibility": "Turns leads into reproducible proof; files findings with real evidence and signs them.",
+            "instructionsPath": "agent/prompts/briefs/exploit.md"
+          },
+          {
+            "agent": "strix-auditor",
+            "responsibility": "Checks evidence, severity and coverage honesty; deletes what cannot be defended.",
+            "instructionsPath": "agent/prompts/briefs/auditor.md"
+          }
+        ]
+      }
+    ]
   },
   "description": "%plugin.description%",
   "author": "usestrix"

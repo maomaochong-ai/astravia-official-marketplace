@@ -115,6 +115,10 @@ function StrixTabRoot({
 			coverage={session.coverage}
 			sessions={session.sessions}
 			mcp={session.mcp}
+			{...(session.budget ? { budget: session.budget } : {})}
+			{...(session.telemetry ? { telemetry: session.telemetry } : {})}
+			{...(session.history ? { history: session.history } : {})}
+			{...(session.team ? { team: session.team } : {})}
 			trace={session.trace}
 			onOpenNote={session.onOpenNote}
 			environmentMode={session.environmentMode}

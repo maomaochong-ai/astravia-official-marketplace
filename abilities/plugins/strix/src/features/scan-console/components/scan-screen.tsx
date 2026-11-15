@@ -17,6 +17,10 @@ import { useStickToBottom } from "../hooks/use-stick-to-bottom";
 import { HackerRain } from "./hacker-rain";
 import type { ModelChoice } from "../../../domain/model-label";
 import type {
+	BridgeBudget,
+	BridgeHistoryEntry,
+	BridgeTeam,
+	BridgeTelemetry,
 	CoverageOutcome,
 	ShellSessionSummary,
 	EnvironmentProbe,
@@ -62,6 +66,11 @@ export interface ScanScreenProps {
 	onOpenNote?: (id: string) => Promise<string>;
 	/** Counts by outcome from the service, so the coverage title is the ledger's own numbers. */
 	coverageTally?: Record<string, number>;
+	/** 会话与状态四个面（ADR 0018），全部由服务计算。 */
+	budget?: BridgeBudget;
+	telemetry?: BridgeTelemetry | null;
+	history?: readonly BridgeHistoryEntry[];
+	team?: BridgeTeam | null;
 }
 
 /** One label/value pair in the status band; omitted entirely when there is no value. */
@@ -96,6 +105,10 @@ export function ScanScreen({
 	onOpenLaunch,
 	onNewSession,
 	coverageTally,
+	budget,
+	telemetry,
+	history = [],
+	team,
 	onOpenNote,
 	onStop,
 }: ScanScreenProps): React.ReactElement {
@@ -392,7 +405,74 @@ export function ScanScreen({
 									<dd title={model.name}>{model.name}</dd>
 								</div>
 							) : null}
+							{/* 额度（ADR 0018）：读服务算出来的用量，面板不自己数。 */}
+							{budget ? (
+								<div data-exhausted={budget.exhausted.length ? "yes" : "no"}>
+									<dt>{t("panel.budget")}</dt>
+									<dd>
+										{budget.limits.maxToolCalls > 0
+											? t("budget.toolCalls", { used: budget.used.toolCalls, limit: budget.limits.maxToolCalls })
+											: t("budget.toolCalls", { used: budget.used.toolCalls, limit: t("budget.unlimited") })}
+									</dd>
+								</div>
+							) : null}
+							{telemetry ? (
+								<div>
+									<dt>{t("panel.telemetry")}</dt>
+									<dd title={t("telemetry.local")}>{telemetry.assessments}</dd>
+								</div>
+							) : null}
 						</dl>
+						{/* 额度用满时说一句，不靠“工具为什么被拒”去猜。 */}
+						{budget?.reason ? <p className="astra-strix-section-empty astra-strix-amber">{t("budget.exhausted", { reason: budget.reason })}</p> : null}
+					</section>
+
+					{/* 团队成员（ADR 0016）：名单来自 plugin.json，署名数来自发现台账。 */}
+					{team && team.members.length ? (
+						<section className="astra-strix-section" data-tone="team">
+							<h3 className="astra-strix-section-title">
+								{t("panel.team")}
+								<span className="astra-strix-count" data-empty={team.totalFiled ? "no" : "yes"}>{team.members.length}</span>
+							</h3>
+							<ul className="astra-strix-team">
+								{team.members.map((member) => (
+									<li key={member.id} data-lead={member.lead ? "yes" : "no"}>
+										<span className="astra-strix-team-name" title={member.responsibility}>{member.name}</span>
+										{member.lead ? <span className="astra-strix-chip-live">{t("team.lead")}</span> : null}
+										<span className="astra-strix-dim astra-strix-team-filed">
+											{team.filed[member.id]
+												? t("team.filed", { count: team.filed[member.id] })
+												: t("team.filedNone")}
+										</span>
+									</li>
+								))}
+							</ul>
+						</section>
+					) : null}
+
+					{/* 历史评估（上游 viewer 的等价物）：只读清单，点不进旧会话——那是宿主的事。 */}
+					<section className="astra-strix-section" data-tone="history">
+						<h3 className="astra-strix-section-title">
+							{t("panel.history")}
+							<span className="astra-strix-count" data-empty={history.length ? "no" : "yes"}>{history.length}</span>
+						</h3>
+						{history.length ? (
+							<ul className="astra-strix-history">
+								{history.map((entry) => (
+									<li key={entry.key} data-report={entry.report ? "yes" : "no"}>
+										<span className="astra-strix-dim">{entry.at.slice(0, 10)}</span>
+										<span className="astra-strix-history-targets" title={entry.targets.join(", ")}>
+											{entry.targets.length ? entry.targets.join(", ") : entry.key}
+										</span>
+										<span className="astra-strix-dim">
+											{t("history.entry", { findings: entry.findings })} · {entry.report ? t("history.report") : t("history.noReport")}
+										</span>
+									</li>
+								))}
+							</ul>
+						) : (
+							<p className="astra-strix-section-empty">{t("history.empty")}</p>
+						)}
 					</section>
 
 					<section className="astra-strix-section" data-tone="findings">

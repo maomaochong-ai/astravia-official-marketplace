@@ -24,6 +24,11 @@ export interface Preferences {
 	environmentMode: EnvironmentMode;
 	/** 最近一次由面板发起的安装尝试，用于「装完刷新」这一句有据可依。 */
 	lastInstall?: { command: string; at: string; ok: boolean; detail?: string };
+	/**
+	 * 一轮评估的额度（ADR 0018）。存服务端而不是面板：agent 花额度，服务拒绝，
+	 * 重启服务后仍该是同一份额度。
+	 */
+	budget?: { maxToolCalls: number; maxMinutes: number; maxFindings: number };
 }
 
 const DEFAULT: Preferences = { environmentMode: "host" };
@@ -52,6 +57,7 @@ export async function writePreferences(dataDir: string, patch: Partial<Preferenc
 		...current,
 		...(patch.environmentMode === undefined ? {} : { environmentMode: normalizeMode(patch.environmentMode) }),
 		...(patch.lastInstall === undefined ? {} : { lastInstall: patch.lastInstall }),
+		...(patch.budget === undefined ? {} : { budget: patch.budget }),
 	};
 	await mkdir(dataDir, { recursive: true });
 	await writeFile(file(dataDir), `${JSON.stringify(next, null, 2)}\n`, "utf8");

@@ -35,6 +35,10 @@ import type { ModelChoice } from "../../../domain/model-label";
 import type {
 	BridgeEvent,
 	BridgeState,
+	BridgeBudget,
+	BridgeTelemetry,
+	BridgeHistoryEntry,
+	BridgeTeam,
 	CoverageOutcome,
 	ShellSessionSummary,
 	EnvironmentProbe,
@@ -118,6 +122,11 @@ export interface StrixSessionModel {
 	onOpenNote: (id: string) => Promise<string>;
 	/** 服务给的分结果计数，不要用面板前 8 行自己算。 */
 	coverageTally?: Record<string, number>;
+	/** 会话与状态四个面（ADR 0018）：预算 / 本机统计 / 历史 / 团队成员。 */
+	budget?: BridgeBudget;
+	telemetry?: BridgeTelemetry | null;
+	history?: readonly BridgeHistoryEntry[];
+	team?: BridgeTeam | null;
 }
 
 export interface StrixSessionOptions {
@@ -184,6 +193,11 @@ export function useStrixSession({
 	const [mcp, setMcp] = useState<McpConnection[]>(initial?.mcp ?? []);
 	/** 覆盖台账的分结果计数，来自服务（`/api/state` 的 coverageTally）。 */
 	const [tally, setTally] = useState<Record<string, number> | undefined>(undefined);
+	/** 会话与状态四个面（ADR 0018）：服务算，面板读。 */
+	const [budget, setBudget] = useState<BridgeBudget | undefined>(undefined);
+	const [telemetry, setTelemetry] = useState<BridgeTelemetry | null>(null);
+	const [history, setHistory] = useState<BridgeHistoryEntry[]>([]);
+	const [team, setTeam] = useState<BridgeTeam | null>(null);
 	const [hostStreaming, setHostStreaming] = useState<boolean>(Boolean(conversation?.isStreaming));
 	const [submitting, setSubmitting] = useState(false);
 	const [environmentMode, setEnvironmentModeState] = useState<"auto" | "host" | "docker">("host");
@@ -313,6 +327,10 @@ export function useStrixSession({
 			setNotes(normalizeNotes(state?.notes));
 			setCoverage(normalizeCoverage(state?.coverage));
 			setLiveSessions(normalizeSessions((state as { sessions?: unknown } | undefined)?.sessions));
+			setBudget((state as { budget?: BridgeBudget } | undefined)?.budget);
+			setTelemetry(((state as { telemetry?: BridgeTelemetry | null } | undefined)?.telemetry) ?? null);
+			setHistory(((state as { history?: BridgeHistoryEntry[] } | undefined)?.history) ?? []);
+			setTeam(((state as { team?: BridgeTeam | null } | undefined)?.team) ?? null);
 			if (probe) {
 				setEnvironment(probe);
 				// A missing daemon is the working state in `host` mode (ADR strix-0001), not an
@@ -500,6 +518,11 @@ export function useStrixSession({
 
 			// 文字属于对话，不属于面板。显式忽略而不是默默不处理：读到这里的人要知道
 			// 不渲染是决定，不是遗漏。
+			if (event.type === "message-added" && event.message.role === "compaction") {
+				// 压缩是状态，不是对话正文：不记它，用户会以为“说过的证据突然没了”（ADR 0018）。
+				pushTrace({ kind: "note", label: t("scan.compacted") });
+				return;
+			}
 			if (event.type === "message-added" || event.type === "message-updated") return;
 
 			if (event.type === "tool-call-start") {
@@ -672,7 +695,7 @@ export function useStrixSession({
 			coverage,
 			mcp,
 		});
-	}, [conversation?.id, phase, trace, sandbox, findings, todos, notes, coverage, mcp]);
+	}, [conversation?.id, phase, trace, sandbox, findings, todos, notes, coverage, mcp, budget, telemetry, history, team]);
 
 
 	return useMemo(
@@ -689,6 +712,11 @@ export function useStrixSession({
 			coverage,
 			sessions: liveSessions,
 			mcp,
+			// 会话与状态四个面（ADR 0018）：服务的计算结果，面板只读。
+			budget,
+			telemetry,
+			history,
+			team,
 			model: resolved.choice,
 			modelFromConversation: resolved.fromConversation,
 			workspace: workspaceLabel(conversation?.cwd),

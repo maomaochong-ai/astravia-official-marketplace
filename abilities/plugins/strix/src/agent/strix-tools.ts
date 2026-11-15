@@ -212,6 +212,11 @@ export const STRIX_TOOL_SPECS: readonly StrixToolSpec[] = [
 				technicalAnalysis: { type: "string" },
 				poc: { type: "string" },
 				evidence: { type: "string" },
+				member: {
+					type: "string",
+					description:
+						"Which team member filed this: one of the manifest's agent ids (strix-lead / strix-recon / strix-exploit / strix-auditor). Sign your own findings — the panel counts what each member filed, and an unsigned finding cannot be attributed.",
+				},
 				remediation: { type: "string" },
 				cvss: { type: "number" },
 				cwe: { type: "string" },
@@ -491,6 +496,48 @@ export const STRIX_TOOL_SPECS: readonly StrixToolSpec[] = [
 			},
 			additionalProperties: false,
 		},
+	},
+
+	// ---- 会话与状态（上游：budget / viewer / update_check / agents_graph）----
+	{
+		handler: "service",
+		name: "strix_budget",
+		description:
+			"Read or set how much this assessment may spend: maxToolCalls, maxMinutes, maxFindings (0 = unlimited). Once a limit is reached the metered tools refuse with the reason, so read this before starting another long sweep. Read-only when called with no arguments.",
+		parameters: {
+			type: "object",
+			properties: {
+				maxToolCalls: { type: "number", description: "Tool calls allowed this assessment; 0 = unlimited." },
+				maxMinutes: { type: "number", description: "Wall-clock minutes allowed; 0 = unlimited." },
+				maxFindings: { type: "number", description: "Findings allowed to be recorded; 0 = unlimited." },
+			},
+			additionalProperties: false,
+		},
+	},
+	{
+		handler: "service",
+		name: "strix_history",
+		description:
+			"List past assessments found on this machine: key, when it last changed, how many findings, which targets, whether a report exists. Read it before starting a fresh scan of the same targets so you are not redoing work without knowing it.",
+		parameters: {
+			type: "object",
+			properties: { limit: { type: "number", description: "How many entries to return (default 20, max 100)." } },
+			additionalProperties: false,
+		},
+	},
+	{
+		handler: "service",
+		name: "strix_update_check",
+		description:
+			"Check whether the things this plugin runs are current: does the built service match its stamped digest, which upstream snapshot the bundled skill library came from, and how old the local sandbox image is. Read-only and offline — it never asks a server for a newer version.",
+		parameters: { type: "object", properties: {}, additionalProperties: false },
+	},
+	{
+		handler: "service",
+		name: "strix_team_roster",
+		description:
+			"Who is on this team and what have they filed. The roster is declared in the plugin manifest (agent.teams) and the host turns those members into selectable team members; this tool reads that roster back plus the findings each member signed with strix_file_finding's `member`. Use it to route work instead of duplicating another member's job.",
+		parameters: { type: "object", properties: {}, additionalProperties: false },
 	},
 
 	// ---- kept shell sessions (upstream: exec_command background/tty + write_stdin) ----

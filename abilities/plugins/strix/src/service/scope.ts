@@ -60,6 +60,9 @@ export function normalizeScopeValue(raw: string): string {
 			/* keep the literal text: a malformed URL is still a declaration */
 		}
 	}
+	// CIDR 的 `/` 是语法而不是路径：先认出来，别把它剥成裸 IP（审查指出 10.0.0.0/24 会变成 10.0.0.0）。
+	// 端口不参与判定，所以这里仍然剥掉 `:port`；掩码则要留。
+	if (/^\d{1,3}(?:\.\d{1,3}){3}\/\d{1,2}$/.test(value)) return value;
 	value = value.replace(/\/.*$/, "").replace(/:\d+$/, "").replace(/\.$/, "");
 	return value;
 }

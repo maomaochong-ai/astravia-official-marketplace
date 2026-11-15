@@ -130,6 +130,10 @@ npm run check           # typecheck + test + 服务冒烟
 - **投递顺序：先发、后建、最后交给宿主**（1.0.4）。`sendPrompt` 在宿主的新会话页也能发（宿主自己按当前目录建会话），
   所以不要先 `createSession`——那会把"拿不到 cwd"变成一次假的"你没打开目录"。只有发送真的失败才建会话；
   连 cwd 都拿不到时用 `ctx.conversation.insertText` 把话交回宿主输入框。
+- **工具面是 40 个**（1.0.10）：36 个执行/台账工具 + 4 个会话与状态工具（`strix_budget` /
+  `strix_history` / `strix_update_check` / `strix_team_roster`）。新增工具要同时改：
+  `src/agent/strix-tools.ts`（规格）、`src/service/main.ts`（handler）、`tool-presentation.ts`（呈现）、
+  locales 两段提示词里的工具数，以及 `docs/adr/strix/strix-0006` 的对照表。
 - **台账按会话分，不按沙箱分**（ADR 0015，1.0.7）：服务只有一个沙箱，所以"这是谁的事实"必须由
   `SandboxStatus.conversation`（开沙箱那一刻写入）加面板注册的会话共同决定；`/api/state` 里顶层那个
   `conversationKey` 就是面板刚注册的 id，**不能**拿它判归属。面板对不上就不采纳（环境探测例外，

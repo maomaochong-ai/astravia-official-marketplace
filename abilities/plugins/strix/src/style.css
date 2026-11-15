@@ -1384,6 +1384,53 @@
 	font-variant-numeric: tabular-nums;
 }
 
+/* 团队花名册（1.0.10）：与 MCP 列表同构——名字占满、计数贴右。项目长在名字上。 */
+.astra-strix-team,
+.astra-strix-history {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+
+.astra-strix-team li,
+.astra-strix-history li {
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+	font-size: 11.5px;
+}
+
+.astra-strix-team li[data-lead="yes"] .astra-strix-team-name {
+	color: var(--sx-white);
+	font-weight: 600;
+}
+
+.astra-strix-team-name,
+.astra-strix-history-targets {
+	flex: 1 1 auto;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.astra-strix-team-filed {
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+/* 历史条目的第三条信息（发现数 / 有没有报告）也贴右，方便竖直扫一眼。 */
+.astra-strix-history li > .astra-strix-dim:last-child {
+	white-space: nowrap;
+}
+
+/* 额度用满时这一行是琥珀色：它不是错误，是“该改额度或收尾了”。 */
+.astra-strix-kv > div[data-exhausted="yes"] dd {
+	color: var(--sx-amber);
+}
+
 /* ---- 窄与矮：两种真实的屏幕，不是同一种“小尺寸” ---------------------- */
 
 /* 窄面板（宿主侧栏里的标签页、平板竖屏）：字不是问题，**间距**是。

@@ -21,10 +21,9 @@ describe("tool families", () => {
 
 	it("maps every tool this plugin serves (except deliberate generics)", () => {
 		const generic = SERVICE_TOOL_NAMES.filter((name) => presentTool(name).family === "generic");
-		// 只允许“沙箱元信息”这类天生没有专属形状的工具落到 generic。
-		expect(new Set(generic)).toEqual(
-			new Set(["strix_sandbox_start", "strix_sandbox_status", "strix_sandbox_stop", "strix_environment", "strix_mcp"]),
-		);
+		// 1.0.10：沙箱与环境各自独立成家族；只剩 MCP 连接列表还是通用形状——
+		// 它本来就是一串名字，给不了第二种画法。
+		expect(new Set(generic)).toEqual(new Set(["strix_mcp"]));
 	});
 
 	it("uses the glyph vocabulary upstream uses for the same families", () => {
@@ -45,7 +44,8 @@ describe("tool families", () => {
 
 	it("only expands families whose output is evidence, not JSON", () => {
 		for (const family of EXPANDABLE_FAMILIES) {
-			expect(["exec", "patch", "browser", "proxy", "report"]).toContain(family);
+			// 预算 / 历史 / 新鲜度 / 花名册的内容本身就是"给读者看的账"，值得展开。
+			expect(["exec", "patch", "browser", "proxy", "report", "budget", "history", "freshness", "team"]).toContain(family);
 		}
 		// 计划/覆盖/笔记的结果是台账状态，已经在侧栏里；展开它只会重复。
 		expect(presentTool("strix_todo_create").expandable).toBe(false);
@@ -58,8 +58,10 @@ describe("tool families", () => {
 			.map((match) => match[1])
 			.filter((key) => !["completed", "failed", "error", "running"].includes(key));
 		expect(keys.length).toBeGreaterThanOrEqual(20);
-		// 我们不是复制 24 个，而是 14 个家族 + generic；这条防止有人把家族悄悄扩成一对一复制。
+		// 我们不是复制 24 个渲染器，而是 20 个家族 + generic（1.0.10：沙箱/环境从 generic 里分出来，
+		// 新增预算/历史/新鲜度/花名册）。家族数必须**少于**工具数：一对一复制就失去了家族化的意义。
 		const families = new Set(SERVICE_TOOL_NAMES.map((name) => presentTool(name).family));
-		expect(families.size).toBe(15);
+		expect(families.size).toBe(21);
+		expect(families.size).toBeLessThan(SERVICE_TOOL_NAMES.length);
 	});
 });

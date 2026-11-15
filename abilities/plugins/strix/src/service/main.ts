@@ -35,6 +35,12 @@ import { locateSkills, loadBodies, loadIndex } from "./skills";
 import { installHint, missingTools, probeToolchain } from "./toolchain";
 import { describeRoster, mergeRoster, normalizeRoster } from "./mcp-roster";
 import { TodoStore } from "./todo";
+import { Budget, normalizeLimits } from "./budget";
+import { Telemetry } from "./telemetry";
+import { listHistory } from "./history";
+import { checkFreshness, serviceBuiltAt } from "./freshness";
+import { readRoster } from "./team";
+import { packagedPluginRoot } from "./plugin-root";
 
 const PORT = Number(process.env.ASTRAVIA_SERVICE_PORT || 0);
 const HOST = process.env.STRIX_BRIDGE_HOST || "127.0.0.1";
@@ -56,6 +62,19 @@ const coverage = new CoverageStore(DATA_DIR);
 const scope = new ScopeStore(DATA_DIR);
 /** Long-running shells the agent chose not to wait for (service/shell-sessions.ts). */
 const sessions = new ShellSessions(record);
+/** 这一轮的预算（ADR 0018）：agent 才是花额度的人，所以拒绝发生在服务侧。 */
+/** 偏好里的额度：启动时读一次，新沙箱时再读（用户可能刚改过）。 */
+let pendingLimits = normalizeLimits({});
+const budget = new Budget();
+void readPreferences(DATA_DIR)
+	.then((preference) => {
+		pendingLimits = normalizeLimits(preference.budget ?? {});
+		budget.reset(pendingLimits);
+	})
+	.catch(() => undefined);
+/** 本机统计：只写本地文件，从不外发。 */
+const telemetry = new Telemetry(DATA_DIR);
+void telemetry.serviceStarted();
 
 /**
  * `exec`, plus the two shapes a long command needs.
@@ -92,9 +111,21 @@ async function execWithSessions(args: Record<string, unknown>): Promise<Record<s
 }
 
 /** Hosts mentioned by a command that the declared scope does not cover. */
-async function scopeAdvisory(command: string): Promise<{ outOfScope?: string[] }> {
+/**
+ * 越界提示：把命令/参数里出现的主机与已声明范围比一遍。
+ *
+ * 两条修正（审查 1.0.10）：
+ *  - **没声明范围也要说**：之前 `entries.length === 0` 直接返回空——恰恰是"根本没声明"这种
+ *    最该提醒的情形最安静；
+ *  - 返回值区分「没声明」与「有越界」，面板/agent 能分别处理。
+ */
+async function scopeAdvisory(command: string): Promise<{ outOfScope?: string[]; scopeUndeclared?: boolean }> {
 	const snapshot = await scope.snapshot().catch(() => undefined);
-	if (!snapshot || snapshot.entries.length === 0) return {};
+	if (!snapshot) return {};
+	if (snapshot.entries.length === 0) {
+		// 没声明范围：这是最该提醒的一种情形，而不是最安静的一种。
+		return { scopeUndeclared: true };
+	}
 	const outside = outOfScopeHosts(command, snapshot.entries);
 	if (outside.length === 0) return {};
 	record({ event: "scope_advisory", hosts: outside, command });
@@ -239,7 +270,10 @@ const HANDLERS: Record<string, Handler> = {
 	strix_kill_session: async (args) => sessions.kill(String(args.sessionId ?? "")),
 
 	// 文件：上游用 SDK 的 patch / view_image，这里用同一份协议对同一个沙箱动手。
-	strix_patch: async (args) => applyPatchInSandbox(String(args.patch ?? "")),
+	strix_patch: async (args) => {
+		const advisory = await scopeAdvisory(String(args.patch ?? ""));
+		return { ...(await applyPatchInSandbox(String(args.patch ?? ""))), ...advisory };
+	},
 	strix_view_image: async (args) => {
 		const path = String(args.path ?? "").trim();
 		if (!path) throw new Error("path is required");
@@ -265,8 +299,15 @@ const HANDLERS: Record<string, Handler> = {
 	},
 	strix_sandbox_status: async () => sandbox.status(),
 	strix_sandbox_stop: () => sandbox.stop(),
-	strix_browser: (args) => sandbox.browser(args),
-	strix_proxy: (args) => sandbox.proxy(args),
+	// 浏览器与代理同样会碰到目标：范围提示不能只挂在 exec 上（审查指出这两条全裸）。
+	strix_browser: async (args) => {
+		const advisory = await scopeAdvisory(JSON.stringify(args));
+		return { ...(await sandbox.browser(args)), ...advisory };
+	},
+	strix_proxy: async (args) => {
+		const advisory = await scopeAdvisory(JSON.stringify(args));
+		return { ...(await sandbox.proxy(args)), ...advisory };
+	},
 
 	strix_list_skills: async () => {
 		// 库已经随包（ADR 0012），不再有"上游没装"这种失败——只有包坏了才会空。
@@ -317,7 +358,114 @@ const HANDLERS: Record<string, Handler> = {
 	strix_coverage_list: (args) => coverage.list(sessionId(), args),
 	strix_coverage_update: (args) => coverage.update(sessionId(), args),
 	strix_threat_model: (args) => coverage.threatModel(sessionId(), args),
+
+	// ---- 会话与状态（ADR 0018）：预算 / 历史 / 新鲜度 / 花名册 ----------------
+
+	/** 预算：读快照，或改限额（`maxToolCalls` / `maxMinutes` / `maxFindings`， 0 = 不限）。 */
+	strix_budget: async (args) => {
+		// 传了任一限额就是“改”，因此写入偏好：下一轮与新会话也看得见同一份额度。
+		const hasLimit = ["maxToolCalls", "maxMinutes", "maxFindings"].some((key) => args[key] !== undefined);
+		if (hasLimit) {
+			const limits = normalizeLimits({ ...budget.snapshot().limits, ...args });
+			pendingLimits = limits;
+			budget.setLimits(limits);
+			await writePreferences(DATA_DIR, { budget: limits });
+			return { ...budget.snapshot(), preference: await readPreferences(DATA_DIR) };
+		}
+		return budget.snapshot();
+	},
+
+	/** 历史评估：盘上磁盘上留下的评估账（只读、从文件名与内容推导）。 */
+	strix_history: async (args) => {
+		const limit = Number(args.limit);
+		const entries = listHistory(DATA_DIR, Number.isFinite(limit) && limit > 0 ? Math.min(limit, 100) : 20);
+		return { entries, count: entries.length };
+	},
+
+	/** 更新检查：服务产物、技能库、镜像 —— 三件不联网就能判断的新鲜度。 */
+	strix_update_check: async () => {
+		const root = packagedPluginRoot();
+		const report = await checkFreshness({
+			pluginRoot: root,
+			pluginVersion: version,
+			...(sandboxImage() ? { image: sandboxImage() } : {}),
+			inspectImage: async (image) => {
+				const docker = process.platform === "win32" ? "docker.exe" : "docker";
+				const result = await runHost(docker, ["image", "inspect", image, "--format", "{{.Created}}"]);
+				return { created: result.code === 0 ? result.stdout.trim() || null : null };
+			},
+		});
+		return { ...report, serviceBuiltAt: serviceBuiltAt(root) };
+	},
+
+	/** 团队成员：插件声明的花名册，加上它们署名的发现数（对不上就如实说 0）。 */
+	strix_team_roster: async () => {
+		const roster = readRoster(packagedPluginRoot(), { findings: await findings.read(sessionId()) });
+		return roster ?? { teamId: "", teamName: "", members: [], filed: {}, totalFiled: 0 };
+	},
 };
+
+/**
+ * 一次工具调用的唯一入口：计价、拦截、统计都在这里。
+ *
+ * 为什么必须合流：宿主 agent 走的是 MCP 的 `tools/call`，面板走的是 `/api/tool`。
+ * 预算只挂在后者上时，真正花额度的那条路完全不计——面板上额度恒为 0，
+ * 拒绝永远不会触发（ADR 0018 的决定在真机拿不到证据）。
+ */
+const METERED = new Set([
+	"strix_exec",
+	"strix_browser",
+	"strix_proxy",
+	"strix_patch",
+	"strix_file_finding",
+]);
+
+/** 查询类不计量：否则"查一下还剩多少额度"本身就会耗尽额度。 */
+const FREE = new Set([
+	"strix_budget",
+	"strix_history",
+	"strix_team_roster",
+	"strix_update_check",
+	"strix_environment",
+	"strix_mcp",
+	"strix_list_skills",
+	"strix_load_skills",
+	"strix_sandbox_status",
+	"strix_shell_sessions",
+	"strix_note_get",
+]);
+
+type GateResult = { ok: true; result: unknown } | { ok: false; error: string; budget?: unknown };
+
+async function gateTool(name: string, args: Record<string, unknown>, handler: (a: Record<string, unknown>) => Promise<unknown>): Promise<GateResult> {
+	const metered = METERED.has(name) && !FREE.has(name);
+	if (metered) {
+		const state = budget.snapshot();
+		if (state.exhausted.length > 0) {
+			return { ok: false, error: `budget exhausted: ${state.reason ?? state.exhausted.join(", ")}`, budget: state };
+		}
+	}
+	try {
+		const result = await handler(args);
+		// 失败也计数：它同样消耗了这一轮的额度（审查指出异常路径曾全程免费）。
+		if (metered) budget.spendToolCall();
+		void telemetry.toolCalled(name);
+		if (name === "strix_file_finding") {
+			budget.spendFinding();
+			void telemetry.findingRecorded();
+		}
+		if (name === "strix_sandbox_start") {
+			// 新沙箱 = 新一轮评估：计数归零，额度随偏好重新读一次（ADR 0018 第 3 条）。
+			budget.reset(pendingLimits);
+			void telemetry.assessmentStarted();
+		}
+		return { ok: true, result };
+	} catch (error) {
+		if (metered) budget.spendToolCall();
+		void telemetry.toolCalled(name);
+		throw error;
+	}
+}
 
 /** The catalogue, narrowed to the tools this process answers - specs and handlers agree. */
 const TOOLS = STRIX_TOOL_SPECS.filter((spec) => spec.handler === "service").map((spec) => {
@@ -407,7 +555,11 @@ async function handleMcp(req: IncomingMessage, res: ServerResponse): Promise<voi
 			const tool = TOOLS.find((item) => item.name === params.name);
 			if (!tool) return fail(-32601, `unknown tool: ${params.name}`);
 			try {
-				const result = await tool.handler(params.arguments ?? {});
+				const gated = await gateTool(tool.name, params.arguments ?? {}, tool.handler);
+				if (!gated.ok) {
+					return reply({ isError: true, content: [{ type: "text", text: gated.error }] });
+				}
+				const result = gated.result;
 				// `strix_view_image` 的载荷带着 dataUri：把它换成真正的 image content block，
 				// 否则宿主模型只拿到一串 base64 文本，等于白调。其余工具仍是文本。
 				const image = asImageContent(result);
@@ -451,7 +603,9 @@ const server = createServer(async (req, res) => {
 					? (body.arguments as Record<string, unknown>)
 					: {};
 			try {
-				return json(res, 200, { ok: true, result: await tool.handler(args) });
+				const gated = await gateTool(tool.name, args, tool.handler);
+				if (!gated.ok) return json(res, 200, { ok: false, error: gated.error, ...(gated.budget ? { budget: gated.budget } : {}) });
+				return json(res, 200, { ok: true, result: gated.result });
 			} catch (error) {
 				// A failed tool is still an answer the loop must see, not a transport error.
 				return json(res, 200, { ok: false, error: error instanceof Error ? error.message : String(error) });
@@ -518,6 +672,16 @@ const server = createServer(async (req, res) => {
 				coverage.list(sessionId()).catch(() => ({ count: 0, byOutcome: {}, entries: [] })),
 				coverage.threatModel(sessionId()).catch(() => ({ content: "", targets: [], updated_at: null })),
 			]);
+			// 会话与状态（ADR 0018）：预算 / 本机统计 / 历史 / 团队成员四块由同一处给出，
+			// 面板不必为它们各发一个请求。
+			const [budgetState, telemetryState] = await Promise.all([
+				Promise.resolve(budget.snapshot()),
+				telemetry.snapshot().catch(() => null),
+			]);
+			const teamState = readRoster(packagedPluginRoot(), {
+				findings: (list as { findings?: Array<{ member?: string }> }).findings ?? [],
+			});
+			const historyEntries = listHistory(DATA_DIR, 8);
 			return json(res, 200, {
 				environment: env,
 				sandbox: sandbox.status(),
@@ -533,11 +697,18 @@ const server = createServer(async (req, res) => {
 				preferences: await readPreferences(DATA_DIR),
 				// 工作单元：保留的 shell 会话（上游 agents 面板在本插件的诚实等价物，ADR 0010）。
 				sessions: sessions.list().map(({ id, command, running, uptimeSec, tty }) => ({ id, command, running, uptimeSec, tty })),
+				// 范围是「这次允许触碰什么」的唯一权威；面板要能显示，报告要能带上（审查指出两处都漏了）。
+				scope: describeScope(await scope.snapshot()),
+				budget: budgetState,
+				telemetry: telemetryState,
+				team: teamState,
+				history: historyEntries,
 				logTail: log.slice(-40),
 			});
 		}
 		if (url.pathname === "/api/report") {
-			return json(res, 200, await findings.report(sessionId(), {}, { version }));
+			// 之前传 {}：导出的报告没有范围段，等于把“测了什么”丢了一半。
+			return json(res, 200, await findings.report(sessionId(), { scope: describeScope(await scope.snapshot()) }, { version }));
 		}
 		if (url.pathname === "/api/sandbox/stop" && req.method === "POST") {
 			return json(res, 200, await sandbox.stop());

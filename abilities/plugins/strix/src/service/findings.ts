@@ -34,6 +34,14 @@ export interface Finding {
 	cve: string;
 	confidence: string;
 	code_locations?: { file: string; start_line?: number; end_line?: number }[];
+	/**
+	 * 记录这条发现的团队成员（`agent.teams[].members[].agent`），可选（1.0.10）。
+	 *
+	 * 为什么由 agent 自己填：服务看不到“谁在调这个工具”（MCP 调用不带调用方身份），
+	 * 而成员人格知道它是谁。填了就进花名册的计数；不填也不阻止记录——
+	 * 一条没署名的发现仍然比一条被拒绝记录的发现有用。
+	 */
+	member?: string;
 	created_at: string;
 }
 
@@ -131,6 +139,7 @@ export async function add(sessionId: string, params: Record<string, unknown>): P
 		poc_description: String(params.poc ?? ""),
 		remediation_steps: String(params.remediation ?? ""),
 		evidence: String(params.evidence ?? ""),
+		...(typeof params.member === "string" && params.member.trim() ? { member: params.member.trim() } : {}),
 		...(typeof params.cvss === "number" ? { cvss: params.cvss } : {}),
 		cwe: String(params.cwe ?? ""),
 		cve: String(params.cve ?? ""),

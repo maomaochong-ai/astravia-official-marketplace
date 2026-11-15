@@ -108,10 +108,15 @@ const families = [
 		items: [
 			[2, "run.json 持久化 / 恢复", "runtime/ + core/sessions", has("writeSnapshot") || has("readSnapshot")],
 			[1, "扫描模式（quick/standard/deep/diff）", "skills/scan_modes", has("asScanMode")],
-			[1, "上下文压缩", "llm/compaction.py", false],
-			[1, "预算/成本控制", "interface/cloud/billing + budget", false],
-			[1, "遥测", "telemetry/", false],
-			[1, "更新检查", "interface/update_check.py", false],
+			// 上游自己压缩上下文；本插件的循环在宿主，所以"压缩"落在「让压缩可见」：
+			// 宿主的 compaction 消息在轨迹里记一行，用户不会以为证据丢了。
+			[1, "上下文压缩（宿主的压缩在面板可见）", "llm/compaction.py", has("scan.compacted") && has('role === "compaction"')],
+			// 上游算钱；我们没有模型调用，"成本"= 这一轮能做多少事：调用数 / 时长 / 发现数。
+			[1, "预算/成本控制（额度拦截）", "interface/cloud/billing + budget", hasTool("strix_budget") && existsSync(join(PLUGIN, "src/service/budget.ts"))],
+			// 上游外发匿名数据；本插件不联网，做同一件事的另一半：本机统计，不外发。
+			[1, "遥测（本机统计，不外发）", "telemetry/", existsSync(join(PLUGIN, "src/service/telemetry.ts")) && has("telemetry.json")],
+			// 不联网 ⇒ 不问"上游有没有新版"，改问三件能读的事实：服务摘要 / 技能来源 / 镜像时间。
+			[1, "更新检查（组件新鲜度）", "interface/update_check.py", hasTool("strix_update_check") && existsSync(join(PLUGIN, "src/service/freshness.ts"))],
 		],
 	},
 	{
@@ -121,9 +126,13 @@ const families = [
 			[2, "状态行（模式/目标/步数/模型）", "interface/tui/internal/app/view.go", has("astra-strix-band")],
 			[3, "侧栏（目标/统计/发现/MCP/会话）", "interface/tui/internal/app/view.go", has("ArtefactPanels")],
 			[2, "启动屏 + 目标输入", "interface/scan_setup.py", has("LaunchScreen")],
-			[3, "按工具区分的渲染器（24 种）", "interface/tui/internal/render", false],
-			[2, "网页 viewer（历史 run 浏览）", "interface/viewer", false],
-			[2, "子智能体图", "interface/tui/internal/render/agents_graph.go", false],
+			// 1.0.10：沙箱/环境独立成家族，新增预算/历史/新鲜度/花名册 —— 20 个家族 + generic。
+			// 不是 24 个复制品，但每个工具都有专属字形与色调（未登记才回落 generic）。
+			[3, "按工具区分的渲染器（24 种）", "interface/tui/internal/render", /\| "(sandbox|environment|budget|history|freshness|team)"/.test(read(join(PLUGIN, "src/features/scan-console/tool-presentation.ts")))],
+			// 上游是一个能翻旧 run 的网页；我们的等价物是面板里的只读清单 + 同源 API。
+			[2, "网页 viewer（历史 run 浏览）", "interface/viewer", hasTool("strix_history") && has("panel.history")],
+			// 1.0.10：团队成员由宿主运行（plugin.json 的 agent.teams），面板画花名册 + 署名数。
+			[2, "子智能体图（团队花名册）", "interface/tui/internal/render/agents_graph.go", hasTool("strix_team_roster") && has("panel.team")],
 		],
 	},
 	{
