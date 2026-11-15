@@ -38,6 +38,7 @@ import { managedToolchainDir } from "./paths";
 import { describeRoster, mergeRoster, normalizeRoster } from "../domain/mcp-roster";
 import { installPaths, type InstallPath } from "../domain/install-paths";
 import { createProbeCache } from "./probe-cache";
+import { forgetDockerBinary, resolveDockerBinary } from "./docker";
 import { TodoStore } from "./todo";
 import { Budget, normalizeLimits } from "./budget";
 import { Telemetry } from "./telemetry";
@@ -461,7 +462,7 @@ const HANDLERS: Record<string, Handler> = {
 			pluginVersion: version,
 			...(sandboxImage() ? { image: sandboxImage() } : {}),
 			inspectImage: async (image) => {
-				const docker = process.platform === "win32" ? "docker.exe" : "docker";
+				const docker = resolveDockerBinary();
 				const result = await runHost(docker, ["image", "inspect", image, "--format", "{{.Created}}"]);
 				return { created: result.code === 0 ? result.stdout.trim() || null : null };
 			},
@@ -702,6 +703,7 @@ const server = createServer(async (req, res) => {
 			// 这条请求本身就是"我要最新的"：先失效缓存再取（仍然单飞，不会并发跑十份）。
 			const preference = await readPreferences(DATA_DIR);
 			environmentCache.invalidate();
+			forgetDockerBinary();
 			const resolved = await environmentCache.get();
 			return json(res, 200, { ...resolved, preference: preference.environmentMode });
 		}
@@ -748,7 +750,7 @@ const server = createServer(async (req, res) => {
 			// 拉镜像交给宿主执行：docker pull 可能要几分钟、几百 MB，面板只等结果。
 			const image = sandboxImage();
 			try {
-				const docker = process.platform === "win32" ? "docker.exe" : "docker";
+				const docker = resolveDockerBinary();
 				const result = await runHost(docker, ["pull", image]);
 				environmentCache.invalidate();
 				const resolved = await environmentCache.get();

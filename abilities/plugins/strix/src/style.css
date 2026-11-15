@@ -2483,18 +2483,21 @@
 	position: absolute;
 	inset: -1px;
 	border-radius: inherit;
-	padding: 1px;
-	background: linear-gradient(
+	/* 需要一条透明边框，background-clip 才有 border-box 可画。 */
+	border: 1px solid transparent;
+	/* 便携写法：两层背景（padding-box 画底色、border-box 画渐变），
+	   靠 background-clip 让渐变只出现在 1px 的边上。
+	   不再用 mask-composite——旧 WebKit（macOS 上常见）不支持 `exclude`，
+	   那一来描边整条消失、内容还会被拉到框外，用户看到的就是“界面乱套”。 */
+	background-image: linear-gradient(transparent, transparent), linear-gradient(
 		120deg,
 		color-mix(in srgb, var(--sx-green) 85%, transparent),
 		color-mix(in srgb, var(--sx-aurora-b, #0891b2) 70%, transparent) 45%,
 		color-mix(in srgb, var(--sx-aurora-c, #7c3aed) 60%, transparent) 70%,
 		color-mix(in srgb, var(--sx-green) 85%, transparent)
 	);
-	-webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-	mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-	-webkit-mask-composite: xor;
-	mask-composite: exclude;
+	background-origin: border-box;
+	background-clip: padding-box, border-box;
 	opacity: 0.55;
 	pointer-events: none;
 	/* 只动不透明度：合成层属性，不触发重绘。 */
@@ -2557,8 +2560,10 @@
 
 /* 报告预览：盖在工作台上，滚动留在自己的框里。 */
 .astra-strix-report {
-	position: fixed;
-	inset: 8vh 12vw;
+	/* absolute 而不是 fixed：fixed 在带 transform 的祖先里会以那个祖先为参照，
+	   宿主给面板套了 transform 时它会跑到屏幕外（macOS 截图里的“乱套”）。 */
+	position: absolute;
+	inset: 6% 8%;
 	z-index: 40;
 	display: flex;
 	flex-direction: column;

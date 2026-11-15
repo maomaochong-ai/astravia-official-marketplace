@@ -8,9 +8,61 @@
  */
 
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { promisify } from "node:util";
 
 const run = promisify(execFile);
+
+/**
+ * docker 可执行文件在哪。
+ *
+ * 为什么要自己找：服务是宿主拉起的子进程，它的 PATH 不是登录 shell 的 PATH——
+ * macOS 上 Docker Desktop 把 CLI 放在 /usr/local/bin 或应用包里，Windows 上放在
+ * Program Files，两者都常常不在服务继承到的那份 PATH 里。结果就是「我明明装好了，
+ * 插件说没有」。这里按平台的常见位置逐个探测，探到就用绝对路径。
+ */
+let cachedBinary: string | null | undefined;
+
+export function resolveDockerBinary(): string {
+	if (cachedBinary !== undefined && cachedBinary !== null) return cachedBinary;
+	const exe = process.platform === "win32" ? "docker.exe" : "docker";
+	const candidates = [
+		// 先看 PATH 本身（多数 Linux 与 brew 装在 /opt/homebrew/bin 的情况）。
+		exe,
+		...(process.platform === "win32"
+			? [
+				join(process.env.ProgramFiles ?? "C:\\Program Files", "Docker", "Docker", "resources", "bin", exe),
+				join(process.env.LOCALAPPDATA ?? "", "Docker", "Docker", "resources", "bin", exe),
+			]
+			: process.platform === "darwin"
+				? [
+					"/usr/local/bin/docker",
+					"/opt/homebrew/bin/docker",
+					"/Applications/Docker.app/Contents/Resources/bin/docker",
+				]
+				: ["/usr/bin/docker", "/usr/local/bin/docker", "/snap/bin/docker"]),
+	];
+	for (const candidate of candidates) {
+		if (candidate === exe) continue;
+		try {
+			if (existsSync(candidate)) {
+				cachedBinary = candidate;
+				return candidate;
+			}
+		} catch {
+			/* 探测失败就试下一个 */
+		}
+	}
+	// 都没找到：交给 PATH，错误信息里会写清楚（面板照实显示）。
+	cachedBinary = exe;
+	return exe;
+}
+
+/** 安装/卸载之后要重新探测：用户可能刚把 CLI 放到 PATH 里。 */
+export function forgetDockerBinary(): void {
+	cachedBinary = undefined;
+}
 
 export interface DockerResult {
 	code: number;
@@ -27,7 +79,7 @@ export interface DockerResult {
 async function dockerWithInput(args: string[], input: string, timeoutMs = 60_000): Promise<DockerResult> {
 	const { spawn } = await import("node:child_process");
 	return await new Promise((resolve) => {
-		const child = spawn("docker", args, { windowsHide: true });
+		const child = spawn(resolveDockerBinary(), args, { windowsHide: true });
 		let stdout = "";
 		let stderr = "";
 		const timer = setTimeout(() => child.kill("SIGKILL"), timeoutMs);
@@ -55,7 +107,7 @@ async function dockerWithInput(args: string[], input: string, timeoutMs = 60_000
 async function docker(args: string[], timeoutMs = 30_000): Promise<DockerResult> {
 
 	try {
-		const { stdout, stderr } = await run("docker", args, {
+		const { stdout, stderr } = await run(resolveDockerBinary(), args, {
 			timeout: timeoutMs,
 			windowsHide: true,
 			maxBuffer: 8 * 1024 * 1024,
