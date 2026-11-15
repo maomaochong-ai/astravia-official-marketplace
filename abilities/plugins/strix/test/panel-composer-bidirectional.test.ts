@@ -65,11 +65,13 @@ describe("direction one: the panel hands its words to the host", () => {
 		expect(manifest.permissions.filter((permission) => permission.startsWith("ai."))).toEqual([]);
 	});
 
-	it("says who runs the sentence, in both locales", () => {
+	it("shows who runs the sentence through the typing placeholder", () => {
+		// 那一行静态说明删了：占位符逐字敲出"可以直接说什么"，运行记录里的 from 分色说明回复去哪。
 		for (const table of [zh, en]) {
-			expect(table["launch.hint.bidi"]).toBeTruthy();
+			expect(table["launch.hint.bidi"]).toBeUndefined();
 		}
-		expect(launch).toContain('hintKey="launch.hint.bidi"');
+		expect(launch).toContain("hints={COMPOSER_HINTS.launch}");
+		expect(composer).toContain("useTypewriter");
 	});
 
 	it("keeps the team surface read-only, and says why", () => {

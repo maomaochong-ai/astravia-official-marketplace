@@ -1,24 +1,26 @@
 /**
- * 首屏 = 配置页。
+ * 首屏 = 配置页 + 说话的地方 + 免责声明。
  *
- * 这里曾经是一个输入框（"描述要测什么" + 发送键）。它存在的问题不是样式，而是职责：
- * 面板发出去的话，效果与用户直接在宿主输入框回车完全相同——那 120 行的投递逻辑
- * （先发、失败建会话、再失败交给宿主输入框）只是把同一件事做了三遍。
+ * 这一屏回答三个问题，顺序就是用户问的顺序：
  *
- * 现在这一屏回答的是另一个问题：**这台机器、这次会话、这套工具，准备到哪一步了。**
+ *   1. **怎么说**：对话框（`shared/components/panel-composer.tsx`）。占位符逐字敲出三个范例，
+ *      文字交给宿主会话执行；
+ *   2. **准备好没有**：模型 / 目录 / 执行环境 / 工具面 / 技能库 / 连接（含桥接状态）/ 目标 / 团队；
+ *   3. **东西装在哪**：选了容器之后多一张「安装位置」表（默认收起）——宿主路径可点开，
+ *      容器内路径只能复制一条 `docker exec` 命令（它不在宿主的文件系统里）。
  *
- *   模型 / 目录 / 执行环境（四态 + 检测与安装） / 团队 / 工具面 / 技能库 / 连接 / 运行日志
- *
- * 末尾一个「进入工作台」，不发送任何东西。说话的地方是宿主对话，这里不代劳。
+ * 底部是一段小字免责声明。这类工具会真的发起网络访问与命令执行，说清楚是产品责任。
  */
 
 import { useState } from "react";
 import { PanelComposer } from "../../../shared/components/panel-composer";
+import { COMPOSER_HINTS } from "../../../shared/components/use-typewriter";
 import { HackerRain } from "./hacker-rain";
+import { InstallPathsPanel } from "./install-paths-panel";
 import { manifestLabel } from "../../../domain/manifest-label";
 import type { ModelChoice } from "../../../domain/model-label";
 import type { McpConnection } from "../../../domain/mcp-roster";
-import type { BridgeCapabilities, BridgeScope, BridgeTeam } from "../../../runtime-contract";
+import type { BridgeCapabilities, BridgeInstallPaths, BridgeScope, BridgeTeam } from "../../../runtime-contract";
 import type { LogLine } from "../hooks/use-strix-session";
 import { StrixWordmark } from "./strix-wordmark";
 
@@ -35,6 +37,10 @@ export interface LaunchScreenProps {
 	scope?: BridgeScope;
 	/** MCP 连接：工具面能不能用，取决于这些连接是否活着。 */
 	mcp?: readonly McpConnection[];
+	/** 「装在哪」：只在容器可用时由服务给出。 */
+	installPaths?: BridgeInstallPaths;
+	/** 打开一条宿主路径（在系统文件管理器里定位）；不可用时面板退回复制。 */
+	onOpenPath?: (path: string) => void;
 	log: readonly LogLine[];
 	/** Bridge boot state. A live line, not a log entry. */
 	boot: { state: "connecting" | "ready" | "failed"; detail?: string };
@@ -45,16 +51,13 @@ export interface LaunchScreenProps {
 	environmentReady?: boolean;
 	/** 环境检测结果：docker 可用性与镜像是否已在本地。 */
 	docker?: { ready: boolean; detail?: string; imagePresent: boolean | null } | null;
+	/** 服务解析出来的这次真实落点（`/api/environment` 的 mode）；没探测过时为空。 */
+	resolvedMode?: "host" | "docker";
 	onPullImage?: () => Promise<void>;
 	onEnvironmentMode?: (mode: "auto" | "host" | "docker") => void;
 	onInstallDocker?: () => void;
 	onRefreshEnvironment?: () => void;
-	/**
-	 * 进工作台：不发送、不建会话。
-	 *
-	 * 首屏唯一的前进动作。以前这里是"发送键"，它同时承担了"开始"和"说一句话"，
-	 * 于是用户想看一眼现场也必须先编一句话。
-	 */
+	/** 进工作台：不发送、不建会话。 */
 	onOpenWorkbench?: () => void;
 	/** 把这一句交给宿主对话（宿主的会话、模型与权限执行它）。 */
 	onSend?: (text: string) => void;
@@ -72,6 +75,37 @@ const TEAM_GLYPH: Record<string, string> = {
 	developer: "◈",
 	auditor: "≡",
 };
+
+/**
+ * 执行环境这一次会落在哪。
+ *
+ * 1.2.1 之前"自动"永远显示成"本机"：判据读的是 preference 字符串本身。
+ * 现在先解析、后命名——`resolvedMode` 是服务算出来的真实落点，preference 只决定措辞。
+ */
+export type EnvironmentState = "host" | "autoDocker" | "autoNoImage" | "autoHost" | "noDocker" | "noImage" | "ready";
+
+export function environmentState(input: {
+	mode: "auto" | "host" | "docker";
+	resolved?: "host" | "docker";
+	docker?: { ready: boolean; imagePresent: boolean | null } | null;
+}): EnvironmentState {
+	const { mode, resolved, docker } = input;
+	if (mode === "host") return "host";
+	const daemon = docker?.ready ?? false;
+	const image = docker?.imagePresent;
+
+	if (mode === "auto") {
+		if (!daemon) return "autoHost";
+		// 服务说这次是容器，就按容器说；镜像缺失单独一档（要能点拉取）。
+		if (resolved === "docker") return image === false ? "autoNoImage" : "autoDocker";
+		return "autoHost";
+	}
+
+	// 显式 docker：三态与以前一致。
+	if (!daemon) return "noDocker";
+	if (image === false) return "noImage";
+	return "ready";
+}
 
 /** 一行事实：左标签 + 右值，所有行共用两个栅格列（左边缘必须是一条线）。 */
 function Row({
@@ -99,12 +133,15 @@ export function LaunchScreen({
 	capabilities,
 	scope,
 	mcp,
+	installPaths,
+	onOpenPath,
 	log,
 	boot,
 	version,
 	environmentMode: environmentModeProp,
 	environmentReady,
 	docker,
+	resolvedMode,
 	onPullImage,
 	onEnvironmentMode,
 	onInstallDocker,
@@ -118,18 +155,15 @@ export function LaunchScreen({
 	const [draft, setDraft] = useState("");
 	// 环境选择只影响「下一次」sandbox 启动：已经在跑的扫描不中途换环境。
 	const environmentMode = environmentModeProp ?? "host";
-	// 四态：host / noDocker / noImage / ready。判断顺序就是用户要做的决定顺序。
-	const envState =
-		environmentMode === "host" || environmentMode === "auto"
-			? "host"
-			: environmentMode === "docker" && (docker ? !docker.ready : environmentReady === false)
-				? "noDocker"
-				: docker?.imagePresent === false
-					? "noImage"
-					: "ready";
+	const envState = environmentState({
+		mode: environmentMode,
+		...(resolvedMode ? { resolved: resolvedMode } : {}),
+		docker: docker ?? (environmentReady === false ? { ready: false, imagePresent: null } : null),
+	});
 
 	const declared = scope?.entries.length ?? 0;
 	const connections = mcp ?? [];
+	const dockerMode = resolvedMode === "docker" || environmentMode === "docker";
 
 	return (
 		<div
@@ -143,12 +177,12 @@ export function LaunchScreen({
 		>
 			<HackerRain density="splash" />
 			<div className="astra-strix-launch">
+				{/* 标题与副标题与对话框同轴居中：这一列的重心在上面。 */}
 				<div className="astra-strix-launch-head">
 					<StrixWordmark />
 					<p className="astra-strix-tagline">{t("launch.tagline")}</p>
 				</div>
 
-				{/* 对话框：说一句就交给宿主会话。面板不持有模型调用，只做入口。 */}
 				{onSend ? (
 					<PanelComposer
 						t={t}
@@ -161,7 +195,7 @@ export function LaunchScreen({
 						}}
 						labelKey="launch.label"
 						placeholderKey="launch.placeholder"
-						hintKey="launch.hint.bidi"
+						hints={COMPOSER_HINTS.launch}
 						{...(readOnly ? { readOnly } : {})}
 						{...(onOpenWorkbench ? { onOpenWorkbench } : {})}
 					/>
@@ -173,7 +207,6 @@ export function LaunchScreen({
 						{model ? (
 							<>
 								<span className="astra-strix-meta-name">{model.name}</span>
-								{/* provider 常常就是模型族名：包含在名字里就不再写一遍。 */}
 								{model.provider && !model.name.toLowerCase().includes(model.provider.toLowerCase()) ? (
 									<span className="astra-strix-dim"> · {model.provider}</span>
 								) : null}
@@ -193,11 +226,14 @@ export function LaunchScreen({
 						</Row>
 					) : null}
 
-					{/* 执行环境：四态。
-					    host     → 本机执行，无容器隔离
-					    noDocker → 让宿主安装 docker
-					    noImage  → 让宿主拉取沙箱镜像
-					    ready    → 只说已就绪 */}
+					{/* 执行环境：七态。自动必须说"这次会怎么做"，不能一律说本机（1.2.1 的谎）。
+					    host        → 本机执行，无容器隔离
+					    autoDocker  → 自动：会跑在容器里
+					    autoNoImage → 自动：镜像还没拉（可点拉取）
+					    autoHost    → 自动：没有容器，跑在本机
+					    noDocker    → 让宿主安装 docker
+					    noImage     → 让宿主拉取沙箱镜像
+					    ready       → 只说已就绪 */}
 					<Row label={t("env.choice")} state={envState}>
 						<span className="astra-strix-env-line">
 							<select
@@ -210,8 +246,11 @@ export function LaunchScreen({
 								<option value="docker">{t("env.docker")}</option>
 								<option value="auto">{t("env.auto")}</option>
 							</select>
-							<span className="astra-strix-env-status">
+							<span className="astra-strix-env-status" data-state={envState}>
 								{envState === "host" ? t("env.statusHost") : null}
+								{envState === "autoDocker" ? t("env.statusAutoDocker") : null}
+								{envState === "autoNoImage" ? t("env.statusAutoNoImage") : null}
+								{envState === "autoHost" ? t("env.statusAutoHost") : null}
 								{envState === "noDocker" ? t("env.statusNoDocker") : null}
 								{envState === "noImage" ? t("env.statusNoImage") : null}
 								{envState === "ready" ? t("env.statusReady") : null}
@@ -222,10 +261,12 @@ export function LaunchScreen({
 										{t("env.install")}
 									</button>
 								) : null}
-								{envState === "noImage" && onPullImage ? (
-									<button type="button" className="astra-strix-env-action" onClick={() => void onPullImage()}>
-										{t("env.pull")}
-									</button>
+								{envState === "noImage" || envState === "autoNoImage" ? (
+									onPullImage ? (
+										<button type="button" className="astra-strix-env-action" onClick={() => void onPullImage()}>
+											{t("env.pull")}
+										</button>
+									) : null
 								) : null}
 								<button type="button" className="astra-strix-env-action" onClick={() => onRefreshEnvironment?.()}>
 									{t("env.refresh")}
@@ -233,6 +274,11 @@ export function LaunchScreen({
 							</span>
 						</span>
 					</Row>
+
+					{/* 装在哪：容器可用时才出现。默认收起，点开是一张两列对齐的表。 */}
+					{dockerMode && installPaths ? (
+						<InstallPathsPanel t={t} paths={installPaths} {...(onOpenPath ? { onOpen: onOpenPath } : {})} />
+					) : null}
 
 					{/* 工具面：随包 40 个。数字来自服务读的本地目录，不是写死的文案。 */}
 					<Row label={t("launch.tools")}>
@@ -254,30 +300,61 @@ export function LaunchScreen({
 						</span>
 					</Row>
 
-					{/* 连接：MCP 就绪情况。没有连接时如实说没有，不画一个空壳。 */}
+					{/* 连接：MCP 就绪情况 + 桥接状态。桥接状态原先独占首屏最底下一整行，
+					    信息只有"就绪"两个字；它属于这一组事实。 */}
 					<Row label={t("launch.connections")}>
-						{connections.length ? (
+						<span className="astra-strix-conn-lines">
 							<span className="astra-strix-conn-list">
-								{connections.map((entry) => (
-									<span key={entry.name} className="astra-strix-conn" data-dead={entry.dead ? "yes" : "no"}>
-										<span aria-hidden="true" className={entry.dead ? "astra-strix-amber" : "astra-strix-green"}>
+								{connections.length ? (
+									connections.map((entry) => (
+										<span key={entry.name} className="astra-strix-conn" data-dead={entry.dead ? "yes" : "no"}>
+											<span aria-hidden="true" className={entry.dead ? "astra-strix-amber" : "astra-strix-green"}>
+												●
+											</span>
+											<span title={entry.provider}>{entry.name}</span>
+											<span className="astra-strix-dim">{entry.toolCount}</span>
+										</span>
+									))
+								) : (
+									<span className="astra-strix-dim">{t("launch.connectionsNone")}</span>
+								)}
+							</span>
+							<span className="astra-strix-bridge-line" data-state={boot.state} role="status">
+								{boot.state === "connecting" ? (
+									<>
+										<span className="astra-strix-spinner" aria-hidden="true" />
+										<span className="astra-strix-dim">{t("boot.connecting")}</span>
+									</>
+								) : boot.state === "failed" ? (
+									<>
+										<span className="astra-strix-amber" aria-hidden="true">
+											!
+										</span>
+										<span className="astra-strix-amber">{t("boot.failed")}</span>
+										{boot.detail ? <span className="astra-strix-dim"> — {boot.detail}</span> : null}
+									</>
+								) : (
+									<>
+										<span className="astra-strix-green" aria-hidden="true">
 											●
 										</span>
-										<span title={entry.provider}>{entry.name}</span>
-										<span className="astra-strix-dim">{entry.toolCount}</span>
-									</span>
-								))}
+										<span className="astra-strix-dim">{t("boot.ready")}</span>
+									</>
+								)}
+								<span className="astra-strix-dim"> · v{version}</span>
 							</span>
-						) : (
-							<span className="astra-strix-dim">{t("launch.connectionsNone")}</span>
-						)}
+						</span>
 					</Row>
 
 					{/* 范围：声明过的目标。没声明就说没声明——那是"开始前该确认的事"。 */}
 					<Row label={t("targets.title")}>
 						{declared ? (
 							<span className="astra-strix-dim">
-								{t("launch.scopeDeclared", { count: declared })} · {scope?.entries.slice(0, 3).map((entry) => entry.value).join(" · ")}
+								{t("launch.scopeDeclared", { count: declared })} ·{" "}
+								{scope?.entries
+									.slice(0, 3)
+									.map((entry) => entry.value)
+									.join(" · ")}
 							</span>
 						) : (
 							<span className="astra-strix-dim">{t("launch.scopeUndeclared")}</span>
@@ -317,40 +394,13 @@ export function LaunchScreen({
 					) : null}
 				</div>
 
-				{/* 唯一的前进动作：进工作台看现场。不发送任何东西。 */}
-				<div className="astra-strix-launch-foot">
-					<span className="astra-strix-hints">
-						<span className="astra-strix-hint">
-							<span className="astra-strix-key">ctrl+c</span>
-							<span className="astra-strix-dim">{t("launch.hint.quit")}</span>
-						</span>
-					</span>
-
-					<span className="astra-strix-boot-line">
-						{boot.state === "connecting" ? (
-							<span className="astra-strix-boot" role="status">
-								<span className="astra-strix-spinner" aria-hidden="true" />
-								<span>{t("boot.connecting")}</span>
-							</span>
-						) : boot.state === "failed" ? (
-							<span className="astra-strix-boot" data-state="failed" role="status">
-								<span className="astra-strix-amber" aria-hidden="true">
-									!
-								</span>
-								<span>{t("boot.failed")}</span>
-								{boot.detail ? <span className="astra-strix-dim"> — {boot.detail}</span> : null}
-							</span>
-						) : (
-							<span className="astra-strix-boot" data-state="ready" role="status">
-								<span className="astra-strix-green" aria-hidden="true">
-									●
-								</span>
-								<span>{t("boot.ready")}</span>
-							</span>
-						)}
-						<span className="astra-strix-dim astra-strix-hints-version">v{version}</span>
-					</span>
-				</div>
+				{/* 免责声明：小字、上边框、可读但不抢视线。工具会真的发起网络访问与命令执行，
+				    这一段是产品责任，不是免责套路。 */}
+				<footer className="astra-strix-disclaimer" aria-label={t("legal.title")}>
+					<p className="astra-strix-disclaimer-title">{t("legal.title")}</p>
+					<p className="astra-strix-disclaimer-body">{t("legal.body")}</p>
+					<p className="astra-strix-disclaimer-dim">{t("legal.scope")}</p>
+				</footer>
 			</div>
 		</div>
 	);

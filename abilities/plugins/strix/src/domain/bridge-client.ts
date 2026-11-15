@@ -10,7 +10,7 @@
  * line-delimited JSON and ordering is what makes a run readable.
  */
 
-import type { BridgeEvent, BridgeState, StrixFinding } from "../runtime-contract";
+import type { BridgeEvent, BridgeInstallPaths, BridgeState, StrixFinding } from "../runtime-contract";
 
 export interface BridgeClient {
 	state(): Promise<BridgeState>;
@@ -37,6 +37,8 @@ export interface BridgeClient {
 		docker: { ready: boolean; detail?: string; imagePresent: boolean | null };
 		preference: "auto" | "host" | "docker";
 	}>;
+	/** 「装在哪」：当前系统的 docker 位置、容器内落点、工具链与数据目录（服务已探过存在性）。 */
+	installPaths(): Promise<BridgeInstallPaths>;
 	/** 让宿主执行 docker pull，返回结果与最新环境探测。 */
 	pullImage(): Promise<{ ok: boolean; image?: string; tail?: string[]; error?: string }>;
 	/** Run one bridge tool by name; throws on an unknown name or a tool failure. */
@@ -99,6 +101,10 @@ export function createBridgeClient(baseUrl: () => Promise<string>): BridgeClient
 		async probeEnvironment() {
 			const base = await baseUrl();
 			return readJson(await fetch(`${base}/api/environment`, { cache: "no-store" }));
+		},
+		async installPaths() {
+			const base = await baseUrl();
+			return readJson(await fetch(`${base}/api/paths`, { cache: "no-store" }));
 		},
 		async pullImage() {
 			const base = await baseUrl();

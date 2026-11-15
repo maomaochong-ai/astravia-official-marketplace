@@ -44,6 +44,7 @@ import type {
 	BridgeTeam,
 	BridgeScope,
 	BridgeCapabilities,
+	BridgeInstallPaths,
 	CoverageOutcome,
 	ShellSessionSummary,
 	EnvironmentProbe,
@@ -115,6 +116,10 @@ export interface StrixSessionModel {
 	candidates: readonly DerivedTarget[];
 	/** 配置页的能力面：工具面与技能库的数量与来源。 */
 	capabilities?: BridgeCapabilities;
+	/** 「装在哪」：容器可用时由服务给出（宿主路径已探过存在性）。 */
+	installPaths?: BridgeInstallPaths;
+	/** 服务解析出来的这次真实落点；面板用它把「自动」说对。 */
+	resolvedMode?: "host" | "docker";
 	/** Re-read state after a failure. */
 	refresh: () => Promise<void>;
 	/** 面板选的执行环境。 */
@@ -222,6 +227,8 @@ export function useStrixSession({
 	const [scope, setScope] = useState<BridgeScope | undefined>(undefined);
 	/** 配置页的能力面：工具面 / 技能库的数量与来源。 */
 	const [capabilities, setCapabilities] = useState<BridgeCapabilities | undefined>(undefined);
+	const [installPaths, setInstallPaths] = useState<BridgeInstallPaths | undefined>(undefined);
+	const [resolvedMode, setResolvedMode] = useState<"host" | "docker" | undefined>(undefined);
 	/**
 	 * 从对话里认出的目标（候选）。
 	 *
@@ -371,6 +378,12 @@ export function useStrixSession({
 			setTeam(((state as { team?: BridgeTeam | null } | undefined)?.team) ?? null);
 			setScope((state as { scope?: BridgeScope } | undefined)?.scope);
 			setCapabilities((state as { capabilities?: BridgeCapabilities } | undefined)?.capabilities);
+			setResolvedMode(probe?.mode);
+			// 「装在哪」随环境一起取：它依赖 docker 状态与容器名，分开取会不一致。
+			void client
+				.installPaths()
+				.then((paths) => setInstallPaths(paths))
+				.catch(() => setInstallPaths(undefined));
 			if (probe) {
 				setEnvironment(probe);
 				// A missing daemon is the working state in `host` mode, not an
@@ -823,6 +836,8 @@ export function useStrixSession({
 			scope,
 			candidates: scope ? newTargets(candidates, scope.entries.map((entry) => entry.value)) : candidates,
 			capabilities,
+			installPaths,
+			resolvedMode,
 			send,
 			stop,
 			refresh,
@@ -864,6 +879,8 @@ export function useStrixSession({
 			scope,
 			candidates,
 			capabilities,
+			installPaths,
+			resolvedMode,
 			send,
 			stop,
 			refresh,

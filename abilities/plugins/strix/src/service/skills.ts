@@ -20,6 +20,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { normalizeSkillName, suggestSkills, type LoadBodiesResult } from "./skill-matching";
 
 /** 类别在面板/工具结果里默认收起：它们是 agent 内部流程，不是给用户挑的技术面。 */
 const INTERNAL_CATEGORIES = new Set(["scan_modes", "coordination", "analysis"]);
@@ -132,32 +133,39 @@ async function describe(path: string, category: string, fallbackName: string): P
 }
 
 /** Bodies for the requested names; `category/name` disambiguates. */
-export async function loadBodies(
-	location: SkillLocation,
-	names: string[],
-): Promise<{ markdown: Record<string, string>; missing: string[] }> {
+export async function loadBodies(location: SkillLocation, names: string[]): Promise<LoadBodiesResult> {
 	const { entries } = await loadIndex(location);
 	const markdown: Record<string, string> = {};
 	const missing: string[] = [];
+	const suggestions: Record<string, string[]> = {};
+
 	for (const requested of names) {
-		const [maybeCategory, maybeName] = requested.includes("/")
+		const [rawCategory, rawName] = requested.includes("/")
 			? (requested.split("/", 2) as [string, string])
 			: [undefined, requested];
-		const hit = entries.find(
+		const wanted = normalizeSkillName(rawName);
+		const wantedCategory = rawCategory ? normalizeSkillName(rawCategory) : undefined;
+
+		const exact = entries.find(
 			(entry) =>
-				(maybeCategory ? entry.category === maybeCategory : true) &&
-				(entry.name === maybeName || basename(entry.path, ".md") === maybeName),
+				(!wantedCategory || normalizeSkillName(entry.category) === wantedCategory) &&
+				(normalizeSkillName(entry.name) === wanted ||
+					normalizeSkillName(basename(entry.path, ".md")) === wanted),
 		);
-		if (!hit) {
-			missing.push(requested);
-			continue;
+
+		if (exact) {
+			try {
+				markdown[exact.name] = parseFrontmatter(await readFile(exact.path, "utf8")).body;
+				continue;
+			} catch {
+				/* 读失败按 miss 处理：下面统一给建议 */
+			}
 		}
-		try {
-			const text = await readFile(hit.path, "utf8");
-			markdown[hit.name] = parseFrontmatter(text).body;
-		} catch {
-			missing.push(requested);
-		}
+
+		missing.push(requested);
+		const near = suggestSkills(entries, rawName);
+		if (near.length > 0) suggestions[requested] = near;
 	}
-	return { markdown, missing };
+
+	return { markdown, missing, suggestions };
 }

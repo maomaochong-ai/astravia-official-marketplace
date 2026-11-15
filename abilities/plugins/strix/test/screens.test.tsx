@@ -33,7 +33,8 @@ describe("launch screen", () => {
 		// 首屏有一个对话框（双向对话的入口），底条上还有一个「工作台」。
 		expect(container.querySelector("textarea")).toBeTruthy();
 		expect(screen.getByText("nav.workbench")).toBeTruthy();
-		expect(screen.getByText("v0.4.0")).toBeTruthy();
+		// 版本号跟在桥接状态后面（同一个 span 里的后半段），所以按子串断言。
+		expect(screen.getByText(/v0\.4\.0/)).toBeTruthy();
 	});
 
 	it("shows the host's model the way upstream shows STRIX_LLM", () => {

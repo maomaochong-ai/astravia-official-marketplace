@@ -15,6 +15,7 @@ import type { ModelChoice } from "../../../domain/model-label";
 import type { DerivedTarget } from "../../../domain/target-extraction";
 import type {
 	BridgeCapabilities,
+	BridgeInstallPaths,
 	BridgeScope,
 	CoverageOutcome,
 	ShellSessionSummary,
@@ -54,6 +55,12 @@ export interface StrixTabProps {
 	candidates?: readonly DerivedTarget[];
 	/** 配置页的能力面：工具面与技能库的数量与来源。 */
 	capabilities?: BridgeCapabilities;
+	/** 「装在哪」。 */
+	installPaths?: BridgeInstallPaths;
+	/** 服务解析出来的真实落点（把「自动」说对）。 */
+	resolvedMode?: "host" | "docker";
+	/** 打开一条宿主路径。 */
+	onOpenPath?: (path: string) => void;
 	environment?: EnvironmentProbe;
 	sandbox: SandboxStatus;
 	findings: readonly StrixFinding[];
@@ -145,6 +152,9 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					boot={props.boot}
 					{...(props.onOpenWorkbench ? { onOpenWorkbench: props.onOpenWorkbench } : {})}
 					{...(props.capabilities ? { capabilities: props.capabilities } : {})}
+					{...(props.installPaths ? { installPaths: props.installPaths } : {})}
+					{...(props.resolvedMode ? { resolvedMode: props.resolvedMode } : {})}
+					{...(props.onOpenPath ? { onOpenPath: props.onOpenPath } : {})}
 					onQuit={props.onQuit}
 					environmentMode={props.environmentMode}
 					environmentReady={props.environmentReady}

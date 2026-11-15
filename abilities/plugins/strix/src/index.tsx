@@ -36,10 +36,13 @@ function StrixTabRoot({
 	ctx,
 	runtime,
 	onQuit,
+	onOpenPath,
 }: {
 	ctx: PluginContext;
 	runtime: ServiceRuntime;
 	onQuit: () => void;
+	/** 在文件管理器里定位一条路径（宿主 official.shell）。 */
+	onOpenPath: (path: string) => void;
 }): React.ReactElement {
 	// 必须把 params 转发下去：`t("scan.newRows", { count })` 若丢掉第二个参数，
 	// 界面就会直接显示 `{count} 条新消息`——真机截图里的那个 bug。
@@ -140,6 +143,7 @@ function StrixTabRoot({
 			onOpenLaunch={session.openLaunch}
 			onNewSession={() => void session.newSession()}
 			onOpenWorkbench={session.openWorkbench}
+			onOpenPath={onOpenPath}
 			{...(session.coverageTally ? { coverageTally: session.coverageTally } : {})}
 			busy={session.busy}
 			stop={session.stop}
@@ -147,6 +151,17 @@ function StrixTabRoot({
 			onQuit={onQuit}
 		/>
 	);
+}
+
+/**
+ * 在系统的文件管理器里定位一条路径。
+ *
+ * 只有一个入口能干净地做这件事：`ctx.official.shell.showItemInFolder`
+ * （宿主刻意把 `file://` 从 `ui.openExternal` 里排除了）。它对非官方来源会抛错，
+ * 所以这里**不吞异常**：抛出去让面板退回复制，而不是让用户点了没反应。
+ */
+async function revealPath(ctx: PluginContext, target: string): Promise<void> {
+	await ctx.official.shell.showItemInFolder(target);
 }
 
 export default definePlugin({
@@ -175,6 +190,7 @@ export default definePlugin({
 					// ctrl+c closes the tab, the way it quits the CLI: the screen is a
 					// terminal, and the tab is what it occupies here.
 					onQuit={() => ctx.ui.setActivityTabVisible(TAB_ID, false)}
+					onOpenPath={(target) => void revealPath(ctx, target)}
 				/>
 			),
 		});

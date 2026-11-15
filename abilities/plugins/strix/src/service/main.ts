@@ -17,7 +17,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { SERVICE_TOOL_NAMES, STRIX_TOOL_SPECS } from "../agent/strix-tools";
 import { CoverageStore } from "./coverage";
@@ -25,7 +25,7 @@ import { resolveEnvironment } from "./environment";
 import { finishGate } from "../domain/scan-mode";
 import * as findings from "./findings";
 import { NoteStore } from "./notes";
-import { Sandbox, sandboxImage } from "./sandbox";
+import { containerName, Sandbox, sandboxImage } from "./sandbox";
 import { applyPatch, parsePatch } from "./patch";
 import { toImagePayload } from "./images";
 import { describeScope, outOfScopeHosts, ScopeStore } from "./scope";
@@ -33,7 +33,9 @@ import { ShellSessions } from "./shell-sessions";
 import { dockerInstallCommand, readPreferences, writePreferences } from "./preferences";
 import { locateSkills, loadBodies, loadIndex } from "./skills";
 import { installHint, missingTools, probeToolchain } from "./toolchain";
+import { managedToolchainDir } from "./paths";
 import { describeRoster, mergeRoster, normalizeRoster } from "../domain/mcp-roster";
+import { installPaths, type InstallPath } from "../domain/install-paths";
 import { TodoStore } from "./todo";
 import { Budget, normalizeLimits } from "./budget";
 import { Telemetry } from "./telemetry";
@@ -622,6 +624,38 @@ const server = createServer(async (req, res) => {
 			const preference = await readPreferences(DATA_DIR);
 			const resolved = await resolveEnvironment(sandboxImage(), preference.environmentMode);
 			return json(res, 200, { ...resolved, preference: preference.environmentMode });
+		}
+		if (url.pathname === "/api/paths") {
+			// 「装在哪」：当前系统的 docker 位置、容器内落点、随包工具链与数据目录。
+			// 路径是**猜的**（各系统默认值），所以这里逐个探一次"在不在"，面板照实画。
+			const preference = await readPreferences(DATA_DIR);
+			const resolved = await resolveEnvironment(sandboxImage(), preference.environmentMode);
+			const status = sandbox.status();
+			const container = status.running && status.mode === "docker" && status.sessionId ? containerName(status.sessionId) : null;
+			const entries = installPaths({
+				platform: process.platform,
+				docker: resolved.mode === "docker" && resolved.docker.ready,
+				image: sandboxImage(),
+				container,
+				toolchainDir: managedToolchainDir(),
+				dataDir: DATA_DIR,
+			}).map((entry: InstallPath): InstallPath => {
+				// 容器内路径与其它系统的默认值都不在宿主上，不探。
+				if (entry.scope !== "host") return entry;
+				const expanded = entry.path.replace(/%([A-Z_]+)%/g, (_match, name: string) => process.env[name] ?? `%${name}%`);
+				try {
+					return { ...entry, exists: existsSync(expanded) };
+				} catch {
+					return { ...entry, exists: false };
+				}
+			});
+			return json(res, 200, {
+				platform: process.platform,
+				mode: resolved.mode,
+				image: sandboxImage(),
+				container,
+				entries,
+			});
 		}
 		if (url.pathname === "/api/environment/pull" && req.method === "POST") {
 			// 拉镜像交给宿主执行：docker pull 可能要几分钟、几百 MB，面板只等结果。

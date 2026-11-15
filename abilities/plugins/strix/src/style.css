@@ -353,27 +353,8 @@
 	cursor: default;
 }
 
-/* 首屏脚注：快捷键 / 版本 / 桥接状态收在一条小字里。它们每帧都在，
-   但不是每帧都要看，所以从“一行一条”降级为脚注。 */
-.astra-strix-launch-foot {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: baseline;
-	gap: 4px 16px;
-	padding-top: 8px;
-	border-top: 1px solid var(--sx-rule);
-	/* 与值列同轴：标签列宽用 `em` 表达，所以这里**不能**改字号——
-	   改了 em 的基准就变，脚注会向左错开十几像素（实测 78 → 67）。
-	   小字号交给里面的子元素自己声明。 */
-	padding-left: calc(5.2em + 10px);
-	color: var(--sx-dim);
-}
-
-.astra-strix-launch-foot .astra-strix-hints,
-.astra-strix-launch-foot .astra-strix-boot-line,
-.astra-strix-launch-foot .astra-strix-go {
-	font-size: 11px;
-}
+/* 首屏底部那条（快捷键 / 版本 / 桥接状态）已移除：桥接状态进了「连接」，版本跟在它后面。
+   留着空规则只会让下面的人以为还有那块。 */
 
 .astra-strix-hints,
 .astra-strix-boot-line {
@@ -1806,9 +1787,7 @@
 /* ---- 首屏输入框以下：一条左边缘（1.0.3） -----------------------------------
    之前 model / env / hints / boot 各自带不同缩进，看起来像四段没对齐的文字。
    现在只定义一次 gutter，所有行都从它开始；行的内部间距由 gap 控制。 */
-/* 脚注例外：它的左内边距就是用来对齐值列的（5.2em + 列间距），
-   被这条重置清成 0 就会退到标签列上（实测 78 → 0）。 */
-.astra-strix-launch > *:not(.astra-strix-launch-foot) {
+.astra-strix-launch > * {
 	padding-left: 0;
 	padding-right: 0;
 }
@@ -2128,4 +2107,171 @@
 	content: "−";
 	margin-left: 6px;
 	color: color-mix(in srgb, var(--sx-green) 36%, transparent);
+}
+
+/* ---- 连接：MCP 与桥接状态两行（1.2.2） ---------------------------------------
+   桥接状态原先独占首屏最底下一整行，信息只有“就绪”两个字。它属于「连接」这一组事实，
+   现在与 MCP 列表同列、同一条左边缘，版本号跟在后面。 */
+.astra-strix-conn-lines {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.astra-strix-bridge-line {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 4px;
+	font-size: 11px;
+	white-space: nowrap;
+}
+
+/* ---- 标题与副标题：与对话框同轴居中（1.2.2） -------------------------------- */
+.astra-strix-launch-head {
+	text-align: center;
+}
+
+.astra-strix-tagline {
+	margin-left: auto;
+	margin-right: auto;
+}
+
+/* ---- 安装位置：两列对齐，路径不换行（1.2.2） --------------------------------
+   标签列按内容取宽，路径列吃掉剩余宽度；路径不换行 + 省略号。
+   折行会把两列的对齐彻底打散，所以宁可截断（全文在 title 里）。 */
+.astra-strix-paths {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.astra-strix-paths-toggle {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 6px;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	font-size: 11.5px;
+	cursor: pointer;
+	text-align: left;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.astra-strix-paths-toggle:hover {
+	color: var(--sx-green);
+}
+
+.astra-strix-paths-list {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	margin-top: 2px;
+	border-left: 1px solid var(--sx-rule);
+	padding-left: 8px;
+}
+
+.astra-strix-path-line {
+	display: grid;
+	grid-template-columns: minmax(6.5em, max-content) minmax(0, 1fr) max-content;
+	align-items: baseline;
+	column-gap: 12px;
+	width: 100%;
+	padding: 1px 0;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	font-size: 11px;
+	line-height: 1.5;
+	cursor: pointer;
+	text-align: left;
+}
+
+.astra-strix-path-line:hover {
+	background: color-mix(in srgb, var(--sx-green) 6%, transparent);
+}
+
+.astra-strix-path-label {
+	white-space: nowrap;
+	color: var(--sx-dim);
+}
+
+/* 路径是这张表的主角：等宽、不换行、超出就省略。 */
+.astra-strix-path-value {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 10.5px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: var(--sx-text);
+}
+
+.astra-strix-path-line[data-scope="container"] .astra-strix-path-value {
+	color: var(--sx-dim);
+}
+
+.astra-strix-path-line[data-missing="yes"] .astra-strix-path-value,
+.astra-strix-path-line[data-missing="yes"] .astra-strix-path-label {
+	opacity: 0.55;
+}
+
+.astra-strix-path-act {
+	white-space: nowrap;
+	font-size: 10.5px;
+	color: var(--sx-dim);
+}
+
+.astra-strix-path-line:hover .astra-strix-path-act {
+	color: var(--sx-green);
+}
+
+.astra-strix-paths-note {
+	margin-top: 3px;
+	font-size: 10.5px;
+	line-height: 1.5;
+	color: var(--sx-dim);
+	opacity: 0.8;
+}
+
+/* ---- 免责声明：小字、上边框、可读但不抢视线（1.2.2） ----------------------- */
+.astra-strix-disclaimer {
+	/* 与列同宽：小字不等于窄栏，窄一截右边缘就断了。 */
+	padding-top: 10px;
+	font-size: 10.5px;
+	border-top: 1px solid var(--sx-rule);
+	color: var(--sx-dim);
+	opacity: 0.78;
+}
+
+.astra-strix-disclaimer-title {
+	margin: 0 0 3px;
+	font-size: 10px;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.astra-strix-disclaimer-body {
+	margin: 0 0 3px;
+	font-size: 10.5px;
+	line-height: 1.65;
+}
+
+.astra-strix-disclaimer-dim {
+	margin: 0;
+	font-size: 10px;
+	line-height: 1.6;
+	opacity: 0.85;
+}
+
+/* ---- 输入框占位符：淡一点，逐字敲出时不刺眼 ------------------------------- */
+.astra-strix-prompt-input::placeholder {
+	color: var(--sx-dim);
+	opacity: 0.72;
 }

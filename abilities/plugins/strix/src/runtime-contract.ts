@@ -132,6 +132,27 @@ export interface BridgeScope {
 	text: string;
 }
 
+export type BridgeInstallScope = "host" | "container" | "reference";
+
+/** 「装在哪」的一条：宿主路径（可探存在）/ 容器内路径（只能复制命令）/ 其它系统的参考。 */
+export interface BridgeInstallPath {
+	id: string;
+	scope: BridgeInstallScope;
+	os: "win32" | "darwin" | "linux";
+	label: string;
+	path: string;
+	exists?: boolean;
+	command?: string;
+}
+
+export interface BridgeInstallPaths {
+	platform: string;
+	mode: "host" | "docker";
+	image: string;
+	container: string | null;
+	entries: BridgeInstallPath[];
+}
+
 export interface BridgeCapabilities {
 	tools: number;
 	skills: number;

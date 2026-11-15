@@ -17,6 +17,7 @@
  */
 
 import type { ChangeEvent, KeyboardEvent, ReactElement } from "react";
+import { useTypewriter, COMPOSER_HINTS } from "./use-typewriter";
 
 export interface PanelComposerProps {
 	t: (key: string, params?: Record<string, string | number>) => string;
@@ -34,8 +35,13 @@ export interface PanelComposerProps {
 	onOpenWorkbench?: () => void;
 	/** 工作台里的「新会话」按钮；首屏不传。 */
 	onNewSession?: () => void;
-	/** 输入框上方那行提示（首屏用它说明"说一句就开始"）。 */
-	hintKey?: string;
+	/**
+	 * 占位符循环的几句范例（逐字敲出）。
+	 *
+	 * 为什么不用一句静态提示：这一格绝大多数时间是空的，静态文案只显影一次；
+	 * 逐字敲出的短句会让人本能地读一遍。传空数组就退回静态 placeholder。
+	 */
+	hints?: readonly string[];
 }
 
 /** Enter 发送、Shift+Enter 换行；输入法组合中不拦。 */
@@ -62,8 +68,12 @@ export function PanelComposer({
 	readOnly,
 	onOpenWorkbench,
 	onNewSession,
-	hintKey,
+	hints,
 }: PanelComposerProps): ReactElement {
+	// 有内容就停（不打断输入）、只读就停（那里没有"你可以说"这回事）。
+	const typed = useTypewriter(hints ?? COMPOSER_HINTS.scan, { paused: Boolean(readOnly) || value.length > 0 });
+	const placeholder = readOnly ? "" : (typed ?? t(placeholderKey));
+
 	const submit = (): void => {
 		if (readOnly) return;
 		if (!value.trim()) return;
@@ -72,7 +82,6 @@ export function PanelComposer({
 
 	return (
 		<div className="astra-strix-composer-panel" data-readonly={readOnly ? "yes" : "no"}>
-			{hintKey ? <p className="astra-strix-composer-hint">{t(hintKey)}</p> : null}
 			<div
 				className="astra-strix-prompt"
 				data-busy={busy ? "yes" : "no"}
@@ -86,7 +95,7 @@ export function PanelComposer({
 						<textarea
 							className="astra-strix-prompt-input"
 							aria-label={t(labelKey)}
-							placeholder={readOnly ? "" : t(placeholderKey)}
+							placeholder={placeholder}
 							rows={composerRows(value)}
 							spellCheck={false}
 							readOnly={Boolean(readOnly)}
