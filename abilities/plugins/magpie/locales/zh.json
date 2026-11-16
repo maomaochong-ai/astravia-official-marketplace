@@ -32,7 +32,7 @@
   "settings.unsaved": "未保存",
   "models.title": "网关上的模型",
   "models.filter": "按名称或提供方过滤",
-  "models.empty": "网关返回了空目录，先在 magpie 里添加提供方。",
+  "models.empty": "网关返回了空目录，没有可发布的模型。",
   "models.name": "模型",
   "models.provider": "提供方",
   "models.context": "上下文",
@@ -93,5 +93,7 @@
   "error.http": "网关返回了错误",
   "error.syncFailed": "发布模型失败，没有做任何改动",
   "error.emptyModels": "目录为空，未写入 Astravia",
-  "error.toast": "Magpie 网关操作失败"
+  "error.toast": "Magpie 网关操作失败",
+  "models.emptyHint": "在 magpie 里添加并启用一个提供方，然后回到这里点「重新检测」。",
+  "models.partial": "网关还有更多模型没有一次返回（has_more），当前这份 {{shown}} 条的目录不是全部。"
 }

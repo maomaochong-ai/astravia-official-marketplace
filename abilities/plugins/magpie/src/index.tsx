@@ -4,6 +4,7 @@ import { GatewayController } from "./controller";
 import { GatewayView } from "./features/gateway-view/components/gateway-view";
 import { VIEW_ID } from "./plugin-ids";
 import { registerMagpieTools } from "./tools/magpie-tools";
+import { MAGPIE_NAV_ICON } from "./brand-icon";
 import "./style.css";
 
 /**
@@ -39,7 +40,10 @@ export default definePlugin({
 		ctx.ui.registerWorkspaceView({
 			id: VIEW_ID,
 			label: "%view.label%",
-			icon: "icon-[solar--routing-2-linear]",
+			// 侧边栏图标用插件自己的品牌字形（由 assets/icon.png 抠出透明底），不挑一枚近似的
+			// Iconify 图标占位。宿主会用 currentColor 遮罩图片图标，所以深浅主题都跟着前景色走，
+			// 与内置导航项一致；字形本身见 src/brand-icon.ts（`node tools/make-nav-icon.mjs` 生成）。
+			icon: MAGPIE_NAV_ICON,
 			description: "%view.description%",
 			component: function MagpieWorkspaceView(): JSX.Element {
 				return <GatewayView controller={controller} />;

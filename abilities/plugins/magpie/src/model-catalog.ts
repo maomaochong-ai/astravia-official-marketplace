@@ -86,6 +86,18 @@ export function parseModelRows(body: unknown): MagpieModelRow[] {
 	return rows.sort((a, b) => a.provider.localeCompare(b.provider, "en") || a.id.localeCompare(b.id, "en"));
 }
 
+/**
+ * `/v1/models` 的分页信号。
+ *
+ * magpie 会带 `has_more`：`{"object":"list","data":[…],"has_more":false}`。我们只取一页，
+ * 所以必须把这个标志原样带出去 —— 否则目录被截断时，面板会声称「已发布全部 N 个」，
+ * 而读者根本看不到少的那部分。
+ */
+export function readHasMore(body: unknown): boolean {
+	const flag = (body as { has_more?: unknown } | null)?.has_more;
+	return flag === true;
+}
+
 /** 行 → 宿主模型定义；只带宿主认得的字段，没值的字段不写。 */
 export function toModelDefinitions(rows: readonly MagpieModelRow[]): PluginModelDefinition[] {
 	return rows.map((row) => {

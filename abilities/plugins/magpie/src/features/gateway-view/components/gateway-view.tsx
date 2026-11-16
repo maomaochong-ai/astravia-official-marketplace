@@ -93,7 +93,20 @@ export function GatewayView({ controller }: GatewayViewProps) {
 							/>
 						)}
 
-						<GatewayModelList state={state} limit={MODEL_ROW_LIMIT} />
+						<GatewayModelList
+							state={state}
+							limit={MODEL_ROW_LIMIT}
+							onOpenConsole={() => void controller.openConsole()}
+						/>
+
+						{state.catalogPartial ? (
+							<div
+								className="mp-meta mp-faint border-t px-3 py-2"
+								style={{ borderColor: "var(--mp-rule)", color: "var(--mp-warn)" }}
+							>
+								{t("models.partial", { shown: state.summary.total })}
+							</div>
+						) : null}
 
 						<p className="mp-meta mp-faint border-t px-3 py-2" style={{ borderColor: "var(--mp-rule)" }}>
 							{t("note.body")}

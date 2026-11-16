@@ -2,12 +2,14 @@ import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useState } from "react";
 import type { MagpieState } from "../../../controller";
 import { formatContextWindow } from "../../../model-catalog";
-import { PanelSection } from "./ui";
+import { Button, PanelSection } from "./ui";
 
 interface ModelListProps {
 	state: MagpieState;
 	limit: number;
+	onOpenConsole: () => void;
 }
+
 
 /**
  * 模型目录。只展示前 `limit` 行，标题上写清「显示多少 / 一共多少」。
@@ -15,7 +17,7 @@ interface ModelListProps {
  * 表头固定在滚动区里（`sticky`）：一个 200 行的表滚到一半时，用户得知道这三列是什么。
  * 表格自带圆角与边框，是这一节里的**嵌套容器**。
  */
-export function GatewayModelList({ state, limit }: ModelListProps) {
+export function GatewayModelList({ state, limit, onOpenConsole }: ModelListProps) {
 	const { t } = useTranslation();
 	const [query, setQuery] = useState("");
 	const needle = query.trim().toLowerCase();
@@ -44,7 +46,13 @@ export function GatewayModelList({ state, limit }: ModelListProps) {
 			/>
 
 			{state.rows.length === 0 ? (
-				<p className="mp-meta mp-faint mt-2">{t("models.empty")}</p>
+				<div className="mt-2">
+					<p className="mp-meta mp-faint">{t("models.empty")}</p>
+					<p className="mp-meta mp-faint mt-0.5">{t("models.emptyHint")}</p>
+					<Button tone="outline" className="mt-2" onClick={onOpenConsole}>
+						{t("actions.openConsole")}
+					</Button>
+				</div>
 			) : (
 				<div
 					className="mt-2 max-h-[26rem] overflow-auto rounded-lg border"

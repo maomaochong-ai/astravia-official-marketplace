@@ -35,6 +35,11 @@ export interface MagpieState {
 	/** 已经写进宿主模型注册表的模型数；undefined = 没发布过（本次会话）。 */
 	publishedCount?: number;
 	publishedAt?: number;
+	/**
+	 * 网关还有更多模型没一次返回（`has_more`）。面板要说不说：目录不完整时
+	 * 「已发布 N 个」是真的，但不是全部。
+	 */
+	catalogPartial?: boolean;
 	/** 本机 magpie 二进制的安装/运行状态（面板上的「安装并启动」）。 */
 	runtime: RuntimeState;
 	busy: boolean;
@@ -62,7 +67,10 @@ export class GatewayController {
 		runtime: { phase: "unknown", desiredRunning: false },
 		busy: false,
 	};
-	private operationInFlight = false;
+	/** 进行中的探测：并发调用共享同一次（面板轮询 + 用户点按钮）。 */
+	private pending: Promise<void> | null = null;
+	/** 写注册表的互斥：同一时刻只发一次。 */
+	private writing = false;
 	private disposed = false;
 
 	constructor(ctx: PluginContext) {
@@ -125,10 +133,23 @@ export class GatewayController {
 		if (this.state.phase === "offline" && this.runtime.getState().phase === "running") await this.refresh();
 	}
 
-	/** 探网关 + 读目录。任何一步失败都只把原因写进 state，不抛给调用方。 */
+	/**
+	 * 探网关 + 读目录。任何一步失败都只把原因写进 state，不抛给调用方。
+	 *
+	 * 单飞：探测可能同时来自面板轮询、「重新检测」、发布前的核对。并发调用共享同一次
+	 * 请求 —— 以前后来的那个直接 return，调用方以为「目录已经读完了」，实际拿到的是
+	 * 上一轮的旧快照。
+	 */
 	async refresh(): Promise<void> {
-		if (this.disposed || this.operationInFlight) return;
-		this.operationInFlight = true;
+		if (this.disposed) return;
+		if (this.pending) return this.pending;
+		this.pending = this.runRefresh().finally(() => {
+			this.pending = null;
+		});
+		return this.pending;
+	}
+
+	private async runRefresh(): Promise<void> {
 		this.setState({ phase: "probing", busy: true, messageKey: undefined, failure: undefined });
 		try {
 			const probe = await probeGateway(this.ctx.network, this.settings);
@@ -161,11 +182,11 @@ export class GatewayController {
 				version: probe.version,
 				failure: undefined,
 				messageKey: undefined,
+				catalogPartial: list.hasMore,
 				rows: list.rows,
 				summary: summarizeCatalog(list.rows),
 			});
 		} finally {
-			this.operationInFlight = false;
 			this.setState({ busy: false });
 		}
 	}
@@ -197,12 +218,23 @@ export class GatewayController {
 	/**
 	 * 发布到 Astravia：先读回宿主当前持有的配置，再整表替换。
 	 * 显示名沿用用户改过的那个（回读可能是用户自己改的名字），凭据永远写新值。
+	 *
+	 * 为什么发布前要核对一次目录：面板里的 rows 是**上一次探测的快照**。网关刚起来、
+	 * 或用户刚在 magpie 里加完提供方，快照就是空的 —— 直接拿它判「目录为空」会把
+	 * 「还没刷新」说成「没有模型」，用户点了发布只收到一句莫名其妙的空目录。
+	 * 所以只在结果不可信时才重探（离线 / 上次读目录失败 / 目录为空），正常路径不额外请求。
 	 */
 	async publish(): Promise<boolean> {
-		if (this.disposed || this.operationInFlight) return false;
-		this.operationInFlight = true;
+		if (this.disposed || this.writing) return false;
+		this.writing = true;
 		this.setState({ busy: true });
 		try {
+			if (this.state.phase !== "online" || this.state.failure !== undefined || this.state.rows.length === 0) {
+				await this.refresh();
+			}
+			// 离线、或目录读失败：messageKey 已经是对症原因（连不上 / 超时 / 不是 magpie /
+			// HTTP 错误）。不能盖成「目录为空」——那是「网关活着但没有模型」，两回事。
+			if (this.state.phase !== "online" || this.state.failure !== undefined) return false;
 			if (this.state.rows.length === 0) {
 				this.setState({ messageKey: "error.emptyModels" });
 				return false;
@@ -229,15 +261,15 @@ export class GatewayController {
 			void this.notifyError(error);
 			return false;
 		} finally {
-			this.operationInFlight = false;
+			this.writing = false;
 			this.setState({ busy: false });
 		}
 	}
 
 	/** 从 Astravia 摘掉本插件写过的 provider；宿主按 id 删除。 */
 	async disconnect(): Promise<boolean> {
-		if (this.disposed || this.operationInFlight) return false;
-		this.operationInFlight = true;
+		if (this.disposed || this.writing) return false;
+		this.writing = true;
 		this.setState({ busy: true });
 		try {
 			await this.ctx.models.replaceOwnedProviders({});
@@ -248,7 +280,7 @@ export class GatewayController {
 			void this.notifyError(error);
 			return false;
 		} finally {
-			this.operationInFlight = false;
+			this.writing = false;
 			this.setState({ busy: false });
 		}
 	}
