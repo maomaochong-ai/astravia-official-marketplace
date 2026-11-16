@@ -2,12 +2,11 @@ import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useState } from "react";
 import type { MagpieState } from "../../../controller";
 import { formatContextWindow } from "../../../model-catalog";
-import { Button, PanelSection } from "./ui";
+import { PanelSection } from "./ui";
 
 interface ModelListProps {
 	state: MagpieState;
 	limit: number;
-	onOpenConsole: () => void;
 }
 
 
@@ -17,7 +16,7 @@ interface ModelListProps {
  * 表头固定在滚动区里（`sticky`）：一个 200 行的表滚到一半时，用户得知道这三列是什么。
  * 表格自带圆角与边框，是这一节里的**嵌套容器**。
  */
-export function GatewayModelList({ state, limit, onOpenConsole }: ModelListProps) {
+export function GatewayModelList({ state, limit }: ModelListProps) {
 	const { t } = useTranslation();
 	const [query, setQuery] = useState("");
 	const needle = query.trim().toLowerCase();
@@ -47,11 +46,11 @@ export function GatewayModelList({ state, limit, onOpenConsole }: ModelListProps
 
 			{state.rows.length === 0 ? (
 				<div className="mt-2">
-					<p className="mp-meta mp-faint">{t("models.empty")}</p>
-					<p className="mp-meta mp-faint mt-0.5">{t("models.emptyHint")}</p>
-					<Button tone="outline" className="mt-2" onClick={onOpenConsole}>
-						{t("actions.openConsole")}
-					</Button>
+					{/* 两种情况必须分开：网关没模型（用户去加）vs 回了东西但一条都没认出来（我们的缺陷）。 */}
+					<p className="mp-meta mp-faint">
+						{(state.catalogRawCount ?? 0) > 0 ? t("models.unparsed", { raw: state.catalogRawCount ?? 0 }) : t("models.empty")}
+					</p>
+					<p className="mp-meta mp-faint mt-0.5">{(state.catalogRawCount ?? 0) > 0 ? t("models.unparsedHint") : t("models.emptyHint")}</p>
 				</div>
 			) : (
 				<div

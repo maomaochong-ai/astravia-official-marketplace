@@ -32,7 +32,7 @@
   "settings.unsaved": "Unsaved",
   "models.title": "Models on the gateway",
   "models.filter": "Filter by name or provider",
-  "models.empty": "The gateway returned an empty catalog, so there is nothing to publish.",
+  "models.empty": "The gateway catalog is empty, so there is nothing to publish.",
   "models.name": "Model",
   "models.provider": "Provider",
   "models.context": "Context",
@@ -94,6 +94,9 @@
   "error.syncFailed": "Publishing failed; nothing was changed",
   "error.emptyModels": "The catalog was empty, so nothing was written",
   "error.toast": "Magpie gateway action failed",
-  "models.emptyHint": "Add and enable a provider in magpie, then come back and check again.",
-  "models.partial": "The gateway has more models than it returned in one page (has_more); these {{shown}} are not the whole catalog."
+  "models.emptyHint": "Add and enable a provider in magpie, then come back and press Check again.",
+  "models.partial": "The gateway has more models than it returned in one page (has_more); these {{shown}} are not the whole catalog.",
+  "models.unparsed": "The gateway returned {{raw}} entries, but none of them parsed into a model.",
+  "models.unparsedHint": "That is a parsing problem, not your configuration: report the count above to the plugin author.",
+  "status.publishedMinimal": "Published, but only the model identifiers: the host rejected the full fields first ({{reason}})."
 }

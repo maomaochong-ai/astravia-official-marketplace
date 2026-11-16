@@ -259,11 +259,12 @@ describe("GatewayController settings", () => {
 
 	it("notifies once per failed publish and does not throw", async () => {
 		const { ctx } = fakeContext(serve());
-		const replace = vi.spyOn(ctx.models, "replaceOwnedProviders").mockRejectedValueOnce(new Error("host said no"));
+		// 两次都拒：完整字段与最小字段都写不进去，才是真失败（只拒一次会退到最小字段）。
+		const replace = vi.spyOn(ctx.models, "replaceOwnedProviders").mockRejectedValue(new Error("host said no"));
 		const controller = new GatewayController(ctx);
 		await controller.refresh();
 		await expect(controller.publish()).resolves.toBe(false);
-		expect(controller.getState().messageKey).toBe("error.syncFailed");
+		expect(controller.getState()).toMatchObject({ messageKey: "error.syncFailed", detail: "host said no" });
 		replace.mockRestore();
 	});
 });

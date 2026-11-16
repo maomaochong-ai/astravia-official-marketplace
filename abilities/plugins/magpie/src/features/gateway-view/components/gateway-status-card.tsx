@@ -58,6 +58,20 @@ export function GatewayStatusCard({ state, onPublish, onDisconnect, onOpenConsol
 				</div>
 			) : null}
 
+			{/* 宿主拒绝写时的那一句：原样显示，不藏在 toast 里（toast 会消失，这句不会）。 */}
+			{state.detail ? (
+				<pre
+					className="mp-mono mb-2 max-h-24 overflow-auto whitespace-pre-wrap break-words rounded-lg border px-2.5 py-1.5"
+					style={{
+						borderColor: "color-mix(in srgb, var(--destructive) 34%, transparent)",
+						background: "color-mix(in srgb, var(--destructive) 8%, transparent)",
+						color: "var(--destructive)",
+					}}
+				>
+					{state.detail}
+				</pre>
+			) : null}
+
 			<dl className="mp-strip">
 				<Fact label={t("status.version")} value={state.version ?? "—"} />
 				<Fact label={t("status.models")} value={state.summary.total} />
@@ -72,6 +86,7 @@ export function GatewayStatusCard({ state, onPublish, onDisconnect, onOpenConsol
 				<Button tone="outline" onClick={onDisconnect} disabled={busy || !published}>
 					{t("actions.disconnect")}
 				</Button>
+				{/* 整个面板只有这一个「打开 magpie」入口：空目录时也不再第二遍。 */}
 				<Button tone="ghost" onClick={onOpenConsole}>
 					{t("actions.openConsole")}
 				</Button>
@@ -79,6 +94,9 @@ export function GatewayStatusCard({ state, onPublish, onDisconnect, onOpenConsol
 					<span className="mp-meta mp-faint mp-num ml-auto">{new Date(state.publishedAt).toLocaleTimeString()}</span>
 				) : null}
 			</div>
+
+			{/* 发布成功但有让步（降级成最小字段）：说清楚，不装作完整。 */}
+			{state.notice ? <p className="mp-meta mt-2" style={{ color: "var(--mp-warn)" }}>{state.notice}</p> : null}
 		</PanelSection>
 	);
 }

@@ -1,6 +1,6 @@
 import type { PluginNetworkApi } from "@astravia-org/plugin-sdk";
 import { authHeaders, helloUrl, identityUrl, modelsUrl, versionUrl, type MagpieSettings } from "./gateway-endpoint";
-import { parseModelRows, readHasMore, type MagpieModelRow } from "./model-catalog";
+import { parseModelCatalog, readHasMore, type MagpieModelRow } from "./model-catalog";
 
 /**
  * 失败原因是封闭枚举，视图与工具都按它选 i18n key，绝不把宿主原始报错当文案。
@@ -17,7 +17,7 @@ export type GatewayProbe =
 	| { ok: false; failure: GatewayFailure; status?: number };
 
 export type ModelListResult =
-	| { ok: true; rows: MagpieModelRow[]; hasMore: boolean }
+	| { ok: true; rows: MagpieModelRow[]; rawCount: number; hasMore: boolean }
 	| { ok: false; failure: GatewayFailure; status?: number };
 
 /** 探针预算很短：网关在本机，4 秒没结果就是没在跑。 */
@@ -187,5 +187,6 @@ export async function loadModels(network: PluginNetworkApi, settings: MagpieSett
 	const failure = statusFailure(response.status);
 	if (failure) return { ok: false, failure, status: response.status };
 	if (!response.ok) return { ok: false, failure: "http", status: response.status };
-	return { ok: true, rows: parseModelRows(response.body), hasMore: readHasMore(response.body) };
+	const catalog = parseModelCatalog(response.body);
+	return { ok: true, rows: catalog.rows, rawCount: catalog.rawCount, hasMore: readHasMore(response.body) };
 }

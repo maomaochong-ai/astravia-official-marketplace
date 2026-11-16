@@ -54,12 +54,15 @@ function readImages(item: Record<string, unknown>): boolean {
 }
 
 /**
- * 解析 /v1/models：OpenAI 形状 `{ object: "list", data: [{ id, owned_by, … }] }`。
- * fail-closed：形状不对的行直接丢弃，绝不猜；同一 id 只保留第一行（先到的字段更完整）。
+ * 解 /v1/models：OpenAI 形状 `{ object: "list", data: [{ id, owned_by, … }] }`。
+ * fail-closed：形状不对的行直接丢弃，结不猜；同一 id 只保留第一行（先到的字段更完整）。
+ *
+ * 丢弃的条数必须能算出来：网关回了 5 条但一条都没认出来，和「网关真的没有模型」
+ * 是两回事，前者是我们要看的解析缺陷，后者要用户去加提供方。
  */
-export function parseModelRows(body: unknown): MagpieModelRow[] {
+export function parseModelCatalog(body: unknown): { rows: MagpieModelRow[]; rawCount: number } {
 	const data = (body as { data?: unknown } | null)?.data;
-	if (!Array.isArray(data)) return [];
+	if (!Array.isArray(data)) return { rows: [], rawCount: 0 };
 	const seen = new Set<string>();
 	const rows: MagpieModelRow[] = [];
 	for (const entry of data) {
@@ -83,7 +86,15 @@ export function parseModelRows(body: unknown): MagpieModelRow[] {
 			images: readImages(item),
 		});
 	}
-	return rows.sort((a, b) => a.provider.localeCompare(b.provider, "en") || a.id.localeCompare(b.id, "en"));
+	return {
+		rows: rows.sort((a, b) => a.provider.localeCompare(b.provider, "en") || a.id.localeCompare(b.id, "en")),
+		rawCount: data.length,
+	};
+}
+
+/** 只要行：调用方与测试用这一层；要算「丢了多少条」时用 {@link parseModelCatalog}。 */
+export function parseModelRows(body: unknown): MagpieModelRow[] {
+	return parseModelCatalog(body).rows;
 }
 
 /**
@@ -98,10 +109,16 @@ export function readHasMore(body: unknown): boolean {
 	return flag === true;
 }
 
-/** 行 → 宿主模型定义；只带宿主认得的字段，没值的字段不写。 */
-export function toModelDefinitions(rows: readonly MagpieModelRow[]): PluginModelDefinition[] {
+/**
+ * 行 → 宿主模型定义；只带宿主认得的字段，没值的字段不写。
+ *
+ * `minimal` 只输出 `id / name / api`：这三个在宿主的写契约里从来没变过。
+ * 其余字段（上下文长度、推理档位）属于可选元数据，宿主换代时最容易拒的也是它们。
+ */
+export function toModelDefinitions(rows: readonly MagpieModelRow[], minimal = false): PluginModelDefinition[] {
 	return rows.map((row) => {
 		const definition: PluginModelDefinition = { id: row.id, name: row.name, api: API_KIND };
+		if (minimal) return definition;
 		if (row.contextWindow !== undefined) definition.contextWindow = row.contextWindow;
 		if (row.maxOutputTokens !== undefined) definition.maxTokens = row.maxOutputTokens;
 		if (row.reasoning) definition.reasoning = true;

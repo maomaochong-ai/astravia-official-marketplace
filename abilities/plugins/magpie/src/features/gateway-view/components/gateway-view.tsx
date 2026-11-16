@@ -93,11 +93,7 @@ export function GatewayView({ controller }: GatewayViewProps) {
 							/>
 						)}
 
-						<GatewayModelList
-							state={state}
-							limit={MODEL_ROW_LIMIT}
-							onOpenConsole={() => void controller.openConsole()}
-						/>
+						<GatewayModelList state={state} limit={MODEL_ROW_LIMIT} />
 
 						{state.catalogPartial ? (
 							<div

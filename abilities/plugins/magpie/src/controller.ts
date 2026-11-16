@@ -40,6 +40,15 @@ export interface MagpieState {
 	 * 「已发布 N 个」是真的，但不是全部。
 	 */
 	catalogPartial?: boolean;
+	/**
+	 * 网关这一次到底回了多少条（解析前）。`rows.length === 0 && catalogRawCount > 0`
+	 * = 网关有模型但一条都没认出来，面板必须区分「网关没模型」和「我们解析失败」。
+	 */
+	catalogRawCount?: number;
+	/** 失败原文（宿主/网关给的那一句）；非空就原样显示，不藏在 toast 里。 */
+	detail?: string;
+	/** 已成功但有让步的说明（例如只写入了最小字段）。正常色，不是错误。 */
+	notice?: string;
 	/** 本机 magpie 二进制的安装/运行状态（面板上的「安装并启动」）。 */
 	runtime: RuntimeState;
 	busy: boolean;
@@ -183,6 +192,7 @@ export class GatewayController {
 				failure: undefined,
 				messageKey: undefined,
 				catalogPartial: list.hasMore,
+				catalogRawCount: list.rawCount,
 				rows: list.rows,
 				summary: summarizeCatalog(list.rows),
 			});
@@ -202,9 +212,14 @@ export class GatewayController {
 		await this.refresh();
 	}
 
-	/** 当前目录能写成的 provider 配置；空目录返回 null（不写空表，防误删）。 */
-	private providerConfig(displayName: string): PluginModelProviderConfig | null {
-		const models = toModelDefinitions(this.state.rows);
+/**
+	 * 当前目录能写成的 provider 配置；空目录返回 null（不写空表，防误删）。
+	 *
+	 * `minimal` 只保留宿主契约里最稳的三个字段（id / name / api）：宿主因某个可选字段
+	 * 拒写时的退路。代价是丢掉上下文长度、推理档位这类信息，所以只在出错后才用它。
+	 */
+	private providerConfig(displayName: string, minimal = false): PluginModelProviderConfig | null {
+		const models = toModelDefinitions(this.state.rows, minimal);
 		if (models.length === 0) return null;
 		return {
 			baseUrl: providerBaseUrl(this.settings.baseUrl),
@@ -249,16 +264,35 @@ export class GatewayController {
 				this.setState({ messageKey: "error.emptyModels" });
 				return false;
 			}
-			await this.ctx.models.replaceOwnedProviders({ [PROVIDER_ID]: config });
+			// 先按完整字段写；宿主如果因为某个**可选**字段（推理档位、上下文长度…）
+			// 拒了整张表，就退一步只写 id/name/api —— 宁可少一层元数据，也不要让用户
+			// 的模型一个都发不出去。哪一步成了会写进 notice，不假装什么都没发生。
+			try {
+				await this.ctx.models.replaceOwnedProviders({ [PROVIDER_ID]: config });
+			} catch (error) {
+				const minimal = this.providerConfig(displayName, true);
+				if (!minimal) throw error;
+				await this.ctx.models.replaceOwnedProviders({ [PROVIDER_ID]: minimal });
+				const first = error instanceof Error ? error.message.trim().slice(0, 160) : String(error);
+				this.setState({
+					messageKey: undefined,
+					publishedCount: minimal.models?.length ?? 0,
+					publishedAt: Date.now(),
+					notice: this.ctx.i18n.t("status.publishedMinimal", { reason: first }),
+				});
+				return true;
+			}
 			this.setState({
 				messageKey: undefined,
+				notice: undefined,
 				publishedCount: config.models?.length ?? 0,
 				publishedAt: Date.now(),
 			});
 			return true;
 		} catch (error) {
-			this.setState({ messageKey: "error.syncFailed" });
-			void this.notifyError(error);
+			// 把宿主/网关的原文留在界面上：只说「发布失败」等于什么都没说，
+			// 而这类失败通常就是一句话的区别（权限、校验、写盘）。
+			this.failPublish(error);
 			return false;
 		} finally {
 			this.writing = false;
@@ -276,8 +310,7 @@ export class GatewayController {
 			this.setState({ publishedCount: undefined, publishedAt: undefined, messageKey: undefined });
 			return true;
 		} catch (error) {
-			this.setState({ messageKey: "error.syncFailed" });
-			void this.notifyError(error);
+			this.failPublish(error);
 			return false;
 		} finally {
 			this.writing = false;
@@ -318,6 +351,23 @@ export class GatewayController {
 	/** 打开 magpie 自己的页面（登录提供方、加 key、看用量都在那边）。 */
 	async openConsole(): Promise<void> {
 		await this.ctx.ui.openExternal(consoleUrl(this.settings.baseUrl));
+	}
+
+	/**
+	 * 写注册表失败：把原文留下（界面 + 存储），再发一条尽力而为的通知。
+	 *
+	 * 宿主拒绝写时会给一句很短的原因（权限、校验、凭据），只丢一个「操作失败」的
+	 * toast 等于把唯一的线索丢了。`detail` 就是那一句，面板直接显示。
+	 */
+	private failPublish(error: unknown): void {
+		const message = error instanceof Error ? error.message : String(error);
+		const detail = message.trim().slice(0, 400) || "(宿主没有给出原因)";
+		this.setState({ messageKey: "error.syncFailed", detail, notice: undefined });
+		// 同时落盘：用户在别处反馈时，这一句能直接从磁盘取回。
+		void this.ctx.storage
+			.writeFile("last-publish-error.json", JSON.stringify({ at: Date.now(), detail }, null, 2), "utf8")
+			.catch(() => undefined);
+		void this.notifyError(error);
 	}
 
 	/** notify 是尽力而为的提示，失败不影响主流程结果。 */
