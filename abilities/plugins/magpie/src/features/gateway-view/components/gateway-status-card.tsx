@@ -31,44 +31,52 @@ export function GatewayStatusCard({ state, onPublish, onDisconnect, onOpenConsol
 	return (
 		<PanelSection
 			title={
-				<span className="flex items-center gap-2 normal-case tracking-normal">
+				<span className="flex items-center gap-2">
 					<StatusDot tone={PHASE_TONE[state.phase]} pulse={state.phase === "probing"} />
-					<span className="text-xs font-medium text-foreground">{t("section.gateway")}</span>
-					<span className="text-[11px] font-normal text-muted-foreground">{t(`status.${state.phase}`)}</span>
+					<span className="mp-heading normal-case tracking-normal" style={{ color: "var(--mp-text)" }}>
+						{t("section.gateway")}
+					</span>
+					<span className="mp-meta normal-case tracking-normal">{t(`status.${state.phase}`)}</span>
 				</span>
 			}
-			aside={<span className="truncate font-mono text-[11px] text-muted-foreground">{state.endpoint}</span>}
+			aside={<span className="mp-mono truncate">{state.endpoint}</span>}
 		>
 			{state.messageKey ? (
-				<div className="mb-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2">
-					<p className="text-xs font-medium text-destructive">{t(state.messageKey)}</p>
+				<div
+					className="mb-2 rounded-lg border px-2.5 py-1.5"
+					style={{
+						borderColor: "color-mix(in srgb, var(--destructive) 34%, transparent)",
+						background: "color-mix(in srgb, var(--destructive) 10%, transparent)",
+					}}
+				>
+					<p className="mp-body font-medium" style={{ color: "var(--destructive)" }}>
+						{t(state.messageKey)}
+					</p>
 					{state.failure === "unreachable" || state.failure === "timeout" ? (
-						<p className="mt-1 text-[11px] text-muted-foreground">{t("status.offlineHint")}</p>
+						<p className="mp-meta mp-faint mt-0.5">{t("status.offlineHint")}</p>
 					) : null}
 				</div>
 			) : null}
 
-			<dl className="grid grid-cols-2 gap-3 @[26rem]:grid-cols-4">
+			<dl className="mp-strip">
 				<Fact label={t("status.version")} value={state.version ?? "—"} />
 				<Fact label={t("status.models")} value={state.summary.total} />
 				<Fact label={t("models.images")} value={state.summary.imageCount} />
 				<Fact label={t("status.synced")} value={published ? state.publishedCount : "—"} />
 			</dl>
 
-			<div className="mt-3 flex flex-wrap items-center gap-2">
-				<Button size="sm" onClick={onPublish} disabled={busy || !online}>
+			<div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+				<Button onClick={onPublish} disabled={busy || !online}>
 					{t("actions.sync")}
 				</Button>
-				<Button tone="outline" size="sm" onClick={onDisconnect} disabled={busy || !published}>
+				<Button tone="outline" onClick={onDisconnect} disabled={busy || !published}>
 					{t("actions.disconnect")}
 				</Button>
-				<Button tone="ghost" size="sm" onClick={onOpenConsole}>
+				<Button tone="ghost" onClick={onOpenConsole}>
 					{t("actions.openConsole")}
 				</Button>
 				{published && state.publishedAt ? (
-					<span className="ml-auto text-[11px] text-muted-foreground">
-						{new Date(state.publishedAt).toLocaleTimeString()}
-					</span>
+					<span className="mp-meta mp-faint mp-num ml-auto">{new Date(state.publishedAt).toLocaleTimeString()}</span>
 				) : null}
 			</div>
 		</PanelSection>

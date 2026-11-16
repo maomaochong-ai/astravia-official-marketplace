@@ -43,19 +43,24 @@ export function GatewayConnectionForm({ controller, disabled }: ConnectionFormPr
 			title={t("settings.title")}
 			aside={
 				<span className="flex items-center gap-1.5">
-					{note ? <span className="text-[11px] text-muted-foreground">{note}</span> : null}
-					<Button size="sm" tone={dirty ? "primary" : "outline"} onClick={commit} disabled={disabled || !dirty}>
+					{note ? (
+						<span className="mp-meta mp-faint" style={dirty ? { color: "var(--mp-warn)" } : undefined}>
+							{note}
+						</span>
+					) : null}
+					<Button tone={dirty ? "primary" : "outline"} onClick={commit} disabled={disabled || !dirty}>
 						{t("settings.save")}
 					</Button>
 				</span>
 			}
 		>
-			<div className="grid gap-2.5 @sm:grid-cols-2">
+			<div className="grid gap-2.5 @[30rem]:grid-cols-2">
 				<Field
 					label={t("settings.baseUrl")}
 					hint={t("settings.baseUrlHint")}
 					value={baseUrl}
 					disabled={disabled}
+					spellCheck={false}
 					onChange={(event) => setBaseUrl(event.target.value)}
 					onBlur={commit}
 					onKeyDown={(event) => {

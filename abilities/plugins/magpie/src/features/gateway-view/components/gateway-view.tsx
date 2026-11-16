@@ -16,15 +16,18 @@ interface GatewayViewProps {
 /**
  * 工作区视图：一整页，不绑定某一个对话。
  *
- * 0.4.0 的版面只有**一个**圆角容器：
+ * 0.4.1 的版面只有**一个**圆角容器，从上到下一列，节奏固定：
  *
- *  1. **一框到底**：以前左一卡、右一卡，中间一条 gap；窄屏时那条 gap 就是纯损失，而且
- *     读者要在两块之间自己拼因果（地址在右、状态在左）。现在所有设置都在这一个框里，
- *     框内按「网关 → 连接 → 模型 → 运行环境」分节，节与节之间用发丝线，节内再嵌自己的
- *     圆角输入框 / 表格 / 提示框。
- *  2. **一个动作只出现一次**：「重新检测」只留在头部；状态段不再重复同一个按钮。
- *  3. **说明只写必须写的**：长段落换成一句，指向性的话（点哪儿、缺什么）留在原地，
- *     解释性的废话删掉。
+ *   头部   —— 状态点 + 标题 + 一行副标题 + 唯一的主行动
+ *   网关   —— 四格统计条 + 三个动作
+ *   连接   —— 两个字段 + 保存
+ *   运行环境 —— 状态行 + 动作 + 三格诊断
+ *   模型   —— 过滤 + 表格
+ *   脚注   —— 一句边界说明
+ *
+ * 为什么不再左右分栏：面板是可拖拽的 tab，半栏在 900px 窗口里只有约 400px，
+ * 地址、路径这类长标识符必然被截断；单列时它们有整宽可用。分节靠发丝线，
+ * 不靠空白。
  */
 export function GatewayView({ controller }: GatewayViewProps) {
 	const { t } = useTranslation();
@@ -40,7 +43,6 @@ export function GatewayView({ controller }: GatewayViewProps) {
 	const installing = runtime.phase === "downloading" || runtime.phase === "starting" || runtime.phase === "checking";
 	const online = state.phase === "online";
 	const runtimeBroken = runtime.phase === "failed" || runtime.phase === "absent";
-	const needsSetup = !online || runtimeBroken || installing;
 
 	// 主行动：离线且没装 → 装并启动；离线但装了 → 启动；其余 → 重新检测。
 	const primary = !online
@@ -54,21 +56,21 @@ export function GatewayView({ controller }: GatewayViewProps) {
 		: t("view.description");
 
 	return (
-		<div className="flex h-full flex-col overflow-hidden bg-background text-foreground">
-			<div className="drag-region h-5 shrink-0" />
+		<div className="mp-root flex h-full min-h-0 flex-col overflow-hidden" style={{ background: "var(--background)" }}>
+			<div className="drag-region h-4 shrink-0" />
 
-			<div className="min-h-0 flex-1 overflow-auto px-3 py-2.5 sm:px-4">
-				<div className="mx-auto w-full max-w-4xl">
+			<div className="min-h-0 flex-1 overflow-auto px-3 pb-4 sm:px-4">
+				<div className="mx-auto w-full max-w-[56rem]">
 					<Panel
 						title={
 							<span className="flex min-w-0 items-center gap-2">
 								<StatusDot tone={online ? "ok" : state.phase === "probing" ? "working" : "bad"} pulse={state.phase === "probing"} />
-								<span className="truncate text-sm font-semibold">{t("view.label")}</span>
+								<span className="mp-title truncate">{t("view.label")}</span>
 							</span>
 						}
 						subtitle={subtitle}
 						aside={
-							<Button size="sm" tone={online ? "outline" : "primary"} onClick={primary.run} disabled={installing || state.busy}>
+							<Button tone={online ? "outline" : "primary"} onClick={primary.run} disabled={installing || state.busy}>
 								{primary.label}
 							</Button>
 						}
@@ -80,27 +82,22 @@ export function GatewayView({ controller }: GatewayViewProps) {
 							onOpenConsole={() => void controller.openConsole()}
 						/>
 
-						{/* 连接与运行环境都是「这台网关」，并排成一节里的两栏；没有运行环境段时连接占满整宽。
-						    并排时用竖线分隔，且第二栏不再保留那条上边线。 */}
-						<div
-							className={`grid border-t border-border/70 first:border-t-0 ${
-								needsSetup ? "@lg:grid-cols-2 @lg:[&>*+*]:border-t-0 @lg:[&>*+*]:border-l @lg:[&>*+*]:border-border/70" : ""
-							}`}
-						>
-							<GatewayConnectionForm controller={controller} disabled={state.busy} />
-							{needsSetup ? (
-								<GatewaySetupCard
-									state={state}
-									onInstallAndStart={() => void controller.installAndStart()}
-									onStart={() => void controller.startRuntime()}
-									onStop={() => void controller.stopRuntime()}
-								/>
-							) : null}
-						</div>
+						<GatewayConnectionForm controller={controller} disabled={state.busy} />
+
+						{online && !runtimeBroken && !installing ? null : (
+							<GatewaySetupCard
+								state={state}
+								onInstallAndStart={() => void controller.installAndStart()}
+								onStart={() => void controller.startRuntime()}
+								onStop={() => void controller.stopRuntime()}
+							/>
+						)}
 
 						<GatewayModelList state={state} limit={MODEL_ROW_LIMIT} />
 
-						<p className="border-t border-border/70 px-3 py-2 text-[11px] text-muted-foreground">{t("note.body")}</p>
+						<p className="mp-meta mp-faint border-t px-3 py-2" style={{ borderColor: "var(--mp-rule)" }}>
+							{t("note.body")}
+						</p>
 					</Panel>
 				</div>
 			</div>

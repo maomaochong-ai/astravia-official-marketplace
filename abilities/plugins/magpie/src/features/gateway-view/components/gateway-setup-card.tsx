@@ -106,10 +106,12 @@ export function GatewaySetupCard({ state, onInstallAndStart, onStart, onStop }: 
 	return (
 		<PanelSection
 			title={
-				<span className="flex items-center gap-2 normal-case tracking-normal">
+				<span className="flex items-center gap-2">
 					<StatusDot tone={PHASE_TONE[runtime.phase]} pulse={working} />
-					<span className="text-xs font-medium text-foreground">{t("runtime.title")}</span>
-					<span className="text-[11px] font-normal text-muted-foreground">
+					<span className="mp-heading normal-case tracking-normal" style={{ color: "var(--mp-text)" }}>
+						{t("runtime.title")}
+					</span>
+					<span className="mp-meta normal-case tracking-normal">
 						{t(PHASE_KEY[runtime.phase])}
 						{runtime.pid ? ` · pid ${runtime.pid}` : ""}
 						{runtime.version ? ` · ${runtime.version}` : ""}
@@ -119,11 +121,11 @@ export function GatewaySetupCard({ state, onInstallAndStart, onStart, onStop }: 
 			}
 			aside={
 				running ? (
-					<Button tone="outline" size="sm" onClick={onStop} disabled={working}>
+					<Button tone="outline" onClick={onStop} disabled={working}>
 						{t("runtime.action.stop")}
 					</Button>
 				) : (
-					<Button size="sm" onClick={installed ? onStart : onInstallAndStart} disabled={working}>
+					<Button onClick={installed ? onStart : onInstallAndStart} disabled={working}>
 						{primaryLabel}
 					</Button>
 				)
@@ -131,17 +133,15 @@ export function GatewaySetupCard({ state, onInstallAndStart, onStart, onStop }: 
 		>
 			{downloading || starting ? (
 				<div>
-					<div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-						<div
-							className={`h-full rounded-full bg-amber-500 transition-[width] duration-500 ease-out ${
-								verifying || starting || indeterminate ? "animate-pulse" : ""
-							}`}
+					<div className="mp-bar">
+						<span
+							className={verifying || starting || indeterminate ? "animate-pulse" : ""}
 							style={{ width: `${barWidth}%` }}
 						/>
 					</div>
-					<p className="mt-1.5 font-mono text-[11px] tabular-nums text-muted-foreground">{readout.join(" · ")}</p>
+					<p className="mp-meta mp-mono mp-num mt-1.5">{readout.join(" · ")}</p>
 					{downloading && !verifying ? (
-						<p className="mt-1 text-[11px] text-muted-foreground">
+						<p className="mp-meta mp-faint mt-0.5">
 							{percent !== undefined ? t("runtime.progress.hint") : t("runtime.progress.noTotal")}
 						</p>
 					) : null}
@@ -149,37 +149,43 @@ export function GatewaySetupCard({ state, onInstallAndStart, onStart, onStop }: 
 			) : null}
 
 			{runtime.messageKey ? (
-				<div className="mt-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2">
-					<p className="text-xs font-medium text-destructive">{t(runtime.messageKey)}</p>
+				<div
+					className="mt-2 rounded-lg border px-2.5 py-1.5"
+					style={{
+						borderColor: "color-mix(in srgb, var(--destructive) 34%, transparent)",
+						background: "color-mix(in srgb, var(--destructive) 10%, transparent)",
+					}}
+				>
+					<p className="mp-body font-medium" style={{ color: "var(--destructive)" }}>
+						{t(runtime.messageKey)}
+					</p>
 					{runtime.messageKey === "runtime.noShell" ? (
-						<p className="mt-1 text-[11px] text-muted-foreground">{t("runtime.noShellHint")}</p>
+						<p className="mp-meta mp-faint mt-0.5">{t("runtime.noShellHint")}</p>
 					) : null}
 					{runtime.messageKey === "runtime.denied" ? (
-						<p className="mt-1 text-[11px] text-muted-foreground">{t("runtime.deniedHint")}</p>
+						<p className="mp-meta mp-faint mt-0.5">{t("runtime.deniedHint")}</p>
 					) : null}
 				</div>
 			) : null}
 
-			<dl className="mt-2 grid grid-cols-1 gap-2 @[30rem]:grid-cols-3">
+			<dl className="mp-strip mt-2">
 				<Fact label={t("runtime.diagnosis.shell")} value={runtime.shell ?? "—"} />
 				<Fact label={t("runtime.diagnosis.path")} value={runtime.binPath ?? installPath} />
 				<Fact label={t("runtime.diagnosis.endpoint")} value={state.endpoint} />
 			</dl>
 
 			{runtime.detail ? (
-				<pre className="mt-2 max-h-24 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-border bg-muted/40 px-3 py-2 font-mono text-[11px] text-muted-foreground">
+				<pre
+					className="mp-mono mt-2 max-h-24 overflow-auto whitespace-pre-wrap break-words rounded-lg border px-2.5 py-1.5"
+					style={{ borderColor: "var(--mp-rule)", background: "color-mix(in srgb, var(--foreground) 4%, transparent)" }}
+				>
 					{runtime.detail}
 				</pre>
 			) : null}
 
-			<p className="mt-2 text-[11px] text-muted-foreground">
+			<p className="mp-meta mp-faint mt-2">
 				{t("runtime.note")}{" "}
-				<a
-					href="https://usemagpie.ai"
-					target="_blank"
-					rel="noreferrer"
-					className="underline underline-offset-4 hover:text-foreground"
-				>
+				<a href="https://usemagpie.ai" target="_blank" rel="noreferrer" className="underline underline-offset-4">
 					usemagpie.ai
 				</a>
 			</p>

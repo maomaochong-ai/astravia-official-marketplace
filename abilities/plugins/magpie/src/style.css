@@ -6,3 +6,362 @@
 @import "tailwindcss/utilities.css" layer(utilities);
 /* 图标库：与宿主一致，用 iconify 的 `icon-[solar--*]` 工具类。 */
 @plugin "@iconify/tailwind4";
+
+/* ============================================================================
+   面板的排版与色阶
+   ----------------------------------------------------------------------------
+   宿主的色 token 是「一组值」，深浅两套由 `html[data-mode]` 切换；但**对比关系**
+   不能只靠 token 本身：浅色主题的 border 是 rgb(230,230,230) 压在 rgb(250,250,250)
+   的卡面上——直接用 `border-border/70` 就等于看不见。所以这里不再给 token 叠透明度，
+   而是用「前景色与卡面按比例混合」得到一条在两种模式下都成立的发丝线。
+
+   字体只分两个角色，且都有明确用途：
+     · 界面文字 —— 跟随宿主 --font-sans（用户在设置里选的那一个）；
+     · 标识符   —— URL / 路径 / 版本 / pid / 模型 id 用等宽，且带 tabular-nums，
+                   数字不会在刷新时左右跳动。
+   字号收敛成五档（10.5 / 11 / 12 / 12.5 / 13），不再出现 10.5px 与 11px 混用的
+   层级噪音。
+   ========================================================================== */
+
+.mp-root {
+	/* 一条在深浅两套里都看得见的线：前景 12% 混进卡面。 */
+	--mp-rule: color-mix(in srgb, var(--foreground) 12%, var(--card));
+	--mp-rule-strong: color-mix(in srgb, var(--foreground) 18%, var(--card));
+	--mp-rail: color-mix(in srgb, var(--foreground) 16%, var(--card));
+	/* 正文与次要文字：不叠透明度，避免浅色主题里糊成一片。 */
+	--mp-text: var(--card-foreground);
+	--mp-dim: var(--muted-foreground);
+	--mp-faint: color-mix(in srgb, var(--muted-foreground) 86%, var(--card));
+	/* 状态色：浅色用深一档、深色用亮一档，两套的观感才对得上。 */
+	--mp-ok: rgb(5, 150, 105);
+	--mp-warn: rgb(180, 83, 9);
+	--mp-bad: var(--destructive);
+	/* 滚动条：细，且是前景的淡化版，不抢视线。 */
+	--mp-thumb: color-mix(in srgb, var(--foreground) 20%, transparent);
+	--mp-thumb-hover: color-mix(in srgb, var(--foreground) 34%, transparent);
+	--mp-font-mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, "Liberation Mono", Menlo, monospace;
+
+	font-family: var(--font-sans);
+	font-size: 12px;
+	line-height: 1.45;
+	color: var(--mp-text);
+	-webkit-font-smoothing: antialiased;
+}
+
+html[data-mode="dark"] .mp-root {
+	--mp-ok: rgb(52, 211, 153);
+	--mp-warn: rgb(251, 191, 36);
+}
+
+/* ---- 滚动条 ---------------------------------------------------------------- */
+.mp-root * {
+	scrollbar-width: thin;
+	scrollbar-color: var(--mp-thumb) transparent;
+}
+
+.mp-root ::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+
+.mp-root ::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.mp-root ::-webkit-scrollbar-thumb {
+	background: var(--mp-thumb);
+	background-clip: padding-box;
+	border: 2px solid transparent;
+	border-radius: 999px;
+}
+
+.mp-root ::-webkit-scrollbar-thumb:hover {
+	background: var(--mp-thumb-hover);
+	background-clip: padding-box;
+}
+
+.mp-root ::-webkit-scrollbar-corner {
+	background: transparent;
+}
+
+/* ---- 字阶 ------------------------------------------------------------------ */
+.mp-root .mp-title {
+	font-size: 13px;
+	font-weight: 600;
+	letter-spacing: -0.005em;
+}
+
+.mp-root .mp-heading {
+	font-size: 12.5px;
+	font-weight: 600;
+}
+
+/* 分区标题：小、疏、灰。它只回答「这一段是什么」，不与内容抢注意力。 */
+.mp-root .mp-label {
+	font-size: 10.5px;
+	font-weight: 500;
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+	color: var(--mp-dim);
+}
+
+.mp-root .mp-body {
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+.mp-root .mp-meta {
+	font-size: 11px;
+	line-height: 1.45;
+	color: var(--mp-dim);
+}
+
+.mp-root .mp-faint {
+	color: var(--mp-faint);
+}
+
+.mp-root .mp-mono {
+	font-family: var(--mp-font-mono);
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: -0.01em;
+}
+
+/* 数值单元格：数字等宽，刷新时不左右跳。 */
+.mp-root .mp-num {
+	font-variant-numeric: tabular-nums;
+}
+
+/* ---- 结构件 ---------------------------------------------------------------- */
+.mp-root .mp-panel {
+	background: var(--card);
+	color: var(--card-foreground);
+	border: 1px solid var(--mp-rule-strong);
+	border-radius: 12px;
+}
+
+.mp-root .mp-rule {
+	border-color: var(--mp-rule);
+}
+
+.mp-root .mp-field {
+	width: 100%;
+	height: 30px;
+	padding-inline: 8px;
+	font-family: var(--mp-font-mono);
+	font-size: 11.5px;
+	color: var(--mp-text);
+	background: var(--background);
+	border: 1px solid var(--mp-rule-strong);
+	border-radius: 7px;
+	outline: none;
+	transition:
+		border-color 120ms ease,
+		box-shadow 120ms ease;
+}
+
+.mp-root .mp-field::placeholder {
+	color: var(--mp-faint);
+	font-family: var(--font-sans);
+}
+
+.mp-root .mp-field:focus-visible {
+	border-color: var(--ring);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 22%, transparent);
+}
+
+.mp-root .mp-field:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
+}
+
+/* 状态点：颜色由 token 决定，不再写死 emerald-500 —— 那在浅色卡面上偏亮。 */
+.mp-root .mp-dot {
+	width: 7px;
+	height: 7px;
+	border-radius: 999px;
+	flex: none;
+}
+
+.mp-root .mp-dot[data-tone="ok"] {
+	background: var(--mp-ok);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--mp-ok) 18%, transparent);
+}
+
+.mp-root .mp-dot[data-tone="working"] {
+	background: var(--mp-warn);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--mp-warn) 18%, transparent);
+}
+
+.mp-root .mp-dot[data-tone="bad"] {
+	background: var(--mp-bad);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--mp-bad) 18%, transparent);
+}
+
+.mp-root .mp-dot[data-tone="idle"] {
+	background: var(--mp-faint);
+}
+
+/* 表格：表头贴在滚动区里，行线用同一条发丝线，不再用 border/40 那种半透明灰。 */
+.mp-root .mp-table {
+	width: 100%;
+	border-collapse: separate;
+	border-spacing: 0;
+	text-align: left;
+	font-size: 11.5px;
+}
+
+.mp-root .mp-table thead th {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	padding: 6px 8px;
+	font-size: 10.5px;
+	font-weight: 500;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color: var(--mp-dim);
+	background: var(--card);
+	border-bottom: 1px solid var(--mp-rule-strong);
+}
+
+.mp-root .mp-table tbody td {
+	padding: 6px 8px;
+	border-bottom: 1px solid var(--mp-rule);
+	vertical-align: top;
+}
+
+.mp-root .mp-table tbody tr:last-child td {
+	border-bottom: 0;
+}
+
+.mp-root .mp-table tbody tr:hover td {
+	background: color-mix(in srgb, var(--foreground) 4%, transparent);
+}
+
+/* 键盘可达性：宿主里 tab 会经过插件面板，焦点必须看得见。 */
+.mp-root button:focus-visible,
+.mp-root a:focus-visible {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
+}
+
+/* 按钮：三个色调，全部由 token 推导，深浅两套一致。 */
+.mp-root .mp-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	height: 28px;
+	padding-inline: 10px;
+	font-size: 11.5px;
+	font-weight: 500;
+	border-radius: 7px;
+	border: 1px solid transparent;
+	cursor: pointer;
+	transition:
+		background-color 120ms ease,
+		border-color 120ms ease,
+		color 120ms ease;
+}
+
+.mp-root .mp-btn:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.mp-root .mp-btn[data-tone="primary"] {
+	background: var(--primary);
+	color: var(--primary-foreground);
+}
+
+.mp-root .mp-btn[data-tone="primary"]:hover:not(:disabled) {
+	background: color-mix(in srgb, var(--primary) 86%, var(--foreground));
+}
+
+.mp-root .mp-btn[data-tone="outline"] {
+	background: transparent;
+	border-color: var(--mp-rule-strong);
+	color: var(--mp-text);
+}
+
+.mp-root .mp-btn[data-tone="outline"]:hover:not(:disabled) {
+	background: color-mix(in srgb, var(--foreground) 7%, transparent);
+}
+
+.mp-root .mp-btn[data-tone="ghost"] {
+	background: transparent;
+	color: var(--mp-dim);
+}
+
+.mp-root .mp-btn[data-tone="ghost"]:hover:not(:disabled) {
+	color: var(--mp-text);
+	background: color-mix(in srgb, var(--foreground) 6%, transparent);
+}
+
+/* 统计条：一格一个数，格与格之间一条竖线，比四个小方块省一半高度。 */
+.mp-root .mp-strip {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: minmax(0, 1fr);
+	border: 1px solid var(--mp-rule);
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.mp-root .mp-strip > * + * {
+	border-left: 1px solid var(--mp-rule);
+}
+
+/* 进度条：底槽用发丝线，填充用进行中的颜色。 */
+.mp-root .mp-bar {
+	height: 4px;
+	border-radius: 999px;
+	background: var(--mp-rule-strong);
+	overflow: hidden;
+}
+
+.mp-root .mp-bar > span {
+	display: block;
+	height: 100%;
+	background: var(--mp-warn);
+	transition: width 400ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.mp-root * {
+		transition-duration: 0ms !important;
+		animation-duration: 0ms !important;
+	}
+}
+
+/* 窄节里的统计条：四等分只剩 70px，版本号会被截成「0.1…」。改为一行一条
+   「标签 —— 值」，标签不缩、值右对齐，宽度都够。 */
+@container (max-width: 30rem) {
+	.mp-root .mp-strip {
+		grid-auto-flow: row;
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.mp-root .mp-strip > * {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 12px;
+	}
+
+	.mp-root .mp-strip > * + * {
+		border-left: 0;
+		border-top: 1px solid var(--mp-rule);
+	}
+
+	.mp-root .mp-strip dt {
+		flex: none;
+	}
+
+	.mp-root .mp-strip dd {
+		margin-top: 0;
+		min-width: 0;
+		text-align: right;
+	}
+}
