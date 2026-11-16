@@ -32,7 +32,7 @@
   "settings.unsaved": "未保存",
   "models.title": "网关上的模型",
   "models.filter": "按名称或提供方过滤",
-  "models.empty": "网关返回了空目录，没有可发布的模型。",
+  "models.empty": "网关的模型目录是空的，没有可发布的模型。",
   "models.name": "模型",
   "models.provider": "提供方",
   "models.context": "上下文",
@@ -94,6 +94,9 @@
   "error.syncFailed": "发布模型失败，没有做任何改动",
   "error.emptyModels": "目录为空，未写入 Astravia",
   "error.toast": "Magpie 网关操作失败",
-  "models.emptyHint": "在 magpie 里添加并启用一个提供方，然后回到这里点「重新检测」。",
-  "models.partial": "网关还有更多模型没有一次返回（has_more），当前这份 {{shown}} 条的目录不是全部。"
+  "models.emptyHint": "在 magpie 里添加并启用一个提供方，然后回来点「重新检测」。",
+  "models.partial": "网关还有更多模型没有一次返回（has_more），当前这份 {{shown}} 条不是全部。",
+  "models.unparsed": "网关返回了 {{raw}} 条记录，但没有一条能识别成模型。",
+  "models.unparsedHint": "这是解析问题，不是你没有配置：把上面那个条数反馈给插件作者。",
+  "status.publishedMinimal": "已发布，但只写了模型标识：宿主第一次拒了完整字段（{{reason}}）。"
 }
