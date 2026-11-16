@@ -1,6 +1,6 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { MagpieState } from "../../../controller";
-import { Button, Card, Fact, StatusDot } from "./ui";
+import { Button, Fact, PanelSection, StatusDot } from "./ui";
 
 const PHASE_TONE: Record<MagpieState["phase"], "ok" | "working" | "bad" | "idle"> = {
 	idle: "idle",
@@ -9,52 +9,46 @@ const PHASE_TONE: Record<MagpieState["phase"], "ok" | "working" | "bad" | "idle"
 	offline: "bad",
 };
 
-interface StatusCardProps {
+interface StatusSectionProps {
 	state: MagpieState;
-	onRefresh: () => void;
 	onPublish: () => void;
 	onDisconnect: () => void;
 	onOpenConsole: () => void;
 }
 
 /**
- * 第一块：网关在不在、什么版本、有多少模型、有没有写进 Astravia。
+ * 第一段：网关在不在、什么版本、多少模型、有没有写进 Astravia。
  *
- * 失败时不再只丢一个红色 key：把「探的是哪个地址、为什么失败、下一步该点哪个按钮」
- * 放在同一块里，用户不必在两块卡片之间自己拼因果。
+ * 这一段不再自带「重新检测」——那个动作在整页唯一的头部，出现两次只会让读者挑一个猜。
+ * 失败时的下一步也并进同一段：地址、原因、该点哪个按钮，都在视线里。
  */
-export function GatewayStatusCard({ state, onRefresh, onPublish, onDisconnect, onOpenConsole }: StatusCardProps) {
+export function GatewayStatusCard({ state, onPublish, onDisconnect, onOpenConsole }: StatusSectionProps) {
 	const { t } = useTranslation();
 	const busy = state.busy;
 	const published = typeof state.publishedCount === "number";
 	const online = state.phase === "online";
 
 	return (
-		<Card
+		<PanelSection
 			title={
-				<span className="flex items-center gap-2">
+				<span className="flex items-center gap-2 normal-case tracking-normal">
 					<StatusDot tone={PHASE_TONE[state.phase]} pulse={state.phase === "probing"} />
-					<span className="truncate">{t(`status.${state.phase}`)}</span>
+					<span className="text-xs font-medium text-foreground">{t("section.gateway")}</span>
+					<span className="text-[11px] font-normal text-muted-foreground">{t(`status.${state.phase}`)}</span>
 				</span>
 			}
-			aside={
-				<Button tone="outline" size="sm" onClick={onRefresh} disabled={busy}>
-					{busy ? t("actions.working") : t("actions.refresh")}
-				</Button>
-			}
+			aside={<span className="truncate font-mono text-[11px] text-muted-foreground">{state.endpoint}</span>}
 		>
-			<p className="truncate font-mono text-xs text-muted-foreground">{state.endpoint}</p>
-
 			{state.messageKey ? (
-				<div className="mt-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2">
+				<div className="mb-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2">
 					<p className="text-xs font-medium text-destructive">{t(state.messageKey)}</p>
 					{state.failure === "unreachable" || state.failure === "timeout" ? (
-						<p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{t("status.offlineHint")}</p>
+						<p className="mt-1 text-[11px] text-muted-foreground">{t("status.offlineHint")}</p>
 					) : null}
 				</div>
 			) : null}
 
-			<dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+			<dl className="grid grid-cols-2 gap-3 @[26rem]:grid-cols-4">
 				<Fact label={t("status.version")} value={state.version ?? "—"} />
 				<Fact label={t("status.models")} value={state.summary.total} />
 				<Fact label={t("models.images")} value={state.summary.imageCount} />
@@ -77,6 +71,6 @@ export function GatewayStatusCard({ state, onRefresh, onPublish, onDisconnect, o
 					</span>
 				) : null}
 			</div>
-		</Card>
+		</PanelSection>
 	);
 }

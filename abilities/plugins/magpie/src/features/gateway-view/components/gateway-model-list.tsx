@@ -2,7 +2,7 @@ import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useState } from "react";
 import type { MagpieState } from "../../../controller";
 import { formatContextWindow } from "../../../model-catalog";
-import { Card } from "./ui";
+import { PanelSection } from "./ui";
 
 interface ModelListProps {
 	state: MagpieState;
@@ -13,6 +13,7 @@ interface ModelListProps {
  * 模型目录。只展示前 `limit` 行，标题上写清「显示多少 / 一共多少」。
  *
  * 表头固定在滚动区里（`sticky`）：一个 200 行的表滚到一半时，用户得知道这三列是什么。
+ * 表格自带圆角与边框，是这一节里的**嵌套容器**。
  */
 export function GatewayModelList({ state, limit }: ModelListProps) {
 	const { t } = useTranslation();
@@ -29,14 +30,7 @@ export function GatewayModelList({ state, limit }: ModelListProps) {
 	const shown = matched.slice(0, limit);
 
 	return (
-		<Card
-			title={t("models.title")}
-			aside={
-				<span className="text-[11px] text-muted-foreground">
-					{t("models.showing", { shown: shown.length, total: matched.length })}
-				</span>
-			}
-		>
+		<PanelSection title={t("models.title")} aside={<span className="text-[11px] text-muted-foreground">{t("models.showing", { shown: shown.length, total: matched.length })}</span>}>
 			<input
 				value={query}
 				onChange={(event) => setQuery(event.target.value)}
@@ -45,9 +39,9 @@ export function GatewayModelList({ state, limit }: ModelListProps) {
 			/>
 
 			{state.rows.length === 0 ? (
-				<p className="mt-3 text-xs text-muted-foreground">{t("models.empty")}</p>
+				<p className="mt-2 text-xs text-muted-foreground">{t("models.empty")}</p>
 			) : (
-				<div className="mt-3 max-h-[26rem] overflow-auto rounded-lg border border-border/60">
+				<div className="mt-2 max-h-[26rem] overflow-auto rounded-lg border border-border/60">
 					<table className="w-full text-left text-xs">
 						<thead className="sticky top-0 z-10 bg-card text-[11px] text-muted-foreground">
 							<tr className="[&>th]:border-b [&>th]:border-border [&>th]:py-2 [&>th]:pr-3 [&>th]:font-normal [&>th]:last:pr-2">
@@ -85,6 +79,6 @@ export function GatewayModelList({ state, limit }: ModelListProps) {
 					{t("models.truncated", { shown: shown.length, total: matched.length })}
 				</p>
 			) : null}
-		</Card>
+		</PanelSection>
 	);
 }

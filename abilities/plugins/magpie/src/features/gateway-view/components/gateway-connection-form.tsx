@@ -1,7 +1,7 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useEffect, useState } from "react";
 import type { GatewayController } from "../../../controller";
-import { Button, Card, Field } from "./ui";
+import { Button, Field, PanelSection } from "./ui";
 
 interface ConnectionFormProps {
 	controller: GatewayController;
@@ -9,10 +9,10 @@ interface ConnectionFormProps {
 }
 
 /**
- * 连接设置：网关地址与 key。
+ * 连接：网关地址与 key。
  *
  * 值全在 controller 里，这一层只在「正在编辑」时持有草稿；失焦或回车才提交，
- * 免得每敲一个字符就重新探一次网关。
+ * 免得每敲一个字符就重新探一次网关。两栏在宽处并排 —— 它们都是「这台网关」，同一节。
  */
 export function GatewayConnectionForm({ controller, disabled }: ConnectionFormProps) {
 	const { t } = useTranslation();
@@ -36,16 +36,21 @@ export function GatewayConnectionForm({ controller, disabled }: ConnectionFormPr
 		});
 	};
 
+	const note = saved ? t("settings.saved") : dirty ? t("settings.unsaved") : null;
+
 	return (
-		<Card
+		<PanelSection
 			title={t("settings.title")}
 			aside={
-				<span className="text-[11px] text-muted-foreground">
-					{saved ? t("settings.saved") : dirty ? t("settings.unsaved") : null}
+				<span className="flex items-center gap-1.5">
+					{note ? <span className="text-[11px] text-muted-foreground">{note}</span> : null}
+					<Button size="sm" tone={dirty ? "primary" : "outline"} onClick={commit} disabled={disabled || !dirty}>
+						{t("settings.save")}
+					</Button>
 				</span>
 			}
 		>
-			<div className="grid gap-3">
+			<div className="grid gap-2.5 @sm:grid-cols-2">
 				<Field
 					label={t("settings.baseUrl")}
 					hint={t("settings.baseUrlHint")}
@@ -71,11 +76,6 @@ export function GatewayConnectionForm({ controller, disabled }: ConnectionFormPr
 					}}
 				/>
 			</div>
-			<div className="mt-3 flex justify-end">
-				<Button size="sm" onClick={commit} disabled={disabled || !dirty}>
-					{t("settings.save")}
-				</Button>
-			</div>
-		</Card>
+		</PanelSection>
 	);
 }
