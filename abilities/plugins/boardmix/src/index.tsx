@@ -6,6 +6,7 @@ import { registerPromptAutomation } from "./hooks/prompt-submit-automation";
 import { ACTIVITY_TAB_ID, TOOL_IDS } from "./plugin-ids";
 import { setRuntime } from "./runtime-contract";
 import { registerTools } from "./tools/register-tools";
+import { SafeSurface } from "./features/boardmix-workspace/components/safe-surface";
 import "./style.css";
 
 export default definePlugin({
@@ -17,7 +18,9 @@ export default definePlugin({
 		const tab = ctx.ui.registerActivityTab({
 			id: ACTIVITY_TAB_ID,
 			label: "%tab.title%",
-			component: () => createElement(BoardmixWorkspace, { ctx }),
+			// 边界包在组件里而不是包在 registerActivityTab 外面：宿主只认 component，
+			// 所以「出错只坏这一块」必须在自己的 render 里成立。
+			component: () => createElement(SafeSurface, { label: "白板面板" }, createElement(BoardmixWorkspace, { ctx })),
 			scope_use: ["conversation", "project"],
 			// 不再自动上栏：这条会话没用过白板时，标签栏里不该先摆一个位置。工具调用走
 			// `openActivityTab`，会把它 attach 上栏并选中；用户自己点「+」加一次，宿主按
@@ -37,7 +40,7 @@ export default definePlugin({
 			? ctx.ui.registerToolCallSlot({
 					id: "boardmix-automation-run",
 					toolName: TOOL_IDS.automate,
-					component: AutomationRunSlot,
+					component: () => createElement(SafeSurface, { label: "白板自动化" }, createElement(AutomationRunSlot)),
 				})
 			: null;
 
