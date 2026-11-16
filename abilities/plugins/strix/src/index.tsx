@@ -150,6 +150,7 @@ function StrixTabRoot({
 			{...(session.coverageTally ? { coverageTally: session.coverageTally } : {})}
 			busy={session.busy}
 			stop={session.stop}
+			clearTrace={session.clearTrace}
 			send={session.send}
 			onQuit={onQuit}
 		/>

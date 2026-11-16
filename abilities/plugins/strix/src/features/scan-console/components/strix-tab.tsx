@@ -86,6 +86,8 @@ export interface StrixTabProps {
 	/** Counts by outcome from the service, for the coverage panel's title. */
 	coverageTally?: Record<string, number>;
 	stop: () => Promise<void>;
+	/** 清空运行记录（只清轨迹）。 */
+	clearTrace: () => void;
 	/** 把面板输入框里的话交给宿主对话。 */
 	send: (text: string) => Promise<boolean>;
 	onQuit: () => void;
@@ -137,6 +139,7 @@ export function StrixTab(props: StrixTabProps): React.ReactElement {
 					{...(props.history ? { history: props.history } : {})}
 					{...(props.team ? { team: props.team } : {})}
 					onStop={() => void props.stop()}
+					onClearTrace={props.clearTrace}
 					{...(props.live ? { live: props.live } : {})}
 					onOpenReport={props.onOpenReport}
 					onSend={(value) => void props.send(value)}

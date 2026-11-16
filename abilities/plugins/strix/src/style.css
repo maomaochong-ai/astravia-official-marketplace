@@ -228,8 +228,11 @@
 		animation: none;
 	}
 }
+/* 1.6.0：整块填色太抢眼，与背景不协调。现在只留一条柔和光带 + 极淡的底色，
+   视觉上像“这里有入口”，而不是“这里有一块彩色面板”。 */
 .astra-strix-prompt {
-	position: relative; /* 手柄的定位基准 */
+	position: relative;
+	background: color-mix(in srgb, var(--sx-green) 3%, transparent); /* 手柄的定位基准 */
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
@@ -378,6 +381,10 @@
 }
 
 /* 工作台底部：同样的意思，只一行——工作台里不需要再解释一次“这里不是聊天框”。 */
+.astra-strix-composer-panel {
+	padding-bottom: 12px;
+}
+
 .astra-strix-workbench-note {
 	margin: 0;
 	padding: 6px clamp(0px, 2vw, 14px) 8px;
@@ -1723,6 +1730,8 @@
 	writing-mode: vertical-rl;
 	text-orientation: upright;
 	letter-spacing: 0.12em;
+	/* 向下流动 + 顶部渐隐：流的“源头”在画面上方，而不是从中间冒出来。 */
+	mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 78%, transparent 100%);
 	animation: astra-strix-rain-fall 9s linear infinite;
 	white-space: nowrap;
 }
@@ -2472,7 +2481,7 @@
    实现上是一条渐变描边 + 一层很淡的外发光；不做 `filter: blur`（那会每帧重绘整框）。 */
 .astra-strix-prompt {
 	position: relative;
-	border-color: color-mix(in srgb, var(--sx-green) 42%, transparent);
+	border-color: color-mix(in srgb, var(--sx-green) 26%, transparent);
 	box-shadow:
 		0 0 0 1px color-mix(in srgb, var(--sx-green) 18%, transparent),
 		0 0 22px -8px color-mix(in srgb, var(--sx-green) 55%, transparent);
@@ -2489,19 +2498,21 @@
 	   靠 background-clip 让渐变只出现在 1px 的边上。
 	   不再用 mask-composite——旧 WebKit（macOS 上常见）不支持 `exclude`，
 	   那一来描边整条消失、内容还会被拉到框外，用户看到的就是“界面乱套”。 */
-	background-image: linear-gradient(transparent, transparent), linear-gradient(
-		120deg,
-		color-mix(in srgb, var(--sx-green) 85%, transparent),
-		color-mix(in srgb, var(--sx-aurora-b, #0891b2) 70%, transparent) 45%,
-		color-mix(in srgb, var(--sx-aurora-c, #7c3aed) 60%, transparent) 70%,
-		color-mix(in srgb, var(--sx-green) 85%, transparent)
+	background-image: linear-gradient(transparent, transparent), conic-gradient(from var(--sx-ring, 0deg),
+		color-mix(in srgb, var(--sx-green) 70%, transparent),
+		transparent 28%,
+		color-mix(in srgb, var(--sx-aurora-b, #0891b2) 55%, transparent) 50%,
+		transparent 72%,
+		color-mix(in srgb, var(--sx-green) 70%, transparent)
 	);
+	/* 光带沿边框缓动旋转（见下方 keyframes）。 */
 	background-origin: border-box;
 	background-clip: padding-box, border-box;
 	opacity: 0.55;
 	pointer-events: none;
-	/* 只动不透明度：合成层属性，不触发重绘。 */
-	animation: astra-strix-prompt-breathe 4.5s ease-in-out infinite;
+	/* 旋转整块伪元素：合成层属性，不重绘内容。 */
+	overflow: hidden;
+	animation: astra-strix-prompt-breathe 5s ease-in-out infinite;
 }
 
 .astra-strix-prompt:focus-within {

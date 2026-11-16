@@ -105,6 +105,8 @@ export interface StrixSessionModel {
 	send: (text: string) => Promise<boolean>;
 	/** 停止：只停面板正在显示的那个会话的当前一轮。 */
 	stop: () => Promise<void>;
+	/** 清空运行记录（只清轨迹）。 */
+	clearTrace: () => void;
 	/**
 	 * 这一轮进行中时，最后一句话的摘要（节流后的单行）。
 	 *
@@ -328,6 +330,19 @@ export function useStrixSession({
 	 * 合并规则在 `domain/trace-log.ts`（纯函数、有测试）：真机上容器起不来时服务会反复重试，
 	 * 每次两条 note，不合并就是一堵重复的墙，真证据（命令与输出）会被挤出视野。
 	 */
+	/**
+	 * 清空运行记录（只清这一屏的轨迹）。
+	 *
+	 * 为什么只清它：台账、发现、笔记是评估的证据，删掉要负责任的；运行记录是**看**的东西，
+	 * 一轮跑完上千行之后它只剩噪声，用户需要一条干净的起点。
+	 */
+	const clearTrace = useCallback(() => {
+		setTrace([]);
+		seq.current = 0;
+		turnRef.current = 0;
+		note(t("scan.traceCleared"), "ok");
+	}, [note, t]);
+
 	const pushTrace = useCallback((entry: TraceDraft) => {
 		setTrace((previous) => foldTrace(previous, entry, { id: `e${(seq.current += 1)}`, at: Date.now() }).entries);
 	}, []);
@@ -1002,6 +1017,7 @@ export function useStrixSession({
 			installPaths,
 			resolvedMode,
 			send,
+			clearTrace,
 			stop,
 			refresh,
 			environmentMode,

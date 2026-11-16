@@ -74,6 +74,8 @@ export interface ScanScreenProps {
 	 */
 	canStop?: boolean;
 	onStop: () => void;
+	/** 清空运行记录（只清轨迹）。 */
+	onClearTrace?: () => void;
 	/** 这一轮进行中：最后一句的摘要（宿主还在写，面板不静止）。 */
 	live?: string;
 	/** 读一条历史报告（`?key=`），返回 markdown。 */
@@ -174,6 +176,7 @@ export function ScanScreen({
 	team,
 	onOpenNote,
 	onStop,
+	onClearTrace,
 	live,
 	onOpenReport,
 	onSend,
@@ -272,7 +275,14 @@ export function ScanScreen({
 			<div className="astra-strix-workbench-grid">
 				<section className="astra-strix-transcript">
 					{/* 标题说清这一栏是什么：运行记录，不是第二份对话。 */}
-					<h2 className="astra-strix-transcript-title">{t("scan.traceTitle")}</h2>
+					<div className="astra-strix-transcript-head">
+						<h2 className="astra-strix-transcript-title">{t("scan.traceTitle")}</h2>
+						{onClearTrace && trace.length ? (
+							<button type="button" className="astra-strix-band-button" onClick={onClearTrace}>
+								{t("scan.traceClear")}
+							</button>
+						) : null}
+					</div>
 					<div
 						className="astra-strix-transcript-body"
 						role="log"
