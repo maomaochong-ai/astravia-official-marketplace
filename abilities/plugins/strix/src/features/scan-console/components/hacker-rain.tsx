@@ -86,7 +86,7 @@ interface Column {
  * 所以相邻列几乎不会同拍；字符按 `hash(column, row)` 取，不是等差序列，
  * 因此不会出现"斜着一条同字"的纹路。
  */
-function column(index: number, offset: number): Column {
+function column(index: number, offset: number, frame = 0): Column {
 	const seed = hash((index + 1) * 0x85ebca6b + offset * 0xc2b2ae35);
 	const length = 18 + pick(seed, 2, 35);
 	const duration = 7 + pick(seed, 9, 241) / 10;
@@ -95,7 +95,8 @@ function column(index: number, offset: number): Column {
 
 	let text = "";
 	for (let row = 0; row < length; row += 1) {
-		const cell = hash(seed ^ ((row + 1) * 0x27d4eb2f));
+		// 字符随帧变化：每一帧把种子混进一个变化的乘数，同一列同一格就会换成别的字。
+		const cell = hash(seed ^ ((row + 1) * 0x27d4eb2f) ^ (frame * 0x9e3779b1));
 		// 约 1/8 的格子留白：码流有断续感，而不是一根实心竖条。
 		text += pick(cell, 5, 8) === 0 ? GAP : GLYPHS[pick(cell, 11, GLYPHS.length)];
 	}
@@ -103,12 +104,25 @@ function column(index: number, offset: number): Column {
 	return { text, duration, delay, opacity };
 }
 
+import { useEffect, useState } from "react";
 import { usePageVisible } from "../../../shared/hooks/use-page-visible";
 
 export function HackerRain({ density = "splash" }: HackerRainProps): React.ReactElement {
 	const visible = usePageVisible();
+	/**
+	 * 帧计数：每 160ms 换一批字符。
+	 *
+	 * 为什么用定时器而不是 CSS：CSS 换不了文本内容。160ms 是“看得出在跳”与“不刺眼”的交界；
+	 * 页面在后台时停掉（usePageVisible），不给宿主添无谓的重渲染。
+	 */
+	const [frame, setFrame] = useState(0);
+	useEffect(() => {
+		if (!visible) return;
+		const timer = setInterval(() => setFrame((value) => (value + 1) % 4096), 160);
+		return () => clearInterval(timer);
+	}, [visible]);
 	const count = COLUMNS[density];
-	const columns = Array.from({ length: count }, (_, index) => column(index, density === "workbench" ? 3 : 0));
+	const columns = Array.from({ length: count }, (_, index) => column(index, density === "workbench" ? 3 : 0, frame));
 	return (
 		<div className="astra-strix-rain" data-density={density} data-quiet={visible ? "no" : "yes"} aria-hidden="true">
 			{columns.map((entry, index) => (

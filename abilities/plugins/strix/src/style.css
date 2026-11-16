@@ -382,7 +382,8 @@
 
 /* 工作台底部：同样的意思，只一行——工作台里不需要再解释一次“这里不是聊天框”。 */
 .astra-strix-composer-panel {
-	padding-bottom: 12px;
+	/* 底部与左右都留出间隙：输入框贴边时看起来像被裁掉了。 */
+	padding: 0 clamp(8px, 2vw, 16px) 14px;
 }
 
 .astra-strix-workbench-note {
@@ -1731,7 +1732,8 @@
 	text-orientation: upright;
 	letter-spacing: 0.12em;
 	/* 向下流动 + 顶部渐隐：流的“源头”在画面上方，而不是从中间冒出来。 */
-	mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 78%, transparent 100%);
+	/* 自上而下：顶部清晰，接近底部时渐隐消失——这样才看得出“在往下流”。 */
+	mask-image: linear-gradient(to bottom, #000 0%, #000 62%, transparent 96%);
 	animation: astra-strix-rain-fall 9s linear infinite;
 	white-space: nowrap;
 }
@@ -2498,21 +2500,24 @@
 	   靠 background-clip 让渐变只出现在 1px 的边上。
 	   不再用 mask-composite——旧 WebKit（macOS 上常见）不支持 `exclude`，
 	   那一来描边整条消失、内容还会被拉到框外，用户看到的就是“界面乱套”。 */
-	background-image: linear-gradient(transparent, transparent), conic-gradient(from var(--sx-ring, 0deg),
-		color-mix(in srgb, var(--sx-green) 70%, transparent),
-		transparent 28%,
-		color-mix(in srgb, var(--sx-aurora-b, #0891b2) 55%, transparent) 50%,
-		transparent 72%,
-		color-mix(in srgb, var(--sx-green) 70%, transparent)
+	/* 1.7.0：去掉漩涡（conic 渐变在窄框里会聚成一个尖角）。
+	   改成一条柔和的斜向光带，缓慢平移——有方向感，没有“尖”。 */
+	background-image: linear-gradient(transparent, transparent), linear-gradient(
+		115deg,
+		color-mix(in srgb, var(--sx-green) 62%, transparent),
+		transparent 34%,
+		color-mix(in srgb, var(--sx-aurora-b, #0891b2) 48%, transparent) 52%,
+		transparent 70%,
+		color-mix(in srgb, var(--sx-green) 62%, transparent)
 	);
-	/* 光带沿边框缓动旋转（见下方 keyframes）。 */
+	background-size: 100% 100%, 220% 100%;
+	background-position: 0 0, 0 0;
 	background-origin: border-box;
 	background-clip: padding-box, border-box;
 	opacity: 0.55;
 	pointer-events: none;
-	/* 旋转整块伪元素：合成层属性，不重绘内容。 */
 	overflow: hidden;
-	animation: astra-strix-prompt-breathe 5s ease-in-out infinite;
+	animation: astra-strix-prompt-sweep 6s ease-in-out infinite;
 }
 
 .astra-strix-prompt:focus-within {
@@ -2525,9 +2530,9 @@
 	opacity: 1;
 }
 
-@keyframes astra-strix-prompt-breathe {
-	0%, 100% { opacity: 0.45; }
-	50% { opacity: 0.85; }
+@keyframes astra-strix-prompt-sweep {
+	0%, 100% { background-position: 0 0, 0 0; opacity: 0.5; }
+	50% { background-position: 0 0, 100% 0; opacity: 0.85; }
 }
 
 @media (prefers-reduced-motion: reduce) {
