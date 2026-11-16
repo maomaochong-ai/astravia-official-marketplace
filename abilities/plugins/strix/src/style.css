@@ -2685,3 +2685,157 @@
 	width: 100%;
 	max-width: 100%;
 }
+
+/* ---- 1.7.2：拖窄面板时的文字挤压与溢出 ------------------------------------
+   两条规则解决两类问题：
+   ① 没有空格的记号（路径 / URL / 模型 id / 会话 id）必须能断行；
+   ② flex/grid 子项必须允许收缩，否则它们按内容撑开、把邻居挤扁。 */
+
+/* ① 断行：覆盖原来那些 `word-break: break-word`（它不断无空格记号）。 */
+.astra-strix-say,
+.astra-strix-tool-args,
+.astra-strix-tool-output,
+.astra-strix-tool-meta,
+.astra-strix-prose p,
+.astra-strix-host p,
+.astra-strix-kv dd,
+.astra-strix-kv dt,
+.astra-strix-list li,
+.astra-strix-history li,
+.astra-strix-team-name {
+	overflow-wrap: anywhere;
+	word-break: normal;
+}
+
+/* 工具行的参数不要 break-all：那会把中文也逐字拆开，读起来像乱码。 */
+.astra-strix-tool-args {
+	word-break: normal;
+	overflow-wrap: anywhere;
+}
+
+/* ② 可收缩：这些是 flex/grid 的直接子项，缺 min-width:0 就会按内容撑开。 */
+.astra-strix-transcript-body > *,
+.astra-strix-say-row,
+.astra-strix-prose,
+.astra-strix-tool,
+.astra-strix-tool-head,
+.astra-strix-tool-status,
+.astra-strix-transcript-head {
+	min-width: 0;
+}
+
+/* 工具名与状态同一行：名字先缩，状态不被挤走。 */
+.astra-strix-tool-name {
+	min-width: 0;
+	flex: 0 1 auto;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* 运行记录右侧不出现横向滚动条：需要横滚的只有工具输出块自己。 */
+.astra-strix-transcript-body {
+	overflow-x: hidden;
+}
+
+/* 标题行（运行记录 + 清除）在窄宽度下换行，而不是把按钮挤出去。 */
+.astra-strix-transcript-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 4px 10px;
+	justify-content: space-between;
+}
+
+/* 面板拖到很窄时：留白与字号各降一档，工具行不再双列排参数。 */
+@media (max-width: 560px) {
+	.astra-strix-transcript-title {
+		padding: 8px 10px 0;
+	}
+	.astra-strix-tool,
+	.astra-strix-say {
+		font-size: 12px;
+	}
+	.astra-strix-tool-output {
+		max-height: 10rem;
+	}
+}
+
+/* ---- 1.7.2：版面按**面板自身**宽度响应，而不是按窗口宽度 -------------------
+   面板是一个可拖拽的 tab，窗口 1475px 时把它拖到 420px 是常态。
+   以前所有窄版规则都是 @media（视口），拖窄时一条都不触发，右栏照旧占 22vw，
+   左栏被压成一条、文字挤压并溢出。这里以 .astra-strix-workbench 的行内宽度为准。 */
+.astra-strix-workbench {
+	container-type: inline-size;
+	container-name: sx-workbench;
+}
+
+/* 网格两轨都必须可收缩：`minmax(0, …)` 是允许子项小于内容宽度的前提。 */
+.astra-strix-workbench-grid {
+	grid-template-columns: minmax(0, 1fr) minmax(0, 19rem);
+}
+
+/* 容器窄于 720px：右栏让位，运行记录独占整宽。 */
+@container sx-workbench (max-width: 720px) {
+	.astra-strix-workbench-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.astra-strix-rail {
+		display: none;
+	}
+}
+
+/* 容器窄于 480px：留白与字号各降一档，工具输出不再占满半屏高。 */
+@container sx-workbench (max-width: 480px) {
+	.astra-strix-transcript-title {
+		padding: 8px 10px 0;
+	}
+
+	.astra-strix-transcript-body {
+		padding: 8px 10px 6px;
+	}
+
+	.astra-strix-tool,
+	.astra-strix-say {
+		font-size: 12px;
+	}
+
+	.astra-strix-tool-output {
+		max-height: 10rem;
+	}
+}
+
+/* ---- 流式段落：一个字都不许出框 -------------------------------------------
+   流式期间每 400ms 追加一段，包含路径 / URL / 会话 id 这类无空格长记号。
+   `pre-wrap` 保住作者写的换行，`anywhere` 让长记号也能断，
+   `min-width:0` 让它在 flex 里允许收缩 —— 三者缺一都会溢出。 */
+.astra-strix-say-row {
+	min-width: 0;
+	max-width: 100%;
+}
+
+.astra-strix-say,
+.astra-strix-say-row[data-live="yes"] .astra-strix-say {
+	min-width: 0;
+	max-width: 100%;
+	white-space: pre-wrap;
+	word-break: break-word;
+	overflow-wrap: anywhere;
+}
+
+/* 工具行的参数与输出同理：不换行的长路径会把整块推出右边缘。 */
+.astra-strix-tool,
+.astra-strix-tool-head,
+.astra-strix-tool-args,
+.astra-strix-tool-output {
+	min-width: 0;
+	max-width: 100%;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+/* 只有工具输出允许横向滚动（对齐的日志表），并且滚动条留在块内。 */
+.astra-strix-tool-output {
+	overflow-x: auto;
+}
