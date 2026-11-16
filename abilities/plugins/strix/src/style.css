@@ -2651,3 +2651,37 @@
 	margin-inline: auto;
 	text-align: center;
 }
+
+/* ---- 1.7.1：首屏尺寸不依赖继承与视口 ---------------------------------------
+   背景：真机上面板被放进了一个会缩放的容器，继承来的 font-size 变大，
+   于是字标、输入框、事实行一起被放大并撑破右边缘。以下四条把它们钉死，
+   上限用 100% —— 容器再大也不放大，容器再小也不溢出。 */
+.astra-strix-launch {
+	box-sizing: border-box;
+	width: 680px;
+	max-width: 100%;
+	margin-inline: auto;
+	/* 父级的 font-size 不再向下传递：这一列的所有相对单位都以 13px 为基准。 */
+	font-size: 13px;
+}
+
+.astra-strix-launch .astra-strix-wordmark {
+	/* 不再用 em / vw：两者都会跟着外部环境变化。 */
+	font-size: 13.65px;
+	line-height: 1.12;
+	max-width: 100%;
+	overflow: hidden;
+}
+
+.astra-strix-launch .astra-strix-composer-panel,
+.astra-strix-launch .astra-strix-rows {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 100%;
+}
+
+.astra-strix-launch .astra-strix-prompt {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 100%;
+}
