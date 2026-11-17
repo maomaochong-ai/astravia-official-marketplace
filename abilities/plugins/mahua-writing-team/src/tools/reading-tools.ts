@@ -135,7 +135,7 @@ export function registerReadingTools(ctx: PluginContext, service: StudioService)
 		id: "mahua_check_rules",
 		label: "Mahua Novels: check writing rules",
 		description:
-			"Lint one chapter against the stored writing rules (banned words, point of view, word budget). Deterministic, no model judgement. Read-only.",
+			"Lint one chapter against the stored writing rules and the AI-flavour profile. Two kinds of findings: `rule.*` (banned words, point of view, word budget) and `style.*` (stock phrases, uniform sentence rhythm, uniform paragraph shape, narrator summarising, time/weather opening, aphorism ending). Deterministic, no model judgement. Read-only.",
 		parameters: {
 			type: "object",
 			properties: { bookId: bookIdProperty(), chapter: { type: "number" } },
@@ -155,7 +155,7 @@ export function registerReadingTools(ctx: PluginContext, service: StudioService)
 		id: "mahua_style_stats",
 		label: "Mahua Novels: style stats",
 		description:
-			"Compute the style baseline of the whole manuscript: average sentence length, dialogue ratio, paragraph count and repeated phrases. Read-only.",
+			"Compute the style baseline of the whole manuscript: average sentence length, dialogue ratio, paragraph count, repeated phrases, plus the `ai` profile — sentence-length uniformity, short/long ratio, paragraph shape, stock-phrase counts, narrator-summary count, time openings, aphorism endings. Read `ai` when a chapter feels machine-written and you need a number to aim at. Read-only.",
 		parameters: { type: "object", properties: { bookId: bookIdProperty() }, additionalProperties: false },
 		scope_use: [...SCENARIOS],
 		handler: async (context) => {

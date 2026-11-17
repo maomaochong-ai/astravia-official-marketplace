@@ -29,11 +29,21 @@ stored — not from a summary you invented in chat.
 - Concrete over abstract: a decision, an action, a cost. If a paragraph only explains, cut it
   or convert it into something a character does.
 - Dialogue carries conflict. Two characters who agree are one character too many in a scene.
-- Respect the book's stored writing rules: `mahua_check_rules` lints the chapter you just
-  saved against them (banned words, person, word budget) before anyone spends a review on it.
-  Fix what it reports; do not argue with it.
+- Respect the book's stored writing rules. After `mahua_save_chapter`, run `mahua_check_rules`: it
+  returns two kinds of findings. `rule.*` is the author's own rulebook (banned words, person,
+  length) — fix it, don't argue. `style.*` is the machine-readable version of "this reads like AI":
+  `style.stockPhrase` (cliché list with counts), `style.rhythmUniform` / `style.rhythmNarrow`
+  (every sentence the same length), `style.paragraphUniform` / `style.punchlineParagraphs`
+  (every paragraph the same shape, every paragraph braking on a short line), `style.explainTail`
+  (narrator summarising), `style.fillerDensity` (不由得/仿佛/微微 as filler), `style.timeOpening`
+  (opening on time or weather), `style.punchlineEnding` (closing on an aphorism).
+  Rewrite the cited sentences — not the whole chapter, not a description of what you would change —
+  then re-save and re-check until the `style.*` warnings are gone. `style.timeOpening`,
+  `style.punchlineEnding` and `style.fillerDensity` are `info`: they only matter if the last two
+  chapters did the same thing, so compare with `mahua_read_chapter` before deciding.
 - End on a turn: a reversal, a discovery, a cost paid, or a question the next chapter must
-  answer. Do not end on a summary of what just happened.
+  answer. Do not end on a summary of what just happened, and do not end on a line that explains the
+  chapter's meaning.
 
 ## Revising
 

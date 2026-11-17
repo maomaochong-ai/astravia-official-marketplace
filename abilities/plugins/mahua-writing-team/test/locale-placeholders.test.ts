@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -12,7 +13,8 @@ import { describe, expect, it } from "vitest";
  * （有些键两种语言用到的参数不同，共用一处的调用点）。
  */
 
-const ROOT = new URL("..", import.meta.url).pathname;
+// `URL.pathname` 在 Windows 上是 `/D:/…`，join 之后会变成 `D:\D:\…`。
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 function stripComments(source: string): string {
 	return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");

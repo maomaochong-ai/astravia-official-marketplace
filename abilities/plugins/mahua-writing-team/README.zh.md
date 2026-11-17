@@ -82,10 +82,29 @@ Mac 上的红黄绿三键那一行也会消失。再按一次、按 **Esc**，�
 `mahua_save_review` → `mahua_commit_chapter`。
 
 及格线是契约不是心情：七维加权 72 分**且**必改清单为空。低于它这一章就是 `blocked`，
-`mahua_commit_chapter` 会拒绝——正文存在不等于章已提交，只有 `committedCount` 会动。
+`mahua_commit_chapter` 不会放行——正文存在不等于章已提交，只有 `committedCount` 会动。
 
 阶段还停在 `planning`、章纲已覆盖目标时，路由返回 `null`。那是书在等作者，不是出错：开第一章是
 人做的决定。
+
+## 反机器腔：哪些能查，哪些只能审
+
+“AI 味”不是一句形容词：一半可以算，一半只能由 editor 判。两半都接在同一次存稿上。
+
+| 能算的（`mahua_check_rules` 返回 `style.*`） | 怎么算 |
+| --- | --- |
+| `style.stockPhrase` | 套句词表命中与次数（不由得、仿佛、一丝、空气凝固…） |
+| `style.rhythmUniform` / `style.rhythmNarrow` | 句长落在均值 ±25% 的占比；短句与长句是否双双缺席 |
+| `style.paragraphUniform` / `style.punchlineParagraphs` | 每段句数是否一样；是否每段都刹在短句上 |
+| `style.explainTail` | “他知道 / 这意味着 / 换句话说”开头的句子数 |
+| `style.fillerDensity` | 忽然/微微/缓缓/轻轻 的每千字密度 |
+| `style.timeOpening` / `style.punchlineEnding` | 时间天气起手、章尾金句（单章只能记一笔，看跨章重复） |
+
+只能人工判的（`mahua_reference anti-ai-tone` 的 A7–A10）：三连排比、情绪贴标签、
+十个角色一张嘴、把所有设定一次倒完。
+
+所有阈值都写在 `src/domain/writing-rules.ts` 的 `STYLE_LIMITS` 里并在测试中钉住；
+数字不对就改那里，不要在文档里各说一套。
 
 ## 上下文包里有什么
 

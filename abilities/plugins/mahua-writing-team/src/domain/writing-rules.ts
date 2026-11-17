@@ -6,7 +6,7 @@
  * 避免模型把规则表写成一棵随版本漂移的树。
  */
 
-import type { Finding } from "./novel-types.js";
+import type { AiProfile, Finding } from "./novel-types.js";
 
 export interface WritingRules {
 	/** 禁用词：出现即 error。 */
@@ -66,5 +66,89 @@ export function lintChapter(input: {
 	}
 	if (words < rules.minWords) findings.push({ code: "rule.tooShort", severity: "warning", detail: String(words) });
 	if (words > rules.maxWords) findings.push({ code: "rule.tooLong", severity: "warning", detail: String(words) });
+	return findings;
+}
+
+/**
+ * 风格检：把 AI 腔画像折成可执行的 finding。
+ *
+ * 与 `lintChapter` 的分工：那个查「用户自己定的规矩」（禁用词、人称、字数），
+ * 这个查「没有人会主动定、但一读就知道」的形状。两者都是确定性的，不和评审判断抢地。
+ *
+ * 阀值全部写成常量，并在测试里钉住：只靠一段文字就能重现的数字比任何描述都好核对。
+ */
+export const STYLE_LIMITS = {
+	/** 句长均质：超过这个比例，就是“每句一样长”。 */
+	sentenceUniformity: 0.7,
+	/** 段落形状：超过这个比例，就是“每段三句”。 */
+	paragraphUniformity: 0.7,
+	/** 单章硬套句总数达到这个数就报。 */
+	hardTellTotal: 3,
+	/** 软词密度（每千字）达到这个数就报。 */
+	softTellPerKilo: 6,
+	/** 解释尾巴（他知道/这意味着…）达到这个数就报。 */
+	explainTails: 3,
+	/** 段尾斩断占比：达到这个数就报（段落只剩一个固定鼓点）。 */
+	shortEnding: 0.7,
+} as const;
+
+export function lintStyle(input: { profile: AiProfile; words: number }): Finding[] {
+	const { profile, words } = input;
+	const findings: Finding[] = [];
+
+	const tellTotal = profile.hardTells.reduce((sum, tell) => sum + tell.count, 0);
+	if (tellTotal >= STYLE_LIMITS.hardTellTotal) {
+		findings.push({
+			code: "style.stockPhrase",
+			severity: "warning",
+			detail: profile.hardTells.map((tell) => `${tell.phrase}x${tell.count}`).join(" "),
+		});
+	}
+
+	if (profile.sampleSentences >= 20 && profile.sentenceUniformity >= STYLE_LIMITS.sentenceUniformity) {
+		findings.push({ code: "style.rhythmUniform", severity: "warning", detail: String(profile.sentenceUniformity) });
+	}
+
+	if (profile.sentenceUniformity < STYLE_LIMITS.sentenceUniformity && profile.sampleSentences >= 20) {
+		// 短句与长句都稀少：不是“长短交错”，而是整章停在一个中句档位。
+		if (profile.shortSentenceRatio < 0.12 && profile.longSentenceRatio < 0.08) {
+			findings.push({
+				code: "style.rhythmNarrow",
+				severity: "warning",
+				detail: `${profile.shortSentenceRatio}/${profile.longSentenceRatio}`,
+			});
+		}
+	}
+
+	if (profile.paragraphUniformity >= STYLE_LIMITS.paragraphUniformity) {
+		findings.push({
+			code: "style.paragraphUniform",
+			severity: "warning",
+			detail: String(profile.paragraphUniformity),
+		});
+	}
+
+	// 每段都在短句上刷车：段落没有自己的呼吸，读起来像节拍器。
+	if (profile.paragraphsChecked >= 4 && profile.shortEndingRatio >= STYLE_LIMITS.shortEnding) {
+		findings.push({ code: "style.punchlineParagraphs", severity: "warning", detail: String(profile.shortEndingRatio) });
+	}
+
+	if (profile.explainTails >= STYLE_LIMITS.explainTails) {
+		findings.push({ code: "style.explainTail", severity: "warning", detail: String(profile.explainTails) });
+	}
+
+	const perKilo = words > 0 ? (profile.softTellCount / words) * 1000 : 0;
+	if (perKilo >= STYLE_LIMITS.softTellPerKilo) {
+		findings.push({ code: "style.fillerDensity", severity: "info", detail: perKilo.toFixed(1) });
+	}
+
+	// 起手与收尾的好坏要看跨章对比，单章只能“记一笔”。
+	if (profile.timeOpenings > 0) {
+		findings.push({ code: "style.timeOpening", severity: "info", detail: String(profile.timeOpenings) });
+	}
+	if (profile.punchlineEndings > 0) {
+		findings.push({ code: "style.punchlineEnding", severity: "info", detail: String(profile.punchlineEndings) });
+	}
+
 	return findings;
 }

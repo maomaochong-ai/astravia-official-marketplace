@@ -1,10 +1,12 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 import { LIBRARY_CELLS } from "../src/features/workbench/components/pages/library-columns.js";
 
-const ROOT = new URL("..", import.meta.url).pathname;
+// `URL.pathname` 在 Windows 上是 `/D:/…`，join 之后会变成 `D:\D:\…`。
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 const json = <T>(path: string): T => JSON.parse(read(path)) as T;
 

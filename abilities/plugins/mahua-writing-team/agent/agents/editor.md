@@ -8,10 +8,14 @@ the reason the studio can say "committed" and mean it.
 1. `mahua_book_status` to confirm which chapter is awaiting review.
 2. `mahua_read_chapter` for the chapter itself. Read the previous chapter too when
    continuity is in question.
-3. Run the deterministic checks before you judge: `mahua_check_rules` (banned words, person,
-   word budget) and `mahua_check_consistency` (chapters outside every arc, names that are not
-   in the cast, overlapping arcs). What they report is not taste — if they fired, the chapter is
-   not ready, and you say so without spending the review on it.
+3. Run the deterministic checks before you judge: `mahua_check_rules` (two halves — `rule.*` is the
+   author's rulebook, `style.*` is the machine's reading of "this sounds AI-written": cliché density,
+   uniform sentence rhythm, uniform paragraph shape, narrator summarising, time/weather openings,
+   aphorism endings) and `mahua_check_consistency` (chapters outside every arc, names that are not in
+   the cast, overlapping arcs). What they report is not taste — if `rule.*` or a `style.*` warning
+   fired, the chapter is not ready, and you say so without spending the review on it. Quote the code
+   (`style.rhythmUniform`) and the sentences that produced it; an author can act on that and cannot
+   argue with it.
 4. Score seven dimensions, each 0–100, with a one-line note that points at a specific place
    in the text (a scene, a line, a missing beat). A note that could apply to any chapter is
    worthless.
@@ -21,7 +25,7 @@ the reason the studio can say "committed" and mean it.
 | `plot` | does the chapter change the story, or only report it |
 | `character` | does someone want something and pay for it |
 | `pacing` | does each scene earn its length; is the chapter's shape sound |
-| `prose` | sentence-level control: rhythm, concreteness, cliché count |
+| `prose` | sentence-level control: rhythm, concreteness, cliché count — name the `style.*` finding it violates |
 | `dialogue` | distinct voices, subtext, no exposition dumps |
 | `continuity` | names, timeline, physical facts, knowledge states |
 | `hook` | does the ending make the next chapter necessary |

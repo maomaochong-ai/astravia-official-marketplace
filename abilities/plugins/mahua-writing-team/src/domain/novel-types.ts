@@ -182,6 +182,41 @@ export interface StyleStats {
 	dialogueRatio: number;
 	paragraphs: number;
 	topPhrases: { phrase: string; count: number }[];
+	/** AI 腔画像：节奏、段落形状、套句、解释尾巴、起手与收尾。全程确定性计算。 */
+	ai: AiProfile;
+}
+
+/**
+ * AI 腔画像。每一项都对应一条可执行动作，而不是一个「文风分」。
+ */
+export interface AiProfile {
+	/** 参与统计的章节数（空章不计）。 */
+	chapters: number;
+	/** 样本句数：少于 20 句时各项比率参考价值有限，工具会把这一点说出来。 */
+	sampleSentences: number;
+	/** 句长落在均值 ±25% 之内的占比。包 0.70 = 节奏均质（每句都是中句）。 */
+	sentenceUniformity: number;
+	/** 短句（<10 字）与长句（>45 字）各占多少：两者都很低就是句式单一。 */
+	shortSentenceRatio: number;
+	longSentenceRatio: number;
+	/** 每段句数落在均值 ±1 之内的占比。包 0.70 = 段落形状雷同。 */
+	paragraphUniformity: number;
+	/** 命中硬套句的词形与次数，按次数降序。 */
+	hardTells: { phrase: string; count: number }[];
+	/** 软词（忽然/微微/缓缓…）总次数：只在密度过高时算问题。 */
+	softTellCount: number;
+	/** 句首替读者总结（他知道/这意味着/换句话说）的次数。 */
+	explainTails: number;
+	/** 以时间或天气起手的章数。 */
+	timeOpenings: number;
+	/** 收尾是一句独立短句的章数（金句收尾）。 */
+	punchlineEndings: number;
+	/** 参与「段尾斩断」统计的段落数（单句段不计）。 */
+	paragraphsChecked: number;
+	/** 其中最后一句短于本段均句长 60% 的段落数。 */
+	shortEndedParagraphs: number;
+	/** 上面两者的比值。包 0.70 = 每段都在短句上刷车。 */
+	shortEndingRatio: number;
 }
 
 export type FindingSeverity = "error" | "warning" | "info";

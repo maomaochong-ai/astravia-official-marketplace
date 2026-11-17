@@ -32,7 +32,7 @@ import { analyzeStyle } from "../domain/style-analysis.js";
 import { buildContext, type ContextPack } from "../domain/context-pack.js";
 import { checkConsistency } from "../domain/consistency-checks.js";
 import { extractChapterFacts } from "../domain/chapter-facts.js";
-import { lintChapter, normalizeRules, type WritingRules } from "../domain/writing-rules.js";
+import { lintChapter, lintStyle, normalizeRules, type WritingRules } from "../domain/writing-rules.js";
 import { routeNovel } from "../domain/novel-flow.js";
 import { auditPremise, parsePremise, type PremiseParse } from "../domain/premise-structure.js";
 import {
@@ -712,7 +712,13 @@ export class StudioService {
 		const text = await this.repository.readChapter(book.id, input.n);
 		if (!text) return failure("chapter-empty", `chapter ${input.n} has no text yet`);
 		const words = countWords(text);
-		return { ok: true, data: { findings: lintChapter({ text, words, rules: this.rulesOf(book) }), words } };
+		// 两半：用户定的规矩（禁用词/人称/字数）+ AI 腔形状（节奏、段落、套句、解释尾巴）。
+		// 分开算、合并报：规矩是作者的意图，风格是「一读就知道没人这么写」，两者不能互相掩盖。
+		const findings = [
+			...lintChapter({ text, words, rules: this.rulesOf(book) }),
+			...lintStyle({ profile: analyzeStyle([text]).ai, words }),
+		];
+		return { ok: true, data: { findings, words } };
 	}
 
 	async styleStats(bookId?: string): Promise<ServiceResult<StyleStats>> {

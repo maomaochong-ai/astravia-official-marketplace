@@ -100,6 +100,25 @@ While the phase is still `planning` and the outlines already cover the target, t
 `null`. That is the book waiting for its author, not an error: starting the first chapter is a human
 decision.
 
+## Machine-flavoured prose: what can be measured, what can only be judged
+
+"Reads like AI" is not an adjective once half of it is arithmetic. Both halves hang off the same save:
+
+| Measured (`mahua_check_rules` returns `style.*`) | How |
+| --- | --- |
+| `style.stockPhrase` | cliché catalogue hits with counts (不由得, 仿佛, 一丝, 空气凝固 …) |
+| `style.rhythmUniform` / `style.rhythmNarrow` | share of sentences within ±25% of the mean; whether short and long sentences are both absent |
+| `style.paragraphUniform` / `style.punchlineParagraphs` | whether every paragraph holds the same number of sentences; whether every paragraph brakes on a short line |
+| `style.explainTail` | sentences opening with "他知道 / 这意味着 / 换句话说" |
+| `style.fillerDensity` | 忽然/微微/缓缓/轻轻 per thousand words |
+| `style.timeOpening` / `style.punchlineEnding` | opening on time or weather, closing on an aphorism (one chapter can only be noted; repetition is a cross-chapter judgement) |
+
+Left to the editor (`mahua_reference anti-ai-tone`, A7–A10): three-beat parallelism, labelled emotions,
+ten characters with one voice, and dumping every setting at once.
+
+Every threshold lives in `STYLE_LIMITS` (`src/domain/writing-rules.ts`) and is pinned by a test —
+change the number there, not in a document.
+
 ## What the context pack carries
 
 `mahua_context` is the one call an agent makes before reading anything else. It returns a fact pack
