@@ -1,13 +1,38 @@
 import "./style.css";
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { definePlugin } from "@astravia-org/plugin-sdk";
+import { Suspense, lazy } from "react";
 import type { JSX } from "react";
 import { APP } from "./app.config.ts";
 import { ActTimeline } from "./features/agent/components/act-timeline.tsx";
 import { connectConversation } from "./features/agent/conversation-bridge.ts";
 import { registerCraftTools } from "./tools/index.ts";
-import { CraftTab } from "./features/editor/components/craft-tab.tsx";
 import { craftStateInstruction, readCraftState, setCraftEngaged } from "./features/editor/engagement.ts";
+
+/**
+ * 编辑器整棵子树（hook + services + 47 KB 的 bridge 源码）只在真正打开 tab 时才需要。
+ *
+ * 宿主启动时会激活**全部已装插件**，而十五个 craft 插件共用同一份外壳：静态 import
+ * 下来就是十五份 ~112 KB 的主 chunk 在主线程上一起解析与求值（其中 ~60% 是没人打开过
+ * 的编辑器）。改成动态 import 后，激活只付入口 + 工具那一半；编辑器在第一次挂载时
+ * 才下载并编译，而且仍然只下载**那一个**插件的。
+ *
+ * 加载失败时给一块可读的提示而不是抛给宿主：多了一次网络/协议边界，而 tab 里
+ * 没有任何东西值得因此白屏（用户至少要知道“重开一次”）。
+ */
+const CraftTab = lazy(() =>
+  import("./features/editor/components/craft-tab.tsx")
+    .then((module) => ({ default: module.CraftTab }))
+    .catch(() => ({ default: EditorUnavailable })),
+);
+
+function EditorUnavailable(): JSX.Element {
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-neutral-950 px-6 text-center text-xs text-neutral-400">
+      {APP.name}
+    </div>
+  );
+}
 
 export const TAB_ID = APP.tabId;
 
@@ -53,7 +78,12 @@ export default definePlugin({
       // which is what made the fourth or fifth canvas fail to allocate one.
       retention: "warm",
       component: function CraftActivityTab(): JSX.Element {
-        return <CraftTab ctx={ctx} />;
+        // 编辑器还没到：先铺一块与它同色的底，避免加载时闪过一帧白。
+        return (
+          <Suspense fallback={<div className="h-full w-full bg-neutral-950" />}>
+            <CraftTab ctx={ctx} />
+          </Suspense>
+        );
       },
     });
 
