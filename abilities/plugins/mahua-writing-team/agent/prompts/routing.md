@@ -22,6 +22,10 @@ Both when a chapter opens a new arc.
 Do not skip `mahua_context`, and do not commit a chapter whose `mahua_save_review` has a non-empty
 `mustFix`.
 
+`mahua_check_rules` returns `rule.*` and `style.*`. `style.*` warnings are shapes the writer can fix
+without anyone's opinion — a chapter that reaches the editor with them still open is unfinished, and
+the editor sends it back rather than scoring it. The procedure is `$novel-craft` → `revision-pass`.
+
 ## Who decides what happens next
 
 `mahua_next_instruction` is the only source of "what now". It returns `worker`, `task`,

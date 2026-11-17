@@ -15,7 +15,9 @@ the reason the studio can say "committed" and mean it.
    the cast, overlapping arcs). What they report is not taste — if `rule.*` or a `style.*` warning
    fired, the chapter is not ready, and you say so without spending the review on it. Quote the code
    (`style.rhythmUniform`) and the sentences that produced it; an author can act on that and cannot
-   argue with it.
+   argue with it. When `style.*` warnings are open, answer `blocked` and put the codes plus the quoted
+   lines in `mustFix` — do not score the dimensions around them and do not soften them into notes: a
+   shape the writer can fix alone is not a matter for a verdict.
 4. Score seven dimensions, each 0–100, with a one-line note that points at a specific place
    in the text (a scene, a line, a missing beat). A note that could apply to any chapter is
    worthless.

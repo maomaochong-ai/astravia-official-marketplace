@@ -6,6 +6,7 @@
  * 避免模型把规则表写成一棵随版本漂移的树。
  */
 
+import type { AiLimits } from "./ai-lexicon.js";
 import type { AiProfile, Finding } from "./novel-types.js";
 
 export interface WritingRules {
@@ -75,29 +76,15 @@ export function lintChapter(input: {
  * 与 `lintChapter` 的分工：那个查「用户自己定的规矩」（禁用词、人称、字数），
  * 这个查「没有人会主动定、但一读就知道」的形状。两者都是确定性的，不和评审判断抢地。
  *
- * 阀值全部写成常量，并在测试里钉住：只靠一段文字就能重现的数字比任何描述都好核对。
+ * 阈值不在这个文件里：它和词表一起放在 `agent/lexicon/ai-tells.json`，由调用方注入。
+ * 一个数字要改的时候，改的是数据，不是代码。
  */
-export const STYLE_LIMITS = {
-	/** 句长均质：超过这个比例，就是“每句一样长”。 */
-	sentenceUniformity: 0.7,
-	/** 段落形状：超过这个比例，就是“每段三句”。 */
-	paragraphUniformity: 0.7,
-	/** 单章硬套句总数达到这个数就报。 */
-	hardTellTotal: 3,
-	/** 软词密度（每千字）达到这个数就报。 */
-	softTellPerKilo: 6,
-	/** 解释尾巴（他知道/这意味着…）达到这个数就报。 */
-	explainTails: 3,
-	/** 段尾斩断占比：达到这个数就报（段落只剩一个固定鼓点）。 */
-	shortEnding: 0.7,
-} as const;
-
-export function lintStyle(input: { profile: AiProfile; words: number }): Finding[] {
-	const { profile, words } = input;
+export function lintStyle(input: { profile: AiProfile; words: number; limits: AiLimits }): Finding[] {
+	const { profile, words, limits } = input;
 	const findings: Finding[] = [];
 
 	const tellTotal = profile.hardTells.reduce((sum, tell) => sum + tell.count, 0);
-	if (tellTotal >= STYLE_LIMITS.hardTellTotal) {
+	if (tellTotal >= limits.hardTellTotal) {
 		findings.push({
 			code: "style.stockPhrase",
 			severity: "warning",
@@ -105,12 +92,12 @@ export function lintStyle(input: { profile: AiProfile; words: number }): Finding
 		});
 	}
 
-	if (profile.sampleSentences >= 20 && profile.sentenceUniformity >= STYLE_LIMITS.sentenceUniformity) {
+	if (profile.sampleSentences >= limits.sampleFloor && profile.sentenceUniformity >= limits.sentenceUniformity) {
 		findings.push({ code: "style.rhythmUniform", severity: "warning", detail: String(profile.sentenceUniformity) });
 	}
 
-	if (profile.sentenceUniformity < STYLE_LIMITS.sentenceUniformity && profile.sampleSentences >= 20) {
-		// 短句与长句都稀少：不是“长短交错”，而是整章停在一个中句档位。
+	if (profile.sentenceUniformity < limits.sentenceUniformity && profile.sampleSentences >= limits.sampleFloor) {
+		// 短句与长句都稀少：不是"长短交错"，而是整章停在一个中句档位。
 		if (profile.shortSentenceRatio < 0.12 && profile.longSentenceRatio < 0.08) {
 			findings.push({
 				code: "style.rhythmNarrow",
@@ -120,7 +107,7 @@ export function lintStyle(input: { profile: AiProfile; words: number }): Finding
 		}
 	}
 
-	if (profile.paragraphUniformity >= STYLE_LIMITS.paragraphUniformity) {
+	if (profile.paragraphUniformity >= limits.paragraphUniformity) {
 		findings.push({
 			code: "style.paragraphUniform",
 			severity: "warning",
@@ -128,21 +115,21 @@ export function lintStyle(input: { profile: AiProfile; words: number }): Finding
 		});
 	}
 
-	// 每段都在短句上刷车：段落没有自己的呼吸，读起来像节拍器。
-	if (profile.paragraphsChecked >= 4 && profile.shortEndingRatio >= STYLE_LIMITS.shortEnding) {
+	// 每段都在短句上刹车：段落没有自己的呼吸，读起来像节拍器。
+	if (profile.paragraphsChecked >= limits.shortEndingFloor && profile.shortEndingRatio >= limits.shortEnding) {
 		findings.push({ code: "style.punchlineParagraphs", severity: "warning", detail: String(profile.shortEndingRatio) });
 	}
 
-	if (profile.explainTails >= STYLE_LIMITS.explainTails) {
+	if (profile.explainTails >= limits.explainTails) {
 		findings.push({ code: "style.explainTail", severity: "warning", detail: String(profile.explainTails) });
 	}
 
 	const perKilo = words > 0 ? (profile.softTellCount / words) * 1000 : 0;
-	if (perKilo >= STYLE_LIMITS.softTellPerKilo) {
+	if (perKilo >= limits.softTellPerKilo) {
 		findings.push({ code: "style.fillerDensity", severity: "info", detail: perKilo.toFixed(1) });
 	}
 
-	// 起手与收尾的好坏要看跨章对比，单章只能“记一笔”。
+	// 起手与收尾的好坏要看跨章对比，单章只能"记一笔"。
 	if (profile.timeOpenings > 0) {
 		findings.push({ code: "style.timeOpening", severity: "info", detail: String(profile.timeOpenings) });
 	}

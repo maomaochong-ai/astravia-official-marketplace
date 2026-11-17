@@ -28,7 +28,8 @@ description: Chinese long-form fiction craft — scene construction, dramatic sh
    传统笔法看 [classic-writing-books.md](references/classic-writing-books.md)。
 5. 埋/收线索：[foreshadowing.md](references/foreshadowing.md)，并用 `mahua_flag_thread` 记账。
 6. 交章前：[banned-words.md](references/banned-words.md) 的十项自检 +
-   [quality-checklist.md](references/quality-checklist.md)。
+   [quality-checklist.md](references/quality-checklist.md)。`mahua_check_rules` 报 `style.*` 时，按
+   [revision-pass.md](references/revision-pass.md) 的六遍改，不要一边改一边重新构思。
 7. 章末钩子：[hook-techniques.md](references/hook-techniques.md)；字数不够不要灌景，看
    [content-expansion.md](references/content-expansion.md)。
 
@@ -42,8 +43,8 @@ description: Chinese long-form fiction craft — scene construction, dramatic sh
 ## 硬规矩
 
 - 领域层只出 `reason.*` / `checkpoint.*` key，不产出任何成段文字建议；把方法讲成文字是这一层的职责。
-- 交章前 `mahua_check_rules` 与 `mahua_check_consistency` 必须无 error 级结果，
-  再调 `mahua_save_review`。评审的每个维度都要引用原文，见
+- 交章前 `mahua_check_rules` 与 `mahua_check_consistency` 必须无 error 级结果；带未清的 `style.*` warning
+  交给 editor 会被直接打回——那是能自己改掉的形状，不是品味分歧。再调 `mahua_save_review`。评审的每个维度都要引用原文，见
   `$longform-continuity` 的 [quantum-auditor.md](../longform-continuity/references/quantum-auditor.md)。
 - 不替路由做决定：下一步是什么以 `mahua_next_instruction` 为准。
 

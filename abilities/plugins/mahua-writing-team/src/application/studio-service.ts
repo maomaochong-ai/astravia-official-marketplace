@@ -28,6 +28,7 @@ import {
 	reviseOutlineTail,
 	startDrafting,
 } from "../domain/novel-progress.js";
+import { AI_LEXICON } from "../reference/lexicon.generated.js";
 import { analyzeStyle } from "../domain/style-analysis.js";
 import { buildContext, type ContextPack } from "../domain/context-pack.js";
 import { checkConsistency } from "../domain/consistency-checks.js";
@@ -716,7 +717,7 @@ export class StudioService {
 		// 分开算、合并报：规矩是作者的意图，风格是「一读就知道没人这么写」，两者不能互相掩盖。
 		const findings = [
 			...lintChapter({ text, words, rules: this.rulesOf(book) }),
-			...lintStyle({ profile: analyzeStyle([text]).ai, words }),
+			...lintStyle({ profile: analyzeStyle([text], AI_LEXICON).ai, words, limits: AI_LEXICON.limits }),
 		];
 		return { ok: true, data: { findings, words } };
 	}
@@ -729,7 +730,7 @@ export class StudioService {
 			const text = await this.repository.readChapter(book.id, chapter.n);
 			if (text) texts.push(text);
 		}
-		return { ok: true, data: analyzeStyle(texts) };
+		return { ok: true, data: analyzeStyle(texts, AI_LEXICON) };
 	}
 
 	async contextPack(input: { bookId?: string } | undefined): Promise<ServiceResult<ContextPack>> {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analyzeStyle } from "../src/domain/style-analysis.js";
+import { AI_LEXICON } from "../src/reference/lexicon.generated.js";
 import { extractChapterFacts } from "../src/domain/chapter-facts.js";
 import { DEFAULT_RULES, lintChapter, normalizeRules } from "../src/domain/writing-rules.js";
 import { checkConsistency } from "../src/domain/consistency-checks.js";
@@ -57,7 +58,7 @@ function bookWith(texts: Record<number, string>): NovelBook {
 
 describe("style statistics", () => {
 	it("counts sentences, paragraphs and dialogue without a model", () => {
-		const stats = analyzeStyle(["“走吧。”她说。\n\n他点头。", ""]);
+		const stats = analyzeStyle(["“走吧。”她说。\n\n他点头。", ""], AI_LEXICON);
 		expect(stats.chapters).toBe(1);
 		expect(stats.sentences).toBe(3);
 		expect(stats.paragraphs).toBe(2);
@@ -66,7 +67,7 @@ describe("style statistics", () => {
 	});
 
 	it("returns zeros for an empty manuscript instead of NaN", () => {
-		const stats = analyzeStyle([]);
+		const stats = analyzeStyle([], AI_LEXICON);
 		expect(stats).toMatchObject({ chapters: 0, sentences: 0, avgSentence: 0, dialogueRatio: 0 });
 	});
 });

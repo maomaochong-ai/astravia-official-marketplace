@@ -1153,7 +1153,7 @@
       "slug": "mahua-writing-team",
       "name": "Mahua Novels",
       "description": "A multi-agent novel studio: a deterministic engine holds the schedule while an architect plans, a writer drafts, an editor judges and an arbiter rules — with a shelf, a reader, a foreshadowing ledger and continuity auditing behind them.",
-      "version": "0.4.35",
+      "version": "0.5.0",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia",

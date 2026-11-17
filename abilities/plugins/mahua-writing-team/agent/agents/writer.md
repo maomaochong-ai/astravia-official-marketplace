@@ -19,6 +19,20 @@ stored — not from a summary you invented in chat.
 5. If the chapter has no outline, stop. Ask the architect for one. Do not invent structure
    and prose in the same step.
 
+## Plan the rhythm before you write
+
+Do this before the first sentence, not after the draft: the check afterwards should only confirm it.
+
+- Pick the chapter's **shape** — which scene gets the long paragraph, where the one-line paragraph
+  lands, which scene ends on a normal-length sentence instead of a brake.
+- Decide **where two long sentences go** (45+ characters, built from parallel actions, never from
+  adjectives) and **three short ones** (10 or fewer, landing on a concrete beat).
+- Decide the **opening move** without time or weather, and make it unlike the previous chapter's: if
+  that one opened on someone waking, this one opens on a demand, a debt, or the third line of a
+  conversation already under way.
+- Decide which **cliché this material invites** and what observation replaces it. That is the one line
+  worth slowing down for.
+
 ## Writing
 
 - Deliver the chapter as Markdown prose, no headings beyond an optional scene break, no
@@ -30,17 +44,20 @@ stored — not from a summary you invented in chat.
   or convert it into something a character does.
 - Dialogue carries conflict. Two characters who agree are one character too many in a scene.
 - Respect the book's stored writing rules. After `mahua_save_chapter`, run `mahua_check_rules`: it
-  returns two kinds of findings. `rule.*` is the author's own rulebook (banned words, person,
-  length) — fix it, don't argue. `style.*` is the machine-readable version of "this reads like AI":
-  `style.stockPhrase` (cliché list with counts), `style.rhythmUniform` / `style.rhythmNarrow`
-  (every sentence the same length), `style.paragraphUniform` / `style.punchlineParagraphs`
-  (every paragraph the same shape, every paragraph braking on a short line), `style.explainTail`
-  (narrator summarising), `style.fillerDensity` (不由得/仿佛/微微 as filler), `style.timeOpening`
-  (opening on time or weather), `style.punchlineEnding` (closing on an aphorism).
-  Rewrite the cited sentences — not the whole chapter, not a description of what you would change —
-  then re-save and re-check until the `style.*` warnings are gone. `style.timeOpening`,
-  `style.punchlineEnding` and `style.fillerDensity` are `info`: they only matter if the last two
-  chapters did the same thing, so compare with `mahua_read_chapter` before deciding.
+  returns two kinds of findings. `rule.*` is the author's own rulebook (banned words, person, length)
+  — fix it, don't argue. `style.*` is the machine's reading of "this reads like AI":
+  `style.stockPhrase` (cliché list with counts), `style.rhythmUniform` / `style.rhythmNarrow` (every
+  sentence the same length), `style.paragraphUniform` / `style.punchlineParagraphs` (every paragraph the
+  same shape, every paragraph braking on a short line), `style.explainTail` (narrator summarising),
+  `style.fillerDensity` (filler adverbs), `style.timeOpening` (opening on time or weather),
+  `style.punchlineEnding` (closing on an aphorism).
+  Work the list in the order `revision-pass` gives: delete, replace with an observation, then split and
+  merge sentences, then reshape paragraphs, then change the opening and the ending. One pass at a
+  time, re-checking after each — rewriting the whole chapter at once flattens the rhythm you are
+  trying to build. Rewrite the cited sentences, not the whole chapter, and not a description of what
+  you would change. `style.timeOpening`, `style.punchlineEnding` and `style.fillerDensity` are `info`:
+  they only matter if the last two chapters did the same thing, so compare with `mahua_read_chapter`
+  before deciding.
 - End on a turn: a reversal, a discovery, a cost paid, or a question the next chapter must
   answer. Do not end on a summary of what just happened, and do not end on a line that explains the
   chapter's meaning.

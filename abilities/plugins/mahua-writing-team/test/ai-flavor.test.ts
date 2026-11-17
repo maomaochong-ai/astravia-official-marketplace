@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { analyzeAiProfile, analyzeStyle } from "../src/domain/style-analysis.js";
-import { lintStyle, STYLE_LIMITS } from "../src/domain/writing-rules.js";
+import { lintStyle } from "../src/domain/writing-rules.js";
+import { AI_LEXICON } from "../src/reference/lexicon.generated.js";
+
+const LIMITS = AI_LEXICON.limits;
 
 /**
  * 「AI 味」在代码里必须能被指出来，否则它只是一句形容词。
@@ -44,7 +47,7 @@ const HUMAN = [
 
 describe("AI 腔画像", () => {
 	it("reads rhythm, paragraph shape and stock phrases off the text", () => {
-		const profile = analyzeAiProfile([MACHINE]);
+		const profile = analyzeAiProfile([MACHINE], AI_LEXICON);
 		expect(profile.chapters).toBe(1);
 		expect(profile.sampleSentences).toBeGreaterThan(8);
 		// 句句都在中档：均质度高、短句与长句都少。
@@ -64,7 +67,7 @@ describe("AI 腔画像", () => {
 	});
 
 	it("does not flag an ordinary scene as machine prose", () => {
-		const profile = analyzeAiProfile([HUMAN]);
+		const profile = analyzeAiProfile([HUMAN], AI_LEXICON);
 		expect(profile.hardTells).toEqual([]);
 		expect(profile.timeOpenings).toBe(0);
 		expect(profile.punchlineEndings).toBe(0);
@@ -74,12 +77,12 @@ describe("AI 腔画像", () => {
 	});
 
 	it("counts each stock phrase once per occurrence, not once per text", () => {
-		const profile = analyzeAiProfile(["他不由得停下，她不由得回头，众人不由得后退。"]);
+		const profile = analyzeAiProfile(["他不由得停下，她不由得回头，众人不由得后退。"], AI_LEXICON);
 		expect(profile.hardTells.find((tell) => tell.phrase === "不由得")?.count).toBe(3);
 	});
 
 	it("stays quiet on an empty manuscript", () => {
-		const profile = analyzeAiProfile(["", "   "]);
+		const profile = analyzeAiProfile(["", "   "], AI_LEXICON);
 		expect(profile.chapters).toBe(0);
 		expect(profile.sampleSentences).toBe(0);
 		expect(profile.hardTells).toEqual([]);
@@ -88,8 +91,8 @@ describe("AI 腔画像", () => {
 
 describe("风格检", () => {
 	it("names the defects a reader would name", () => {
-		const profile = analyzeAiProfile([MACHINE]);
-		const codes = lintStyle({ profile, words: 200 }).map((finding) => finding.code);
+		const profile = analyzeAiProfile([MACHINE], AI_LEXICON);
+		const codes = lintStyle({ profile, words: 200, limits: LIMITS }).map((finding) => finding.code);
 		expect(codes).toContain("style.stockPhrase");
 		expect(codes).toContain("style.paragraphUniform");
 		expect(codes).toContain("style.timeOpening");
@@ -97,8 +100,8 @@ describe("风格检", () => {
 	});
 
 	it("keeps ordinary prose clean", () => {
-		const profile = analyzeAiProfile([HUMAN]);
-		const findings = lintStyle({ profile, words: 200 });
+		const profile = analyzeAiProfile([HUMAN], AI_LEXICON);
+		const findings = lintStyle({ profile, words: 200, limits: LIMITS });
 		const warnings = findings.filter((finding) => finding.severity !== "info");
 		expect(warnings).toEqual([]);
 	});
@@ -112,16 +115,16 @@ describe("风格检", () => {
 			"她没拆。",
 		].join("");
 		const chapter = Array.from({ length: 6 }, () => paragraph).join("\n\n");
-		const profile = analyzeAiProfile([chapter]);
+		const profile = analyzeAiProfile([chapter], AI_LEXICON);
 		expect(profile.paragraphsChecked).toBe(6);
 		expect(profile.shortEndingRatio).toBeGreaterThanOrEqual(0.7);
-		const codes = lintStyle({ profile, words: 500 }).map((finding) => finding.code);
+		const codes = lintStyle({ profile, words: 500, limits: LIMITS }).map((finding) => finding.code);
 		expect(codes).toContain("style.punchlineParagraphs");
 	});
 
 	it("reports nothing it cannot support: short samples get no rhythm verdict", () => {
-		const profile = analyzeAiProfile(["他推开门。门锁着。他退回去。"]);
-		const codes = lintStyle({ profile, words: 12 }).map((finding) => finding.code);
+		const profile = analyzeAiProfile(["他推开门。门锁着。他退回去。"], AI_LEXICON);
+		const codes = lintStyle({ profile, words: 12, limits: LIMITS }).map((finding) => finding.code);
 		expect(codes).not.toContain("style.rhythmUniform");
 		expect(codes).not.toContain("style.rhythmNarrow");
 	});
@@ -132,25 +135,25 @@ describe("风格检", () => {
 		const base = "他把窗台上的灰擦干净又放回原处去洗了手再回来看了看桌上那只杯子";
 		const lengths = [11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29];
 		const flat = lengths.map((size) => `${base.repeat(3).slice(0, size)}。`).join("");
-		const profile = analyzeAiProfile([flat]);
+		const profile = analyzeAiProfile([flat], AI_LEXICON);
 		expect(profile.sampleSentences).toBe(lengths.length);
-		expect(profile.sentenceUniformity).toBeLessThan(STYLE_LIMITS.sentenceUniformity);
-		const codes = lintStyle({ profile, words: 400 }).map((finding) => finding.code);
+		expect(profile.sentenceUniformity).toBeLessThan(LIMITS.sentenceUniformity);
+		const codes = lintStyle({ profile, words: 400, limits: LIMITS }).map((finding) => finding.code);
 		expect(codes).toContain("style.rhythmNarrow");
 		// 均质那条不该跟着一起报：两件事，分开说。
 		expect(codes).not.toContain("style.rhythmUniform");
 	});
 
 	it("exposes its thresholds so a change cannot hide in a magic number", () => {
-		expect(STYLE_LIMITS.sentenceUniformity).toBe(0.7);
-		expect(STYLE_LIMITS.paragraphUniformity).toBe(0.7);
-		expect(STYLE_LIMITS.hardTellTotal).toBe(3);
+		expect(LIMITS.sentenceUniformity).toBe(0.7);
+		expect(LIMITS.paragraphUniformity).toBe(0.7);
+		expect(LIMITS.hardTellTotal).toBe(3);
 	});
 });
 
 describe("画像是 styleStats 的一部分", () => {
 	it("ships inside StyleStats so the writer sees numbers, not adjectives", () => {
-		const stats = analyzeStyle([MACHINE, HUMAN]);
+		const stats = analyzeStyle([MACHINE, HUMAN], AI_LEXICON);
 		expect(stats.chapters).toBe(2);
 		expect(stats.ai.chapters).toBe(2);
 		expect(stats.ai.sampleSentences).toBeGreaterThan(10);

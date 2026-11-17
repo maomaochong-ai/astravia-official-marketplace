@@ -13,7 +13,9 @@ without inventing state.
      `chapter` falls outside every existing arc means the arc has to cover that chapter first —
      outlines for uncovered chapters are rejected.
    - `outline-chapter` → architect writes that chapter's outline.
-   - `draft-chapter` → hand the chapter to the writer; they save the prose.
+   - `draft-chapter` → hand the chapter to the writer; they save the prose and clear their own
+     `style.*` findings before handing it on. A chapter with open `style.*` warnings is not ready for
+     review — send it back to the writer rather than to the editor.
    - `review-chapter` → hand it to the editor; they save the verdict.
    - `revise-chapter` → writer revises against the must-fix list.
    - `commit-chapter` → confirm the verdict yourself, then `mahua_commit_chapter`.

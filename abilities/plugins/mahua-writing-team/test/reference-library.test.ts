@@ -11,8 +11,9 @@ const KINDS: ReferenceKind[] = ["guide", "genre", "style", "voice"];
 
 describe("the craft library ships with the plugin (ADR 0012)", () => {
 	it("carries every ported document, not a subset", () => {
-		// 25 篇 ainovel-cli 移植 + 9 篇 novel-master 改编（ADR 0019 §2）。
-		expect(REFERENCE_LIBRARY).toHaveLength(34);
+		// 25 篇 ainovel-cli 移植 + 9 篇 novel-master 改编（ADR 0019 §2）+ 1 篇改稿程序（revision-pass）。
+		// 数字变说明工艺库改了；先确认新增的那篇不是另存一份重复内容。
+		expect(REFERENCE_LIBRARY).toHaveLength(35);
 		for (const kind of KINDS) {
 			expect(REFERENCE_LIBRARY.some((entry) => entry.kind === kind)).toBe(true);
 		}
