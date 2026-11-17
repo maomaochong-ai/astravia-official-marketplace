@@ -116,7 +116,13 @@ test fails if a word ever appears in the code or the two copies drift.
 | `style.paragraphUniform` / `style.punchlineParagraphs` | dispersion of paragraph sentence counts below the limit; or every paragraph braking on a short line |
 | `style.explainTail` | sentences opening with a narrator summary |
 | `style.fillerDensity` | filler adverbs per thousand words |
-| `style.timeOpening` / `style.punchlineEnding` | opening on time or weather, closing on an aphorism (one chapter can only be noted; repetition is a cross-chapter judgement) |
+| `style.timeOpening` / `style.punchlineEnding` | opening on time or weather, closing on an aphorism (one chapter is only noted; repetition is reported by the two rows below) |
+| `style.parallelTriplet` | three-beat parallelism (same marker, or same length and ending); one per chapter is allowed |
+| `style.emotionLabel` | intensifier + emotion name (very angry / felt wronged) |
+| `style.uniformDialogue` | enough dialogue lines, all the same length |
+| `style.sermon` | two or more sermon markers inside one line of dialogue |
+| `style.expositionDump` | four consecutive sentences that explain the world and carry no dialogue |
+| `style.repeatOpening` / `style.repeatClosing` | the opening/closing form repeats the previous chapter (see `forms`) |
 
 **The rewrite is a procedure, not a description.** When `style.*` fires, the writer follows
 `mahua_reference revision-pass`: delete, replace with an observation, split and merge sentences, reshape
@@ -126,8 +132,17 @@ The editor keeps what cannot be measured: three-beat parallelism, labelled emoti
 one voice, dumping every setting at once. Those are not word shapes; hard-coding them only produces false
 alarms.
 
-Every threshold lives in the lexicon file and is pinned by tests on both sides: a machine-flavoured sample
-must fire, and two classics must stay silent.
+**These now block committing.** `mahua_check_rules` also returns `blocking`: the codes computed from
+this book's `styleBlocking` (default: every warning-level code). While it is non-empty,
+`mahua_commit_chapter` refuses with `style-blocking: code(count)`, which is exactly the work order the
+writer needs.
+
+Per-book overrides live in one place too: `mahua_set_user_rules({ styleLimits, styleBlocking })`.
+Thresholds accept only keys from the lexicon and positive numbers; `styleBlocking: []` is an explicit
+opt-out, not a threshold pushed to zero. Change either only because the author asked.
+
+Every threshold lives in the lexicon file and is pinned by tests on both sides: machine-flavoured
+samples must fire, and human samples must stay silent.
 
 ## What the context pack carries
 
