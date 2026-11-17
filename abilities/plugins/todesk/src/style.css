@@ -1,0 +1,302 @@
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@plugin "@iconify/tailwind4";
+
+/* The host's colour tokens are values; the *relationships* between them (a
+   hairline on a card that stays visible in both themes) have to be derived. So
+   rules are mixed from foreground into the card surface rather than stacked
+   alpha, which disappears on light backgrounds. */
+.td-root {
+	--td-rule: color-mix(in srgb, var(--foreground) 12%, var(--card));
+	--td-rule-strong: color-mix(in srgb, var(--foreground) 20%, var(--card));
+	--td-text: var(--card-foreground);
+	--td-dim: var(--muted-foreground);
+	--td-ok: rgb(5, 150, 105);
+	--td-warn: rgb(180, 83, 9);
+	--td-bad: var(--destructive);
+	--td-mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, "Liberation Mono", Menlo, monospace;
+
+	font-family: var(--font-sans);
+	font-size: 12px;
+	line-height: 1.5;
+	color: var(--td-text);
+	-webkit-font-smoothing: antialiased;
+}
+
+html[data-mode="dark"] .td-root {
+	--td-ok: rgb(52, 211, 153);
+	--td-warn: rgb(251, 191, 36);
+}
+
+.td-root .td-title {
+	font-size: 13px;
+	font-weight: 600;
+	letter-spacing: -0.005em;
+}
+
+.td-root .td-label {
+	font-size: 10.5px;
+	font-weight: 500;
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+	color: var(--td-dim);
+}
+
+.td-root .td-meta {
+	font-size: 11px;
+	color: var(--td-dim);
+}
+
+.td-root .td-mono {
+	font-family: var(--td-mono);
+	font-size: 11.5px;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: -0.01em;
+}
+
+.td-root .td-panel {
+	background: var(--card);
+	color: var(--card-foreground);
+	border: 1px solid var(--td-rule);
+	border-radius: 12px;
+}
+
+.td-root .td-code {
+	font-family: var(--td-mono);
+	font-size: 22px;
+	font-weight: 600;
+	letter-spacing: 0.12em;
+	font-variant-numeric: tabular-nums;
+}
+
+.td-root .td-field {
+	width: 100%;
+	height: 30px;
+	padding-inline: 9px;
+	font-family: var(--td-mono);
+	font-size: 11.5px;
+	color: var(--td-text);
+	background: var(--background);
+	border: 1px solid var(--td-rule-strong);
+	/* Chromium squares native inputs off on focus and on password fields; these three
+	   lines are what actually keeps the corners round on every engine. */
+	appearance: none;
+	-webkit-appearance: none;
+	border-radius: 10px;
+	box-sizing: border-box;
+	outline: none;
+	transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.td-root .td-field::placeholder {
+	color: color-mix(in srgb, var(--muted-foreground) 80%, var(--card));
+	font-family: var(--font-sans);
+}
+
+.td-root .td-field:focus-visible {
+	border-color: var(--ring);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 22%, transparent);
+}
+
+.td-root .td-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	height: 28px;
+	padding-inline: 10px;
+	font-size: 11.5px;
+	font-weight: 500;
+	border-radius: 7px;
+	border: 1px solid transparent;
+	cursor: pointer;
+	transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.td-root .td-btn:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.td-root .td-btn[data-tone="primary"] {
+	background: var(--primary);
+	color: var(--primary-foreground);
+}
+
+.td-root .td-btn[data-tone="outline"] {
+	background: transparent;
+	border-color: var(--td-rule-strong);
+	color: var(--td-text);
+}
+
+.td-root .td-btn[data-tone="outline"]:hover:not(:disabled) {
+	background: color-mix(in srgb, var(--foreground) 7%, transparent);
+}
+
+.td-root .td-btn[data-tone="ghost"] {
+	background: transparent;
+	color: var(--td-dim);
+}
+
+.td-root .td-btn[data-tone="ghost"]:hover:not(:disabled) {
+	color: var(--td-text);
+	background: color-mix(in srgb, var(--foreground) 6%, transparent);
+}
+
+.td-root .td-dot {
+	width: 7px;
+	height: 7px;
+	border-radius: 999px;
+	flex: none;
+}
+
+.td-root .td-dot[data-tone="ok"] {
+	background: var(--td-ok);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--td-ok) 18%, transparent);
+}
+
+.td-root .td-dot[data-tone="warn"] {
+	background: var(--td-warn);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--td-warn) 18%, transparent);
+}
+
+.td-root .td-dot[data-tone="bad"] {
+	background: var(--td-bad);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--td-bad) 18%, transparent);
+}
+
+.td-root .td-dot[data-tone="idle"] {
+	background: color-mix(in srgb, var(--muted-foreground) 70%, var(--card));
+}
+
+/* Buttons and links get an offset outline; an input must NOT — outline follows the
+   box, so it draws a square frame around a rounded field. Inputs use the ring only. */
+.td-root button:focus-visible,
+.td-root a:focus-visible {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
+}
+
+.td-root input:focus,
+.td-root input:focus-visible,
+.td-root input:active {
+	outline: none;
+	border-radius: 10px;
+	border-color: var(--ring);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 22%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.td-root * {
+		transition-duration: 0ms !important;
+	}
+}
+
+/* Plain text and the consent switch: two shapes utilities cannot express cleanly. */
+.td-root .td-text {
+	color: var(--td-text);
+}
+
+.td-root .td-switch {
+	position: relative;
+	display: inline-flex;
+	width: 34px;
+	height: 20px;
+	flex: none;
+}
+
+.td-root .td-switch input {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	margin: 0;
+	cursor: pointer;
+}
+
+.td-root .td-switch span {
+	width: 100%;
+	height: 100%;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--foreground) 18%, var(--card));
+	border: 1px solid var(--td-rule-strong);
+	transition: background-color 120ms ease;
+}
+
+.td-root .td-switch span::after {
+	content: "";
+	position: absolute;
+	top: 3px;
+	left: 3px;
+	width: 14px;
+	height: 14px;
+	border-radius: 999px;
+	background: var(--card);
+	box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+	transition: transform 120ms ease;
+}
+
+.td-root .td-switch input:checked + span {
+	background: var(--primary);
+	border-color: var(--primary);
+}
+
+.td-root .td-switch input:checked + span::after {
+	transform: translateX(14px);
+}
+
+.td-root .td-switch input:focus-visible + span {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
+}
+
+/* Password managers paint their own background and square the corners again. */
+.td-root .td-field:-webkit-autofill,
+.td-root .td-field:-webkit-autofill:focus {
+	-webkit-text-fill-color: var(--td-text);
+	border-radius: 10px;
+	box-shadow: 0 0 0 1px var(--td-rule-strong) inset;
+}
+
+.td-root .td-field[type="password"] {
+	border-radius: 10px;
+}
+
+/* Masked device code: same metrics as the real one so revealing does not shift layout. */
+.td-root .td-code {
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0.12em;
+}
+
+.td-root .td-code[data-revealed="false"] {
+	color: var(--td-dim);
+}
+
+/* Password reveal: a glyph inside the field, so the two inputs can sit on one row
+   without a third button widening the row past the panel. */
+.td-root .td-field-eye {
+	position: absolute;
+	top: 50%;
+	right: 6px;
+	transform: translateY(-50%);
+	padding: 0 4px;
+	font-size: 10.5px;
+	line-height: 1;
+	color: var(--td-dim);
+	background: transparent;
+	border: 0;
+	cursor: pointer;
+	border-radius: 6px;
+}
+
+.td-root .td-field-eye:hover {
+	color: var(--td-text);
+}
+
+/* One row: code | password | connect. On narrow panels the row wraps only at the
+   button, never between the two inputs. */
+@media (max-width: 520px) {
+	.td-root form {
+		flex-wrap: wrap;
+	}
+}

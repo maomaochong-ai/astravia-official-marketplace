@@ -2036,6 +2036,48 @@
         "path": "abilities/plugins/magpie"
       },
       "minAppVersion": "0.5.65"
+    },
+    {
+      "type": "plugin",
+      "slug": "todesk",
+      "name": "ToDesk Remote",
+      "description": "Connect this computer to another one by its ToDesk device code, from the panel or from the conversation. The agent reads the code, opens sessions and can keep this machine reachable — no ToDesk setting to find first.",
+      "version": "0.4.8",
+      "configVersion": 1,
+      "license": "MIT",
+      "author": "Astravia",
+      "category": "Productivity",
+      "categoryI18n": {
+        "zh": "效率",
+        "en": "Productivity"
+      },
+      "tags": [
+        "remote",
+        "todesk",
+        "remote-desktop",
+        "device-code",
+        "unattended"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "ToDesk 远程控制",
+            "description": "用 ToDesk 设备码把本机连到另一台电脑，面板或对话里都能发起。Agent 能读设备码、发起会话、让这台机器保持可连——不需要先去 ToDesk 里找任何设置。",
+            "tags": [
+              "远程",
+              "ToDesk",
+              "远程桌面",
+              "设备码",
+              "无人值守",
+              "MCP"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/todesk"
+      },
+      "minAppVersion": "0.5.59"
     }
   ],
   "version": "0.4.88"

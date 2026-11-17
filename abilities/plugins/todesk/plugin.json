@@ -1,0 +1,39 @@
+{
+	"id": "todesk",
+	"name": "%plugin.name%",
+	"icon": "assets/icon.svg",
+	"version": "0.4.8",
+	"defaultLocale": "en",
+	"pluginApiVersion": "^2.4.0",
+	"entry": "dist/mf-manifest.json",
+	"moduleFederation": {
+		"remoteName": "todesk",
+		"expose": "./plugin"
+	},
+	"styles": ["dist/style.css"],
+	"permissions": [
+		"ui.slot.workspace-view",
+		"ui.slot.activity-tab",
+		"storage.read",
+		"storage.write",
+		"fs.read",
+		"shell.openExternal",
+		"agent.tools.register",
+		"agent.toolHandler.execute",
+		"agent.skills.control",
+		"agent.command.run"
+	],
+	"commands": ["ToDesk.exe"],
+	"agent": {
+		"skillPaths": ["agent/skills/todesk"],
+		"skillPresentation": {
+			"defaultVisibility": "hidden",
+			"surfaces": {
+				"commandPalette": "hidden",
+				"skillPicker": "hidden"
+			}
+		}
+	},
+	"description": "%plugin.description%",
+	"author": "Astravia"
+}
