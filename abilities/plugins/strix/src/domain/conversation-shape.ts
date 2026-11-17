@@ -36,13 +36,16 @@ export function conversationShape(
 /**
  * 这一轮开始时要不要把面板带到前面。
  *
- * `engaged` 是胶囊的开关状态。团队会话里没有这颗胶囊可开，所以它在那里恒为 false；
- * 拿它当唯一条件是"没有开关 = 用户拒绝"，而事实是"这个地方根本没有开关"。
+ * `engaged` 是**这个会话**的胶囊状态（见 `engagement.ts`：按会话记，不是全局）。
+ *
+ * 团队会话不再无条件跟随（1.7.4）：它没有胶囊可开，于是 engaged 恒为 false；早期把
+ * “没有开关”读成“应该跟随”，结果是**每次打开任意会话，Strix 都自己跳出来**。团队面板
+ * 本来就是只读的，没有理由抢焦点——要看的人自己点开。
+ *
+ * `shape` 仍留在签名上：调用处读起来是「什么会话 + 用户开没开」，而团队会话的排除已经
+ * 由「它没有胶囊」这一事实在构造上完成，不需要再写一个特例。
  */
-export function shouldFollowTurn(shape: ConversationShape, engaged: boolean): boolean {
-	// 团队会话没有这颗胶囊可开，它在那里恒为 false。
-	if (shape === "team") return true;
-	// 其余（单会话，以及"还没收到 conversation-changed"的未知态）一律看胶囊。
+export function shouldFollowTurn(_shape: ConversationShape, engaged: boolean): boolean {
 	return engaged;
 }
 

@@ -4,7 +4,14 @@ import { definePlugin, useActiveConversation } from "@astravia-org/plugin-sdk";
 import { useEffect, useRef } from "react";
 import { createBridgeClient } from "./domain/bridge-client";
 import { conversationShape, shouldFollowTurn } from "./domain/conversation-shape";
-import { hasPanelBeenSeen, isStrixEngaged, lastSeenConversation, setStrixEngaged } from "./domain/engagement";
+import {
+	claimPendingEngagement,
+	clearEngagement,
+	hasPanelBeenSeen,
+	isStrixEngaged,
+	lastSeenConversation,
+	setStrixEngaged,
+} from "./domain/engagement";
 import { StrixTab } from "./features/scan-console/components/strix-tab";
 import { useStrixSession } from "./features/scan-console/hooks/use-strix-session";
 import { createServiceRuntime, type ServiceRuntime } from "./runtime";
@@ -170,6 +177,9 @@ async function revealPath(ctx: PluginContext, target: string): Promise<void> {
 
 export default definePlugin({
 	async activate(ctx: PluginContext): Promise<Disposable> {
+		// 胶囊状态从零开始：宿主 reload 后胶囊回到「未开」，我们如果还记着上一个会话开着，
+		// 两边不一致的结果就是「用户没开胶囊，面板却自己跳出来」。
+		clearEngagement();
 		const runtime = createServiceRuntime(ctx);
 		// 先把 bridge 拉起再注册贡献：宿主的 MCP 贡献是「服务就绪才物化」的
 		// （plugin-runtime-config-builder / resolveServiceMcp 返回 undefined 就跳过），
@@ -229,12 +239,14 @@ export default definePlugin({
 					cwd: event.conversation.cwd,
 					sessionPath: event.conversation.sessionPath,
 				};
+				// 在新会话页就先开了胶囊：这个 id 出现时把它接过去。
+				claimPendingEngagement(event.conversation.id);
 				return;
 			}
 			if (event.type !== "turn-start") return;
-			// 门还是三道，但第一道问的不再是"胶囊开着吗"，而是"这种会话上该不该跟随"：
-			// 团队会话根本没有胶囊可开（团队用另一套 composer），缺席不是拒绝。
-			if (!shouldFollowTurn(conversationShape(activeConversation), isStrixEngaged())) return;
+			// 第一道问的是「这个会话开没开胶囊」：胶囊按会话记（曾被写成模块级布尔，结果
+			// 在 A 开过一次后，**每一个**会话的每一轮都把面板拽出来）。
+			if (!shouldFollowTurn(conversationShape(activeConversation), isStrixEngaged(activeConversation.id))) return;
 			try {
 				// cwd 未知（团队会话很常见：override 的变化可能比我们订阅更早）时，
 				// 退回面板上次记住的会话——它比"什么都不传"更可能落进正确的抽屉。
@@ -250,7 +262,7 @@ export default definePlugin({
 			label: ctx.i18n.t("action.label"),
 			scope_use: ["conversation", "project"],
 			onToggle: (active) => {
-				setStrixEngaged(active === true);
+				setStrixEngaged(active === true, activeConversation.id);
 				if (!active) {
 					ctx.ui.setActivityTabVisible(TAB_ID, false);
 					return;

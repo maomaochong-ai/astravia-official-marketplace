@@ -157,14 +157,15 @@ describe("a host turn brings the panel to the front", () => {
 		expect(host.calls).not.toContain("open");
 	});
 
-	it("follows a team chat even though it has no capsule to turn on", async () => {
+	it("leaves a team chat alone: no capsule there means nobody asked for the panel", async () => {
 		const host = mount();
 		await plugin.activate(host.ctx);
 		render(host.tab()!.component());
 		await flush();
 
 		// 团队会话：宿主把 sessionPath 写死为 null，输入框上也没有插件的胶囊入口。
-		// 没开关不等于拒绝 ——这一轮必须把面板带出来，否则用户看不到现场。
+		// 1.7.4 前这里被读成「没开关不等于拒绝」，于是**每次打开任意会话**都把面板拽出来；
+		// 现在没有胶囊 = 这一轮没交给 Strix，面板不抢焦点（要看的人自己点开）。
 		await act(async () => {
 			host.emit({
 				type: "conversation-changed",
@@ -177,7 +178,38 @@ describe("a host turn brings the panel to the front", () => {
 		});
 		await flush();
 
-		expect(host.calls).toContain("open");
+		expect(host.calls).not.toContain("open");
+	});
+
+	it("does not carry one conversation's capsule into the next conversation", async () => {
+		const host = mount();
+		await plugin.activate(host.ctx);
+		render(host.tab()!.component());
+		await flush();
+
+		await act(async () => {
+			host.emit({
+				type: "conversation-changed",
+				conversation: { ...conversationState, id: "conv-A", sessionPath: "/tmp/a.json" },
+			});
+		});
+		// 在 A 里打开胶囊（这一轮交给了 Strix）。
+		host.toggle(true);
+
+		// 切到 B，同样开始一轮：B 的胶囊没开，面板就不该出现。
+		await act(async () => {
+			host.emit({
+				type: "conversation-changed",
+				conversation: { ...conversationState, id: "conv-B", sessionPath: "/tmp/b.json" },
+			});
+		});
+		host.calls.length = 0;
+		await act(async () => {
+			host.emit({ type: "turn-start" });
+		});
+		await flush();
+
+		expect(host.calls).not.toContain("open");
 	});
 
 	it("leaves the launch screen on that same turn, capsule or not", async () => {

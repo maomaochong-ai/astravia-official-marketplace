@@ -1,20 +1,57 @@
 /**
- * Whether the user has put Strix on the current turn — and where they put it on.
+ * Whether the user has put Strix on a conversation's turn — **per conversation**.
  *
- * Two readers, two questions:
+ * 曾经是一个模块级布尔：在 A 里开了胶囊，之后**每一次**打开任何会话，turn-start 都把
+ * Strix 面板拽到前面。用户看到的是「每次打开宿主会话，strix 自动打开了」——胶囊是
+ * 那个会话的决定，不是这台机器的偏好。
  *
- *  - the panel asks "does this host turn belong to me" (`isStrixEngaged`) — the host's
- *    event stream is not per-conversation, so the panel filters with `belongsTo`;
- *  - the plugin asks "may I bring my tab to the front" (`hasPanelBeenSeen`). Bringing a
- *    panel up is intrusive in a way that drawing a row is not, so it needs one extra
- *    fact: this conversation has had the panel open at least once. Otherwise a capsule
- *    left on in conversation A would yank the panel over in conversation B, where the
- *    user never asked for it (1.0.6 review finding).
+ * 两个读者：
  *
- * Module scope on purpose: the tab mounts and unmounts, and the chip outlives it.
+ *  - index.tsx 在 turn-start 问「这一轮交给了 Strix 吗」（`isStrixEngaged(id)`）；
+ *  - 面板问「这个会话的面板开过吗」（`hasPanelBeenSeen`）。
+ *
+ * 一个新会话页还没有 id：那次切换记成 pending，等 `conversation-changed` 拿到 id 时再
+ * 归到它名下（`claimPendingEngagement`）。否则「在新会话页先开胶囊、再发第一句」会失效。
  */
-let engaged = false;
-const seenPanels = new Set<string>();
+
+const engagedIn = new Set<string>();
+let pending: boolean | null = null;
+
+export function setStrixEngaged(next: boolean, conversationId?: string | null): void {
+	if (conversationId) {
+		if (next) engagedIn.add(conversationId);
+		else engagedIn.delete(conversationId);
+		pending = null;
+		return;
+	}
+	// 还不知道会话 id：先记着，等会话出现再归过去。
+	pending = next;
+}
+
+/** 新会话浮出时把「在新会话页打开的胶囊」接过去。 */
+export function claimPendingEngagement(conversationId: string | null | undefined): void {
+	if (!conversationId || pending === null) return;
+	if (pending) engagedIn.add(conversationId);
+	else engagedIn.delete(conversationId);
+	pending = null;
+}
+
+export function isStrixEngaged(conversationId?: string | null): boolean {
+	if (conversationId) return engagedIn.has(conversationId);
+	return pending === true;
+}
+
+/**
+ * 插件重新激活时清空。
+ *
+ * 宿主在 reload 后把胶囊恢复成「未开」（`defaultActive` 为 false），而我们的集合还在：
+ * 两边不一致的结果就是「用户没开胶囊，面板却自己跳出来」。清空即对齐。
+ */
+export function clearEngagement(): void {
+	engagedIn.clear();
+	pending = null;
+}
+
 /**
  * 面板最后一次挂载所在的会话（id + cwd）。
  *
@@ -24,13 +61,7 @@ const seenPanels = new Set<string>();
  */
 let lastSeen: { id: string | null; cwd: string | null } | null = null;
 
-export function setStrixEngaged(next: boolean): void {
-	engaged = next;
-}
-
-export function isStrixEngaged(): boolean {
-	return engaged;
-}
+const seenPanels = new Set<string>();
 
 /** Called by the panel on mount: this conversation has shown the workbench. */
 export function markPanelSeen(conversationId: string | null | undefined, cwd?: string | null): void {

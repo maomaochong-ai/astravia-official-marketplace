@@ -28,8 +28,9 @@ describe("conversationShape", () => {
 });
 
 describe("shouldFollowTurn", () => {
-	it("follows a team chat even though there is no capsule to switch on", () => {
-		expect(shouldFollowTurn("team", false)).toBe(true);
+	it("leaves a team chat alone: it has no capsule, so the panel has not been asked for", () => {
+		// 1.7.4 前这里无条件 true：结果是**每次打开任意会话**都把 Strix 拽到前面。
+		expect(shouldFollowTurn("team", false)).toBe(false);
 	});
 
 	it("leaves a single-agent chat alone unless the capsule is on", () => {
