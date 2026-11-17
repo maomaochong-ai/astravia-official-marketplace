@@ -49,6 +49,17 @@ export interface AiLimits {
 	sampleFloor: number;
 	/** 少于这么多段不给段尾结论。 */
 	shortEndingFloor: number;
+	/** A7 三连排比：一章允许几次。 */
+	parallelTriplets: number;
+	/** A8 情绪贴标签：强度词 + 情绪名的命中数达到这个数就报。 */
+	emotionLabels: number;
+	/** A9 千人一腔：对白句数下限，与这些句子长度的离散度下限。 */
+	dialogueFloor: number;
+	dialogueDispersion: number;
+	/** A10 信息倾倒：连续多少句「无对白 + 含设定标记」算倾倒。 */
+	expositionRun: number;
+	/** 跨章重复：与最近几章比（开篇 / 收尾形式）。 */
+	repeatWindow: number;
 }
 
 export interface AiLexicon {
@@ -61,6 +72,16 @@ export interface AiLexicon {
 	explainHeads: readonly string[];
 	/** 时间/天气起手的开头。 */
 	timeHeads: readonly string[];
+	/** A7 排比的并列标记（与结构重复一起用）。 */
+	parallelMarkers: readonly string[];
+	/** A8 情绪名。 */
+	emotionLabels: readonly string[];
+	/** A8 强度词：出现在情绪名前才算「贴标签」。 */
+	intensifiers: readonly string[];
+	/** A9 说教句标记。 */
+	sermonMarkers: readonly string[];
+	/** A10 设定说明句标记。 */
+	expositionMarkers: readonly string[];
 }
 
 export interface CompiledEntry extends LexiconEntry {
@@ -73,6 +94,11 @@ export interface CompiledLexicon {
 	soft: readonly CompiledEntry[];
 	explainHeads: readonly string[];
 	timeHeads: readonly string[];
+	parallelMarkers: readonly string[];
+	emotionLabels: readonly string[];
+	intensifiers: readonly string[];
+	sermonMarkers: readonly string[];
+	expositionMarkers: readonly string[];
 }
 
 /**
@@ -99,5 +125,10 @@ export function compileLexicon(lexicon: AiLexicon): CompiledLexicon {
 		soft: compile(lexicon.soft),
 		explainHeads: lexicon.explainHeads,
 		timeHeads: lexicon.timeHeads,
+		parallelMarkers: lexicon.parallelMarkers,
+		emotionLabels: lexicon.emotionLabels,
+		intensifiers: lexicon.intensifiers,
+		sermonMarkers: lexicon.sermonMarkers,
+		expositionMarkers: lexicon.expositionMarkers,
 	};
 }

@@ -217,9 +217,21 @@ export interface AiProfile {
 	punchlineEndings: number;
 	/** 参与「段尾斩断」统计的段落数（单句段不计）。 */
 	paragraphsChecked: number;
+	/** A7 三连排比的处数。 */
+	parallelTriplets: number;
+	/** A8 情绪贴标签（强度词 + 情绪名）的次数。 */
+	emotionLabelCount: number;
+	/** A9 对白行数（引号内的句子数）。 */
+	dialogueLines: number;
+	/** A9 对白句长的离散度：越低越像一个人写的。 */
+	dialogueDispersion: number;
+	/** A9 说教句数（一句对白里含两个以上说教标记）。 */
+	sermonLines: number;
+	/** A10 最长一段「无对白 + 含设定标记」的连续句数。 */
+	expositionRun: number;
 	/** 其中最后一句短于本段均句长 60% 的段落数。 */
 	shortEndedParagraphs: number;
-	/** 上面两者的比值。包 0.70 = 每段都在短句上刷车。 */
+	/** 上面两者的比值。超过阈值 = 每段都在短句上刷车。 */
 	shortEndingRatio: number;
 }
 

@@ -12,29 +12,22 @@
  */
 
 import { compileLexicon, type AiLexicon, type CompiledLexicon } from "./ai-lexicon.js";
+import {
+	countEmotionLabels,
+	countParallelTriplets,
+	dialogueProfile,
+	longestExpositionRun,
+	paragraphsOf,
+	splitSentences,
+	weigh,
+} from "./style-shapes.js";
 import type { AiProfile, StyleStats } from "./novel-types.js";
 
 const CJK = /[\u3400-\u4dbf\u4e00-\u9fff\u3040-\u30ff]/;
 // 引号对用 unicode 转义写：领域层守卫禁止源码里出现中日韩字符与全角标点。
 const QUOTED = /[\u201c"\u300c\u300e]([^\u201d"\u300d\u300f]{1,400})[\u201d"\u300d\u300f]/g;
 
-function splitSentences(text: string): string[] {
-	return text
-		.split(/(?<=[\u3002\uff01\uff1f!?\u2026])|\n{2,}|(?<=[.!?])\s+/)
-		.map((part) => part.trim())
-		.filter((part) => part.length > 0);
-}
-
-/** 中文按字计、英文按词计，与 StudioService.countWords 同口径（这里独立实现以免领域层反向依赖应用层）。 */
-function weigh(text: string): number {
-	const cjk = text.match(/[\u3400-\u4dbf\u4e00-\u9fff\u3040-\u30ff]/g)?.length ?? 0;
-	const latin = text
-		.replace(/[\u3400-\u4dbf\u4e00-\u9fff\u3040-\u30ff]/g, " ")
-		.split(/\s+/)
-		.filter((token) => /[A-Za-z0-9]/.test(token)).length;
-	return cjk + latin;
-}
-
+/** 一个正则在一段文字里出现几次（含重叠起点）；上限 40 次，防御零宽匹配。 */
 function countOf(text: string, re: RegExp): number {
 	const global = new RegExp(re.source, re.flags.includes("g") ? re.flags : `${re.flags}g`);
 	let count = 0;
@@ -47,7 +40,6 @@ function countOf(text: string, re: RegExp): number {
 	return count;
 }
 
-/** 落在均值 ±band 之内的占比：只作诊断展示，不参与判定（判定看离散度）。 */
 function bandShare(values: readonly number[], band: number): number {
 	if (values.length < 4) return 0;
 	const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -94,6 +86,12 @@ function emptyProfile(): AiProfile {
 		paragraphsChecked: 0,
 		shortEndedParagraphs: 0,
 		shortEndingRatio: 0,
+		parallelTriplets: 0,
+		emotionLabelCount: 0,
+		dialogueLines: 0,
+		dialogueDispersion: 0,
+		sermonLines: 0,
+		expositionRun: 0,
 	};
 }
 
@@ -175,6 +173,15 @@ export function analyzeAiProfile(texts: readonly string[], lexicon: AiLexicon): 
 		profile.paragraphsChecked === 0
 			? 0
 			: Math.round((profile.shortEndedParagraphs / profile.paragraphsChecked) * 100) / 100;
+	// A7–A10：结构与对白层面的四种形状（数值在 style-shapes 里算）。
+	const dialogue = dialogueProfile(texts.join("\n"), compiled);
+	profile.parallelTriplets = countParallelTriplets(texts.join("\n"), compiled);
+	profile.emotionLabelCount = countEmotionLabels(texts.join("\n"), compiled);
+	profile.dialogueLines = dialogue.lines;
+	profile.dialogueDispersion = dialogue.dispersion;
+	profile.sermonLines = dialogue.sermons;
+	profile.expositionRun = longestExpositionRun(texts.join("\n"), compiled);
+
 	profile.hardTells = [...tellCounts.entries()]
 		.map(([phrase, count]) => ({ phrase, count }))
 		.sort((a, b) => b.count - a.count || a.phrase.localeCompare(b.phrase));

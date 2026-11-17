@@ -106,7 +106,7 @@ export function registerFoundationTools(ctx: PluginContext, service: StudioServi
 		id: "mahua_set_user_rules",
 		label: "Mahua Novels: set writing rules",
 		description:
-			"Store executable writing rules: bannedWords (string[]), pointOfView (first | third | any), minWords, maxWords. Unknown fields are dropped. Requires an activated credential.",
+			"Store executable writing rules. `bannedWords` (string[]), `pointOfView` (first | third | any), `minWords`, `maxWords`; plus two style knobs: `styleLimits` overrides AI-flavour thresholds for this book only (keys from the lexicon, positive numbers), and `styleBlocking` lists the `style.*` codes that block committing (default: every warning-level code; pass an empty array to opt out). Unknown fields are dropped. Requires an activated credential.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -118,6 +118,10 @@ export function registerFoundationTools(ctx: PluginContext, service: StudioServi
 						pointOfView: { type: "string", enum: ["first", "third", "any"] },
 						minWords: { type: "number" },
 						maxWords: { type: "number" },
+						// 按书覆盖：只接受词表里已有的键，值必须是正数（domain 层同样校验）。
+						styleLimits: { type: "object", additionalProperties: { type: "number" } },
+						// 哪些 style.* 阻断提交。空数组 = 本书显式退出风格门禁。
+						styleBlocking: { type: "array", items: { type: "string" } },
 					},
 					additionalProperties: false,
 				},

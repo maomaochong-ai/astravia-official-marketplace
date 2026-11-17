@@ -98,7 +98,13 @@ Mac 上的红黄绿三键那一行也会消失。再按一次、按 **Esc**，�
 | `style.paragraphUniform` / `style.punchlineParagraphs` | 段落句数的离散度低于阈值；或每段都刹在短句上 |
 | `style.explainTail` | “他知道 / 这意味着 / 换句话说”开头的句子数 |
 | `style.fillerDensity` | 忽然/微微/缓缓/轻轻 的每千字密度 |
-| `style.timeOpening` / `style.punchlineEnding` | 时间天气起手、章尾金句（单章只能记一笔，看跨章重复） |
+| `style.timeOpening` / `style.punchlineEnding` | 时间天气起手、章尾金句（单章只记一笔；同形跨章由下面两条报） |
+| `style.parallelTriplet` | 三连排比（同一标记起头 / 同长度同收尾），一章允许一组 |
+| `style.emotionLabel` | 强度词 + 情绪名（非常愤怒 / 感到委屈） |
+| `style.uniformDialogue` | 对白行数够多但长度几乎一样 |
+| `style.sermon` | 一句对白里两个以上说教标记 |
+| `style.expositionDump` | 连续四句「无对白 + 含设定标记」 |
+| `style.repeatOpening` / `style.repeatClosing` | 开篇/收尾形式与上一章相同（看 `forms`） |
 
 只能人工判的（`mahua_reference anti-ai-tone` 的 A7–A10）：三连排比、情绪贴标签、
 十个角色一张嘴、把所有设定一次倒完。
@@ -108,9 +114,14 @@ Mac 上的红黄绿三键那一行也会消失。再按一次、按 **Esc**，�
 `npm run references` 就行，不改代码；词条出现在代码里（含 `\uXXXX` 转义）或两份不同步时，测试会红。
 
 **改法是一道程序，不是一个形容词。** `style.*` 报出来后，writer 按 `mahua_reference revision-pass` 的
-六遍改：删 → 换观察 → 拆合并句子 → 改段落形状 → 换起手与收尾 → 读出声，一遍一遍来，每遍重新检。
+八遍改：删 → 换观察 → 拆合并句子 → 改段落形状 → 换起手收尾 → 拆套式 → 拆对白 → 换跨章形式，一遍一遍来。
 
-数字不对就改那个 JSON，并补一个样本证明它仍站在机器腔与经典散文之间；不要在文档里各说一套。
+**这些现在会拦提交。** `mahua_check_rules` 多返回一个 `blocking`：按本书的 `styleBlocking`（默认全部
+warning 级代码）算出来，非空时 `mahua_commit_chapter` 直接拒绝并回 `style-blocking: 代码(次数)`。
+按书覆盖在同一处：`mahua_set_user_rules({ styleLimits, styleBlocking })`——阈值只接受词表里的键与正数，
+`styleBlocking: []` 是显式退出。改这两个只因为作者要求，不为了让某一章过关。
+
+数字不对就改那个 JSON，并补一个样本证明它仍站在机器腔与人腔样本之间；不要在文档里各说一套。
 
 ## 上下文包里有什么
 

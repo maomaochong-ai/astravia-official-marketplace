@@ -22,9 +22,14 @@ Both when a chapter opens a new arc.
 Do not skip `mahua_context`, and do not commit a chapter whose `mahua_save_review` has a non-empty
 `mustFix`.
 
-`mahua_check_rules` returns `rule.*` and `style.*`. `style.*` warnings are shapes the writer can fix
-without anyone's opinion — a chapter that reaches the editor with them still open is unfinished, and
-the editor sends it back rather than scoring it. The procedure is `$novel-craft` → `revision-pass`.
+`mahua_check_rules` returns `rule.*`, `style.*`, and `blocking`.
+
+- `style.*` warnings are shapes the writer can fix without anyone's opinion. Read `blocking`: those are the
+  codes that will make `mahua_commit_chapter` refuse this chapter. Clear them before review — the editor
+  sends a chapter back rather than scoring it. The procedure is `$novel-craft` → `revision-pass`.
+- `blocking` is per book. It defaults to every warning-level `style.*` code; `mahua_set_user_rules` with
+  `styleBlocking: []` opts a book out, and `styleLimits` overrides thresholds for that book only. Change
+  those only when the author asks — never to make a chapter pass.
 
 ## Who decides what happens next
 

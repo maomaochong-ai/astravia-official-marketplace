@@ -2,7 +2,7 @@
 // 源文件：agent/lexicon/ai-tells.json。改完跑 `npm run references`。
 import type { AiLexicon } from "../domain/ai-lexicon.js";
 
-/** 词表 34 条，阈值 12 项。 */
+/** 词表 34 条，阈值 18 项。 */
 export const AI_LEXICON: AiLexicon = {
  "limits": {
   "shortSentenceMax": 10,
@@ -16,7 +16,13 @@ export const AI_LEXICON: AiLexicon = {
   "explainTails": 3,
   "shortEnding": 0.7,
   "sampleFloor": 20,
-  "shortEndingFloor": 4
+  "shortEndingFloor": 4,
+  "parallelTriplets": 1,
+  "emotionLabels": 2,
+  "dialogueFloor": 6,
+  "dialogueDispersion": 0.25,
+  "expositionRun": 4,
+  "repeatWindow": 1
  },
  "stock": [
   {
@@ -179,5 +185,68 @@ export const AI_LEXICON: AiLexicon = {
   "中午",
   "天色",
   "阳光"
+ ],
+ "parallelMarkers": [
+  "不再",
+  "没有",
+  "不是",
+  "也不再",
+  "他不",
+  "她不"
+ ],
+ "emotionLabels": [
+  "紧张",
+  "愤怒",
+  "悲伤",
+  "害怕",
+  "恐惧",
+  "兴奋",
+  "失落",
+  "愧疚",
+  "委屈",
+  "尴尬",
+  "痛苦",
+  "不安",
+  "焦虑",
+  "绝望",
+  "欣慰",
+  "心疼"
+ ],
+ "intensifiers": [
+  "很",
+  "非常",
+  "十分",
+  "特别",
+  "格外",
+  "有些",
+  "感到",
+  "感觉",
+  "觉得",
+  "显得"
+ ],
+ "sermonMarkers": [
+  "你应该",
+  "你必须",
+  "你要明白",
+  "你要记住",
+  "做人",
+  "道理",
+  "这就是为什么",
+  "难道你"
+ ],
+ "expositionMarkers": [
+  "位于",
+  "属于",
+  "分为",
+  "共有",
+  "由",
+  "组成",
+  "据说",
+  "被称为",
+  "象征着",
+  "代表着",
+  "意味着",
+  "代代相传",
+  "自古"
  ]
 };

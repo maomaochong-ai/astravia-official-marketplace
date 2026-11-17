@@ -105,6 +105,11 @@ describe("StudioService lifecycle", () => {
 
 		expect((await service.startDrafting(bookId)).ok).toBe(true);
 
+		// PROSE 是刻意等长的英文样本（40 句同一句）：它会被 style.rhythmUniform 拦住，
+		// 这条测试考的是流水线，不是文风——所以本书显式关掉风格门禁。
+		// 「不关就会被拦」由 ai-flavor-regression 与 style-gate 的用例证明。
+		expect((await service.saveUserRules({ styleBlocking: [] }, bookId)).ok).toBe(true);
+
 		const drafted = await service.saveChapter({ n: 1, content: PROSE }, bookId);
 		expect(drafted.ok).toBe(true);
 

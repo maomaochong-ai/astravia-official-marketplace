@@ -18,7 +18,9 @@ without inventing state.
      review — send it back to the writer rather than to the editor.
    - `review-chapter` → hand it to the editor; they save the verdict.
    - `revise-chapter` → writer revises against the must-fix list.
-   - `commit-chapter` → confirm the verdict yourself, then `mahua_commit_chapter`.
+   - `commit-chapter` → confirm the verdict yourself, run `mahua_check_rules` once, then
+     `mahua_commit_chapter`. If it refuses with `style-blocking`, the chapter goes back to the writer
+     with those codes — not to the editor, and not to the author as a question.
    - `close-arc` → `mahua_close_arc`, then ask the architect whether a volume closes too.
    - `finalize` → `mahua_finalize`.
    - nothing at all while planning → the outlines are ready; the author decides when to press

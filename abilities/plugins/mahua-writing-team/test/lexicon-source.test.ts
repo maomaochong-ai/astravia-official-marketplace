@@ -84,6 +84,11 @@ describe("the AI-flavour lexicon lives in data, not in code", () => {
 			soft: [],
 			explainHeads: [],
 			timeHeads: [],
+			parallelMarkers: [],
+			emotionLabels: [],
+			intensifiers: [],
+			sermonMarkers: [],
+			expositionMarkers: [],
 		};
 		expect(analyzeAiProfile([text], custom).hardTells).toEqual([{ phrase: "custom-tell", count: 1 }]);
 		// 默认词表里没有"窗前"：同一段文字不该报任何套句。
@@ -100,6 +105,11 @@ describe("the AI-flavour lexicon lives in data, not in code", () => {
 			soft: [],
 			explainHeads: [],
 			timeHeads: [],
+			parallelMarkers: [],
+			emotionLabels: [],
+			intensifiers: [],
+			sermonMarkers: [],
+			expositionMarkers: [],
 		});
 		expect(compiled.stock.map((entry) => entry.phrase)).toEqual(["fine"]);
 	});

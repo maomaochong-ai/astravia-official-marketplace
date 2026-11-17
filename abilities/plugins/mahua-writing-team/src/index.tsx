@@ -50,7 +50,11 @@ export default definePlugin({
 
 		await gate.load();
 
-		optionalVoid("novel-tools", () => registerNovelTools(ctx, service));
+		// 工具注册的 Disposable 必须留着：停用时逐个释放，否则注册表里留下 36 个死工具。
+		let tools: Disposable[] = [];
+		optionalVoid("novel-tools", () => {
+			tools = registerNovelTools(ctx, service);
+		});
 
 		// 一张界面，一个宿主形态：活动面板里的「麻花小说网」标签页（日常入口，也是唯一入口）。
 		// 「全屏工作台」是本插件自己的覆盖层，不是宿主的整页路由——用户要的是铺满窗口，
@@ -66,11 +70,16 @@ export default definePlugin({
 		const unhook = optional("console-feed", () => registerConsoleFeedHooks(ctx));
 
 		return () => {
+			for (const disposable of tools) disposable.dispose();
 			turnCard.dispose();
 			tab.dispose();
 			unhook.dispose();
 			detachConsoleLog();
-		clearStudioRuntime(studioRuntime);
+			clearStudioRuntime(studioRuntime);
 		};
 	},
+	// 空实现是刻意的：宿主 reload 时先激活新 activation、后停用旧的，
+	// 模块级 deactivate 此刻触碰任何共享状态都会误杀新 activation。
+	// 真正的清理由 activate 返回的 cleanup 逐 activation 负责。
+	deactivate() {},
 });

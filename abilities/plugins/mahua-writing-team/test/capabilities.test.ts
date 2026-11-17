@@ -84,7 +84,14 @@ describe("chapter facts", () => {
 describe("writing rules", () => {
 	it("drops unknown fields instead of carrying an open shape", () => {
 		const rules = normalizeRules({ bannedWords: ["very"], pointOfView: "first", minWords: 10, bogus: 1 });
-		expect(rules).toEqual({ bannedWords: ["very"], pointOfView: "first", minWords: 10, maxWords: 6000 });
+		expect(rules).toEqual({
+			bannedWords: ["very"],
+			pointOfView: "first",
+			minWords: 10,
+			maxWords: 6000,
+			styleLimits: {},
+			styleBlocking: expect.any(Array),
+		});
 	});
 
 	it("falls back to defaults on garbage input", () => {
@@ -97,7 +104,7 @@ describe("writing rules", () => {
 		const findings = lintChapter({
 			text: "I said very little.",
 			words: 4,
-			rules: { bannedWords: ["very"], pointOfView: "any", minWords: 800, maxWords: 6000 },
+			rules: { bannedWords: ["very"], pointOfView: "any", minWords: 800, maxWords: 6000, styleLimits: {}, styleBlocking: [] },
 		});
 		expect(findings.map((finding) => finding.code).sort()).toEqual(["rule.banned", "rule.tooShort"]);
 	});
@@ -106,7 +113,7 @@ describe("writing rules", () => {
 		const findings = lintChapter({
 			text: "\u4ed6\u63a8\u5f00\u95e8\uff0c\u95e8\u5df2\u7ecf\u9501\u4e86\u3002",
 			words: 1200,
-			rules: { bannedWords: [], pointOfView: "first", minWords: 800, maxWords: 6000 },
+			rules: { bannedWords: [], pointOfView: "first", minWords: 800, maxWords: 6000, styleLimits: {}, styleBlocking: [] },
 		});
 		expect(findings.map((finding) => finding.code)).toEqual(["rule.pointOfView"]);
 	});

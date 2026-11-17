@@ -6,6 +6,7 @@ import { AI_LEXICON } from "../src/reference/lexicon.generated.js";
 import { analyzeStyle } from "../src/domain/style-analysis.js";
 import { lintStyle } from "../src/domain/writing-rules.js";
 import type { Finding } from "../src/domain/novel-types.js";
+import { formsOf, styleGate } from "../src/domain/writing-rules.js";
 
 /**
  * 反机器腔回归：语料是判据的对照组。
@@ -26,6 +27,8 @@ interface Case {
 	expect?: string[];
 	expectInfo?: string[];
 	minWarnings?: number;
+	/** 上一章的样本文件：给了才判跨章重复。 */
+	previous?: string;
 	note?: string;
 }
 
@@ -45,11 +48,24 @@ interface Manifest {
 const dir = join(__dirname, "fixtures", "ai-flavor");
 const manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8")) as Manifest;
 
-/** 走生产路径：同一份词表、同一套阈值。 */
-function review(file: string): { findings: Finding[]; words: number; sentences: number } {
+/** 走生产路径：同一份词表、同一套阈值；给了 previous 就带上跨章判据。 */
+function review(file: string, previousFile?: string): { findings: Finding[]; words: number; sentences: number } {
 	const text = readFileSync(join(dir, file), "utf8");
 	const stats = analyzeStyle([text], AI_LEXICON);
-	const findings = lintStyle({ profile: stats.ai, words: stats.words, limits: AI_LEXICON.limits });
+	const forms = formsOf(text, AI_LEXICON.timeHeads);
+	const previous = previousFile
+		? (() => {
+			const previousText = readFileSync(join(dir, previousFile), "utf8");
+			return { ...formsOf(previousText, AI_LEXICON.timeHeads), chapter: 1 };
+		})()
+		: null;
+	const findings = lintStyle({
+		profile: stats.ai,
+		words: stats.words,
+		limits: AI_LEXICON.limits,
+		forms,
+		previous,
+	});
 	return { findings, words: stats.words, sentences: stats.ai.sampleSentences };
 }
 
@@ -72,7 +88,10 @@ describe("the corpus is a real control group", () => {
 		expect(manifest.cases.some((entry) => entry.kind === "machine")).toBe(true);
 		expect(manifest.cases.some((entry) => entry.kind === "human")).toBe(true);
 		expect(manifest.pairs.length).toBeGreaterThan(0);
-		for (const entry of manifest.cases) expect(() => readFileSync(join(dir, entry.file)), entry.file).not.toThrow();
+		for (const entry of manifest.cases) {
+			expect(() => readFileSync(join(dir, entry.file)), entry.file).not.toThrow();
+			if (entry.previous) expect(() => readFileSync(join(dir, entry.previous as string)), entry.previous).not.toThrow();
+		}
 	});
 
 	it("only names codes the linter can actually emit", () => {
@@ -90,7 +109,7 @@ describe("the corpus is a real control group", () => {
 describe("machine-flavoured samples are caught for the defect they were written with", () => {
 	for (const entry of manifest.cases.filter((item) => item.kind === "machine")) {
 		it(`${entry.file} — ${entry.note ?? ""}`, () => {
-			const { findings } = review(entry.file);
+			const { findings } = review(entry.file, entry.previous);
 			const observed = codes(findings);
 			for (const code of entry.expect ?? []) {
 				expect(observed, `${entry.file} should report ${code}`).toContain(code);
@@ -142,5 +161,26 @@ describe("coverage: every warning the linter can emit appears in the corpus", ()
 		// 新增一条 style.* warning 而语料没覆盖它 → 这里红：要么补样本，要么别加规则。
 		const missing = emittedCodes().warning.filter((code) => !covered.has(code));
 		expect(missing, `corpus does not cover: ${missing.join(", ")}`).toEqual([]);
+	});
+});
+
+describe("style findings block the commit gate when the book says they do", () => {
+	it("blocks on the default set, and says which codes", () => {
+		const { findings } = review("machine-dawn.md");
+		const blocking = ["style.stockPhrase"];
+		const gate = styleGate(findings, blocking);
+		expect(gate.allowed).toBe(false);
+		expect(gate.blocking.map((finding) => finding.code)).toEqual(["style.stockPhrase"]);
+	});
+
+	it("lets a book opt out on purpose", () => {
+		const { findings } = review("machine-dawn.md");
+		expect(styleGate(findings, []).allowed).toBe(true);
+	});
+
+	it("does not treat info-level findings as blockers even if listed", () => {
+		const { findings } = review("machine-dawn.md");
+		const gate = styleGate(findings, ["style.timeOpening"]);
+		expect(gate.allowed).toBe(true);
 	});
 });

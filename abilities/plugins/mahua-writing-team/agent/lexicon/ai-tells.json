@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "note": "机器腔词表与阈值。这是唯一来源：src/reference/lexicon.generated.ts 由 scripts/build-reference-library.mjs 从本文件生成，改这里再跑 npm run references。pattern 是正则源码（不带 / 与 flags），构建脚本会校验它能编译。",
   "updated": "2026-11-17",
   "limits": {
@@ -14,7 +14,13 @@
     "softTellPerKilo": 6,
     "explainTails": 3,
     "sampleFloor": 20,
-    "shortEndingFloor": 4
+    "shortEndingFloor": 4,
+    "parallelTriplets": 1,
+    "emotionLabels": 2,
+    "dialogueFloor": 6,
+    "dialogueDispersion": 0.25,
+    "expositionRun": 4,
+    "repeatWindow": 1
   },
   "stock": [
     {
@@ -177,5 +183,68 @@
     "中午",
     "天色",
     "阳光"
+  ],
+  "parallelMarkers": [
+    "不再",
+    "没有",
+    "不是",
+    "也不再",
+    "他不",
+    "她不"
+  ],
+  "emotionLabels": [
+    "紧张",
+    "愤怒",
+    "悲伤",
+    "害怕",
+    "恐惧",
+    "兴奋",
+    "失落",
+    "愧疚",
+    "委屈",
+    "尴尬",
+    "痛苦",
+    "不安",
+    "焦虑",
+    "绝望",
+    "欣慰",
+    "心疼"
+  ],
+  "intensifiers": [
+    "很",
+    "非常",
+    "十分",
+    "特别",
+    "格外",
+    "有些",
+    "感到",
+    "感觉",
+    "觉得",
+    "显得"
+  ],
+  "sermonMarkers": [
+    "你应该",
+    "你必须",
+    "你要明白",
+    "你要记住",
+    "做人",
+    "道理",
+    "这就是为什么",
+    "难道你"
+  ],
+  "expositionMarkers": [
+    "位于",
+    "属于",
+    "分为",
+    "共有",
+    "由",
+    "组成",
+    "据说",
+    "被称为",
+    "象征着",
+    "代表着",
+    "意味着",
+    "代代相传",
+    "自古"
   ]
 }

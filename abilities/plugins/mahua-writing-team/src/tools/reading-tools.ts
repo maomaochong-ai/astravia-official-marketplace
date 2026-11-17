@@ -135,7 +135,7 @@ export function registerReadingTools(ctx: PluginContext, service: StudioService)
 		id: "mahua_check_rules",
 		label: "Mahua Novels: check writing rules",
 		description:
-			"Lint one chapter against the stored writing rules and the AI-flavour profile. Two kinds of findings: `rule.*` (banned words, point of view, word budget) and `style.*` (stock phrases, uniform sentence rhythm, uniform paragraph shape, narrator summarising, time/weather opening, aphorism ending). Deterministic, no model judgement. Read-only.",
+			"Lint one chapter against the stored writing rules and the AI-flavour profile. `rule.*` covers the author's rulebook (banned words, point of view, word budget); `style.*` covers machine-flavour shapes (stock phrases, sentence/paragraph dispersion, narrator summarising, parallel triplets, labelled emotions, uniform dialogue, sermonising, exposition dumps, repeated opening/closing forms across chapters). The answer also carries `blocking` — the codes that would stop `mahua_commit_chapter` for this book — and `forms` (this chapter's opening/closing form). Deterministic, no model judgement. Read-only.",
 		parameters: {
 			type: "object",
 			properties: { bookId: bookIdProperty(), chapter: { type: "number" } },
@@ -147,7 +147,14 @@ export function registerReadingTools(ctx: PluginContext, service: StudioService)
 			const { bookId, chapter } = context.trigger.input;
 			const result = await service.checkRules({ n: chapter }, bookId);
 			if (!result.ok) return { ok: false, error: result.error, detail: result.detail };
-			return { ok: true, chapter, words: result.data.words, findings: result.data.findings };
+			return {
+				ok: true,
+				chapter,
+				words: result.data.words,
+				findings: result.data.findings,
+				blocking: result.data.blocking,
+				forms: result.data.forms,
+			};
 		},
 	});
 

@@ -1,5 +1,5 @@
 {
-	"note": "反机器腔回归语料。machine-* 是刻意写坏的样本（每篇针对一种形状）；human-* 是自写的人腔样本，用来证明检测器不会把正常散文判成机器腔；rewrite-* 是同一场景改前/改后。样本全部自写，不引他人作品——引用经典散文时无法保证逐字准确，宁可不引。期望值写在这里而不是代码里：语料是判据的对照组，改样本就要改期望，两者必须一起 review。",
+	"note": "反机器腔回归语料。machine-* 是刻意写坏的样本（每篇针对一种形状）；human-* 是自写的人腔样本，用来证明检测器不会把正常散文判成机器腔；rewrite-* 是同一场景改前/改后；machine-repeat-* 是跨章重复（previous 指向前一章）。样本全部自写，不引他人作品——引用经典散文时无法保证逐字准确，宁可不引。期望值写在这里而不是代码里：语料是判据的对照组，改样本就要改期望，两者必须一起 review。",
 	"cases": [
 		{
 			"file": "machine-dawn.md",
@@ -36,6 +36,49 @@
 			"expect": ["style.rhythmNarrow"],
 			"minWarnings": 1,
 			"note": "句长都在 11–45 之间：起伏够，但一个短句一个长句都没有"
+		},
+		{
+			"file": "machine-parallel.md",
+			"kind": "machine",
+			"expect": ["style.parallelTriplet"],
+			"minWarnings": 1,
+			"note": "A7：两组「不再…不再…不再…」"
+		},
+		{
+			"file": "machine-emotion-label.md",
+			"kind": "machine",
+			"expect": ["style.emotionLabel"],
+			"minWarnings": 1,
+			"note": "A8：非常愤怒 / 感到委屈 / 特别焦虑——情绪被贴标签"
+		},
+		{
+			"file": "machine-uniform-dialogue.md",
+			"kind": "machine",
+			"expect": ["style.uniformDialogue"],
+			"minWarnings": 1,
+			"note": "A9：八句对白长度几乎一样，去掉引号分不出谁在说"
+		},
+		{
+			"file": "machine-sermon.md",
+			"kind": "machine",
+			"expect": ["style.sermon"],
+			"minWarnings": 1,
+			"note": "A9：每句对白都在讲做人道理"
+		},
+		{
+			"file": "machine-exposition.md",
+			"kind": "machine",
+			"expect": ["style.expositionDump"],
+			"minWarnings": 1,
+			"note": "A10：连续五句设定说明，没有人物动作"
+		},
+		{
+			"file": "machine-repeat-current.md",
+			"kind": "machine",
+			"previous": "machine-repeat-previous.md",
+			"expect": ["style.repeatOpening", "style.repeatClosing"],
+			"minWarnings": 2,
+			"note": "跨章重复：连着两章都用时间起手、都用「原来…」点题"
 		},
 		{
 			"file": "human-door.md",

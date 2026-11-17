@@ -33,7 +33,15 @@ import { analyzeStyle } from "../domain/style-analysis.js";
 import { buildContext, type ContextPack } from "../domain/context-pack.js";
 import { checkConsistency } from "../domain/consistency-checks.js";
 import { extractChapterFacts } from "../domain/chapter-facts.js";
-import { lintChapter, lintStyle, normalizeRules, type WritingRules } from "../domain/writing-rules.js";
+import {
+	formsOf,
+	lintChapter,
+	lintStyle,
+	mergeLimits,
+	normalizeRules,
+	styleGate,
+	type WritingRules,
+} from "../domain/writing-rules.js";
 import { routeNovel } from "../domain/novel-flow.js";
 import { auditPremise, parsePremise, type PremiseParse } from "../domain/premise-structure.js";
 import {
@@ -394,6 +402,19 @@ export class StudioService {
 		if (denied) return denied;
 		const book = await this.resolveBook(bookId);
 		if (!book) return failure("book-not-found");
+		// 已提交过的章不需要再过门禁（它只是修指针）；其余一律先体检。
+		const existing = book.chapters.find((chapter) => chapter.n === n);
+		if (existing && existing.status !== "committed") {
+			const inspected = await this.inspectChapter(book, { n });
+			if (!inspected.ok) return failure(inspected.error, inspected.detail);
+			if (inspected.blocking.length > 0) {
+				// 失败原文要能让 writer 直接开工：代码 + 次数，不是“请检查风格”。
+				return failure(
+					"style-blocking",
+					inspected.blocking.map((finding) => `${finding.code}(${finding.detail ?? ""})`).join(" "),
+				);
+			}
+		}
 		const result = commitChapter(book, n, this.nowIso());
 		return result.ok ? this.persist(result.book) : failure(result.error);
 	}
@@ -569,7 +590,52 @@ export class StudioService {
 
 	/** 当前生效的写作规则：用户没设过就用默认值，界面不显示"未配置"。 */
 	rulesOf(book: NovelBook): WritingRules {
-		return normalizeRules(book.userRules as Record<string, unknown>);
+		// 可覆盖的阈值键来自词表本身：新增一个阈值不必再改这里一次。
+		return normalizeRules(book.userRules as Record<string, unknown>, Object.keys(AI_LEXICON.limits) as (keyof typeof AI_LEXICON.limits)[]);
+	}
+
+	/** 全局阈值 + 本书覆盖。 */
+	limitsOf(book: NovelBook) {
+		return mergeLimits(AI_LEXICON.limits, this.rulesOf(book).styleLimits);
+	}
+
+	/**
+	 * 一章的完整风格体检：规则、形状、跨章形式一次算完。
+	 *
+	 * 三个调用方（checkRules / commit 门禁 / 将来的面板）读同一份结果，
+	 * 否则“工具说干净、提交被拦住”这类矛盾迟早会出现。
+	 */
+	private async inspectChapter(
+		book: NovelBook,
+		input: { n: number },
+	): Promise<{ ok: true; findings: Finding[]; words: number; forms: ReturnType<typeof formsOf>; blocking: Finding[] } | { ok: false; error: string; detail?: string }> {
+		const text = await this.repository.readChapter(book.id, input.n);
+		if (!text) return { ok: false, error: "chapter-empty", detail: `chapter ${input.n} has no text yet` };
+		const rules = this.rulesOf(book);
+		const limits = this.limitsOf(book);
+		const words = countWords(text);
+		const forms = formsOf(text, AI_LEXICON.timeHeads);
+		const previous = await this.previousForms(book, input.n);
+		const findings = [
+			...lintChapter({ text, words, rules }),
+			...lintStyle({ profile: analyzeStyle([text], { ...AI_LEXICON, limits }).ai, words, limits, forms, previous }),
+		];
+		const gate = styleGate(findings, rules.styleBlocking);
+		return { ok: true, findings, words, forms, blocking: gate.blocking };
+	}
+
+	/** 上一已提交章的开篇/收尾形式：跨章重复判据的唯一来源。 */
+	private async previousForms(
+		book: NovelBook,
+		n: number,
+	): Promise<{ opening: ReturnType<typeof formsOf>["opening"]; closing: ReturnType<typeof formsOf>["closing"]; chapter: number } | null> {
+		const earlier = book.chapters.filter((chapter) => chapter.n < n && chapter.status === "committed").sort((a, b) => b.n - a.n);
+		const nearest = earlier[0];
+		if (!nearest) return null;
+		const text = await this.repository.readChapter(book.id, nearest.n);
+		if (!text) return null;
+		const forms = formsOf(text, AI_LEXICON.timeHeads);
+		return { ...forms, chapter: nearest.n };
 	}
 
 	async planChapter(
@@ -705,21 +771,29 @@ export class StudioService {
 	async checkRules(
 		input: { n: number },
 		bookId?: string,
-	): Promise<ServiceResult<{ findings: Finding[]; words: number }>> {
+	): Promise<
+		ServiceResult<{
+			findings: Finding[];
+			words: number;
+			blocking: string[];
+			forms: { opening: string; closing: string };
+		}>
+	> {
 		const book = await this.resolveBook(bookId);
 		if (!book) return failure("book-not-found");
 		const chapter = book.chapters.find((item) => item.n === input.n);
 		if (!chapter) return failure("chapter-empty", `chapter ${input.n} has no outline yet`);
-		const text = await this.repository.readChapter(book.id, input.n);
-		if (!text) return failure("chapter-empty", `chapter ${input.n} has no text yet`);
-		const words = countWords(text);
-		// 两半：用户定的规矩（禁用词/人称/字数）+ AI 腔形状（节奏、段落、套句、解释尾巴）。
-		// 分开算、合并报：规矩是作者的意图，风格是「一读就知道没人这么写」，两者不能互相掩盖。
-		const findings = [
-			...lintChapter({ text, words, rules: this.rulesOf(book) }),
-			...lintStyle({ profile: analyzeStyle([text], AI_LEXICON).ai, words, limits: AI_LEXICON.limits }),
-		];
-		return { ok: true, data: { findings, words } };
+		const inspected = await this.inspectChapter(book, input);
+		if (!inspected.ok) return failure(inspected.error, inspected.detail);
+		return {
+			ok: true,
+			data: {
+				findings: inspected.findings,
+				words: inspected.words,
+				blocking: inspected.blocking.map((finding) => finding.code),
+				forms: { opening: inspected.forms.opening, closing: inspected.forms.closing },
+			},
+		};
 	}
 
 	async styleStats(bookId?: string): Promise<ServiceResult<StyleStats>> {

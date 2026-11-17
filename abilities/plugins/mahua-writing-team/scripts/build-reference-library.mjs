@@ -154,6 +154,12 @@ const limitKeys = [
 	"shortEnding",
 	"sampleFloor",
 	"shortEndingFloor",
+	"parallelTriplets",
+	"emotionLabels",
+	"dialogueFloor",
+	"dialogueDispersion",
+	"expositionRun",
+	"repeatWindow",
 ];
 for (const key of limitKeys) {
 	if (typeof lexicon.limits?.[key] !== "number") problems.push(`limits.${key}: missing or not a number`);
@@ -174,6 +180,11 @@ const lexiconPayload = {
 	soft: lexicon.soft.map(({ phrase, pattern }) => ({ phrase, pattern })),
 	explainHeads: lexicon.explainHeads ?? [],
 	timeHeads: lexicon.timeHeads ?? [],
+	parallelMarkers: lexicon.parallelMarkers ?? [],
+	emotionLabels: lexicon.emotionLabels ?? [],
+	intensifiers: lexicon.intensifiers ?? [],
+	sermonMarkers: lexicon.sermonMarkers ?? [],
+	expositionMarkers: lexicon.expositionMarkers ?? [],
 };
 
 writeFileSync(lexiconOutput, `${lexiconHeader}${JSON.stringify(lexiconPayload, null, 1)};\n`, "utf8");
