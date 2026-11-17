@@ -19,7 +19,7 @@
  * visible, the human stays the authority.
  */
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -110,8 +110,22 @@ export function outOfScopeHosts(command: string, entries: readonly ScopeEntry[])
 	return [...new Set(outside)].slice(0, 12);
 }
 
-function scopeFile(dataDir: string): string {
-	return join(dataDir, "scope.json");
+/**
+ * 每个会话一份范围文件。
+ *
+ * 曾经只有一份 `scope.json`：A 会话声明了 a.test、B 会话声明了 b.test，两边写的是同一个
+ * 文件，于是两个面板都画出「a.test、b.test」——用户看到的就是「多个目标混在一起」。
+ * 范围是评估的属性（这次允许碰什么），不是机器的属性，所以它必须跟台账同一粒度。
+ */
+function scopeFile(dataDir: string, key: string): string {
+	return join(dataDir, "scope", `${safeKey(key)}.json`);
+}
+
+/** 会话 id 不一定是文件名安全的（含 `/`、`:` 等），做一层 slug + 短哈希防撞。 */
+export function safeKey(key: string): string {
+	const raw = key.trim() || "default";
+	const slug = raw.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 48) || "default";
+	return `${slug}-${createHash("sha1").update(raw).digest("hex").slice(0, 8)}`;
 }
 
 async function read(file: string): Promise<ScopeSnapshot> {
@@ -134,12 +148,49 @@ async function write(file: string, snapshot: ScopeSnapshot): Promise<void> {
 export class ScopeStore {
 	constructor(private readonly dataDir: string) {}
 
-	async snapshot(): Promise<ScopeSnapshot> {
-		return read(scopeFile(this.dataDir));
+	/**
+	 * 旧安装只有一份 `scope.json`。升级后第一次被问到时**搬一次**：搬给当时问的那个会话，
+	 * 再写一个标记文件，以后不再猜。
+	 *
+	 * 为什么允许这一次猜测：旧文件是这台机器上一个人写下的，此刻活着的会话就是想看它的
+	 * 那一个。不猜，用户的声明会静默消失，比猜错更难解释；猜错也只错一次，改回来就是。
+	 */
+	private async adoptLegacy(key: string): Promise<boolean> {
+		const legacy = join(this.dataDir, "scope.json");
+		const marker = join(this.dataDir, "scope", ".legacy-adopted.json");
+		try {
+			await readFile(marker, "utf8");
+			return false;
+		} catch {
+			/* 没搬过 */
+		}
+		let text: string;
+		try {
+			text = await readFile(legacy, "utf8");
+		} catch {
+			return false;
+		}
+		if (!text.trim()) return false;
+		try {
+			await write(scopeFile(this.dataDir, key), JSON.parse(text) as ScopeSnapshot);
+		} catch {
+			return false;
+		}
+		await mkdir(join(this.dataDir, "scope"), { recursive: true });
+		await writeFile(marker, JSON.stringify({ to: key, at: new Date().toISOString() }, null, 2), "utf8");
+		// 旧文件留一份可查的副本，并把原名清空：从此没有任何会话会读到它。
+		await writeFile(join(this.dataDir, "scope.legacy.json"), text, "utf8");
+		await writeFile(legacy, "", "utf8").catch(() => undefined);
+		return true;
 	}
 
-	async add(args: Record<string, unknown>): Promise<ScopeSnapshot & { added: ScopeEntry[] }> {
-		const file = scopeFile(this.dataDir);
+	async snapshot(key: string): Promise<ScopeSnapshot> {
+		await this.adoptLegacy(key);
+		return read(scopeFile(this.dataDir, key));
+	}
+
+	async add(key: string, args: Record<string, unknown>): Promise<ScopeSnapshot & { added: ScopeEntry[] }> {
+		const file = scopeFile(this.dataDir, key);
 		const snapshot = await read(file);
 		const raw = Array.isArray(args.targets) ? args.targets.map(String) : args.target ? [String(args.target)] : [];
 		const added: ScopeEntry[] = [];
@@ -161,8 +212,8 @@ export class ScopeStore {
 		return { ...snapshot, added };
 	}
 
-	async remove(args: Record<string, unknown>): Promise<ScopeSnapshot & { removed: string[] }> {
-		const file = scopeFile(this.dataDir);
+	async remove(key: string, args: Record<string, unknown>): Promise<ScopeSnapshot & { removed: string[] }> {
+		const file = scopeFile(this.dataDir, key);
 		const snapshot = await read(file);
 		const ids = Array.isArray(args.ids) ? args.ids.map(String) : [];
 		const value = typeof args.target === "string" ? normalizeScopeValue(args.target) : "";
@@ -174,8 +225,8 @@ export class ScopeStore {
 		return { ...snapshot, removed: Array.from({ length: before - snapshot.entries.length }, (_, index) => String(index)) };
 	}
 
-	async setRules(args: Record<string, unknown>): Promise<ScopeSnapshot> {
-		const file = scopeFile(this.dataDir);
+	async setRules(key: string, args: Record<string, unknown>): Promise<ScopeSnapshot> {
+		const file = scopeFile(this.dataDir, key);
 		const snapshot = await read(file);
 		snapshot.rules = {
 			ports: Array.isArray(args.ports) ? args.ports.map(String) : snapshot.rules.ports,

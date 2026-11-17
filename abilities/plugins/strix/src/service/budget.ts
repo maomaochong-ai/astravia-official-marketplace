@@ -46,48 +46,69 @@ export function normalizeLimits(value: unknown): BudgetLimits {
 	};
 }
 
+/**
+ * 一个会话的计数器。额度上限是用户偏好（全局），用量是那一次评估的（按会话）。
+ */
+interface Counters {
+	toolCalls: number;
+	findings: number;
+	startedAt: number;
+}
+
+/**
+ * 预算：**按会话记账**。
+ *
+ * 曾经只有一个计数器：在 A 里跑了 40 次工具，切到 B 就被报「预算已用尽」——B 什么都没做。
+ * 用户看到的是「任务没有隔离」。上限是偏好，一份就够；用量必须与台账、范围同粒度。
+ */
 export class Budget {
 	private limits: BudgetLimits = { ...DEFAULT_LIMITS };
-	private toolCalls = 0;
-	private startedAt = Date.now();
-	private findings = 0;
+	private readonly counters = new Map<string, Counters>();
 
 	constructor(limits: Partial<BudgetLimits> = {}) {
 		this.limits = { ...DEFAULT_LIMITS, ...limits };
 	}
 
-	/** 换一轮：计数归零，时钟重走（新会话 / 新沙箱时调用）。 */
-	reset(limits: Partial<BudgetLimits> = this.limits): void {
-		this.limits = { ...DEFAULT_LIMITS, ...limits };
-		this.toolCalls = 0;
-		this.findings = 0;
-		this.startedAt = Date.now();
+	private counter(key: string): Counters {
+		const existing = this.counters.get(key);
+		if (existing) return existing;
+		const fresh: Counters = { toolCalls: 0, findings: 0, startedAt: Date.now() };
+		this.counters.set(key, fresh);
+		return fresh;
 	}
 
+	/** 换一轮：**只归零这个会话**（新沙箱时调用）。 */
+	reset(key: string, limits: Partial<BudgetLimits> = this.limits): void {
+		this.limits = { ...DEFAULT_LIMITS, ...limits };
+		this.counters.set(key, { toolCalls: 0, findings: 0, startedAt: Date.now() });
+	}
+
+	/** 改偏好时把所有会话的额度一起换掉，用量保留（它已经是历史事实）。 */
 	setLimits(limits: Partial<BudgetLimits>): void {
 		this.limits = { ...this.limits, ...limits };
 	}
 
-	/** 一次工具调用发生（成功或失败都算：它同样消耗了这一轮的额度）。 */
-	spendToolCall(): void {
-		this.toolCalls += 1;
+	/** 一次工具调用发生（成功或失败都算：它同样消耗了那一轮的额度）。 */
+	spendToolCall(key: string): void {
+		this.counter(key).toolCalls += 1;
 	}
 
 	/** 记了一条发现。 */
-	spendFinding(): void {
-		this.findings += 1;
+	spendFinding(key: string): void {
+		this.counter(key).findings += 1;
 	}
 
-	used(): { toolCalls: number; minutes: number; findings: number } {
+	used(key: string): { toolCalls: number; minutes: number; findings: number } {
+		const counters = this.counter(key);
 		return {
-			toolCalls: this.toolCalls,
-			minutes: Math.round(((Date.now() - this.startedAt) / 60_000) * 10) / 10,
-			findings: this.findings,
+			toolCalls: counters.toolCalls,
+			minutes: Math.round(((Date.now() - counters.startedAt) / 60_000) * 10) / 10,
+			findings: counters.findings,
 		};
 	}
 
-	snapshot(): BudgetSnapshot {
-		const used = this.used();
+	snapshot(key: string): BudgetSnapshot {
+		const used = this.used(key);
 		const exhausted: BudgetSnapshot["exhausted"] = [];
 		if (this.limits.maxToolCalls > 0 && used.toolCalls >= this.limits.maxToolCalls) exhausted.push("toolCalls");
 		if (this.limits.maxMinutes > 0 && used.minutes >= this.limits.maxMinutes) exhausted.push("minutes");

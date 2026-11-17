@@ -21,10 +21,10 @@ import { checkFreshness, skillsProvenance, stampedDigest } from "../src/service/
 describe("budget refuses instead of silently truncating", () => {
 	it("counts calls and findings, and reports what is spent", () => {
 		const budget = new Budget({ maxToolCalls: 2 });
-		expect(budget.snapshot().exhausted).toEqual([]);
-		budget.spendToolCall();
-		budget.spendFinding();
-		const state = budget.snapshot();
+		expect(budget.snapshot("A").exhausted).toEqual([]);
+		budget.spendToolCall("A");
+		budget.spendFinding("A");
+		const state = budget.snapshot("A");
 		expect(state.used.toolCalls).toBe(1);
 		expect(state.used.findings).toBe(1);
 		expect(state.exhausted).toEqual([]);
@@ -32,9 +32,9 @@ describe("budget refuses instead of silently truncating", () => {
 
 	it("flags the dimension that hit its limit, with a reason", () => {
 		const budget = new Budget({ maxToolCalls: 1, maxFindings: 1 });
-		budget.spendToolCall();
-		budget.spendFinding();
-		const state = budget.snapshot();
+		budget.spendToolCall("A");
+		budget.spendFinding("A");
+		const state = budget.snapshot("A");
 		expect(state.exhausted).toContain("toolCalls");
 		expect(state.exhausted).toContain("findings");
 		expect(state.reason).toContain("工具调用");
@@ -44,8 +44,8 @@ describe("budget refuses instead of silently truncating", () => {
 		// 0 = 不限；把 0 当成"零额度"会让默认配置一上来就拒绝一切。
 		expect(normalizeLimits({ maxToolCalls: 0, maxMinutes: -3, maxFindings: "abc" })).toEqual(DEFAULT_LIMITS);
 		const budget = new Budget();
-		for (let index = 0; index < 50; index += 1) budget.spendToolCall();
-		expect(budget.snapshot().exhausted).toEqual([]);
+		for (let index = 0; index < 50; index += 1) budget.spendToolCall("A");
+		expect(budget.snapshot("A").exhausted).toEqual([]);
 	});
 });
 

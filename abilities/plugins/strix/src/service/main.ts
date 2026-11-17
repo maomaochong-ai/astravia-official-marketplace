@@ -84,7 +84,7 @@ const budget = new Budget();
 void readPreferences(DATA_DIR)
 	.then((preference) => {
 		pendingLimits = normalizeLimits(preference.budget ?? {});
-		budget.reset(pendingLimits);
+		budget.setLimits(pendingLimits);
 	})
 	.catch(() => undefined);
 /** 本机统计：只写本地文件，从不外发。 */
@@ -112,6 +112,7 @@ async function execWithSessions(args: Record<string, unknown>): Promise<Record<s
 		const workdir = String(args.workdir ?? "").trim() || undefined;
 		const tty = args.tty === true;
 		const view = sessions.start({
+			conversation: sessionId(),
 			command,
 			commandDisplay: command,
 			argv: sandbox.sessionArgv(command, workdir, tty),
@@ -135,7 +136,7 @@ async function execWithSessions(args: Record<string, unknown>): Promise<Record<s
  *  - 返回值区分「没声明」与「有越界」，面板/agent 能分别处理。
  */
 async function scopeAdvisory(command: string): Promise<{ outOfScope?: string[]; scopeUndeclared?: boolean }> {
-	const snapshot = await scope.snapshot().catch(() => undefined);
+	const snapshot = await scope.snapshot(sessionId()).catch(() => undefined);
 	if (!snapshot) return {};
 	if (snapshot.entries.length === 0) {
 		// 没声明范围：这是最该提醒的一种情形，而不是最安静的一种。
@@ -331,15 +332,26 @@ const HANDLERS: Record<string, Handler> = {
 	strix_exec: (args) => execWithSessions(args),
 	strix_shell_sessions: async (args) => {
 		const id = typeof args.sessionId === "string" ? args.sessionId.trim() : "";
+		const mine = sessionId();
 		if (id) {
 			const one = sessions.find(id);
 			if (!one) throw new Error(`no session ${id}`);
+			// 能找到但不是本会话起的：不报“不存在”（那是假话），而是说它属于另一个会话。
+			if (one.conversation !== mine) throw new Error(`session ${id} belongs to another conversation`);
 			return one;
 		}
-		return { sessions: sessions.list() };
+		return { sessions: sessions.list(mine) };
 	},
-	strix_write_stdin: async (args) => sessions.write(String(args.sessionId ?? ""), String(args.chars ?? "")),
-	strix_kill_session: async (args) => sessions.kill(String(args.sessionId ?? "")),
+	strix_write_stdin: async (args) => {
+		const id = String(args.sessionId ?? "");
+		if (!sessions.ownedBy(id, sessionId())) throw new Error(`session ${id} belongs to another conversation`);
+		return sessions.write(id, String(args.chars ?? ""));
+	},
+	strix_kill_session: async (args) => {
+		const id = String(args.sessionId ?? "");
+		if (!sessions.ownedBy(id, sessionId())) throw new Error(`session ${id} belongs to another conversation`);
+		return sessions.kill(id);
+	},
 
 	// 文件：上游用 SDK 的 patch / view_image，这里用同一份协议对同一个沙箱动手。
 	strix_patch: async (args) => {
@@ -364,10 +376,10 @@ const HANDLERS: Record<string, Handler> = {
 
 	strix_scope: async (args) => {
 		const action = typeof args.action === "string" ? args.action : "";
-		if (action === "add") return scope.add(args);
-		if (action === "remove") return scope.remove(args);
-		if (action === "rules") return scope.setRules(args);
-		return scope.snapshot();
+		if (action === "add") return scope.add(sessionId(), args);
+		if (action === "remove") return scope.remove(sessionId(), args);
+		if (action === "rules") return scope.setRules(sessionId(), args);
+		return scope.snapshot(sessionId());
 	},
 	strix_sandbox_status: async () => sandbox.status(),
 	strix_sandbox_stop: () => sandbox.stop(),
@@ -411,7 +423,7 @@ const HANDLERS: Record<string, Handler> = {
 			if (!gate.allowed) return { ok: false, blocked: "coverage", reason: gate.reason };
 		}
 		// 范围写进报告：读者要能判断证据是否在约定边界内取得（上游 finish_scan 的结构）。
-		const snapshot = await scope.snapshot();
+		const snapshot = await scope.snapshot(sessionId());
 		return findings.report(sessionId(), { ...args, scope: describeScope(snapshot) }, { version });
 	},
 
@@ -438,13 +450,13 @@ const HANDLERS: Record<string, Handler> = {
 		// 传了任一限额就是“改”，因此写入偏好：下一轮与新会话也看得见同一份额度。
 		const hasLimit = ["maxToolCalls", "maxMinutes", "maxFindings"].some((key) => args[key] !== undefined);
 		if (hasLimit) {
-			const limits = normalizeLimits({ ...budget.snapshot().limits, ...args });
+			const limits = normalizeLimits({ ...budget.snapshot(sessionId()).limits, ...args });
 			pendingLimits = limits;
 			budget.setLimits(limits);
 			await writePreferences(DATA_DIR, { budget: limits });
-			return { ...budget.snapshot(), preference: await readPreferences(DATA_DIR) };
+			return { ...budget.snapshot(sessionId()), preference: await readPreferences(DATA_DIR) };
 		}
-		return budget.snapshot();
+		return budget.snapshot(sessionId());
 	},
 
 	/** 历史评估：盘上磁盘上留下的评估账（只读、从文件名与内容推导）。 */
@@ -517,7 +529,7 @@ type GateResult = { ok: true; result: unknown } | { ok: false; error: string; bu
 async function gateTool(name: string, args: Record<string, unknown>, handler: (a: Record<string, unknown>) => Promise<unknown>): Promise<GateResult> {
 	const metered = METERED.has(name) && !FREE.has(name);
 	if (metered) {
-		const state = budget.snapshot();
+		const state = budget.snapshot(sessionId());
 		if (state.exhausted.length > 0) {
 			return { ok: false, error: `budget exhausted: ${state.reason ?? state.exhausted.join(", ")}`, budget: state };
 		}
@@ -525,20 +537,20 @@ async function gateTool(name: string, args: Record<string, unknown>, handler: (a
 	try {
 		const result = await handler(args);
 		// 失败也计数：它同样消耗了这一轮的额度（审查指出异常路径曾全程免费）。
-		if (metered) budget.spendToolCall();
+		if (metered) budget.spendToolCall(sessionId());
 		void telemetry.toolCalled(name);
 		if (name === "strix_file_finding") {
-			budget.spendFinding();
+			budget.spendFinding(sessionId());
 			void telemetry.findingRecorded();
 		}
 		if (name === "strix_sandbox_start") {
 			// 新沙箱 = 新一轮评估：计数归零，额度随偏好重新读一次。
-			budget.reset(pendingLimits);
+			budget.reset(sessionId(), pendingLimits);
 			void telemetry.assessmentStarted();
 		}
 		return { ok: true, result };
 	} catch (error) {
-		if (metered) budget.spendToolCall();
+		if (metered) budget.spendToolCall(sessionId());
 		void telemetry.toolCalled(name);
 		throw error;
 	}
@@ -805,7 +817,7 @@ const server = createServer(async (req, res) => {
 			// 会话与状态：预算 / 本机统计 / 历史 / 团队成员四块由同一处给出，
 			// 面板不必为它们各发一个请求。
 			const [budgetState, telemetryState] = await Promise.all([
-				Promise.resolve(budget.snapshot()),
+				Promise.resolve(budget.snapshot(sessionId())),
 				telemetry.snapshot().catch(() => null),
 			]);
 			const teamState = readRoster(packagedPluginRoot(), {
@@ -815,7 +827,7 @@ const server = createServer(async (req, res) => {
 			// 范围条目与能力面：两件都是本地事实，跟上面那批并发取，不另开一次请求。
 			const skillLocation = locateSkills();
 			const [scopeSnapshot, skillIndex] = await Promise.all([
-				scope.snapshot().catch(() => ({ entries: [], rules: { ports: [], notes: [], updatedAt: null } })),
+				scope.snapshot(sessionId()).catch(() => ({ entries: [], rules: { ports: [], notes: [], updatedAt: null } })),
 				skillsIndexCache.get().catch(() => undefined),
 			]);
 			return json(res, 200, {
@@ -831,8 +843,8 @@ const server = createServer(async (req, res) => {
 				coverageTally: (cover as { byOutcome?: unknown }).byOutcome ?? {},
 				threatModel: threat,
 				preferences: await readPreferences(DATA_DIR),
-				// 工作单元：保留的 shell 会话（上游 agents 面板在本插件的诚实等价物）。
-				sessions: sessions.list().map(({ id, command, running, uptimeSec, tty }) => ({ id, command, running, uptimeSec, tty })),
+				// 工作单元：保留的 shell 会话，**只列本会话起的**——全局列表会让 B 看到 A 的扫描（上游 agents 面板的等价物）。
+				sessions: sessions.list(sessionId()).map(({ id, command, running, uptimeSec, tty }) => ({ id, command, running, uptimeSec, tty })),
 				// 范围是「这次允许触碰什么」的唯一权威；面板需要的是**条目**（能逐行画、
 				// 能与对话里的候选去重），不是给报告用的那段文字，所以这里给结构体。
 				scope: (() => {
@@ -871,13 +883,13 @@ const server = createServer(async (req, res) => {
 				}
 			}
 			// 之前传 {}：导出的报告没有范围段，等于把“测了什么”丢了一半。
-			return json(res, 200, await findings.report(sessionId(), { scope: describeScope(await scope.snapshot()) }, { version }));
+			return json(res, 200, await findings.report(sessionId(), { scope: describeScope(await scope.snapshot(sessionId())) }, { version }));
 		}
 		if (url.pathname === "/api/shells/stop" && req.method === "POST") {
 			// 宿主的那一轮结束了，但它起过的后台命令还在跑——那正是“已停止生成、团队里还有进程”。
-			// 这里只收拾本服务持有的 shell 会话（面板能看见的那些），不碰宿主的进程。
+			// 只收拾**本会话**起的会话：停止键打的是自己那一轮，不能顺手杀掉另一个目标还在跑的扫描。
 			let stopped = 0;
-			for (const session of sessions.list()) {
+			for (const session of sessions.list(sessionId())) {
 				if (!session.running) continue;
 				await sessions.kill(session.id).catch(() => undefined);
 				stopped += 1;

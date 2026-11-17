@@ -22,6 +22,8 @@ export interface ShellSession {
 	readonly id: string;
 	readonly command: string;
 	readonly tty: boolean;
+	/** 起这条会话的那个宿主会话；面板只画自己的那几条。 */
+	readonly conversation: string;
 	startedAt: number;
 	exit: { code: number | null; signal: string | null } | null;
 	output: string;
@@ -36,6 +38,8 @@ export interface SessionView {
 	id: string;
 	command: string;
 	tty: boolean;
+	/** 归属会话：/api/state 与 strix_shell_sessions 都按它过滤。 */
+	conversation: string;
 	running: boolean;
 	uptimeSec: number;
 	exit: { code: number | null; signal: string | null } | null;
@@ -66,12 +70,17 @@ export class ShellSessions {
 
 	constructor(private readonly emit: (payload: Record<string, unknown>) => void) {}
 
-	/** Every session the operator can still look at, newest first. */
-	list(): SessionView[] {
+	/**
+	 * Every session the operator can still look at, newest first.
+	 *
+	 * conversation 省略 = 不加过滤（服务自己收尾时用）；面板永远带自己的 id。
+	 */
+	list(conversation?: string): SessionView[] {
 		const rows: SessionView[] = [];
 		for (const session of this.sessions.values()) rows.push(this.view(session, true));
 		for (const { view } of this.finished.values()) rows.push(this.view(view, false));
-		return rows.sort((left, right) => right.uptimeSec - left.uptimeSec).slice(0, MAX_SESSIONS * 2);
+		const scoped = conversation === undefined ? rows : rows.filter((row) => row.conversation === conversation);
+		return scoped.sort((left, right) => right.uptimeSec - left.uptimeSec).slice(0, MAX_SESSIONS * 2);
 	}
 
 	find(id: string): SessionView | undefined {
@@ -89,6 +98,8 @@ export class ShellSessions {
 	 */
 	start(input: {
 		id?: string;
+		/** 归属会话：谁起的就算谁的。 */
+		conversation: string;
 		command: string;
 		commandDisplay: string;
 		argv: string[];
@@ -111,6 +122,7 @@ export class ShellSessions {
 			id,
 			command: input.commandDisplay,
 			tty: input.tty,
+			conversation: input.conversation,
 			startedAt: Date.now(),
 			exit: null,
 			output: "",
@@ -139,6 +151,17 @@ export class ShellSessions {
 		});
 
 		return this.view(session, true);
+	}
+
+	/**
+	 * 这条会话能不能被 key 这个会话操作。
+	 *
+	 * 不是安全边界（同一个服务、同一个用户），但它是归属：B 会话不该能往 A 起的
+	 * msfconsole 里打字，更不该能把它 kill 掉——那会让 A 的评估莫名其妙地断掉。
+	 */
+	ownedBy(id: string, key: string): boolean {
+		const entry = this.sessions.get(id) ?? this.finished.get(id)?.view;
+		return Boolean(entry) && entry?.conversation === key;
 	}
 
 	/** Stream input into a running session. Requires the process to still be alive. */
@@ -177,6 +200,7 @@ export class ShellSessions {
 			id: session.id,
 			command: session.command,
 			tty: session.tty,
+			conversation: session.conversation,
 			running,
 			uptimeSec: Math.round((Date.now() - session.startedAt) / 1000),
 			exit: session.exit,

@@ -24,6 +24,7 @@ describe("kept sessions", () => {
 	it("returns an id immediately and collects output in the background", async () => {
 		const sessions = new ShellSessions(() => undefined);
 		const view = sessions.start({
+			conversation: "A",
 			command: "slow",
 			commandDisplay: "slow",
 			argv: [process.execPath, "-e", "console.log('first'); setTimeout(() => console.log('second'), 120);"],
@@ -39,6 +40,7 @@ describe("kept sessions", () => {
 	it("reports the exit code once the process ends, and keeps the output readable", async () => {
 		const sessions = new ShellSessions(() => undefined);
 		const view = sessions.start({
+			conversation: "A",
 			command: "fail",
 			commandDisplay: "fail",
 			argv: [process.execPath, "-e", "console.error('boom'); process.exit(3);"],
@@ -62,6 +64,7 @@ describe("kept sessions", () => {
 			});
 		`;
 		const view = sessions.start({
+			conversation: "A",
 			command: "repl",
 			commandDisplay: "repl",
 			argv: [process.execPath, "-e", script],
@@ -77,6 +80,7 @@ describe("kept sessions", () => {
 	it("refuses to write into a session that already exited", async () => {
 		const sessions = new ShellSessions(() => undefined);
 		const view = sessions.start({
+			conversation: "A",
 			command: "quick",
 			commandDisplay: "quick",
 			argv: [process.execPath, "-e", "process.exit(0)"],
@@ -90,6 +94,7 @@ describe("kept sessions", () => {
 	it("kills a live session", async () => {
 		const sessions = new ShellSessions(() => undefined);
 		const view = sessions.start({
+			conversation: "A",
 			command: "idle",
 			commandDisplay: "idle",
 			argv: [process.execPath, "-e", "setInterval(() => {}, 1000)"],
@@ -105,6 +110,7 @@ describe("kept sessions", () => {
 		const sessions = new ShellSessions(() => undefined);
 		for (let index = 0; index < 8; index += 1) {
 			sessions.start({
+			conversation: "A",
 				command: `idle-${index}`,
 				commandDisplay: `idle-${index}`,
 				argv: [process.execPath, "-e", "setInterval(() => {}, 1000)"],
@@ -113,6 +119,7 @@ describe("kept sessions", () => {
 		}
 		expect(() =>
 			sessions.start({
+			conversation: "A",
 				command: "one-too-many",
 				commandDisplay: "one-too-many",
 				argv: [process.execPath, "-e", "process.exit(0)"],
@@ -126,6 +133,7 @@ describe("kept sessions", () => {
 		const events: Record<string, unknown>[] = [];
 		const sessions = new ShellSessions((payload) => events.push(payload));
 		const view = sessions.start({
+			conversation: "A",
 			command: "echo",
 			commandDisplay: "echo",
 			argv: [process.execPath, "-e", "console.log('hi')"],
