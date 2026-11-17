@@ -47,13 +47,29 @@ function countOf(text: string, re: RegExp): number {
 	return count;
 }
 
-/** 波动：落在均值 ±band 之内的占比。真实的散文长短交错，这个数会明显低于阈值。 */
+/** 落在均值 ±band 之内的占比：只作诊断展示，不参与判定（判定看离散度）。 */
 function bandShare(values: readonly number[], band: number): number {
 	if (values.length < 4) return 0;
 	const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
 	if (mean <= 0) return 0;
 	const near = values.filter((value) => value >= mean * (1 - band) && value <= mean * (1 + band)).length;
 	return Math.round((near / values.length) * 100) / 100;
+}
+
+/**
+ * 离散度：标准差 / 均值。
+ *
+ * 为什么用它而不看"落在均值的占比"：占比分不清两种文本——
+ *  - 段段都是 3 句（机器）：离散度 0，占比却可能只有0.5；
+ *  - 正常商业节奏（句句都是中句，但段落 1 到 6 句都有）：离散度 0.3 以上，占比反而很高。
+ * 起伏本身才是机器腔的指纹，用一个数就能说清。
+ */
+function dispersion(values: readonly number[]): number {
+	if (values.length < 2) return 0;
+	const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+	if (mean <= 0) return 0;
+	const variance = values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length;
+	return Math.round((Math.sqrt(variance) / mean) * 100) / 100;
 }
 
 function startsWithAny(sentence: string, heads: readonly string[]): boolean {
@@ -65,9 +81,11 @@ function emptyProfile(): AiProfile {
 		chapters: 0,
 		sampleSentences: 0,
 		sentenceUniformity: 0,
+		sentenceDispersion: 0,
 		shortSentenceRatio: 0,
 		longSentenceRatio: 0,
 		paragraphUniformity: 0,
+		paragraphDispersion: 0,
 		hardTells: [],
 		softTellCount: 0,
 		explainTails: 0,
@@ -143,11 +161,14 @@ export function analyzeAiProfile(texts: readonly string[], lexicon: AiLexicon): 
 
 	profile.sampleSentences = lengths.length;
 	profile.sentenceUniformity = bandShare(lengths, limits.uniformBand);
+	profile.sentenceDispersion = dispersion(lengths);
 	const shorts = lengths.filter((value) => value < limits.shortSentenceMax).length;
 	const longs = lengths.filter((value) => value > limits.longSentenceMin).length;
 	profile.shortSentenceRatio = lengths.length === 0 ? 0 : Math.round((shorts / lengths.length) * 100) / 100;
 	profile.longSentenceRatio = lengths.length === 0 ? 0 : Math.round((longs / lengths.length) * 100) / 100;
 	profile.paragraphUniformity = bandShare(paragraphShapes, limits.uniformBand);
+	// 段落离散度用**全部**段落（含单句段）：一句段本身就是变化，不该被排除在外。
+	profile.paragraphDispersion = dispersion(paragraphShapes);
 	profile.softTellCount = softCount;
 	// 「每段都以短句收尾」的占比：段数太少时不报（没有分母就没有结论）。
 	profile.shortEndingRatio =

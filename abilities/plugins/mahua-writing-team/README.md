@@ -112,8 +112,8 @@ test fails if a word ever appears in the code or the two copies drift.
 | Measured (`mahua_check_rules` returns `style.*`) | How |
 | --- | --- |
 | `style.stockPhrase` | cliché catalogue hits with counts, from the lexicon |
-| `style.rhythmUniform` / `style.rhythmNarrow` | share of sentences within ±25% of the mean; whether short and long sentences are both absent |
-| `style.paragraphUniform` / `style.punchlineParagraphs` | whether every paragraph holds the same number of sentences; whether every paragraph brakes on a short line |
+| `style.rhythmUniform` / `style.rhythmNarrow` | dispersion of sentence length (sd/mean) below the limit; or dispersion fine but no short and no long sentence at all |
+| `style.paragraphUniform` / `style.punchlineParagraphs` | dispersion of paragraph sentence counts below the limit; or every paragraph braking on a short line |
 | `style.explainTail` | sentences opening with a narrator summary |
 | `style.fillerDensity` | filler adverbs per thousand words |
 | `style.timeOpening` / `style.punchlineEnding` | opening on time or weather, closing on an aphorism (one chapter can only be noted; repetition is a cross-chapter judgement) |

@@ -1,0 +1,64 @@
+{
+	"note": "反机器腔回归语料。machine-* 是刻意写坏的样本（每篇针对一种形状）；human-* 是自写的人腔样本，用来证明检测器不会把正常散文判成机器腔；rewrite-* 是同一场景改前/改后。样本全部自写，不引他人作品——引用经典散文时无法保证逐字准确，宁可不引。期望值写在这里而不是代码里：语料是判据的对照组，改样本就要改期望，两者必须一起 review。",
+	"cases": [
+		{
+			"file": "machine-dawn.md",
+			"kind": "machine",
+			"expect": ["style.stockPhrase"],
+			"expectInfo": ["style.timeOpening", "style.punchlineEnding", "style.fillerDensity"],
+			"minWarnings": 1,
+			"note": "清晨起手 + 六个套句 + 章末金句：早上八点最常见的 AI 开头"
+		},
+		{
+			"file": "machine-emotion.md",
+			"kind": "machine",
+			"expect": ["style.stockPhrase", "style.explainTail", "style.paragraphUniform"],
+			"minWarnings": 2,
+			"note": "情绪代称与身体反应套句成串，叙述者连做三次总结"
+		},
+		{
+			"file": "machine-uniform.md",
+			"kind": "machine",
+			"expect": ["style.rhythmUniform", "style.paragraphUniform"],
+			"minWarnings": 2,
+			"note": "句句十五字上下、段段四句：节奏与段落同时等长"
+		},
+		{
+			"file": "machine-brake.md",
+			"kind": "machine",
+			"expect": ["style.paragraphUniform", "style.punchlineParagraphs"],
+			"minWarnings": 2,
+			"note": "每段三句中句 + 一句短句刹车：节拍器"
+		},
+		{
+			"file": "machine-narrow.md",
+			"kind": "machine",
+			"expect": ["style.rhythmNarrow"],
+			"minWarnings": 1,
+			"note": "句长都在 11–45 之间：起伏够，但一个短句一个长句都没有"
+		},
+		{
+			"file": "human-door.md",
+			"kind": "human",
+			"note": "门槛、面、风扇：全部落在具体物件上"
+		},
+		{
+			"file": "human-rain.md",
+			"kind": "human",
+			"note": "23 句，节奏有大起伏，段落 1 到 4 句不等"
+		},
+		{
+			"file": "human-dialogue.md",
+			"kind": "human",
+			"note": "对白为主：短句多、句子碎，这正是机器腔检测最容易误伤的一种"
+		}
+	],
+	"pairs": [
+		{
+			"before": "rewrite-before.md",
+			"after": "rewrite-after.md",
+			"expectBefore": ["style.stockPhrase"],
+			"note": "同一场厨房戏：改前五个套句、清晨起手、金句收尾；改后零 finding"
+		}
+	]
+}

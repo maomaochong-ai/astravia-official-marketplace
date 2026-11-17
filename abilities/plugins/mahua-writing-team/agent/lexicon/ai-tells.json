@@ -7,54 +7,163 @@
     "longSentenceMin": 45,
     "uniformBand": 0.25,
     "brakeRatio": 0.6,
-    "sentenceUniformity": 0.7,
-    "paragraphUniformity": 0.7,
+    "sentenceDispersion": 0.35,
+    "paragraphDispersion": 0.2,
+    "shortEnding": 0.7,
     "hardTellTotal": 3,
     "softTellPerKilo": 6,
     "explainTails": 3,
-    "shortEnding": 0.7,
     "sampleFloor": 20,
     "shortEndingFloor": 4
   },
   "stock": [
-    { "phrase": "不由得", "pattern": "不由得" },
-    { "phrase": "不由自主", "pattern": "不由自主" },
-    { "phrase": "不禁", "pattern": "不禁" },
-    { "phrase": "仿佛", "pattern": "仿佛" },
-    { "phrase": "宛如", "pattern": "宛如" },
-    { "phrase": "一丝", "pattern": "一丝" },
-    { "phrase": "一抹", "pattern": "一抹" },
-    { "phrase": "一缕", "pattern": "一缕" },
-    { "phrase": "莫名", "pattern": "莫名" },
-    { "phrase": "五味杂陈", "pattern": "五味杂陈" },
-    { "phrase": "难以言喻", "pattern": "难以言喻" },
-    { "phrase": "意味深长", "pattern": "意味深长" },
-    { "phrase": "与此同时", "pattern": "与此同时" },
-    { "phrase": "空气凝固", "pattern": "空气(仿佛)?凝固" },
-    { "phrase": "时间静止", "pattern": "时间静止" },
-    { "phrase": "瞳孔一缩", "pattern": "瞳孔一缩" },
-    { "phrase": "心中一凛", "pattern": "心中一凛" },
-    { "phrase": "心中一紧", "pattern": "心中一紧" },
-    { "phrase": "眼眶一热", "pattern": "眼眶一热" },
-    { "phrase": "如遭雷击", "pattern": "如遭雷击" },
-    { "phrase": "血液凝固", "pattern": "血液凝固" },
-    { "phrase": "深吸一口气", "pattern": "深吸一口气" },
-    { "phrase": "嘴角上扬", "pattern": "嘴角[^。，！？]{0,6}上扬" },
-    { "phrase": "说不清", "pattern": "说不清" },
-    { "phrase": "某种程度上", "pattern": "某种程度上" },
-    { "phrase": "值得注意的是", "pattern": "值得注意的是" }
+    {
+      "phrase": "不由得",
+      "pattern": "不由得"
+    },
+    {
+      "phrase": "不由自主",
+      "pattern": "不由自主"
+    },
+    {
+      "phrase": "不禁",
+      "pattern": "不禁"
+    },
+    {
+      "phrase": "仿佛",
+      "pattern": "仿佛"
+    },
+    {
+      "phrase": "宛如",
+      "pattern": "宛如"
+    },
+    {
+      "phrase": "一丝",
+      "pattern": "一丝"
+    },
+    {
+      "phrase": "一抹",
+      "pattern": "一抹"
+    },
+    {
+      "phrase": "一缕",
+      "pattern": "一缕"
+    },
+    {
+      "phrase": "莫名",
+      "pattern": "莫名"
+    },
+    {
+      "phrase": "五味杂陈",
+      "pattern": "五味杂陈"
+    },
+    {
+      "phrase": "难以言喻",
+      "pattern": "难以言喻"
+    },
+    {
+      "phrase": "意味深长",
+      "pattern": "意味深长"
+    },
+    {
+      "phrase": "与此同时",
+      "pattern": "与此同时"
+    },
+    {
+      "phrase": "空气凝固",
+      "pattern": "空气(仿佛)?凝固"
+    },
+    {
+      "phrase": "时间静止",
+      "pattern": "时间静止"
+    },
+    {
+      "phrase": "瞳孔一缩",
+      "pattern": "瞳孔一缩"
+    },
+    {
+      "phrase": "心中一凛",
+      "pattern": "心中一凛"
+    },
+    {
+      "phrase": "心中一紧",
+      "pattern": "心中一紧"
+    },
+    {
+      "phrase": "眼眶一热",
+      "pattern": "眼眶一热"
+    },
+    {
+      "phrase": "如遭雷击",
+      "pattern": "如遭雷击"
+    },
+    {
+      "phrase": "血液凝固",
+      "pattern": "血液凝固"
+    },
+    {
+      "phrase": "深吸一口气",
+      "pattern": "深吸一口气"
+    },
+    {
+      "phrase": "嘴角上扬",
+      "pattern": "嘴角[^。，！？]{0,6}上扬"
+    },
+    {
+      "phrase": "说不清",
+      "pattern": "说不清"
+    },
+    {
+      "phrase": "某种程度上",
+      "pattern": "某种程度上"
+    },
+    {
+      "phrase": "值得注意的是",
+      "pattern": "值得注意的是"
+    }
   ],
   "soft": [
-    { "phrase": "忽然", "pattern": "忽然" },
-    { "phrase": "突然", "pattern": "突然" },
-    { "phrase": "竟然", "pattern": "竟然" },
-    { "phrase": "微微", "pattern": "微微" },
-    { "phrase": "轻轻", "pattern": "轻轻" },
-    { "phrase": "缓缓", "pattern": "缓缓" },
-    { "phrase": "淡淡", "pattern": "淡淡" },
-    { "phrase": "顿了顿", "pattern": "顿了顿" }
+    {
+      "phrase": "忽然",
+      "pattern": "忽然"
+    },
+    {
+      "phrase": "突然",
+      "pattern": "突然"
+    },
+    {
+      "phrase": "竟然",
+      "pattern": "竟然"
+    },
+    {
+      "phrase": "微微",
+      "pattern": "微微"
+    },
+    {
+      "phrase": "轻轻",
+      "pattern": "轻轻"
+    },
+    {
+      "phrase": "缓缓",
+      "pattern": "缓缓"
+    },
+    {
+      "phrase": "淡淡",
+      "pattern": "淡淡"
+    },
+    {
+      "phrase": "顿了顿",
+      "pattern": "顿了顿"
+    }
   ],
-  "explainHeads": ["他知道", "她知道", "这意味着", "换句话说", "也就是说", "显然"],
+  "explainHeads": [
+    "他知道",
+    "她知道",
+    "这意味着",
+    "换句话说",
+    "也就是说",
+    "显然"
+  ],
   "timeHeads": [
     "清晨",
     "早晨",

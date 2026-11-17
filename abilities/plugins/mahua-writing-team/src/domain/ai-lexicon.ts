@@ -24,13 +24,20 @@ export interface AiLimits {
 	shortSentenceMax: number;
 	/** 长于这个字数算长句。 */
 	longSentenceMin: number;
-	/** 句长落在均值 ±这个比例的区间内算"同一档"。 */
+	/** 句长落在均值 ±这个比例的区间内算"同一档"（诊断用，不直接决定 finding）。 */
 	uniformBand: number;
 	/** 段尾句短于本段均句长的这个比例，算"刹车"。 */
 	brakeRatio: number;
-	/** 以上占比达到这个数就算均质。 */
-	sentenceUniformity: number;
-	paragraphUniformity: number;
+	/**
+	 * 句长离散度（标准差 / 均值）：低于这个数就是"每句差不多长"。
+	 *
+	 * 为什么用离散度而不用"落在均±25% 的占比"：后者会把正常的商业节奏（句句都是中句，
+	 * 但长短仍有权重）判成机器腔，也会放过"段段三句一模一样"。离散度看的是起伏本身。
+	 */
+	sentenceDispersion: number;
+	/** 段落句数的离散度：低于这个数就是"每段一样长"。 */
+	paragraphDispersion: number;
+	/** 段尾刹车占比达到这个数就报。 */
 	shortEnding: number;
 	/** 单章硬套句达到这个条数就报。 */
 	hardTellTotal: number;

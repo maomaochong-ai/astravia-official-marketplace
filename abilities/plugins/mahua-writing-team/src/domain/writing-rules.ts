@@ -92,12 +92,14 @@ export function lintStyle(input: { profile: AiProfile; words: number; limits: Ai
 		});
 	}
 
-	if (profile.sampleSentences >= limits.sampleFloor && profile.sentenceUniformity >= limits.sentenceUniformity) {
-		findings.push({ code: "style.rhythmUniform", severity: "warning", detail: String(profile.sentenceUniformity) });
+	// 节奏均质：句子长度几乎没有起伏。看离散度，不看"落在均值的占比"——
+	// 后者分不清「段段三句一模一样」和「正常的商业节奏」。
+	if (profile.sampleSentences >= limits.sampleFloor && profile.sentenceDispersion < limits.sentenceDispersion) {
+		findings.push({ code: "style.rhythmUniform", severity: "warning", detail: String(profile.sentenceDispersion) });
 	}
 
-	if (profile.sentenceUniformity < limits.sentenceUniformity && profile.sampleSentences >= limits.sampleFloor) {
-		// 短句与长句都稀少：不是"长短交错"，而是整章停在一个中句档位。
+	if (profile.sampleSentences >= limits.sampleFloor && profile.sentenceDispersion >= limits.sentenceDispersion) {
+		// 起伏够但两头都空：不是"长短交错"，而是整章停在一个中句档位。
 		if (profile.shortSentenceRatio < 0.12 && profile.longSentenceRatio < 0.08) {
 			findings.push({
 				code: "style.rhythmNarrow",
@@ -107,11 +109,12 @@ export function lintStyle(input: { profile: AiProfile; words: number; limits: Ai
 		}
 	}
 
-	if (profile.paragraphUniformity >= limits.paragraphUniformity) {
+	// 段落形状：每段句数几乎没有差异（含单句段）。
+	if (profile.paragraphsChecked + 1 >= limits.shortEndingFloor && profile.paragraphDispersion < limits.paragraphDispersion) {
 		findings.push({
 			code: "style.paragraphUniform",
 			severity: "warning",
-			detail: String(profile.paragraphUniformity),
+			detail: String(profile.paragraphDispersion),
 		});
 	}
 

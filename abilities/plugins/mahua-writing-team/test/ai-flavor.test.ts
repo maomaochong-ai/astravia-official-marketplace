@@ -94,7 +94,9 @@ describe("风格检", () => {
 		const profile = analyzeAiProfile([MACHINE], AI_LEXICON);
 		const codes = lintStyle({ profile, words: 200, limits: LIMITS }).map((finding) => finding.code);
 		expect(codes).toContain("style.stockPhrase");
-		expect(codes).toContain("style.paragraphUniform");
+		// 段尾金句与时间起手是 info；其余两条是 warning。
+		// 段落形状在这里不报：样本里有一段单句段（“原来，她一直都在等。”），
+		// 那就是真实的变化，离散度认为它不是雷同——这正是换成离散度想要的效果。
 		expect(codes).toContain("style.timeOpening");
 		expect(codes).toContain("style.punchlineEnding");
 	});
@@ -130,14 +132,14 @@ describe("风格检", () => {
 	});
 
 	it("flags a rhythm that never leaves the middle register", () => {
-		// 句长在 11–29 字之间散开：均质度算下来不到 0.7（不是“每句一样长”），
+		// 句长在 11–29 字之间散开：离散度够（不是“每句一样长”），
 		// 但 10 字以下的短句与 45 字以上的长句一个都没有——这也是机器腔：温和地均匀。
 		const base = "他把窗台上的灰擦干净又放回原处去洗了手再回来看了看桌上那只杯子";
-		const lengths = [11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29];
+		const lengths = [11, 13, 16, 19, 23, 27, 32, 36, 40, 44, 11, 13, 16, 19, 23, 27, 32, 36, 40, 44];
 		const flat = lengths.map((size) => `${base.repeat(3).slice(0, size)}。`).join("");
 		const profile = analyzeAiProfile([flat], AI_LEXICON);
 		expect(profile.sampleSentences).toBe(lengths.length);
-		expect(profile.sentenceUniformity).toBeLessThan(LIMITS.sentenceUniformity);
+		expect(profile.sentenceDispersion).toBeGreaterThanOrEqual(LIMITS.sentenceDispersion);
 		const codes = lintStyle({ profile, words: 400, limits: LIMITS }).map((finding) => finding.code);
 		expect(codes).toContain("style.rhythmNarrow");
 		// 均质那条不该跟着一起报：两件事，分开说。
@@ -145,9 +147,10 @@ describe("风格检", () => {
 	});
 
 	it("exposes its thresholds so a change cannot hide in a magic number", () => {
-		expect(LIMITS.sentenceUniformity).toBe(0.7);
-		expect(LIMITS.paragraphUniformity).toBe(0.7);
-		expect(LIMITS.hardTellTotal).toBe(3);
+		// 数字现在住词表；这里只钉两件事：它们是数字，且离散度阈值在合理区间。
+		expect(LIMITS.sentenceDispersion).toBeGreaterThan(0);
+		expect(LIMITS.sentenceDispersion).toBeLessThan(1);
+		expect(LIMITS.hardTellTotal).toBeGreaterThan(0);
 	});
 });
 

@@ -194,13 +194,17 @@ export interface AiProfile {
 	chapters: number;
 	/** 样本句数：少于 20 句时各项比率参考价值有限，工具会把这一点说出来。 */
 	sampleSentences: number;
-	/** 句长落在均值 ±25% 之内的占比。包 0.70 = 节奏均质（每句都是中句）。 */
+	/** 句长落在均值 ±25% 之内的占比：诊断展示，不参与判定。 */
 	sentenceUniformity: number;
+	/** 句长离散度（标准差/均值）：低于阈值就是「每句差不多长」。判定看它。 */
+	sentenceDispersion: number;
 	/** 短句（<10 字）与长句（>45 字）各占多少：两者都很低就是句式单一。 */
 	shortSentenceRatio: number;
 	longSentenceRatio: number;
-	/** 每段句数落在均值 ±1 之内的占比。包 0.70 = 段落形状雷同。 */
+	/** 每段句数落在均值 ±1 之内的占比：诊断展示，不参与判定。 */
 	paragraphUniformity: number;
+	/** 段落句数离散度（含单句段）：低于阈值就是「每段一样长」。判定看它。 */
+	paragraphDispersion: number;
 	/** 命中硬套句的词形与次数，按次数降序。 */
 	hardTells: { phrase: string; count: number }[];
 	/** 软词（忽然/微微/缓缓…）总次数：只在密度过高时算问题。 */
