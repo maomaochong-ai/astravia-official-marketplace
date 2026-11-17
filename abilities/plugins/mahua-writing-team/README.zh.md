@@ -94,8 +94,8 @@ Mac 上的红黄绿三键那一行也会消失。再按一次、按 **Esc**，�
 | 能算的（`mahua_check_rules` 返回 `style.*`） | 怎么算 |
 | --- | --- |
 | `style.stockPhrase` | 套句词表命中与次数（不由得、仿佛、一丝、空气凝固…） |
-| `style.rhythmUniform` / `style.rhythmNarrow` | 句长落在均值 ±25% 的占比；短句与长句是否双双缺席 |
-| `style.paragraphUniform` / `style.punchlineParagraphs` | 每段句数是否一样；是否每段都刹在短句上 |
+| `style.rhythmUniform` / `style.rhythmNarrow` | 句长离散度（标准差/均值）低于阈值；或离散度够但短句与长句双双缺席 |
+| `style.paragraphUniform` / `style.punchlineParagraphs` | 段落句数的离散度低于阈值；或每段都刹在短句上 |
 | `style.explainTail` | “他知道 / 这意味着 / 换句话说”开头的句子数 |
 | `style.fillerDensity` | 忽然/微微/缓缓/轻轻 的每千字密度 |
 | `style.timeOpening` / `style.punchlineEnding` | 时间天气起手、章尾金句（单章只能记一笔，看跨章重复） |
