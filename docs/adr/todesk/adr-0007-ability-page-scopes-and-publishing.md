@@ -1,6 +1,6 @@
 # ADR 0007：能力页为什么看不到它，以及怎么让它出现在「发现」里
 
-- **状态：** 已接受
+- **状态：** 已接受（**已发布**：gh-pages `b0f6ac02`，索引 0.4.88 → `todesk 0.4.8`）
 - **日期：** 2026-11-18
 - **背景：** 插件 `todesk` 0.4.7；Astravia Desktop 0.5.97
 - **问题：** 「能力页面我看不到这个新增的插件。」
@@ -68,7 +68,18 @@ git switch -c feat/todesk-plugin && git push -u origin feat/todesk-plugin
 #    之后在客户端「能力 → 市场源」点刷新即可看到。
 ```
 
-这一步需要仓库推送权限，属于用户授权范围，本次没有执行。
+这一步需要仓库推送权限，属于用户授权范围。
+
+**执行记录（2026-11-18）**：源码提交 `10673c75` 推到 `main`，`publish-marketplace.yml` 成功，gh-pages 新提交 `b0f6ac02 chore(marketplace): 发布 2026.11.17-8`；发布的索引里已有：
+
+```json
+{ "slug": "todesk", "version": "0.4.8", "category": "Productivity",
+  "releases": [{ "version": "0.4.8",
+    "artifact": { "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-todesk/todesk-0.4.8.astraviapkg",
+                  "sha256": "6a34dc63…9a1b" } }] }
+```
+
+客户端「能力 → 市场源 → 刷新」后，`ToDesk` 会出现在**发现**里；从那里安装会一次性批准权限与 `ToDesk.exe` 命令（比 `install-from-path` 更省事）。
 
 ## 五、代价
 
