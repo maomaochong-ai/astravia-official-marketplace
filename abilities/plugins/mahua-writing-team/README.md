@@ -102,22 +102,32 @@ decision.
 
 ## Machine-flavoured prose: what can be measured, what can only be judged
 
-"Reads like AI" is not an adjective once half of it is arithmetic. Both halves hang off the same save:
+"Reads like AI" is not an adjective once half of it is arithmetic. Both halves hang off the same save.
+
+**The judgement itself is data.** Words and thresholds live in `agent/lexicon/ai-tells.json`;
+`scripts/build-reference-library.mjs` compiles it into `src/reference/lexicon.generated.ts`, and the domain
+layer only interprets it. Add a word or move a threshold, then `npm run references` — no code change, and a
+test fails if a word ever appears in the code or the two copies drift.
 
 | Measured (`mahua_check_rules` returns `style.*`) | How |
 | --- | --- |
-| `style.stockPhrase` | cliché catalogue hits with counts (不由得, 仿佛, 一丝, 空气凝固 …) |
+| `style.stockPhrase` | cliché catalogue hits with counts, from the lexicon |
 | `style.rhythmUniform` / `style.rhythmNarrow` | share of sentences within ±25% of the mean; whether short and long sentences are both absent |
 | `style.paragraphUniform` / `style.punchlineParagraphs` | whether every paragraph holds the same number of sentences; whether every paragraph brakes on a short line |
-| `style.explainTail` | sentences opening with "他知道 / 这意味着 / 换句话说" |
-| `style.fillerDensity` | 忽然/微微/缓缓/轻轻 per thousand words |
+| `style.explainTail` | sentences opening with a narrator summary |
+| `style.fillerDensity` | filler adverbs per thousand words |
 | `style.timeOpening` / `style.punchlineEnding` | opening on time or weather, closing on an aphorism (one chapter can only be noted; repetition is a cross-chapter judgement) |
 
-Left to the editor (`mahua_reference anti-ai-tone`, A7–A10): three-beat parallelism, labelled emotions,
-ten characters with one voice, and dumping every setting at once.
+**The rewrite is a procedure, not a description.** When `style.*` fires, the writer follows
+`mahua_reference revision-pass`: delete, replace with an observation, split and merge sentences, reshape
+paragraphs, change the opening and the ending, read aloud — one pass at a time, re-checking after each.
 
-Every threshold lives in `STYLE_LIMITS` (`src/domain/writing-rules.ts`) and is pinned by a test —
-change the number there, not in a document.
+The editor keeps what cannot be measured: three-beat parallelism, labelled emotions, ten characters with
+one voice, dumping every setting at once. Those are not word shapes; hard-coding them only produces false
+alarms.
+
+Every threshold lives in the lexicon file and is pinned by tests on both sides: a machine-flavoured sample
+must fire, and two classics must stay silent.
 
 ## What the context pack carries
 

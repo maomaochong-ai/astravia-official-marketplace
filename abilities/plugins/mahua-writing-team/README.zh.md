@@ -103,8 +103,14 @@ Mac 上的红黄绿三键那一行也会消失。再按一次、按 **Esc**，�
 只能人工判的（`mahua_reference anti-ai-tone` 的 A7–A10）：三连排比、情绪贴标签、
 十个角色一张嘴、把所有设定一次倒完。
 
-所有阈值都写在 `src/domain/writing-rules.ts` 的 `STYLE_LIMITS` 里并在测试中钉住；
-数字不对就改那里，不要在文档里各说一套。
+**判据本身是数据。** 词与阈值都在 `agent/lexicon/ai-tells.json`，`scripts/build-reference-library.mjs`
+把它编译成 `src/reference/lexicon.generated.ts`，领域层只负责解释。加一个词、动一个阈值，跑
+`npm run references` 就行，不改代码；词条出现在代码里（含 `\uXXXX` 转义）或两份不同步时，测试会红。
+
+**改法是一道程序，不是一个形容词。** `style.*` 报出来后，writer 按 `mahua_reference revision-pass` 的
+六遍改：删 → 换观察 → 拆合并句子 → 改段落形状 → 换起手与收尾 → 读出声，一遍一遍来，每遍重新检。
+
+数字不对就改那个 JSON，并补一个样本证明它仍站在机器腔与经典散文之间；不要在文档里各说一套。
 
 ## 上下文包里有什么
 
