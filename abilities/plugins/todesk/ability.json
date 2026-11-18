@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "plugin",
   "slug": "todesk",
-  "version": "0.4.11",
+  "version": "0.4.12",
   "icon": "assets/icon.svg",
   "name": "ToDesk Remote",
   "description": "Connect this computer to another one by its ToDesk device code, from the panel or from the conversation. The agent reads the code, opens sessions and can keep this machine reachable — no ToDesk setting has to be found first.",

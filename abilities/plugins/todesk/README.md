@@ -12,11 +12,16 @@
 | 动作 | 谁来做 | 底层 |
 | --- | --- | --- |
 | 读本机设备码、版本、运行状态 | 面板 + `todesk_status` | `ToDesk.exe -status` |
-| 连到另一台电脑（**只输设备码**） | 面板 + `todesk_connect` | `ToDesk.exe -control -id <code>`；密码由客户端自己弹框 |
+| 连到**已存设备**（说设备名，不用敲码、不用报密码） | 面板 + `todesk_devices` → `todesk_connect { device }` | 客户端本地设备列表 `devlist_*.json` + `ToDesk.exe -control -id <code>` |
+| 连到陌生设备（设备码 + 对方临时密码） | 面板 + `todesk_connect { device_id, password }` | `ToDesk.exe -control -id <code> -passwd <pwd>` |
+| 谁用得最多 / 今天连了几次 | 面板 + `todesk_usage` | `recentusage_*.json` 按天计数 |
+| 这台能不能被别人连、要不要加固 | 面板 + `todesk_posture` | `config.ini` 开关位（密码只报「有没有设」，不返回值） |
+| 当前登录的是哪个账号 | 面板 + `todesk_account` | `ToDesk.exe -user` |
 | 开机自动启动开/关 | 面板 + `todesk_autostart` | `ToDesk.exe -autostart on/off` |
-| 调出 ToDesk 窗口（看临时密码） | 面板 + `todesk_open_client` | `ToDesk.exe` |
+| 调出 / 收进托盘 | 面板 + `todesk_open_client` / `todesk_tray` | `ToDesk.exe` / `-tray` |
+| 断开 | 面板 + `todesk_disconnect` | `ToDesk.exe -exit` |
 
-**没有 MCP、没有账号设备列表、没有网络权限。** ToDesk 的 MCP 端点属于它的 AI 子系统，客户端里没有开关，实测从未监听；挂在上面的界面全是死按钮，已在 0.4.5 删除。
+**没有 MCP、没有网络权限。** ToDesk 的 MCP 端点属于它的 AI 子系统，客户端里没有开关，实测从未监听；挂在上面的界面全是死按钮，已在 0.4.5 删除。0.4.12 起改成读客户端自己的本地状态（设备列表、使用计数、设置开关），把那批此前只能手点的动作交给 Agent（ADR-0010）。
 
 ## 连接之后
 
@@ -31,7 +36,8 @@
 
 | 层 | 对话里 | 靠什么 |
 | --- | --- | --- |
-| 会话生命周期：读码、发起连接、断开、开关自启、调出窗口 | ✅ | 5 个 `todesk_*` 工具（走官方 CLI） |
+| 会话生命周期：读码、按名字发起连接、断开、开关自启、调出/收起窗口 | ✅ | 10 个 `todesk_*` 工具（官方 CLI + 客户端本地状态） |
+| 设备清单、使用计数、访问姿态（密码是否已设、二次验证、陌生设备锁） | ✅ | `devlist_*.json` / `recentusage_*.json` / `config.ini`；**只报有无，不返回值** |
 | 会话内的**画面** | ❌ | ToDesk 没有截图 CLI；带截图的接口只在它的 MCP 里 |
 | 会话内的**输入**（点击/键盘） | ❌ | 同上，`todesk_gui_*` 只存在于那条通道 |
 
@@ -124,7 +130,7 @@ env:  { PATH: "C:\\Program Files\\ToDesk;<原 PATH>" }
 | 权限 | 用途 |
 | --- | --- |
 | `ui.slot.workspace-view` / `ui.slot.activity-tab` | 侧边栏页 + 对话侧栏标签页 |
-| `agent.tools.register` / `agent.toolHandler.execute` | 四个 `todesk_*` 工具 |
+| `agent.tools.register` / `agent.toolHandler.execute` | 十个 `todesk_*` 工具 |
 | `agent.command.run`（`commands: ["ToDesk.exe"]`） | `-status` / `-control` / `-autostart` |
 | `storage.read/write` | 记住 Agent 许可与最近一次探测结果 |
 | `fs.read` | CLI 不可用时读 `config.ini` 取设备码 |

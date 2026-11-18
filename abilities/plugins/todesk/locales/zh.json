@@ -74,5 +74,15 @@
   "device.password.body": "显示在本机 ToDesk 自己的窗口里，并且会轮换；有人要连进来时去那里看。",
   "device.password.show": "去 ToDesk 看",
   "device.open.ok": "ToDesk 正在启动，窗口可能要一两秒才出来。",
-  "device.open.failed": "没能启动 ToDesk：{{error}}"
+  "device.open.failed": "没能启动 ToDesk：{{error}}",
+  "diag.tools.devices.name": "已存设备",
+  "diag.tools.devices": "读取客户端保存的设备列表，可以直接说设备名，不用敲九位数。",
+  "diag.tools.usage.name": "使用计数",
+  "diag.tools.usage": "按天的会话次数，用来回答「我最常连哪台」。",
+  "diag.tools.posture.name": "访问姿态",
+  "diag.tools.posture": "无人值守密码、临时密码、二次验证、陌生设备锁——只给开关状态，不给值。",
+  "diag.tools.account.name": "登录账号",
+  "diag.tools.account": "这个客户端当前登录的是哪个 ToDesk 账号（-user）。",
+  "diag.tools.tray.name": "收进托盘",
+  "diag.tools.tray": "把客户端窗口收到系统托盘（-tray）。"
 }

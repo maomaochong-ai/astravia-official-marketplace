@@ -74,5 +74,15 @@
   "device.password.body": "Shown in ToDesk's own window on this computer; it rotates, so read it there when someone needs it.",
   "device.password.show": "Show in ToDesk",
   "device.open.ok": "ToDesk is starting; its window may take a second to appear.",
-  "device.open.failed": "ToDesk could not be started: {{error}}"
+  "device.open.failed": "ToDesk could not be started: {{error}}",
+  "diag.tools.devices.name": "Saved devices",
+  "diag.tools.devices": "Read the client's saved device list, so a machine can be named instead of typed.",
+  "diag.tools.usage.name": "Usage counters",
+  "diag.tools.usage": "Per-day session counts, so \"which machine do I use most\" is answerable.",
+  "diag.tools.posture.name": "Access posture",
+  "diag.tools.posture": "Unattended password, one-time password, 2FA, strange-device lock — as flags, never values.",
+  "diag.tools.account.name": "Signed-in account",
+  "diag.tools.account": "Which ToDesk account this client is signed in as (-user).",
+  "diag.tools.tray.name": "Hide to tray",
+  "diag.tools.tray": "Send the client window to the system tray (-tray)."
 }
