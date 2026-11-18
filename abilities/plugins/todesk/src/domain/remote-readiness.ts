@@ -76,8 +76,8 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 			detail,
 			fix:
 				unattended === false
-					? "ToDesk.exe -setpasswd <new password>, or 设置 → 安全 → 安全密码"
-					: "设置 → 安全 → 临时密码 → 打开",
+					? "ToDesk.exe -setpasswd <new password>, or 高级设置 → 安全设置 → 安全密码"
+					: "高级设置 → 安全设置 → 临时密码",
 		});
 	}
 
@@ -95,7 +95,7 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 			code: "no-2fa",
 			state: "warn",
 			detail: "Incoming connections are protected by a password only; two-factor authentication is off.",
-			fix: "设置 → 安全 → 二次验证",
+			fix: "高级设置 → 安全设置 → 二次安全验证",
 		});
 	}
 
@@ -104,7 +104,7 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 			code: "stranger-devices-allowed",
 			state: "warn",
 			detail: "Any device that knows the code and the password is accepted; only saved devices are not enforced.",
-			fix: "设置 → 安全 → 仅允许受信任设备",
+			fix: "高级设置 → 安全设置 → 连接限制（黑白名单 / 手动同意）",
 		});
 	}
 

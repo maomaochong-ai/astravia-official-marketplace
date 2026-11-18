@@ -1,177 +1,64 @@
 /**
- * Agent-facing tools.
+ * The eleven tools declared to the agent — registration only.
  *
- * Four rules, each one learned from a real failure:
- *  1. **No MCP dependency.** ToDesk's MCP endpoint belongs to its AI subsystem, cannot
- *     be switched on from the client, and never connected; the plugin drives the
- *     documented command line instead (ADR 0003, ADR 0005).
- *  2. **The user's consent is the host's command grant.** The manifest declares
- *     `ToDesk.exe`; the host keeps `grantedCommandNames`. The panel switch can only
- *     turn things further off, never grant what the host refused.
- *  3. **The client's own local state is a capability, not a secret.** Its saved device
- *     list turns "type nine digits" into "connect to the office PC"; its settings answer
- *     "can someone reach this machine". Credential values are never returned — only
- *     whether one exists (ADR 0010).
- *  4. **The screen belongs to ToDesk's window.** Nothing here claims to see or click the
- *     remote desktop (ADR 0009).
+ * Behaviour lives in the domain layer; the gate, the standard failure answers, the status
+ * read and the store accessor live in `./tool-support` so they can be tested on their own.
+ * Rules that shaped this file:
+ *  1. No MCP dependency (ADR 0003/0005).
+ *  2. The host's command grant is the consent; the panel switch can only narrow it (ADR 0004).
+ *  3. The client's local state is context, never a secret (ADR 0010).
+ *  4. The screen belongs to ToDesk's window (ADR 0009).
  */
 
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
-import { postureFindings } from "../domain/client-posture";
-import { describeDevice, matchDevice } from "../domain/device-store";
 import { assessReadiness } from "../domain/remote-readiness";
+import { describeDevice, matchDevice } from "../domain/device-store";
+import { postureFindings } from "../domain/client-posture";
 import {
 	AUTOSTART_OFF_ARGS,
 	AUTOSTART_ON_ARGS,
 	DISCONNECT_ARGS,
 	buildControlArgs,
 	normalizeDeviceId,
-	parseGetId,
-	parseStatus,
-	parseVersion,
 } from "../domain/todesk-cli";
 import { outputOf, runTodesk } from "../domain/todesk-launch";
 import { summarizeUsage } from "../domain/usage-store";
-import { readLocalStore } from "../features/console/services/local-store";
-import type { RunResult } from "../runtime-contract";
+import {
+	DISABLED,
+	SCOPE,
+	TOOL_ACCOUNT,
+	TOOL_AUTOSTART,
+	TOOL_CONNECT,
+	TOOL_DEVICES,
+	TOOL_DISCONNECT,
+	TOOL_OPEN,
+	TOOL_POSTURE,
+	TOOL_READINESS,
+	TOOL_STATUS,
+	TOOL_TRAY,
+	TOOL_USAGE,
+	capabilityAllowed,
+	hostFailure,
+	readStatus,
+	storeOf,
+	verifyConnection,
+	type ToolBridge,
+} from "./tool-support";
 
-const SCOPE = ["conversation", "project"] as const;
-const ALLOW_COMMANDS_KEY = "allowCommands";
-const TOOLS_KEY = "tools";
-
-export const TOOL_STATUS = "todesk_status";
-export const TOOL_READINESS = "todesk_readiness";
-export const TOOL_DEVICES = "todesk_devices";
-export const TOOL_CONNECT = "todesk_connect";
-export const TOOL_USAGE = "todesk_usage";
-export const TOOL_POSTURE = "todesk_posture";
-export const TOOL_ACCOUNT = "todesk_account";
-export const TOOL_AUTOSTART = "todesk_autostart";
-export const TOOL_OPEN = "todesk_open_client";
-export const TOOL_TRAY = "todesk_tray";
-export const TOOL_DISCONNECT = "todesk_disconnect";
-
-export interface ToolBridge {
-	/* `readTextFile` + `listDirectory` are what readLocalStore needs. */
-	run(file: string, args: string[], env?: Record<string, string>): Promise<RunResult>;
-	readSettings(): Promise<Record<string, unknown> | null>;
-	readTextFile(path: string): Promise<string>;
-	listDirectory(path: string): Promise<{ name: string; path: string }[]>;
-}
-
-async function readStatus(bridge: ToolBridge): Promise<Record<string, unknown>> {
-	const run = await runTodesk(bridge.run, ["-status"], undefined);
-	if (run.ok && run.result) {
-		const parsed = parseStatus(outputOf(run.result));
-		if (parsed.deviceId) {
-			return {
-				ok: true,
-				device_id: parsed.deviceId,
-				version: parsed.version,
-				platform: parsed.platform,
-				client_running: parsed.running,
-				autostart: parsed.autostart,
-				server: parsed.server,
-				uptime: parsed.uptime,
-			};
-		}
-	}
-
-	const version = await runTodesk(bridge.run, ["-version"], undefined);
-	const id = await runTodesk(bridge.run, ["-getid"], undefined);
-	const deviceId = id.ok && id.result ? parseGetId(outputOf(id.result)) : null;
-	if (deviceId) {
-		return {
-			ok: true,
-			device_id: deviceId,
-			version: version.ok && version.result ? (parseVersion(outputOf(version.result))?.version ?? null) : null,
-			client_running: true,
-			note: "-status did not parse; used -getid",
-		};
-	}
-
-	return {
-		ok: false,
-		reason: "ToDesk's command line did not answer",
-		host_error: run.error ?? id.error ?? null,
-	};
-}
-
-type ToolKey =
-	| "status"
-	| "readiness"
-	| "devices"
-	| "connect"
-	| "usage"
-	| "posture"
-	| "account"
-	| "autostart"
-	| "open"
-	| "tray"
-	| "disconnect";
-
-/** Tools that only read files: they work even when the host refused `ToDesk.exe`. */
-const FILE_ONLY = new Set<ToolKey>(["status", "readiness", "devices", "usage", "posture"]);
-
-/**
- * Consent is per capability: the panel writes { tools: { connect: false, … } }, and an
- * explicit false wins over everything. With no stored choice, a working ToDesk.exe *is*
- * the consent — the host already granted the command, the user already installed it.
- */
-async function capabilityAllowed(bridge: ToolBridge, key: ToolKey): Promise<boolean> {
-	const settings = await bridge.readSettings().catch(() => null);
-
-	const tools = settings?.[TOOLS_KEY];
-	if (tools && typeof tools === "object") {
-		const record = tools as Record<string, unknown>;
-		if (record[key] === false) return false;
-		if (record[key] === true) return true;
-	}
-
-	if (typeof settings?.[ALLOW_COMMANDS_KEY] === "boolean" && settings[ALLOW_COMMANDS_KEY] === false) return false;
-
-	if (FILE_ONLY.has(key)) return true;
-	return (await runTodesk(bridge.run, ["-status"], undefined)).ok;
-}
-
-const DISABLED = JSON.stringify({
-	ok: false,
-	reason: "ToDesk control is switched off in the plugin panel",
-	hint: "open the ToDesk panel and press 开启 / Allow in the banner, then ask again",
-});
-
-function hostFailure(run: { error?: string | null }, args: string[]): string {
-	return JSON.stringify({
-		ok: false,
-		command: `ToDesk.exe ${args.join(" ")}`,
-		reason: "ToDesk's command line could not be started",
-		host_error: run.error ?? null,
-	});
-}
-
-/**
- * Did the session actually come up? ToDesk has no session API, so the only evidence is
- * the client's own device row moving: a newer RecentConnectTime, or IsConnected turning
- * true. Bounded (<=3 x 400 ms) and honest when it cannot tell (ADR 0011 §3.4).
- */
-async function verifyConnection(
-	bridge: ToolBridge,
-	deviceId: string,
-	before: { lastConnectedAt: number | null; isConnected: boolean } | null,
-): Promise<"true" | "false" | "unknown"> {
-	if (!before) return "unknown";
-
-	for (let attempt = 0; attempt < 3; attempt += 1) {
-		await new Promise((resolve) => setTimeout(resolve, 400));
-		const store = await readLocalStore({ readTextFile: bridge.readTextFile, listDirectory: bridge.listDirectory });
-		if (store.error) return "unknown";
-		const row = store.devices.find((device) => device.deviceId === deviceId);
-		if (!row) return "unknown";
-		const advanced = (row.lastConnectedAt ?? 0) > (before.lastConnectedAt ?? 0);
-		if (advanced || (row.isConnected && !before.isConnected)) return "true";
-	}
-	return "false";
-}
+export {
+	TOOL_ACCOUNT,
+	TOOL_AUTOSTART,
+	TOOL_CONNECT,
+	TOOL_DEVICES,
+	TOOL_DISCONNECT,
+	TOOL_OPEN,
+	TOOL_POSTURE,
+	TOOL_READINESS,
+	TOOL_STATUS,
+	TOOL_TRAY,
+	TOOL_USAGE,
+} from "./tool-support";
+export type { ToolBridge } from "./tool-support";
 
 export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Disposable {
 	const status = ctx.agent.registerTool({
@@ -203,10 +90,7 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 
 			const input = (trigger.input ?? {}) as { query?: unknown };
 			const query = typeof input.query === "string" ? input.query.trim() : "";
-			const store = await readLocalStore({
-				readTextFile: bridge.readTextFile,
-				listDirectory: bridge.listDirectory,
-			});
+			const store = await storeOf(bridge);
 			if (store.error) return JSON.stringify({ ok: false, reason: store.error, directory: store.directory });
 
 			if (!query) {
@@ -276,10 +160,7 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 			let savedCredential = false;
 
 			if (wanted) {
-				const store = await readLocalStore({
-					readTextFile: bridge.readTextFile,
-					listDirectory: bridge.listDirectory,
-				});
+				const store = await storeOf(bridge);
 				const match = matchDevice(store.devices, wanted);
 				if (match.kind === "many") {
 					return JSON.stringify({
@@ -316,10 +197,7 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 			if (!args) return JSON.stringify({ ok: false, reason: "device codes are 9 digits" });
 
 			// Snapshot the device row first: "connected" later has to be a change, not a state.
-			const baseline = await readLocalStore({
-				readTextFile: bridge.readTextFile,
-				listDirectory: bridge.listDirectory,
-			}).catch(() => null);
+			const baseline = await storeOf(bridge).catch(() => null);
 			const before = baseline?.devices.find((device) => device.deviceId === deviceId) ?? null;
 
 			const run = await runTodesk(bridge.run, args, undefined);
@@ -362,10 +240,7 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 			const status = await readStatus(bridge);
 			if (status.ok === false) return JSON.stringify(status);
 
-			const store = await readLocalStore({
-				readTextFile: bridge.readTextFile,
-				listDirectory: bridge.listDirectory,
-			});
+			const store = await storeOf(bridge);
 			const report = assessReadiness({
 				deviceId: typeof status.device_id === "string" ? status.device_id : null,
 				clientRunning: status.client_running === true,
@@ -406,10 +281,7 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 
 			const input = (trigger.input ?? {}) as { days?: unknown };
 			const days = typeof input.days === "number" && input.days > 0 ? Math.min(90, Math.trunc(input.days)) : 7;
-			const store = await readLocalStore({
-				readTextFile: bridge.readTextFile,
-				listDirectory: bridge.listDirectory,
-			});
+			const store = await storeOf(bridge);
 			if (store.error) return JSON.stringify({ ok: false, reason: store.error });
 
 			const summary = summarizeUsage(store.usage, days, new Date());
@@ -439,10 +311,7 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 		handler: async () => {
 			if (!(await capabilityAllowed(bridge, "posture"))) return DISABLED;
 
-			const store = await readLocalStore({
-				readTextFile: bridge.readTextFile,
-				listDirectory: bridge.listDirectory,
-			});
+			const store = await storeOf(bridge);
 			if (!store.posture) {
 				return JSON.stringify({ ok: false, reason: "could not read ToDesk's config.ini", directory: store.directory });
 			}

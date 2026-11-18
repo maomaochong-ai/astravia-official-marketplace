@@ -109,7 +109,7 @@ export function postureFindings(posture: ClientPosture): PostureFinding[] {
 			severity: "warn",
 			message:
 				"No unattended password is set, so this computer can only be reached while its ToDesk window is open and handing out a one-time password.",
-			fix: "ToDesk.exe -setpasswd <new password>, or 设置 → 安全 → 安全密码",
+			fix: "ToDesk.exe -setpasswd <new password>, or 高级设置 → 安全设置 → 安全密码",
 		});
 	}
 	if (posture.tempPasswordEnabled === false) {
@@ -117,7 +117,7 @@ export function postureFindings(posture: ClientPosture): PostureFinding[] {
 			code: "temp-password-off",
 			severity: "warn",
 			message: "The one-time password is off — a device that has no saved password cannot connect.",
-			fix: "设置 → 安全 → 临时密码 → 打开",
+			fix: "高级设置 → 安全设置 → 临时密码",
 		});
 	}
 	if (posture.twoFactorForConnect === false) {
@@ -125,7 +125,7 @@ export function postureFindings(posture: ClientPosture): PostureFinding[] {
 			code: "no-2fa",
 			severity: "info",
 			message: "Two-factor authentication for incoming connections is off.",
-			fix: "设置 → 安全 → 二次验证",
+			fix: "高级设置 → 安全设置 → 二次安全验证",
 		});
 	}
 	if (posture.strangerConnectionLock === false) {
@@ -134,7 +134,7 @@ export function postureFindings(posture: ClientPosture): PostureFinding[] {
 			severity: "warn",
 			message:
 				"Strange-device connections are allowed: any code plus a valid password is accepted, not only saved devices.",
-			fix: "设置 → 安全 → 仅允许受信任设备",
+			fix: "高级设置 → 安全设置 → 连接限制（黑白名单 / 手动同意）",
 		});
 	}
 	if (posture.autostart === false) {

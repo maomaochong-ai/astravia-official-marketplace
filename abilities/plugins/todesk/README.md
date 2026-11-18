@@ -22,6 +22,8 @@
 | 调出 / 收进托盘 | 面板 + `todesk_open_client` / `todesk_tray` | `ToDesk.exe` / `-tray` |
 | 断开 | 面板 + `todesk_disconnect` | `ToDesk.exe -exit` |
 
+官方文档核对与工具层拆分见 [ADR 0012](../../../docs/adr/todesk/adr-0012-official-docs-cross-check-and-tool-support.md)：所有修法路径改按官网（高级设置 → 安全设置），四类「对方连不上」的原因本机文件读不到，只写进技能排查顺序。
+
 **没有 MCP、没有网络权限。** ToDesk 的 MCP 端点属于它的 AI 子系统，客户端里没有开关，实测从未监听；挂在上面的界面全是死按钮，已在 0.4.5 删除。0.4.12 起改成读客户端自己的本地状态（设备列表、使用计数、设置开关），把那批此前只能手点的动作交给 Agent（ADR-0010）。
 
 ## 连接之后
