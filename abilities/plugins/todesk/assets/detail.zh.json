@@ -5,49 +5,49 @@
 			"type": "hero",
 			"eyebrow": "ToDesk 远程控制",
 			"title": "你的电脑，彼此都能到",
-			"description": "一块面板管两个方向：这台机器作为「随时进得来」的被控端，以及你账号里的其它电脑作为「从这里能过去」的地方。设备码、无人值守依赖的开机自启、通道状态，全在第一屏。",
-			"badges": ["双向", "设备码一键复制", "34 个 ToDesk 工具"]
+			"description": "一块面板管两个方向：这台机器随时能被手机或另一台电脑连进来，你的其它电脑也能从这里连过去。",
+			"badges": ["双向", "设备码 + 临时密码", "5 个 Agent 工具"]
 		},
 		{
 			"type": "showcase",
 			"showcase": {
 				"template": "chat-thread",
-				"user_prompt": "我在公司，能连回家里那台台式机跑一下构建吗？",
-				"assistant_reply": "家里台式机在线——我在你的 ToDesk 账号里看到了它。已经请 ToDesk 拉起会话，你在客户端窗口确认一下。连上之后告诉我目录，我让 Agent 跑构建。"
+				"user_prompt": "连一下家里台式机：123 456 789",
+				"assistant_reply": "已交给 ToDesk，请在它的窗口里确认。"
 			}
 		},
 		{
 			"type": "feature-grid",
 			"items": [
 				{
-					"title": "手机进得来，电脑也进得来",
-					"description": "入站卡片给的是两条真实路径：手机上装 App 输设备码，或在另一台电脑登录同一账号后从「设备列表」点进来。",
+					"title": "设备码和密码同一行",
+					"description": "输入对方的 9 位设备码和那边的临时密码，点连接；会话在 ToDesk 自己的窗口里打开。",
 					"icon": "solar:login-3-linear"
 				},
 				{
-					"title": "从这里控制别的电脑",
-					"description": "通道开着时，面板列出账号下的设备与实时状态，一键发起连接——ToDesk 返回一条链接，客户端接过去。",
-					"icon": "solar:monitor-smartphone-linear"
-				},
-				{
-					"title": "通道没开也能用",
-					"description": "ToDesk 自己的命令行支持按设备码 + 密码发起控制，所以在打开 MCP 开关之前，面板也不是摆设。",
-					"icon": "solar:command-square-linear"
-				},
-				{
-					"title": "无人值守是查出来的，不是假设",
-					"description": "登录账号、安全密码、开机自启、禁用系统休眠——远程回家真正必需的四种条件，开机自启直接给成按钮。",
-					"icon": "solar:power-linear"
-				},
-				{
-					"title": "身份来自 ToDesk 自己",
-					"description": "设备码和版本读自 ToDesk 的状态命令，读不到才退回配置文件——不编数字。",
+					"title": "本机设备码明文",
+					"description": "要念给对方听的那串数字直接显示、可复制、可重新读取；只有密码才是掩码。",
 					"icon": "solar:hashtag-square-linear"
 				},
 				{
-					"title": "高危工具默认拦掉",
-					"description": "远端执行 shell、锁屏与解锁默认禁止；截图、文件、会话、指针控制保留可用。",
+					"title": "保持可连",
+					"description": "开机自启是一个开关，面板同时说明无人值守还需要在 ToDesk 里配什么。",
+					"icon": "solar:power-linear"
+				},
+				{
+					"title": "断开是真的断开",
+					"description": "断开走 ToDesk 自己的 -exit，之后面板会报客户端已退出，而不是一直显示「已连接」。",
+					"icon": "solar:phone-off-linear"
+				},
+				{
+					"title": "逐个能力的许可",
+					"description": "5 个 Agent 工具在诊断区各有开关，底层还有宿主的命令授权。",
 					"icon": "solar:shield-keyhole-linear"
+				},
+				{
+					"title": "画面在哪说清楚",
+					"description": "远程画面在 ToDesk 自己的窗口里；面板只负责发起，不假装镜像。",
+					"icon": "solar:monitor-linear"
 				}
 			]
 		},
@@ -55,44 +55,29 @@
 			"type": "steps",
 			"items": [
 				{
-					"title": "在这台电脑上装好并登录 ToDesk",
-					"description": "插件不打包也不代装 ToDesk，它驱动的是你已经在用的那一份。"
+					"title": "装好 ToDesk 并登录",
+					"description": "插件驱动你已经在用的那份客户端，不打包也不代装。"
 				},
 				{
-					"title": "让它在你不在时也能连",
-					"description": "设置安全密码，在面板上打开「开机自动启动」，并关掉系统自动休眠。"
+					"title": "授权一次 ToDesk.exe",
+					"description": "宿主按命令逐条授权：在「设置 → 插件 → ToDesk → 命令」里允许，或安装时勾选。"
 				},
 				{
-					"title": "打开 ToDesk 的本地 MCP 服务",
-					"description": "位置在 ToDesk 的 AI / MCP 设置里。面板探测 127.0.0.1:8899，有应答就显示「已开启」；要 Token 就粘进去。"
-				},
-				{
-					"title": "按需要选方向",
-					"description": "入站：对方输入设备码 + 密码。出站：从账号设备列表里选一台，或在手动栏里输入设备码。"
+					"title": "用设备码 + 临时密码连接",
+					"description": "两个值都从对方机器上读；密码是它 ToDesk 窗口里显示的临时密码。"
 				}
 			]
 		},
 		{
 			"type": "callout",
-			"tone": "info",
-			"content": "面板只显示设备码，不显示任何密码。临时密码会轮换、在 ToDesk 窗口里；安全密码在 ToDesk 的设置里。把两者抄进对话记录是降级，不是便利。"
-		},
-		{
-			"type": "callout",
 			"tone": "warning",
-			"content": "账号设备列表与一键连接需要 ToDesk 的 MCP 通道，而它出厂是关着的。通道关着时面板改用官方文档的 `-control` 命令，它只对「设备列表里已解锁」的设备有效。"
+			"content": "画面和鼠标都在 ToDesk 自己的窗口里。本插件能发起和结束会话，不画那一块。"
 		},
 		{
 			"type": "links",
 			"items": [
-				{
-					"label": "下载 ToDesk",
-					"href": "https://www.todesk.com/download.html"
-				},
-				{
-					"label": "ToDesk 命令行参数说明",
-					"href": "https://www.todesk.com/helpcenter/solo-213.html"
-				}
+				{ "label": "下载 ToDesk", "href": "https://www.todesk.com/download.html" },
+				{ "label": "命令行参数说明", "href": "https://www.todesk.com/helpcenter/solo-213.html" }
 			]
 		}
 	]

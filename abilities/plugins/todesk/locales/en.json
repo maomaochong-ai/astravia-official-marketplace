@@ -72,5 +72,7 @@
   "connect.needPassword": "Enter the password ToDesk shows on that machine.",
   "device.password.title": "Temporary password",
   "device.password.body": "Shown in ToDesk's own window on this computer; it rotates, so read it there when someone needs it.",
-  "device.password.show": "Show in ToDesk"
+  "device.password.show": "Show in ToDesk",
+  "device.open.ok": "ToDesk is starting; its window may take a second to appear.",
+  "device.open.failed": "ToDesk could not be started: {{error}}"
 }
