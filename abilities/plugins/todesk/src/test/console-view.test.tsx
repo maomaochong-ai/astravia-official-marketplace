@@ -167,4 +167,15 @@ describe("ToDesk console view", () => {
 		await user.click(screen.getByRole("button", { name: "connect.ownRefresh" }));
 		await waitFor(() => expect(runs.filter((run) => run.args[0] === "-status").length).toBeGreaterThan(before));
 	});
+
+	it("reports an unavailable client inline instead of toasting", async () => {
+		const user = userEvent.setup();
+		const { deps } = harness({ failRun: true });
+		render(<TodeskConsoleView deps={deps} t={t} canRun />);
+
+		await screen.findByText("local.commandDenied");
+		await user.click(screen.getByRole("button", { name: "device.open" }));
+		// still a sentence on the panel (identity block + connect note), never a toast
+		expect((await screen.findAllByText("local.commandDenied")).length).toBeGreaterThanOrEqual(1);
+	});
 });

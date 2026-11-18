@@ -72,5 +72,7 @@
   "connect.needPassword": "还要输入对方 ToDesk 窗口里显示的临时密码。",
   "device.password.title": "临时密码",
   "device.password.body": "显示在本机 ToDesk 自己的窗口里，并且会轮换；有人要连进来时去那里看。",
-  "device.password.show": "去 ToDesk 看"
+  "device.password.show": "去 ToDesk 看",
+  "device.open.ok": "ToDesk 正在启动，窗口可能要一两秒才出来。",
+  "device.open.failed": "没能启动 ToDesk：{{error}}"
 }

@@ -5,49 +5,49 @@
 			"type": "hero",
 			"eyebrow": "ToDesk Remote",
 			"title": "Your computers, reachable from each other",
-			"description": "Two directions in one panel: this machine as something you can log in to from a phone or another computer, and your other computers as places you can drive from here. The device code, the autostart switch that unattended access depends on, and the channel state are all on the first screen.",
-			"badges": ["Both directions", "Device code in one click", "34 ToDesk tools"]
+			"description": "One panel for both directions: this machine as something you can log in to from a phone or another computer, and your other computers as places you can drive from here.",
+			"badges": ["Both directions", "Code + password", "5 agent tools"]
 		},
 		{
 			"type": "showcase",
 			"showcase": {
 				"template": "chat-thread",
-				"user_prompt": "I'm at the office. Can I get into the desktop at home and start a build?",
-				"assistant_reply": "Home desktop is online — I can see it in your ToDesk account. I've asked ToDesk to open the session; accept it in the client window. Once you're in, tell me which folder and I'll fire the build through the agent."
+				"user_prompt": "Connect to my home desktop: 123 456 789",
+				"assistant_reply": "Session handed to ToDesk — accept it in its window."
 			}
 		},
 		{
 			"type": "feature-grid",
 			"items": [
 				{
-					"title": "Get in from a phone or a PC",
-					"description": "The inbound card gives the two real paths: install the app and type the device code, or sign in on another computer and pick this machine from 设备列表.",
+					"title": "Code and password, one row",
+					"description": "Type the far side's 9-digit code and its temporary password, press connect. ToDesk opens the session in its own window.",
 					"icon": "solar:login-3-linear"
 				},
 				{
-					"title": "Drive your other computers",
-					"description": "When the channel is open the panel lists the devices in your account with their live status and connects in one press — ToDesk hands back a link and the client takes it.",
-					"icon": "solar:monitor-smartphone-linear"
-				},
-				{
-					"title": "Works with the channel closed",
-					"description": "ToDesk's documented command line connects by device code and password, so the panel stays useful before the MCP switch is on.",
-					"icon": "solar:command-square-linear"
-				},
-				{
-					"title": "Unattended, checked not assumed",
-					"description": "Sign-in, a security password, start-with-Windows and no system sleep — the four things remote access to a home machine actually needs, with the autostart switch as a button.",
-					"icon": "solar:power-linear"
-				},
-				{
-					"title": "Identity from ToDesk itself",
-					"description": "The device code and version are read from ToDesk's own status command, with its config file as a fallback — no invented numbers, ever.",
+					"title": "This machine's code, in the clear",
+					"description": "The code you read out loud is shown plainly, copyable, and re-readable after the client restarts. Only passwords are masked.",
 					"icon": "solar:hashtag-square-linear"
 				},
 				{
-					"title": "Dangerous tools fenced off",
-					"description": "Remote shell execution and screen lock/unlock are blocked by default; screenshots, files, sessions and pointer control stay available.",
+					"title": "Stays reachable",
+					"description": "Start-with-Windows is a switch here, and the panel says what unattended access still needs from ToDesk itself.",
+					"icon": "solar:power-linear"
+				},
+				{
+					"title": "Hang up properly",
+					"description": "Disconnect runs ToDesk's own -exit, so the session does not linger; the panel then reports the client as gone instead of \"connected\".",
+					"icon": "solar:phone-off-linear"
+				},
+				{
+					"title": "Per-capability consent",
+					"description": "Five agent tools, each with its own switch in diagnostics — plus the host's command grant underneath.",
 					"icon": "solar:shield-keyhole-linear"
+				},
+				{
+					"title": "Says where the picture is",
+					"description": "The remote desktop renders in ToDesk's window. The panel starts the session and never pretends to mirror it.",
+					"icon": "solar:monitor-linear"
 				}
 			]
 		},
@@ -55,44 +55,29 @@
 			"type": "steps",
 			"items": [
 				{
-					"title": "Install and sign in to ToDesk on this computer",
-					"description": "The plugin does not ship or install ToDesk; it drives the copy you already use."
+					"title": "Install ToDesk and sign in here",
+					"description": "The plugin drives the copy you already use; it does not ship or install ToDesk."
 				},
 				{
-					"title": "Make it reachable while you are away",
-					"description": "Set a security password, turn on start-with-Windows from the panel, and disable system sleep."
+					"title": "Grant ToDesk.exe once",
+					"description": "The host asks per command: allow it in Settings → Plugins → ToDesk → commands, or in the install approval."
 				},
 				{
-					"title": "Turn on ToDesk's local MCP server",
-					"description": "In ToDesk's AI / MCP settings. The panel probes 127.0.0.1:8899 and says “open” once it answers; paste the token if it asks for one."
-				},
-				{
-					"title": "Connect in whichever direction you need",
-					"description": "Inbound: device code plus password from the other side. Outbound: pick a device from the account list, or type its code in the manual field."
+					"title": "Connect with code + password",
+					"description": "Read both off the far machine. The password is the temporary one ToDesk shows there."
 				}
 			]
 		},
 		{
 			"type": "callout",
-			"tone": "info",
-			"content": "The panel shows the device code, never a password. Temporary passwords rotate and live in ToDesk's own window; security passwords stay in ToDesk's settings. Copying either into a chat transcript would be a downgrade."
-		},
-		{
-			"type": "callout",
 			"tone": "warning",
-			"content": "The account device list and the one-press connect need ToDesk's MCP channel, which ships closed. With the channel off the panel falls back to ToDesk's documented `-control` command, which only works for devices already unlocked in your device list."
+			"content": "The picture and the mouse live in ToDesk's own window. This plugin can start and end a session, not draw it."
 		},
 		{
 			"type": "links",
 			"items": [
-				{
-					"label": "ToDesk download",
-					"href": "https://www.todesk.com/download.html"
-				},
-				{
-					"label": "ToDesk command-line reference",
-					"href": "https://www.todesk.com/helpcenter/solo-213.html"
-				}
+				{ "label": "ToDesk download", "href": "https://www.todesk.com/download.html" },
+				{ "label": "Command-line reference", "href": "https://www.todesk.com/helpcenter/solo-213.html" }
 			]
 		}
 	]

@@ -159,13 +159,29 @@ export function useTodeskConsole(
 		return run.ok;
 	}
 
+	/**
+	 * Opening the client is a convenience, so a failure here is a sentence in the panel,
+	 * never a toast: the two ways it fails (host has not granted ToDesk.exe, ToDesk is not
+	 * installed at the default path) are states the user fixes from this same screen.
+	 */
 	async function openTodesk(): Promise<void> {
-		setState((prev) => ({ ...prev, busy: true }));
+		setState((prev) => ({ ...prev, busy: true, note: null }));
 		const run = await runTodesk(deps.run, [], undefined);
-		if (!run.ok) deps.notifyError(t("device.open"), new Error(run.error ?? "ToDesk.exe"));
-		// Re-read so the "not running" badge clears right after the client comes back.
 		const after = await readLocalFacts(deps).catch(() => EMPTY_LOCAL);
-		setState((prev) => ({ ...prev, busy: false, local: after }));
+
+		setState((prev) => ({
+			...prev,
+			busy: false,
+			local: after,
+			note: run.ok
+				? { kind: "info", text: t("device.open.ok") }
+				: {
+						kind: "error",
+						text: /disabled by user/i.test(run.error ?? "")
+							? t("local.commandDenied")
+							: t("device.open.failed", { error: run.error ?? "" }),
+					},
+		}));
 	}
 
 	return {
