@@ -7,6 +7,7 @@
  *
  * `null` means the read-back did not report the field at all — unknown, not failure.
  */
+
 export interface AutostartVerdict {
 	/** true = applied, false = asked for but not in effect, null = could not tell. */
 	applied: boolean | null;
@@ -15,6 +16,15 @@ export interface AutostartVerdict {
 	/** The official remedy, quoted rather than paraphrased (faq 104). */
 	remedy?: string;
 }
+
+/**
+ * The full path, spelled out for both directions.
+ *
+ * The first version of this text said "…→ 同上关闭「快速启动」" on one branch, pointing at
+ * the other branch's wording. An agent quoting a single reply has no "above", so the
+ * instruction was unusable exactly where it was returned. One constant, no cross-reference.
+ */
+const FAST_STARTUP = "控制面板 → 硬件和声音 → 电源选项 → 选择电源按钮的功能 → 更改当前不可用的设置 → 取消勾选「启用快速启动」，重启后复查";
 
 export function judgeAutostart(requested: boolean, observed: boolean | null): AutostartVerdict {
 	if (observed === null) return { applied: null, hint: "the client did not report the startup flag, so this is unverified" };
@@ -25,9 +35,8 @@ export function judgeAutostart(requested: boolean, observed: boolean | null): Au
 		hint: requested
 			? "the client still reports start-with-Windows off after the request"
 			: "the client still reports start-with-Windows on after the request",
-		remedy:
-			requested === false
-				? "控制面板 → 硬件和声音 → 电源选项 → 选择电源按钮的功能 → 更改当前不可用的设置 → 取消勾选「启用快速启动」，重启后复查"
-				: "控制面板 → 电源选项 → 同上关闭「快速启动」，重启后复查；仍不生效则检查任务计划程序里是否有被禁用的 ToDesk 项",
+		remedy: requested
+			? `${FAST_STARTUP}；仍不生效则检查任务计划程序里是否有被禁用的 ToDesk 项`
+			: `${FAST_STARTUP}；仍不生效则检查是否由托管策略或其它启动项拉起 ToDesk`,
 	};
 }

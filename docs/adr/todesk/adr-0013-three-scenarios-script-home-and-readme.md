@@ -8,13 +8,13 @@
 
 | 场景 | 官方依据 | 实现 | 为什么算"能做" |
 | --- | --- | --- | --- |
-| 残留会话占通道 | faq 90：出门忘断开，回来提示"通道限制" | `assessReadiness` 新增 `stale-session` warn，列出仍被客户端标记 `IsConnected` 的设备名与数量，修法 `-exit` 或 个人中心断开 | `devlist_*.json` 的 `IsConnected` 可读；本机 Mac 行至今是 `1` 而最后连接为 11-17，正是现场证据 |
+| 残留会话占通道 | faq 90：出门忘断开，回来提示"通道限制" | `assessReadiness` 新增 `stale-session` warn：**标记为已连接且最后连接早于 12 小时**（`now` / `staleAfterMs` 可注入）才算残留；列出设备名与最后连接时间，修法 `-exit` 或 个人中心断开。近期连接的会话不报——0.4.16 补上这半条判据 | `devlist_*.json` 的 `IsConnected` 可读；本机 Mac 行至今是 `1` 而最后连接为 11-17，正是现场证据 |
 | 自启设了没生效 | faq 104：Windows「快速启动」会沿用旧启动状态 | 新增 `judgeAutostart(requested, observed)`：`applied: true/false/null`，不一致时给官方 `remedy`；`-autostart` 工具返回 `applied` | `-status` 本来就回读 `Start ToDesk with Windows`，缺的只是判定 |
 | 上次会话怎么显示的 | faq 26 / 34 / 46：双屏切换、分辨率、画质 | `SavedDevice.profile`（`screen / screenMode / resolution / quality / fps / hd`），`todesk_devices` 与 `describeDevice` 输出 `last_session` | `devlist` 已存 `ScreenId / ScreenMode / Width / Height / Quality / Fps / HD` |
 
 三条都遵守同一原则：**读得到就说，读不到就说不知道**。
 
-- 残留会话是客户端写下的快照，不是实时状态 → 文案写"client still marks…"，并附"如果那不是你正在用的会话"。
+- 残留会话是客户端写下的快照，不是实时状态 → 判据叠加"最后连接早于阈值"，文案带上最后连接时间；两者都拿不到时按残留处理并注明"时间未知"。
 - 自启字段没被报告时是 `applied: null`（未验证），不是失败。
 - `Width/Height = -1` 是客户端的"未选择"标记 → 不翻译成尺寸（有测试）。
 
@@ -45,7 +45,7 @@ README 改成标准 README：是什么、怎么装、装完要过的命令授权
 | 项 | 结果 |
 | --- | --- |
 | `tsc --noEmit` | 0 |
-| `vitest run` | **94 通过 / 10 文件**（新增 `autostart` 4 项、`stale-session` 2 项、`last_session` 3 项） |
+| `vitest run` | **96 通过 / 10 文件**（新增 `autostart` 4 项、`stale-session` 4 项、`last_session` 3 项） |
 | `node scripts/preflight.mjs`（插件内） | 退出码 0，列出 11 个工具 |
 | `node scripts/marketplace.mjs check` | 通过 |
 | `node --test tests/*.test.mjs` | 166 通过 / 0 失败 |

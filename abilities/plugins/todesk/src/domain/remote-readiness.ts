@@ -31,12 +31,19 @@ export interface ReadinessInput {
 	posture: ClientPosture | null;
 	/** null = the store could not be read, which is not the same as "none saved". */
 	devices: SavedDevice[] | null;
+	/** Reference time for the stale-session check; injected so the rule is testable. */
+	now?: Date;
+	/** How long a "connected" row may stay true before it counts as leftover. Default 12 h. */
+	staleAfterMs?: number;
 }
 
 export interface ReadinessReport {
 	verdict: ReadinessVerdict;
 	items: ReadinessItem[];
 }
+
+/** A session marked connected for longer than this is a leftover, not a live session. */
+export const STALE_SESSION_MS = 12 * 60 * 60 * 1000;
 
 export function assessReadiness(input: ReadinessInput): ReadinessReport {
 	const items: ReadinessItem[] = [];
@@ -120,15 +127,27 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 	}
 
 	// faq 90: a session left open at home occupies a channel and the next connect fails.
-	// The client's own row is the only trace of it, and it is a snapshot — say so.
-	const stillConnected = (input.devices ?? []).filter((device) => device.isConnected);
-	if (stillConnected.length > 0) {
+	// The client's row is the only trace, and `IsConnected` alone cannot tell a live session
+	// from a leftover one — the flag is a snapshot that never flips back by itself. The age
+	// of the last connect is the discriminator: recent means the user is probably on that
+	// machine right now, which is not a problem to report.
+	const now = (input.now ?? new Date()).getTime();
+	const staleAfter = input.staleAfterMs ?? STALE_SESSION_MS;
+	const leftover = (input.devices ?? []).filter(
+		(device) => device.isConnected && (device.lastConnectedAt === null || now - device.lastConnectedAt > staleAfter),
+	);
+	if (leftover.length > 0) {
+		const described = leftover
+			.map((device) =>
+				device.lastConnectedAt
+					? `${device.name} (last ${new Date(device.lastConnectedAt).toISOString().slice(0, 16).replace("T", " ")})`
+					: `${device.name} (no recorded connect time)`,
+			)
+			.join(", ");
 		items.push({
 			code: "stale-session",
 			state: "warn",
-			detail: `${stillConnected.length} saved device(s) are still marked as connected by the client (${stillConnected
-				.map((device) => device.name)
-				.join(", ")}). If that session was not closed, it keeps occupying a channel.`,
+			detail: `The client still marks ${leftover.length} device(s) as connected with no connect since: ${described}. A session left open keeps occupying a channel.`,
 			fix: ACCESS_FIX.staleSession,
 		});
 	}

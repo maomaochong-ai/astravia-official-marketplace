@@ -65,17 +65,43 @@ describe("assessReadiness", () => {
 		expect(report.items[0].fix).toBe("ToDesk.exe -autostart on");
 	});
 
-	it("warns about a session the client still marks as connected, and names the device", () => {
+	it("warns about a leftover session, and names the device and when it last connected", () => {
 		const report = assessReadiness({
 			...base,
 			posture: healthy,
+			// 2023-11-14, i.e. far older than the 12 h threshold.
 			devices: [{ ...device, isConnected: true }],
+			now: new Date(2026, 10, 18),
 		});
 		expect(report.verdict).toBe("degraded");
 		const item = report.items.find((entry) => entry.code === "stale-session");
 		expect(item?.state).toBe("warn");
 		expect(item?.detail).toContain("Office PC");
+		expect(item?.detail).toContain("2023-11-14");
 		expect(item?.fix).toContain("-exit");
+	});
+
+	it("does not report a session that is probably live right now", () => {
+		const now = new Date(2026, 10, 18, 12, 0, 0);
+		const report = assessReadiness({
+			...base,
+			posture: healthy,
+			devices: [{ ...device, isConnected: true, lastConnectedAt: now.getTime() - 60_000 }],
+			now,
+		});
+		expect(report.verdict).toBe("ready");
+		expect(report.items.map((item) => item.code)).not.toContain("stale-session");
+	});
+
+	it("treats a connected row with no connect time as a leftover, and says the time is unknown", () => {
+		const report = assessReadiness({
+			...base,
+			posture: healthy,
+			devices: [{ ...device, isConnected: true, lastConnectedAt: null }],
+			now: new Date(2026, 10, 18),
+		});
+		const item = report.items.find((entry) => entry.code === "stale-session");
+		expect(item?.detail).toContain("no recorded connect time");
 	});
 
 	it("stays quiet about sessions when none is marked connected", () => {
