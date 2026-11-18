@@ -766,5 +766,8 @@
   "selfcheck.item.host.storage": "插件存储",
   "selfcheck.item.host.chat": "对话桥接",
   "selfcheck.item.host.lab": "实验环境",
-  "action.workbench": "寒霜破甲"
+  "action.workbench": "寒霜破甲",
+  "prompt.template.button": "系统契约模板",
+  "prompt.template.hint": "把 agent/prompts/SYSTEM.md 原文一键加入提示词库（prepend 注入）",
+  "prompt.template.present": "系统契约已在提示词库中"
 }
