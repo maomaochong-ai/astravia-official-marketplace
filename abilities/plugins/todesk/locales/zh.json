@@ -114,5 +114,6 @@
   "diag.tools.readiness.name": "就绪体检",
   "diag.tools.readiness": "这台机器是否连得进来，以及依赖它之前要修什么。",
   "readiness.item.posture-unknown": "读不到客户端设置，访问开关是未知的——这一条只覆盖进程与设备列表。",
-  "devices.unavailable": "读不到客户端保存的设备——打开一次 ToDesk，然后复查。"
+  "devices.unavailable": "读不到客户端保存的设备——打开一次 ToDesk，然后复查。",
+  "readiness.item.stale-session": "有已存设备仍标记为「已连接」——没关掉的会话会一直占着通道。"
 }
