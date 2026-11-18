@@ -23,6 +23,8 @@ export interface SavedDevice {
 	hasSavedCredential: boolean;
 	/** A stored login password for the far side's lock screen. */
 	hasLoginPassword: boolean;
+	/** Pinned in the client's own device list — the user already said "this one matters". */
+	isPinned: boolean;
 }
 
 interface RawDevice {
@@ -32,6 +34,7 @@ interface RawDevice {
 	IsConnected?: unknown;
 	PassEx?: unknown;
 	HostLogonPass?: unknown;
+	IsPinned?: unknown;
 }
 
 const DEVICE_ID = /^\d{5,12}$/;
@@ -63,6 +66,7 @@ export function parseDeviceList(text: string): SavedDevice[] {
 			isConnected: String(raw?.IsConnected ?? "0") === "1",
 			hasSavedCredential: String(raw?.PassEx ?? "").trim().length > 0,
 			hasLoginPassword: String(raw?.HostLogonPass ?? "").trim().length > 0,
+			isPinned: String(raw?.IsPinned ?? "0") === "1",
 		});
 	}
 	return devices;
@@ -87,10 +91,14 @@ export function mergeDeviceLists(lists: SavedDevice[][]): SavedDevice[] {
 				isConnected: seen.isConnected || device.isConnected,
 				hasSavedCredential: seen.hasSavedCredential || device.hasSavedCredential,
 				hasLoginPassword: seen.hasLoginPassword || device.hasLoginPassword,
+				isPinned: seen.isPinned || device.isPinned,
 			});
 		}
 	}
-	return [...byId.values()].sort((a, b) => (b.lastConnectedAt ?? 0) - (a.lastConnectedAt ?? 0));
+	// Pinned first, then most recently used: the user's own ordering, then ours.
+	return [...byId.values()].sort(
+		(a, b) => Number(b.isPinned) - Number(a.isPinned) || (b.lastConnectedAt ?? 0) - (a.lastConnectedAt ?? 0),
+	);
 }
 
 export type DeviceMatch =
@@ -131,5 +139,6 @@ export function describeDevice(device: SavedDevice): Record<string, unknown> {
 		connected: device.isConnected,
 		saved_credential: device.hasSavedCredential,
 		login_password_saved: device.hasLoginPassword,
+		pinned: device.isPinned,
 	};
 }

@@ -19,6 +19,7 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { postureFindings } from "../domain/client-posture";
 import { describeDevice, matchDevice } from "../domain/device-store";
+import { assessReadiness } from "../domain/remote-readiness";
 import {
 	AUTOSTART_OFF_ARGS,
 	AUTOSTART_ON_ARGS,
@@ -39,6 +40,7 @@ const ALLOW_COMMANDS_KEY = "allowCommands";
 const TOOLS_KEY = "tools";
 
 export const TOOL_STATUS = "todesk_status";
+export const TOOL_READINESS = "todesk_readiness";
 export const TOOL_DEVICES = "todesk_devices";
 export const TOOL_CONNECT = "todesk_connect";
 export const TOOL_USAGE = "todesk_usage";
@@ -50,6 +52,7 @@ export const TOOL_TRAY = "todesk_tray";
 export const TOOL_DISCONNECT = "todesk_disconnect";
 
 export interface ToolBridge {
+	/* `readTextFile` + `listDirectory` are what readLocalStore needs. */
 	run(file: string, args: string[], env?: Record<string, string>): Promise<RunResult>;
 	readSettings(): Promise<Record<string, unknown> | null>;
 	readTextFile(path: string): Promise<string>;
@@ -96,6 +99,7 @@ async function readStatus(bridge: ToolBridge): Promise<Record<string, unknown>> 
 
 type ToolKey =
 	| "status"
+	| "readiness"
 	| "devices"
 	| "connect"
 	| "usage"
@@ -107,7 +111,7 @@ type ToolKey =
 	| "disconnect";
 
 /** Tools that only read files: they work even when the host refused `ToDesk.exe`. */
-const FILE_ONLY = new Set<ToolKey>(["status", "devices", "usage", "posture"]);
+const FILE_ONLY = new Set<ToolKey>(["status", "readiness", "devices", "usage", "posture"]);
 
 /**
  * Consent is per capability: the panel writes { tools: { connect: false, … } }, and an
@@ -143,6 +147,30 @@ function hostFailure(run: { error?: string | null }, args: string[]): string {
 		reason: "ToDesk's command line could not be started",
 		host_error: run.error ?? null,
 	});
+}
+
+/**
+ * Did the session actually come up? ToDesk has no session API, so the only evidence is
+ * the client's own device row moving: a newer RecentConnectTime, or IsConnected turning
+ * true. Bounded (<=3 x 400 ms) and honest when it cannot tell (ADR 0011 §3.4).
+ */
+async function verifyConnection(
+	bridge: ToolBridge,
+	deviceId: string,
+	before: { lastConnectedAt: number | null; isConnected: boolean } | null,
+): Promise<"true" | "false" | "unknown"> {
+	if (!before) return "unknown";
+
+	for (let attempt = 0; attempt < 3; attempt += 1) {
+		await new Promise((resolve) => setTimeout(resolve, 400));
+		const store = await readLocalStore({ readTextFile: bridge.readTextFile, listDirectory: bridge.listDirectory });
+		if (store.error) return "unknown";
+		const row = store.devices.find((device) => device.deviceId === deviceId);
+		if (!row) return "unknown";
+		const advanced = (row.lastConnectedAt ?? 0) > (before.lastConnectedAt ?? 0);
+		if (advanced || (row.isConnected && !before.isConnected)) return "true";
+	}
+	return "false";
 }
 
 export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Disposable {
@@ -287,14 +315,30 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 			const args = buildControlArgs(deviceId, password);
 			if (!args) return JSON.stringify({ ok: false, reason: "device codes are 9 digits" });
 
+			// Snapshot the device row first: "connected" later has to be a change, not a state.
+			const baseline = await readLocalStore({
+				readTextFile: bridge.readTextFile,
+				listDirectory: bridge.listDirectory,
+			}).catch(() => null);
+			const before = baseline?.devices.find((device) => device.deviceId === deviceId) ?? null;
+
 			const run = await runTodesk(bridge.run, args, undefined);
 			if (!run.ok) return hostFailure(run, args);
+
+			const established = await verifyConnection(bridge, deviceId, before);
 
 			return JSON.stringify({
 				ok: true,
 				command: `ToDesk.exe ${args.join(" ")}`,
 				device_id: deviceId,
 				device_name: deviceName,
+				established,
+				established_note:
+					established === "true"
+						? "the client's device row advanced, so the session came up"
+						: established === "false"
+							? "the command was accepted but the device row has not advanced yet — it may still be negotiating"
+							: "no local device row to compare against, so the plugin cannot tell whether the session came up",
 				password_used: password.length > 0,
 				note:
 					password.length > 0
@@ -302,6 +346,44 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 						: savedCredential
 							? "the client is using the credential it already saved for this device"
 							: "the ToDesk client should be opening the session; it asks for the password itself when the far side requires one",
+			});
+		},
+	});
+	const readiness = ctx.agent.registerTool({
+		id: TOOL_READINESS,
+		label: "ToDesk readiness",
+		description:
+			"One call that answers 'can I leave this computer, and can someone reach it?': it combines identity, the access posture, start-with-Windows and the saved device list into a verdict (ready | degraded | blocked) plus one item per gap with a concrete fix. Use it before travelling, before leaving a machine unattended, or when the far side says it cannot connect. It reports flags only, never a password. Do NOT use it to change a setting — it hands back the command the user can run.",
+		scope_use: SCOPE,
+		parameters: { type: "object", properties: {}, additionalProperties: false },
+		handler: async () => {
+			if (!(await capabilityAllowed(bridge, "readiness"))) return DISABLED;
+
+			const status = await readStatus(bridge);
+			if (status.ok === false) return JSON.stringify(status);
+
+			const store = await readLocalStore({
+				readTextFile: bridge.readTextFile,
+				listDirectory: bridge.listDirectory,
+			});
+			const report = assessReadiness({
+				deviceId: typeof status.device_id === "string" ? status.device_id : null,
+				clientRunning: status.client_running === true,
+				autostart: typeof status.autostart === "boolean" ? status.autostart : null,
+				posture: store.posture,
+				devices: store.error ? null : store.devices,
+			});
+
+			return JSON.stringify({
+				ok: true,
+				verdict: report.verdict,
+				device_id: status.device_id ?? null,
+				client_running: status.client_running === true,
+				items: report.items,
+				note:
+					report.verdict === "ready"
+						? "reachable from outside and ready to connect out"
+						: "fix the warn/bad items before relying on this machine unattended",
 			});
 		},
 	});
@@ -461,6 +543,7 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 	return {
 		dispose: () => {
 			status.dispose();
+			readiness.dispose();
 			devices.dispose();
 			connect.dispose();
 			usage.dispose();

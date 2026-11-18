@@ -10,7 +10,11 @@ import { runTodesk } from "../../../domain/todesk-launch";
 import type { ConsoleDeps, LocalFacts } from "../../../runtime-contract";
 import { EMPTY_LOCAL } from "../../../runtime-contract";
 import type { ToolKey } from "../components/diagnostics-panel";
+import type { ClientPosture } from "../../../domain/client-posture";
+import type { SavedDevice } from "../../../domain/device-store";
+import { assessReadiness, type ReadinessReport } from "../../../domain/remote-readiness";
 import { readLocalFacts } from "../services/local-facts";
+import { readLocalStore } from "../services/local-store";
 
 export const ALLOW_COMMANDS_KEY = "allowCommands";
 export const TOOLS_KEY = "tools";
@@ -20,6 +24,7 @@ export type Note = { kind: "ok" | "info" | "error"; text: string } | null;
 export type ToolFlags = Record<ToolKey, boolean>;
 export const ALL_TOOLS_ON: ToolFlags = {
 	status: true,
+	readiness: true,
 	devices: true,
 	connect: true,
 	usage: true,
@@ -50,6 +55,14 @@ export interface ConsoleState {
 	note: Note;
 	session: Session | null;
 	lastCommand: string | null;
+	/** What the client remembers, so a machine can be picked by name (ADR 0011 §3.3). */
+	devices: SavedDevice[];
+	/** false when the client's store could not be read — the list is unknown, not empty. */
+	devicesKnown: boolean;
+	posture: ClientPosture | null;
+	readiness: ReadinessReport | null;
+	/** Set when a saved device still needs the far side's temporary password. */
+	pendingDeviceId: string | null;
 }
 
 function readTools(settings: Record<string, unknown>, granted: boolean): ToolFlags {
@@ -58,6 +71,7 @@ function readTools(settings: Record<string, unknown>, granted: boolean): ToolFla
 		const record = stored as Record<string, unknown>;
 		return {
 			status: record.status !== false,
+			readiness: record.readiness !== false,
 			devices: record.devices !== false,
 			connect: record.connect !== false,
 			usage: record.usage !== false,
@@ -90,16 +104,36 @@ export function useTodeskConsole(
 		note: null,
 		session: null,
 		lastCommand: null,
+		devices: [],
+		devicesKnown: false,
+		posture: null,
+		readiness: null,
+		pendingDeviceId: null,
 	});
 
 	async function refresh(): Promise<void> {
 		const settings = (await deps.readSettings().catch(() => null)) ?? {};
 		const local = await readLocalFacts(deps).catch(() => EMPTY_LOCAL);
+		// The store is a bonus, never a requirement: without it the panel still works.
+		const store = await readLocalStore(deps).catch(() => null);
+		const devices = store && !store.error ? store.devices : null;
+		const posture = store?.posture ?? null;
+		const readiness = assessReadiness({
+			deviceId: local.deviceId,
+			clientRunning: local.running,
+			autostart: local.autostart,
+			posture,
+			devices,
+		});
 
 		setState((prev) => ({
 			...prev,
 			phase: "ready",
 			local,
+			devices: devices ?? [],
+			devicesKnown: devices !== null,
+			posture,
+			readiness,
 			tools: readTools(settings, local.source === "cli"),
 			busy: false,
 			// A session whose client is gone is over — say so instead of a stale success.
@@ -131,6 +165,19 @@ export function useTodeskConsole(
 		await refresh();
 	}
 
+	/** Pick a saved device: connect directly when it carries a credential, else prefill. */
+	async function pickDevice(device: SavedDevice): Promise<void> {
+		if (device.hasSavedCredential) {
+			await connect(device.deviceId, "");
+			return;
+		}
+		setState((prev) => ({
+			...prev,
+			pendingDeviceId: device.deviceId,
+			note: { kind: "info", text: t("devices.needPassword", { name: device.name }) },
+		}));
+	}
+
 	async function connect(deviceId: string, password: string): Promise<boolean> {
 		const args = buildControlArgs(deviceId, password);
 		if (!args) {
@@ -146,6 +193,7 @@ export function useTodeskConsole(
 			...prev,
 			busy: false,
 			session: run.ok ? { target: id, state: "started", at: Date.now() } : prev.session,
+			pendingDeviceId: null,
 			note: run.ok
 				? { kind: "ok", text: password ? t("connect.sent.withPassword", { id: id }) : t("connect.sent", { id: id }) }
 				: { kind: "error", text: `${t("connect.failed")}：${run.error ?? ""}`.trim() },
@@ -203,6 +251,7 @@ export function useTodeskConsole(
 	return {
 		state,
 		refresh,
+		pickDevice: (device: SavedDevice) => void pickDevice(device),
 		setTool,
 		connect,
 		disconnect,

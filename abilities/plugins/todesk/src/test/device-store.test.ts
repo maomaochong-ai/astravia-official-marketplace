@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { describeDevice, matchDevice, mergeDeviceLists, parseDeviceList } from "../domain/device-store";
 
-const A = { UserId: "111222333", UserName: "Office PC", RecentConnectTime: "1700000000000", IsConnected: "1", PassEx: "aabbccddeeff00112233", HostLogonPass: "secret" };
+const A = { UserId: "111222333", UserName: "Office PC", RecentConnectTime: "1700000000000", IsConnected: "1", PassEx: "aabbccddeeff00112233", HostLogonPass: "secret", IsPinned: "1" };
 const B = { UserId: "444555666", UserName: "Laptop", RecentConnectTime: "1600000000000", IsConnected: "0", PassEx: "", HostLogonPass: "" };
 
 const store = (devices: unknown[]): string => `\uFEFF${JSON.stringify({ DeviceInfo: devices })}`;
@@ -16,6 +16,7 @@ describe("parseDeviceList", () => {
 			isConnected: true,
 			hasSavedCredential: true,
 			hasLoginPassword: true,
+			isPinned: true,
 		});
 	});
 
@@ -38,6 +39,13 @@ describe("parseDeviceList", () => {
 });
 
 describe("mergeDeviceLists", () => {
+	it("sorts the client's pins above recency, which is the order the user already chose", () => {
+		const unpinnedNewer = parseDeviceList(store([{ ...A, IsPinned: "0", RecentConnectTime: "1900000000000" }]));
+		const pinnedOlder = parseDeviceList(store([{ ...B, IsPinned: "1", RecentConnectTime: "1500000000000" }]));
+		const merged = mergeDeviceLists([unpinnedNewer, pinnedOlder]);
+		expect(merged.map((d) => d.deviceId)).toEqual(["444555666", "111222333"]);
+	});
+
 	it("keeps one row per device, newest connect wins, flags are unioned", () => {
 		const older = parseDeviceList(store([{ ...A, PassEx: "" }]));
 		const newer = parseDeviceList(store([{ ...A, RecentConnectTime: "1800000000000" }, B]));

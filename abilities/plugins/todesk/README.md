@@ -16,6 +16,7 @@
 | 连到陌生设备（设备码 + 对方临时密码） | 面板 + `todesk_connect { device_id, password }` | `ToDesk.exe -control -id <code> -passwd <pwd>` |
 | 谁用得最多 / 今天连了几次 | 面板 + `todesk_usage` | `recentusage_*.json` 按天计数 |
 | 这台能不能被别人连、要不要加固 | 面板 + `todesk_posture` | `config.ini` 开关位（密码只报「有没有设」，不返回值） |
+| 出门前一句话自检（能不能被连 / 连得出去） | 面板「就绪体检」+ `todesk_readiness` | 合成 verdict + 逐条 `fix`（命令或界面路径） |
 | 当前登录的是哪个账号 | 面板 + `todesk_account` | `ToDesk.exe -user` |
 | 开机自动启动开/关 | 面板 + `todesk_autostart` | `ToDesk.exe -autostart on/off` |
 | 调出 / 收进托盘 | 面板 + `todesk_open_client` / `todesk_tray` | `ToDesk.exe` / `-tray` |
@@ -36,8 +37,9 @@
 
 | 层 | 对话里 | 靠什么 |
 | --- | --- | --- |
-| 会话生命周期：读码、按名字发起连接、断开、开关自启、调出/收起窗口 | ✅ | 10 个 `todesk_*` 工具（官方 CLI + 客户端本地状态） |
-| 设备清单、使用计数、访问姿态（密码是否已设、二次验证、陌生设备锁） | ✅ | `devlist_*.json` / `recentusage_*.json` / `config.ini`；**只报有无，不返回值** |
+| 会话生命周期：读码、按名字发起连接、断开、开关自启、调出/收起窗口 | ✅ | 11 个 `todesk_*` 工具（官方 CLI + 客户端本地状态） |
+| 设备清单（置顶优先）、使用计数、访问姿态、就绪结论 | ✅ | `devlist_*.json` / `recentusage_*.json` / `config.ini`；**只报有无，不返回值** |
+| 「连上了没有」 | ⚠️ 旁证 | `established` 读客户端设备行是否推进；读不到就答 `unknown`，不冒充成功 |
 | 会话内的**画面** | ❌ | ToDesk 没有截图 CLI；带截图的接口只在它的 MCP 里 |
 | 会话内的**输入**（点击/键盘） | ❌ | 同上，`todesk_gui_*` 只存在于那条通道 |
 
@@ -130,7 +132,7 @@ env:  { PATH: "C:\\Program Files\\ToDesk;<原 PATH>" }
 | 权限 | 用途 |
 | --- | --- |
 | `ui.slot.workspace-view` / `ui.slot.activity-tab` | 侧边栏页 + 对话侧栏标签页 |
-| `agent.tools.register` / `agent.toolHandler.execute` | 十个 `todesk_*` 工具 |
+| `agent.tools.register` / `agent.toolHandler.execute` | 十一个 `todesk_*` 工具 |
 | `agent.command.run`（`commands: ["ToDesk.exe"]`） | `-status` / `-control` / `-autostart` |
 | `storage.read/write` | 记住 Agent 许可与最近一次探测结果 |
 | `fs.read` | CLI 不可用时读 `config.ini` 取设备码 |

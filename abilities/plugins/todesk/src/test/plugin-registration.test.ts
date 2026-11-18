@@ -98,7 +98,7 @@ describe("plugin registration", () => {
 		expect(opened).toEqual([TAB_ID]);
 	});
 
-	it("registers ten tools and no MCP-dependent one", () => {
+	it("registers eleven tools and no MCP-dependent one", () => {
 		const { ctx, deps, registered } = fakeCtx();
 		registerTodeskPlugin(ctx as never, deps, AnyComponent);
 		expect(registered.map((tool) => tool.id).sort()).toEqual([
@@ -109,6 +109,7 @@ describe("plugin registration", () => {
 			"todesk_disconnect",
 			"todesk_open_client",
 			"todesk_posture",
+			"todesk_readiness",
 			"todesk_status",
 			"todesk_tray",
 			"todesk_usage",

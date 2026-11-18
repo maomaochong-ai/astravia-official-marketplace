@@ -92,6 +92,8 @@ export interface PostureFinding {
 	severity: "info" | "warn";
 	/** Plain English: the agent repeats this, the panel translates it. */
 	message: string;
+	/** A command when one exists, an exact UI path otherwise (ADR 0011 §3.2). Omitted when nothing is wrong. */
+	fix?: string;
 }
 
 /**
@@ -107,6 +109,7 @@ export function postureFindings(posture: ClientPosture): PostureFinding[] {
 			severity: "warn",
 			message:
 				"No unattended password is set, so this computer can only be reached while its ToDesk window is open and handing out a one-time password.",
+			fix: "ToDesk.exe -setpasswd <new password>, or 设置 → 安全 → 安全密码",
 		});
 	}
 	if (posture.tempPasswordEnabled === false) {
@@ -114,6 +117,7 @@ export function postureFindings(posture: ClientPosture): PostureFinding[] {
 			code: "temp-password-off",
 			severity: "warn",
 			message: "The one-time password is off — a device that has no saved password cannot connect.",
+			fix: "设置 → 安全 → 临时密码 → 打开",
 		});
 	}
 	if (posture.twoFactorForConnect === false) {
@@ -121,6 +125,7 @@ export function postureFindings(posture: ClientPosture): PostureFinding[] {
 			code: "no-2fa",
 			severity: "info",
 			message: "Two-factor authentication for incoming connections is off.",
+			fix: "设置 → 安全 → 二次验证",
 		});
 	}
 	if (posture.strangerConnectionLock === false) {
@@ -129,6 +134,7 @@ export function postureFindings(posture: ClientPosture): PostureFinding[] {
 			severity: "warn",
 			message:
 				"Strange-device connections are allowed: any code plus a valid password is accepted, not only saved devices.",
+			fix: "设置 → 安全 → 仅允许受信任设备",
 		});
 	}
 	if (posture.autostart === false) {
@@ -136,6 +142,7 @@ export function postureFindings(posture: ClientPosture): PostureFinding[] {
 			code: "no-autostart",
 			severity: "info",
 			message: "ToDesk does not start with Windows, so this machine is unreachable after a reboot until someone opens it.",
+			fix: "ToDesk.exe -autostart on",
 		});
 	}
 	if (findings.length === 0) {

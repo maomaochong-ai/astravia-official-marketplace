@@ -293,6 +293,25 @@ html[data-mode="dark"] .td-root {
 	color: var(--td-text);
 }
 
+
+/* A quiet inline marker ("pinned", "credential saved"). Same rule token as the panel
+   border so a row of them never competes with the primary button. */
+.td-root .td-tag {
+	flex: none;
+	border: 1px solid var(--td-rule);
+	border-radius: 999px;
+	padding: 0 6px;
+	font-size: 10px;
+	line-height: 16px;
+	color: var(--td-dim);
+	white-space: nowrap;
+}
+
+/* Readiness list: the dot is the only colour, the sentence stays at body size. */
+.td-root .td-dot {
+	flex: none;
+}
+
 /* One row: code | password | connect. On narrow panels the row wraps only at the
    button, never between the two inputs. */
 @media (max-width: 520px) {

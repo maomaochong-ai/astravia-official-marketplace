@@ -14,16 +14,31 @@ PID:7332   C:\\Program Files\\ToDesk\\ToDesk.exe`;
 
 const CODE = "123456789";
 
-function harness(options: { settings?: Record<string, unknown>; failRun?: boolean } = {}) {
-	const { settings = {}, failRun = false } = options;
+const STORE_DEVICES = [
+	{ UserId: "123456789", UserName: "Office PC", RecentConnectTime: "1700000000000", IsConnected: "1", PassEx: "aa", IsPinned: "1" },
+	{ UserId: "987654321", UserName: "Laptop", RecentConnectTime: "1600000000000", IsConnected: "0", PassEx: "" },
+];
+
+function harness(
+	options: { settings?: Record<string, unknown>; failRun?: boolean; withStore?: boolean } = {},
+) {
+	const { settings = {}, failRun = false, withStore = false } = options;
 	const runs: { file: string; args: string[]; env?: Record<string, string> }[] = [];
 	let settingsValue: Record<string, unknown> = settings;
 
 	const deps: ConsoleDeps = {
-		readTextFile: async () => {
+		readTextFile: async (path) => {
+			if (withStore && path.endsWith("devlist_1.json")) return JSON.stringify({ DeviceInfo: STORE_DEVICES });
 			throw new Error("ENOENT");
 		},
-		listDirectory: async () => [],
+		listDirectory: async (path) => {
+			if (!withStore) return [];
+			if (path.endsWith("\\Users")) return [{ name: "me", path: "C:\\Users\\me", isDirectory: true }];
+			if (path.endsWith("\\ToDesk")) {
+				return [{ name: "devlist_1.json", path: "C:\\Users\\me\\AppData\\Local\\ToDesk\\devlist_1.json" }];
+			}
+			return [];
+		},
 		readSettings: async () => settingsValue,
 		writeSettings: async (value) => {
 			settingsValue = value;
@@ -47,6 +62,44 @@ const t = (key: string, params?: Record<string, string | number>) =>
 
 describe("ToDesk console view", () => {
 
+
+	it("lists the client's saved devices, pinned first, and connects the one with a credential", async () => {
+		const { deps, runs } = harness({ withStore: true });
+		render(<TodeskConsoleView deps={deps} t={t} canRun />);
+
+		await screen.findByText("Office PC");
+		expect(screen.getByText("Laptop")).toBeTruthy();
+		expect(screen.getByText("devices.pinned")).toBeTruthy();
+
+		// The first row carries a saved credential: one click is a connect with no password.
+		await userEvent.click(screen.getAllByRole("button", { name: "devices.connect" })[0]);
+		await waitFor(() => expect(runs.some((run) => run.args[0] === "-control")).toBe(true));
+		const control = runs.find((run) => run.args[0] === "-control");
+		expect(control?.args).toEqual(["-control", "-id", "123456789"]);
+	});
+
+	it("hands a saved device without a credential to the manual row", async () => {
+		const { deps, runs } = harness({ withStore: true });
+		render(<TodeskConsoleView deps={deps} t={t} canRun />);
+
+		await screen.findByText("Laptop");
+		await userEvent.click(screen.getByRole("button", { name: "devices.fill" }));
+
+		const field = screen.getByLabelText("connect.deviceId") as HTMLInputElement;
+		await waitFor(() => expect(field.value).toBe("987654321"));
+		expect(runs.some((run) => run.args[0] === "-control")).toBe(false);
+	});
+
+	it("shows the readiness verdict and its items", async () => {
+		const { deps } = harness({ withStore: true });
+		render(<TodeskConsoleView deps={deps} t={t} canRun />);
+
+		await screen.findByText("readiness.title");
+		// The harness has no readable config.ini, so the panel must say "unknown",
+		// not paint a green verdict over flags it never saw.
+		expect(screen.getByText("readiness.verdict.degraded")).toBeTruthy();
+		expect(screen.getByText("readiness.item.posture-unknown")).toBeTruthy();
+	});
 
 	it("keeps every visible control usable by default", async () => {
 		const { deps } = harness();

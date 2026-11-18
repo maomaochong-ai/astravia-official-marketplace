@@ -16,6 +16,7 @@ import { join } from "node:path";
 
 const TOOL_IDS = [
 	"todesk_status",
+	"todesk_readiness",
 	"todesk_devices",
 	"todesk_connect",
 	"todesk_usage",

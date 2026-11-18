@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { normalizeDeviceId } from "../../../domain/todesk-cli";
 import type { Note, Session } from "../hooks/use-todesk-console";
 
@@ -17,6 +17,7 @@ export function ConnectCard({
 	session,
 	localDeviceId,
 	screenHint,
+	prefillDeviceId,
 	onConnect,
 	onDisconnect,
 	onRefreshLocal,
@@ -28,6 +29,8 @@ export function ConnectCard({
 	session: Session | null;
 	localDeviceId: string | null;
 	screenHint: string;
+	/** Set when a saved device without a credential was picked above. */
+	prefillDeviceId?: string | null;
 	onConnect: (deviceId: string, password: string) => Promise<boolean>;
 	onDisconnect: () => Promise<boolean>;
 	onRefreshLocal: () => void;
@@ -37,6 +40,11 @@ export function ConnectCard({
 	const [deviceId, setDeviceId] = useState("");
 	const [password, setPassword] = useState("");
 	const [showPassword, setShowPassword] = useState(false);
+
+	// Picking a saved device fills the code and jumps to the only field left to type.
+	useEffect(() => {
+		if (prefillDeviceId) setDeviceId(prefillDeviceId);
+	}, [prefillDeviceId]);
 
 	const normalized = normalizeDeviceId(deviceId);
 	const digits = deviceId.replace(/\s+/g, "").length;

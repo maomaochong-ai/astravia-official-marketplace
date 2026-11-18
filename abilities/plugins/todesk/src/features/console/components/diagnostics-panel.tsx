@@ -4,6 +4,7 @@ import type { LocalFacts } from "../../../runtime-contract";
 /** One switch per agent capability; the host grant still gates all of them. */
 export const TOOL_KEYS = [
 	"status",
+	"readiness",
 	"devices",
 	"connect",
 	"usage",

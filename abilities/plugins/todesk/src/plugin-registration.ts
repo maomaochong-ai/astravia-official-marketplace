@@ -17,7 +17,7 @@ export const INPUT_ACTION_ID = "console";
  *  - **input action** — a ToDesk button at the composer, which opens that tab. This is
  *    the composer-side entry: the composer's own “+” lists *bottom panels*, so a plugin
  *    that wants a composer button must register one of these;
- *  - **ten agent tools** — the part that actually lets the agent do work (ADR 0010);
+ *  - **eleven agent tools** — the part that actually lets the agent do work (ADR 0010);
  *  - **a per-turn prompt block** — so the tools are reachable without naming a skill.
  */
 export function registerTodeskPlugin(
