@@ -4,8 +4,8 @@
 // 未安装 / 被禁用 / 命令未授权 / 缺 agent.tools.register，这四种情况
 // todesk_status 根本不会被调用到。这个脚本读宿主 manifest 就能给出下一步。
 //
-//   node scripts/todesk-preflight.mjs
-//   node scripts/todesk-preflight.mjs --json
+//   node scripts/preflight.mjs
+//   node scripts/preflight.mjs --json
 //
 // 只读：读 manifest、定位客户端、跑一次 -status。不连接、不读密码、不改设置。
 

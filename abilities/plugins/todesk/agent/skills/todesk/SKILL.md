@@ -21,6 +21,8 @@ Six jobs. Each one starts with the tool that answers the question, not with a ve
 
 `todesk_devices`（不带 query）**一次**，按 `pinned` 优先、`last_connected_at` 倒序读。名字命中一台才继续；命中多台就把 `candidates` 读给用户选；一台都没有就请用户给 9 位码。
 
+每台带 `last_session`（上次第几块屏、分辨率、画质、fps、HD），用户问「上次连那台是怎么显示的」直接念它；它是客户端存下的偏好，不是当前会话状态。
+
 ## 3. 连接并验证 — "连上了吗"
 
 `todesk_connect { device }`（已存凭据时不需要密码）或 `{ device_id, password }`（陌生机器，**两个都要**）。
@@ -88,3 +90,5 @@ Six jobs. Each one starts with the tool that answers the question, not with a ve
 | `reason: "more than one saved device matches"` | 读 `candidates` 让用户挑。 |
 | `reason: "no ToDesk data directory under C:\\Users"` | 客户端从未在这台机器跑过，或用 `todesk_status` 兜底。 |
 | `verdict: "blocked"` + `client-stopped` | 先 `todesk_open_client`，再复查。 |
+| `verdict: "degraded"` + `stale-session` | 有设备仍标记为已连接：可能是没断开的会话占着通道。先问用户是否还在连，再给 `-exit`。 |
+| `todesk_autostart` 返回 `applied: false` | 设置没生效：照 `remedy` 关掉 Windows「快速启动」后重启复查；`applied: null` 是客户端没报该字段，别说成失败。 |

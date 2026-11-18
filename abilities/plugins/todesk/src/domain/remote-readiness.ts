@@ -7,6 +7,7 @@
  * contract (ADR 0011 §3.1).
  */
 
+import { ACCESS_FIX } from "./access-fixes";
 import type { ClientPosture } from "./client-posture";
 import type { SavedDevice } from "./device-store";
 
@@ -46,7 +47,7 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 			code: "client-stopped",
 			state: "bad",
 			detail: "ToDesk is not running, so nobody can connect to this computer and nothing can be launched from it.",
-			fix: "ToDesk.exe",
+			fix: ACCESS_FIX.clientStopped,
 		});
 	}
 
@@ -55,7 +56,7 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 			code: "no-device-code",
 			state: "bad",
 			detail: "This computer has no readable device code, so there is nothing to give the far side.",
-			fix: "open the ToDesk client once and retry",
+			fix: ACCESS_FIX.noDeviceCode,
 		});
 	}
 
@@ -86,7 +87,7 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 			code: "posture-unknown",
 			state: "warn",
 			detail: "The client's settings could not be read, so the access flags are unknown and this verdict only covers the process and the device list.",
-			fix: "open the ToDesk client once, then recheck",
+			fix: ACCESS_FIX.postureUnknown,
 		});
 	}
 
@@ -95,7 +96,7 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 			code: "no-2fa",
 			state: "warn",
 			detail: "Incoming connections are protected by a password only; two-factor authentication is off.",
-			fix: "高级设置 → 安全设置 → 二次安全验证",
+			fix: ACCESS_FIX.twoFactor,
 		});
 	}
 
@@ -104,7 +105,7 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 			code: "stranger-devices-allowed",
 			state: "warn",
 			detail: "Any device that knows the code and the password is accepted; only saved devices are not enforced.",
-			fix: "高级设置 → 安全设置 → 连接限制（黑白名单 / 手动同意）",
+			fix: ACCESS_FIX.strangerDevices,
 		});
 	}
 
@@ -114,7 +115,21 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 			code: "autostart",
 			state: "warn",
 			detail: "ToDesk does not start with Windows, so this computer is unreachable after a reboot until someone opens it.",
-			fix: "ToDesk.exe -autostart on",
+			fix: ACCESS_FIX.autostart,
+		});
+	}
+
+	// faq 90: a session left open at home occupies a channel and the next connect fails.
+	// The client's own row is the only trace of it, and it is a snapshot — say so.
+	const stillConnected = (input.devices ?? []).filter((device) => device.isConnected);
+	if (stillConnected.length > 0) {
+		items.push({
+			code: "stale-session",
+			state: "warn",
+			detail: `${stillConnected.length} saved device(s) are still marked as connected by the client (${stillConnected
+				.map((device) => device.name)
+				.join(", ")}). If that session was not closed, it keeps occupying a channel.`,
+			fix: ACCESS_FIX.staleSession,
 		});
 	}
 
@@ -123,7 +138,7 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 			code: "no-saved-devices",
 			state: "warn",
 			detail: "The client has no saved devices, so reaching another machine needs its 9-digit code and its temporary password.",
-			fix: "connect once with a code; ToDesk then saves the device",
+			fix: ACCESS_FIX.noSavedDevices,
 		});
 	}
 
@@ -134,16 +149,4 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 			: "ready";
 
 	return { verdict, items };
-}
-
-/** Kept for the panel: one line per verdict, never a paragraph. */
-export function verdictSummary(report: ReadinessReport): string {
-	switch (report.verdict) {
-		case "ready":
-			return "Reachable from outside and ready to connect out.";
-		case "degraded":
-			return `Usable, with ${report.items.filter((item) => item.state !== "ok").length} thing(s) worth fixing before you rely on it.`;
-		default:
-			return "Not usable as it stands — the items marked below stop a session.";
-	}
 }

@@ -13,6 +13,22 @@
  * transcript, the panel state or the clipboard.
  */
 
+/**
+ * What the last session to this device looked like, as the client saved it.
+ * Readable, not settable: ToDesk has no CLI for display settings, so this answers
+ * "上次连那台是怎么显示的" without pretending it can change it.
+ */
+export interface LastSessionProfile {
+	/** Which screen of a multi-monitor host was shown ("0" = all / primary). */
+	screen: string | null;
+	screenMode: string | null;
+	/** The remote resolution the client remembers, not the local window size. */
+	resolution: { width: number; height: number } | null;
+	quality: number | null;
+	fps: number | null;
+	hd: boolean | null;
+}
+
 export interface SavedDevice {
 	deviceId: string;
 	name: string;
@@ -25,6 +41,8 @@ export interface SavedDevice {
 	hasLoginPassword: boolean;
 	/** Pinned in the client's own device list — the user already said "this one matters". */
 	isPinned: boolean;
+	/** Display/session preferences from the last connection, when the client recorded any. */
+	profile: LastSessionProfile | null;
 }
 
 interface RawDevice {
@@ -35,9 +53,45 @@ interface RawDevice {
 	PassEx?: unknown;
 	HostLogonPass?: unknown;
 	IsPinned?: unknown;
+	ScreenId?: unknown;
+	ScreenMode?: unknown;
+	Width?: unknown;
+	Height?: unknown;
+	ResolutionX?: unknown;
+	ResolutionY?: unknown;
+	Quality?: unknown;
+	Fps?: unknown;
+	HD?: unknown;
 }
 
 const DEVICE_ID = /^\d{5,12}$/;
+
+function num(value: unknown): number | null {
+	const n = Number(value);
+	return Number.isFinite(n) ? n : null;
+}
+
+/** ""-1"" is the client's "not chosen" marker for resolutions, so it is not a size. */
+function profileOf(raw: RawDevice): LastSessionProfile | null {
+	const width = num(raw.Width);
+	const height = num(raw.Height);
+	const resolution = width && height && width > 0 && height > 0 ? { width, height } : null;
+	const screen = String(raw.ScreenId ?? "").trim();
+	const screenMode = String(raw.ScreenMode ?? "").trim();
+	const quality = num(raw.Quality);
+	const fps = num(raw.Fps);
+	const hd = raw.HD === undefined ? null : String(raw.HD) === "1";
+
+	if (resolution === null && !screen && !screenMode && quality === null && fps === null && hd === null) return null;
+	return {
+		screen: screen || null,
+		screenMode: screenMode || null,
+		resolution,
+		quality,
+		fps,
+		hd,
+	};
+}
 
 /** File-name prefix of the saved-device store, one per signed-in account. */
 export const DEVICE_LIST_PREFIX = "devlist_";
@@ -67,6 +121,7 @@ export function parseDeviceList(text: string): SavedDevice[] {
 			hasSavedCredential: String(raw?.PassEx ?? "").trim().length > 0,
 			hasLoginPassword: String(raw?.HostLogonPass ?? "").trim().length > 0,
 			isPinned: String(raw?.IsPinned ?? "0") === "1",
+			profile: profileOf(raw),
 		});
 	}
 	return devices;
@@ -92,6 +147,7 @@ export function mergeDeviceLists(lists: SavedDevice[][]): SavedDevice[] {
 				hasSavedCredential: seen.hasSavedCredential || device.hasSavedCredential,
 				hasLoginPassword: seen.hasLoginPassword || device.hasLoginPassword,
 				isPinned: seen.isPinned || device.isPinned,
+				profile: newer.profile ?? seen.profile,
 			});
 		}
 	}
@@ -140,5 +196,15 @@ export function describeDevice(device: SavedDevice): Record<string, unknown> {
 		saved_credential: device.hasSavedCredential,
 		login_password_saved: device.hasLoginPassword,
 		pinned: device.isPinned,
+		last_session: device.profile
+			? {
+					screen: device.profile.screen,
+					screen_mode: device.profile.screenMode,
+					resolution: device.profile.resolution,
+					quality: device.profile.quality,
+					fps: device.profile.fps,
+					hd: device.profile.hd,
+				}
+			: null,
 	};
 }

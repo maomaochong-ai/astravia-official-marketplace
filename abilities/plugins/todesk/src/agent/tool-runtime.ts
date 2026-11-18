@@ -92,7 +92,7 @@ export function hostFailure(run: { error?: string | null }, args: string[]): str
 }
 
 /** One way to read the client's store, so a reader change is one edit. */
-export function storeOf(bridge: ToolBridge): Promise<LocalStore> {
+export function readStore(bridge: ToolBridge): Promise<LocalStore> {
 	return readLocalStore({ readTextFile: bridge.readTextFile, listDirectory: bridge.listDirectory });
 }
 
@@ -148,7 +148,7 @@ export async function verifyConnection(
 
 	for (let attempt = 0; attempt < 3; attempt += 1) {
 		await new Promise((resolve) => setTimeout(resolve, 400));
-		const store = await storeOf(bridge);
+		const store = await readStore(bridge);
 		if (store.error) return "unknown";
 		const row = store.devices.find((device) => device.deviceId === deviceId);
 		if (!row) return "unknown";

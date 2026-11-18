@@ -1,7 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { describeDevice, matchDevice, mergeDeviceLists, parseDeviceList } from "../domain/device-store";
 
-const A = { UserId: "111222333", UserName: "Office PC", RecentConnectTime: "1700000000000", IsConnected: "1", PassEx: "aabbccddeeff00112233", HostLogonPass: "secret", IsPinned: "1" };
+const A = {
+	UserId: "111222333",
+	UserName: "Office PC",
+	RecentConnectTime: "1700000000000",
+	IsConnected: "1",
+	PassEx: "aabbccddeeff00112233",
+	HostLogonPass: "secret",
+	IsPinned: "1",
+	ScreenId: "1",
+	ScreenMode: "0",
+	Width: "2560",
+	Height: "1440",
+	Quality: "5",
+	Fps: "60",
+	HD: "1",
+};
 const B = { UserId: "444555666", UserName: "Laptop", RecentConnectTime: "1600000000000", IsConnected: "0", PassEx: "", HostLogonPass: "" };
 
 const store = (devices: unknown[]): string => `\uFEFF${JSON.stringify({ DeviceInfo: devices })}`;
@@ -17,6 +32,7 @@ describe("parseDeviceList", () => {
 			hasSavedCredential: true,
 			hasLoginPassword: true,
 			isPinned: true,
+			profile: { screen: "1", screenMode: "0", resolution: { width: 2560, height: 1440 }, quality: 5, fps: 60, hd: true },
 		});
 	});
 
@@ -36,6 +52,27 @@ describe("parseDeviceList", () => {
 	it("falls back to the code when the device has no name", () => {
 		expect(parseDeviceList(store([{ ...A, UserName: "" }]))[0].name).toBe("111222333");
 	});
+
+	it("reports the last session profile the client saved, without inventing one", () => {
+		const withProfile = parseDeviceList(store([A]))[0];
+		const withoutProfile = parseDeviceList(store([B]))[0];
+		expect(withProfile.profile).toEqual({
+			screen: "1",
+			screenMode: "0",
+			resolution: { width: 2560, height: 1440 },
+			quality: 5,
+			fps: 60,
+			hd: true,
+		});
+		expect(withoutProfile.profile).toBeNull();
+	});
+
+	it("does not turn the client's -1 resolution marker into a size", () => {
+		const [device] = parseDeviceList(store([{ ...A, Width: "-1", Height: "-1" }]));
+		expect(device.profile?.resolution).toBeNull();
+		expect(device.profile?.quality).toBe(5);
+	});
+
 });
 
 describe("mergeDeviceLists", () => {
@@ -81,6 +118,12 @@ describe("matchDevice", () => {
 });
 
 describe("describeDevice", () => {
+	it("publishes the last session profile under last_session", () => {
+		const described = describeDevice(parseDeviceList(store([A]))[0]);
+		expect(described.last_session).toMatchObject({ screen: "1", resolution: { width: 2560, height: 1440 }, fps: 60 });
+		expect(describeDevice(parseDeviceList(store([B]))[0]).last_session).toBeNull();
+	});
+
 	it("publishes ISO time and no credential keys", () => {
 		const [device] = parseDeviceList(store([A]));
 		const described = describeDevice(device);

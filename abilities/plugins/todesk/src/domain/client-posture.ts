@@ -1,3 +1,5 @@
+import { ACCESS_FIX } from "./access-fixes";
+
 /**
  * This machine's remote-access posture, read from ToDesk's own `config.ini`.
  *
@@ -109,7 +111,7 @@ export function postureFindings(posture: ClientPosture): PostureFinding[] {
 			severity: "warn",
 			message:
 				"No unattended password is set, so this computer can only be reached while its ToDesk window is open and handing out a one-time password.",
-			fix: "ToDesk.exe -setpasswd <new password>, or 高级设置 → 安全设置 → 安全密码",
+			fix: ACCESS_FIX.unattendedPassword,
 		});
 	}
 	if (posture.tempPasswordEnabled === false) {
@@ -117,7 +119,7 @@ export function postureFindings(posture: ClientPosture): PostureFinding[] {
 			code: "temp-password-off",
 			severity: "warn",
 			message: "The one-time password is off — a device that has no saved password cannot connect.",
-			fix: "高级设置 → 安全设置 → 临时密码",
+			fix: ACCESS_FIX.tempPassword,
 		});
 	}
 	if (posture.twoFactorForConnect === false) {
@@ -125,7 +127,7 @@ export function postureFindings(posture: ClientPosture): PostureFinding[] {
 			code: "no-2fa",
 			severity: "info",
 			message: "Two-factor authentication for incoming connections is off.",
-			fix: "高级设置 → 安全设置 → 二次安全验证",
+			fix: ACCESS_FIX.twoFactor,
 		});
 	}
 	if (posture.strangerConnectionLock === false) {
@@ -134,7 +136,7 @@ export function postureFindings(posture: ClientPosture): PostureFinding[] {
 			severity: "warn",
 			message:
 				"Strange-device connections are allowed: any code plus a valid password is accepted, not only saved devices.",
-			fix: "高级设置 → 安全设置 → 连接限制（黑白名单 / 手动同意）",
+			fix: ACCESS_FIX.strangerDevices,
 		});
 	}
 	if (posture.autostart === false) {
@@ -142,7 +144,7 @@ export function postureFindings(posture: ClientPosture): PostureFinding[] {
 			code: "no-autostart",
 			severity: "info",
 			message: "ToDesk does not start with Windows, so this machine is unreachable after a reboot until someone opens it.",
-			fix: "ToDesk.exe -autostart on",
+			fix: ACCESS_FIX.autostart,
 		});
 	}
 	if (findings.length === 0) {

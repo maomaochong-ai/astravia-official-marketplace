@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { DISABLED, capabilityAllowed, hostFailure, storeOf, verifyConnection, type ToolBridge } from "../tools/tool-support";
+import { DISABLED, capabilityAllowed, hostFailure, readStore, verifyConnection, type ToolBridge } from "../agent/tool-runtime";
 
 function bridge(overrides: Partial<ToolBridge> & { settings?: Record<string, unknown>; runFails?: boolean } = {}): ToolBridge {
 	const settings = overrides.settings ?? {};
@@ -65,9 +65,9 @@ describe("standard answers", () => {
 	});
 });
 
-describe("storeOf", () => {
+describe("readStore", () => {
 	it("returns an error instead of throwing when no profile has a store", async () => {
-		const store = await storeOf(bridge());
+		const store = await readStore(bridge());
 		expect(store.devices).toEqual([]);
 		expect(store.error).toContain("no ToDesk data directory");
 	});

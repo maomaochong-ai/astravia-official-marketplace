@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ClientPosture } from "../domain/client-posture";
 import type { SavedDevice } from "../domain/device-store";
-import { assessReadiness, verdictSummary } from "../domain/remote-readiness";
+import { assessReadiness } from "../domain/remote-readiness";
 
 const healthy: ClientPosture = {
 	unattendedPasswordSet: true,
@@ -21,6 +21,7 @@ const device: SavedDevice = {
 	hasSavedCredential: true,
 	hasLoginPassword: false,
 	isPinned: true,
+	profile: null,
 };
 
 const base = { deviceId: "999888777", clientRunning: true, autostart: true };
@@ -64,6 +65,24 @@ describe("assessReadiness", () => {
 		expect(report.items[0].fix).toBe("ToDesk.exe -autostart on");
 	});
 
+	it("warns about a session the client still marks as connected, and names the device", () => {
+		const report = assessReadiness({
+			...base,
+			posture: healthy,
+			devices: [{ ...device, isConnected: true }],
+		});
+		expect(report.verdict).toBe("degraded");
+		const item = report.items.find((entry) => entry.code === "stale-session");
+		expect(item?.state).toBe("warn");
+		expect(item?.detail).toContain("Office PC");
+		expect(item?.fix).toContain("-exit");
+	});
+
+	it("stays quiet about sessions when none is marked connected", () => {
+		const report = assessReadiness({ ...base, posture: healthy, devices: [device] });
+		expect(report.items.map((item) => item.code)).not.toContain("stale-session");
+	});
+
 	it("warns about the two settings that widen access", () => {
 		const report = assessReadiness({
 			...base,
@@ -80,19 +99,5 @@ describe("assessReadiness", () => {
 		const report = assessReadiness({ ...base, posture: null, devices: [device] });
 		expect(report.verdict).toBe("degraded");
 		expect(report.items.map((item) => item.code)).toEqual(["posture-unknown"]);
-	});
-});
-
-describe("verdictSummary", () => {
-	it("counts only what the user has to act on", () => {
-		// -status wins over the file, so let it be silent here to exercise both fallbacks.
-		const report = assessReadiness({
-			...base,
-			autostart: null,
-			posture: { ...healthy, autostart: false, twoFactorForConnect: false },
-			devices: [device],
-		});
-		expect(verdictSummary(report)).toContain("2 thing(s)");
-		expect(verdictSummary(assessReadiness({ ...base, posture: healthy, devices: [device] }))).toContain("Reachable");
 	});
 });

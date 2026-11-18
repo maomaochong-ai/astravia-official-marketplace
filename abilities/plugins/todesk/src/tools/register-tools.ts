@@ -2,7 +2,7 @@
  * The eleven tools declared to the agent — registration only.
  *
  * Behaviour lives in the domain layer; the gate, the standard failure answers, the status
- * read and the store accessor live in `./tool-support` so they can be tested on their own.
+ * read and the store accessor live in `../agent/tool-runtime` so they can be tested on their own.
  * Rules that shaped this file:
  *  1. No MCP dependency (ADR 0003/0005).
  *  2. The host's command grant is the consent; the panel switch can only narrow it (ADR 0004).
@@ -11,6 +11,7 @@
  */
 
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
+import { judgeAutostart } from "../domain/autostart";
 import { assessReadiness } from "../domain/remote-readiness";
 import { describeDevice, matchDevice } from "../domain/device-store";
 import { postureFindings } from "../domain/client-posture";
@@ -40,10 +41,10 @@ import {
 	capabilityAllowed,
 	hostFailure,
 	readStatus,
-	storeOf,
+	readStore,
 	verifyConnection,
 	type ToolBridge,
-} from "./tool-support";
+} from "../agent/tool-runtime";
 
 export {
 	TOOL_ACCOUNT,
@@ -57,8 +58,8 @@ export {
 	TOOL_STATUS,
 	TOOL_TRAY,
 	TOOL_USAGE,
-} from "./tool-support";
-export type { ToolBridge } from "./tool-support";
+} from "../agent/tool-runtime";
+export type { ToolBridge } from "../agent/tool-runtime";
 
 export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Disposable {
 	const status = ctx.agent.registerTool({
@@ -76,7 +77,7 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 		id: TOOL_DEVICES,
 		label: "ToDesk saved devices",
 		description:
-			"List the machines this computer has saved in ToDesk's own device list: name, 9-digit code, last connect time, and whether a credential is already saved for that device. Use it whenever the user names a machine ('my office PC', 'the laptop') instead of typing nine digits — and before todesk_connect, so the code does not have to be asked for. It never returns passwords. Do NOT use it to guess: if two devices match, report the candidates.",
+			"List the machines this computer has saved in ToDesk's own device list: name, 9-digit code, last connect time, whether a credential is already saved, and (when the client recorded one) the display profile of the last session (`last_session`: which screen, resolution, quality, fps, HD) — so 'how did it look last time' has an answer. Use it whenever the user names a machine ('my office PC', 'the laptop') instead of typing nine digits — and before todesk_connect, so the code does not have to be asked for. It never returns passwords. Do NOT use it to guess: if two devices match, report the candidates.",
 		scope_use: SCOPE,
 		parameters: {
 			type: "object",
@@ -90,7 +91,7 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 
 			const input = (trigger.input ?? {}) as { query?: unknown };
 			const query = typeof input.query === "string" ? input.query.trim() : "";
-			const store = await storeOf(bridge);
+			const store = await readStore(bridge);
 			if (store.error) return JSON.stringify({ ok: false, reason: store.error, directory: store.directory });
 
 			if (!query) {
@@ -160,7 +161,7 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 			let savedCredential = false;
 
 			if (wanted) {
-				const store = await storeOf(bridge);
+				const store = await readStore(bridge);
 				const match = matchDevice(store.devices, wanted);
 				if (match.kind === "many") {
 					return JSON.stringify({
@@ -197,7 +198,7 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 			if (!args) return JSON.stringify({ ok: false, reason: "device codes are 9 digits" });
 
 			// Snapshot the device row first: "connected" later has to be a change, not a state.
-			const baseline = await storeOf(bridge).catch(() => null);
+			const baseline = await readStore(bridge).catch(() => null);
 			const before = baseline?.devices.find((device) => device.deviceId === deviceId) ?? null;
 
 			const run = await runTodesk(bridge.run, args, undefined);
@@ -231,7 +232,7 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 		id: TOOL_READINESS,
 		label: "ToDesk readiness",
 		description:
-			"One call that answers 'can I leave this computer, and can someone reach it?': it combines identity, the access posture, start-with-Windows and the saved device list into a verdict (ready | degraded | blocked) plus one item per gap with a concrete fix. Use it before travelling, before leaving a machine unattended, or when the far side says it cannot connect. It reports flags only, never a password. Do NOT use it to change a setting — it hands back the command the user can run.",
+			"One call that answers 'can I leave this computer, and can someone reach it?': it combines identity, the access posture, start-with-Windows and the saved device list into a verdict (ready | degraded | blocked) plus one item per gap with a concrete fix. It also flags a saved device the client still marks as connected (a session left open keeps occupying a channel) and unapplied autostart. Use it before travelling, before leaving a machine unattended, or when the far side says it cannot connect. It reports flags only, never a password. Do NOT use it to change a setting — it hands back the command the user can run.",
 		scope_use: SCOPE,
 		parameters: { type: "object", properties: {}, additionalProperties: false },
 		handler: async () => {
@@ -240,7 +241,7 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 			const status = await readStatus(bridge);
 			if (status.ok === false) return JSON.stringify(status);
 
-			const store = await storeOf(bridge);
+			const store = await readStore(bridge);
 			const report = assessReadiness({
 				deviceId: typeof status.device_id === "string" ? status.device_id : null,
 				clientRunning: status.client_running === true,
@@ -281,7 +282,7 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 
 			const input = (trigger.input ?? {}) as { days?: unknown };
 			const days = typeof input.days === "number" && input.days > 0 ? Math.min(90, Math.trunc(input.days)) : 7;
-			const store = await storeOf(bridge);
+			const store = await readStore(bridge);
 			if (store.error) return JSON.stringify({ ok: false, reason: store.error });
 
 			const summary = summarizeUsage(store.usage, days, new Date());
@@ -311,7 +312,7 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 		handler: async () => {
 			if (!(await capabilityAllowed(bridge, "posture"))) return DISABLED;
 
-			const store = await storeOf(bridge);
+			const store = await readStore(bridge);
 			if (!store.posture) {
 				return JSON.stringify({ ok: false, reason: "could not read ToDesk's config.ini", directory: store.directory });
 			}
@@ -360,7 +361,16 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 			const run = await runTodesk(bridge.run, args, undefined);
 			if (!run.ok) return hostFailure(run, args);
 			const after = await readStatus(bridge);
-			return JSON.stringify({ ok: true, requested: input.enabled, observed_autostart: after.autostart ?? null });
+			const observed = typeof after.autostart === "boolean" ? after.autostart : null;
+			const verdict = judgeAutostart(input.enabled, observed);
+			return JSON.stringify({
+				ok: true,
+				requested: input.enabled,
+				observed_autostart: observed,
+				applied: verdict.applied,
+				...(verdict.hint ? { hint: verdict.hint } : {}),
+				...(verdict.remedy ? { remedy: verdict.remedy } : {}),
+			});
 		},
 	});
 

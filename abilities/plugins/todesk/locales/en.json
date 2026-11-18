@@ -114,5 +114,6 @@
   "diag.tools.readiness.name": "Readiness check",
   "diag.tools.readiness": "Whether this machine is reachable, and what to fix before relying on it.",
   "readiness.item.posture-unknown": "The client's settings could not be read, so the access flags are unknown.",
-  "devices.unavailable": "Could not read the client's saved devices — open ToDesk once, then recheck."
+  "devices.unavailable": "Could not read the client's saved devices — open ToDesk once, then recheck.",
+  "readiness.item.stale-session": "A saved device is still marked as connected — a session left open keeps occupying a channel (faq 90)."
 }
