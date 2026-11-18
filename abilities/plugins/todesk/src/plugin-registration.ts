@@ -5,15 +5,19 @@ import { registerTodeskTools } from "./tools/register-tools";
 
 export const VIEW_ID = "console";
 export const TAB_ID = "console";
+export const INPUT_ACTION_ID = "console";
 
 /**
- * Surfaces, registered in one place so the wiring can be tested without the SDK:
+ * Every surface this plugin contributes, registered in one place so the wiring can be
+ * tested without the SDK:
  *
- *  - a **workspace view** (sidebar page): this machine's identity, cross-conversation;
- *  - an **activity tab** (right-hand panel, addable from the composer's “+”): the same
- *    console next to the conversation the user is already in;
- *  - four **agent tools** that drive ToDesk's documented command line, so “install the
- *    plugin, ask the agent, it connects” works with no ToDesk setting at all.
+ *  - **workspace view** — sidebar page, cross-conversation identity;
+ *  - **activity tab** — the panel on the right; `initiallyVisible: true` so it is on the
+ *    bar as soon as the plugin is active instead of hiding behind the panel's “+”;
+ *  - **input action** — a ToDesk button at the composer, which opens that tab. This is
+ *    the composer-side entry: the composer's own “+” lists *bottom panels*, so a plugin
+ *    that wants a composer button must register one of these;
+ *  - **five agent tools** — the part that actually lets the agent do work.
  */
 export function registerTodeskPlugin(
 	ctx: PluginContext,
@@ -35,9 +39,21 @@ export function registerTodeskPlugin(
 		label: "%view.label%",
 		component: element,
 		scope_use: ["conversation", "project"],
-		// Registers into the addable pool; the user attaches it from the panel's “+”.
-		initiallyVisible: false,
+		initiallyVisible: true,
 		retention: "warm",
+	});
+
+	const action = ctx.ui.registerInputAction({
+		id: INPUT_ACTION_ID,
+		label: "%view.label%",
+		scope_use: ["conversation", "project"],
+		// A button, not a mode: pressing it brings the panel forward and the toggle
+		// never stays "on", so `hardIsolation` is deliberately not used here — the
+		// agent's tools must keep working whether or not this panel is open.
+		onToggle: () => {
+			ctx.ui.openActivityTab(TAB_ID);
+			return false;
+		},
 	});
 
 	const tools = registerTodeskTools(ctx, { run: deps.run, readSettings: deps.readSettings });
@@ -45,6 +61,7 @@ export function registerTodeskPlugin(
 	return {
 		dispose: () => {
 			tools.dispose();
+			action.dispose();
 			tab.dispose();
 			view.dispose();
 		},

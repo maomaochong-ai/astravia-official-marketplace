@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { registerTodeskPlugin, TAB_ID, VIEW_ID } from "../plugin-registration";
+import { INPUT_ACTION_ID, registerTodeskPlugin, TAB_ID, VIEW_ID } from "../plugin-registration";
 import type { ConsoleDeps, RunResult } from "../runtime-contract";
 
 const STATUS_OUT = `[libusb] Info: noise
@@ -14,6 +14,8 @@ function fakeCtx(options: { settings?: Record<string, unknown>; failRun?: boolea
 	const registered: { id: string }[] = [];
 	const runs: { file: string; args: string[]; env?: Record<string, string> }[] = [];
 	const views: Record<string, unknown>[] = [];
+	const actions: Record<string, unknown>[] = [];
+	const opened: string[] = [];
 	const tabs: Record<string, unknown>[] = [];
 	let settingsValue: Record<string, unknown> = settings;
 
@@ -26,6 +28,13 @@ function fakeCtx(options: { settings?: Record<string, unknown>; failRun?: boolea
 			registerActivityTab: (contribution: Record<string, unknown>) => {
 				tabs.push(contribution);
 				return { dispose: () => undefined };
+			},
+			registerInputAction: (contribution: Record<string, unknown>) => {
+				actions.push(contribution);
+				return { dispose: () => undefined };
+			},
+			openActivityTab: (tabId: string) => {
+				opened.push(tabId);
 			},
 		},
 		agent: {
@@ -55,7 +64,7 @@ function fakeCtx(options: { settings?: Record<string, unknown>; failRun?: boolea
 		notify: () => undefined,
 	};
 
-	return { ctx, deps, registered, runs, views, tabs, settings: () => settingsValue };
+	return { ctx, deps, registered, runs, views, tabs, actions, opened, settings: () => settingsValue };
 }
 
 const AnyComponent = () => null;
@@ -67,12 +76,20 @@ function toolOf(registered: { id: string }[], id: string) {
 }
 
 describe("plugin registration", () => {
-	it("registers both surfaces", () => {
-		const { ctx, deps, views, tabs } = fakeCtx();
+	it("registers the sidebar page, a visible panel tab, and a composer button", () => {
+		const { ctx, deps, views, tabs, actions, opened } = fakeCtx();
 		registerTodeskPlugin(ctx as never, deps, AnyComponent);
+
 		expect(views.map((view) => view.id)).toEqual([VIEW_ID]);
-		expect(tabs.map((tab) => tab.id)).toEqual([TAB_ID]);
-		expect(tabs[0]).toMatchObject({ initiallyVisible: false });
+		// On the panel bar from the start: the panel's “+” is not the only way in.
+		expect(tabs[0]).toMatchObject({ id: TAB_ID, initiallyVisible: true });
+
+		// The composer's own “+” lists bottom panels, so a composer entry has to be an
+		// input action; it must open the tab rather than toggle a mode.
+		expect(actions.map((action) => action.id)).toEqual([INPUT_ACTION_ID]);
+		const onToggle = actions[0].onToggle as () => boolean | void;
+		expect(onToggle()).toBe(false);
+		expect(opened).toEqual([TAB_ID]);
 	});
 
 	it("registers five tools and no MCP-dependent one", () => {

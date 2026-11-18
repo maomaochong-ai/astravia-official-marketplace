@@ -2,7 +2,7 @@
   "id": "todesk",
   "name": "%plugin.name%",
   "icon": "assets/icon.svg",
-  "version": "0.4.9",
+  "version": "0.4.10",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -16,6 +16,7 @@
   "permissions": [
     "ui.slot.workspace-view",
     "ui.slot.activity-tab",
+    "ui.slot.input-action",
     "storage.read",
     "storage.write",
     "fs.read",
