@@ -29,7 +29,7 @@
 | 向窗口注入输入 | 需要 `powershell`/Win32 调用，属于**额外命令授权** | 与 ADR-0004 同一套 `grantedCommandNames` 机制 |
 | 稳定的窗口身份 | ToDesk 的窗口是 `H-SMILE-FRAME`，且**主窗口默认不可见**（藏托盘），会话窗口由客户端自己创建/销毁 | 见下方探测输出 |
 
-探测（`probe-native-window.ps1`，只读，不注入）：
+探测方式（一次性、只读、不注入输入；脚本不入库）：`Get-Process ToDesk` 取 PID，用 `EnumWindows` 枚举这些 PID 的顶层窗口，读 `GetClassName` / `GetWindowRect` / `IsWindowVisible`。等价的现成工具是 Spy++ 或 Process Explorer 的窗口面板。输出：
 
 ```json
 { "screen": "2560x1440", "todeskProcessCount": 2,
@@ -79,4 +79,4 @@
 | `tsc --noEmit` | 0 |
 | `vitest` | 40 项通过（含 `initiallyVisible: false`、输入栏按钮只开面板、提示块内容） |
 | `vite build` | `todesk-0.4.11.astraviapkg`，18 个运行时文件（+1 = 提示块模块） |
-| 探测脚本 | `probe-native-window.ps1` 输出即上方 JSON，未注入任何输入 |
+| 探测 | 只读窗口枚举（一次性，未落脚本）；输出即上方 JSON，未注入任何输入 |

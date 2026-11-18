@@ -1,13 +1,13 @@
-// Read-only readiness check for "use ToDesk from the host conversation".
+// ToDesk 对话就绪自检。
 //
-// Answers the only question that matters before you start typing in chat:
-// are the five todesk_* tools actually callable on this machine right now?
+// 存在的理由只有一个：插件自己坏掉时，它的工具读不到自己的状态——
+// 未安装 / 被禁用 / 命令未授权 / 缺 agent.tools.register，这四种情况
+// todesk_status 根本不会被调用到。这个脚本读宿主 manifest 就能给出下一步。
 //
-// It reads the host manifest, resolves the client, and runs one -status.
-// It never connects, never reads a password, never changes a setting.
+//   node scripts/todesk-preflight.mjs
+//   node scripts/todesk-preflight.mjs --json
 //
-//   node docs/adr/todesk/preflight-conversation.mjs
-//   node docs/adr/todesk/preflight-conversation.mjs --json
+// 只读：读 manifest、定位客户端、跑一次 -status。不连接、不读密码、不改设置。
 
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -20,9 +20,8 @@ const manifestPath = join(homedir(), ".astravia", "plugins-manifest.json");
 
 function readManifest() {
 	if (!existsSync(manifestPath)) return null;
-	const raw = readFileSync(manifestPath, "utf8").replace(/^\uFEFF/, "");
-	const json = JSON.parse(raw);
-	// Newer hosts key the map by id; older ones wrap it in .plugins.
+	const json = JSON.parse(readFileSync(manifestPath, "utf8").replace(/^\uFEFF/, ""));
+	// 新宿主按 id 平铺；旧宿主在 .plugins 下包一层。
 	return json.todesk ?? json.plugins?.todesk ?? null;
 }
 
@@ -33,7 +32,7 @@ function resolveClient() {
 function probeStatus(client) {
 	const env = { ...process.env, PATH: `${client.dir};${process.env.PATH}`, Path: `${client.dir};${process.env.Path ?? process.env.PATH}` };
 	const out = spawnSync(client.exe, ["-status"], { env, encoding: "utf8", timeout: 20000 });
-	// The client exits 1 even on a successful read, so the text is the only signal.
+	// 客户端读成功也返回 1，所以判据只能是文本。
 	const lines = `${out.stdout ?? ""}${out.stderr ?? ""}`
 		.split(/\r?\n/)
 		.map((line) => line.trim())
@@ -43,7 +42,7 @@ function probeStatus(client) {
 		deviceId: pick(/^ToDesk\s*ID\s*[:：]\s*(\d[\d ]*)$/i)?.replace(/\s/g, "") ?? null,
 		clientVersion: pick(/^ToDesk\s+([\d.]+)\s+for\s+\w+/i),
 		autostart: pick(/^Start ToDesk with Windows\s*:\s*(ON|OFF)/i),
-		// -status never reports a session; the panel learns that from the connect result.
+		// -status 不报会话；会话状态来自 connect 的结果。
 		running: lines.some((line) => /^PID\s*:\s*\d+/i.test(line)),
 	};
 }

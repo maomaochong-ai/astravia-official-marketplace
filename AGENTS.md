@@ -77,6 +77,14 @@ abilities/<type>/<slug>/README.md
 abilities/<type>/<slug>/assets/
 ```
 
+## 文件归属（别把一次性调试物混进决策文档）
+
+- `docs/` 只放 Markdown：ADR、说明、手册。不放脚本、不放截图、不放日志。
+- 一次性调试脚本不入库，跑完就删。要留证据就把**输出**贴进文档，并写清用什么命令或现成工具能复现。
+- 可复用的仓库级工具放 `scripts/`，以 `node scripts/<name>.mjs` 直接可跑；不把某台机器的绝对路径或某个具体版本号写死。
+- 会删用户数据的脚本（`~/.astravia` 下的版本目录、`plugin-data`）不入库；必须示范时只贴命令，不落文件。
+- 临时产物（`.tmp/`、`dist/`、`release/`）不入库。
+
 ## 源码配置
 
 .astravia/marketplace.source.json 包含 schemaVersion: 3、name、displayName、repository、minAppVersion 与 abilities。
