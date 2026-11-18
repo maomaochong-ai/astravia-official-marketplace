@@ -2042,7 +2042,7 @@
       "slug": "todesk",
       "name": "ToDesk Remote",
       "description": "Connect this computer to another one by its ToDesk device code, from the panel or from the conversation. The agent reads the code, opens sessions and can keep this machine reachable — no ToDesk setting to find first.",
-      "version": "0.4.10",
+      "version": "0.4.11",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia",

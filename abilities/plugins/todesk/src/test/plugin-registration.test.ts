@@ -16,6 +16,7 @@ function fakeCtx(options: { settings?: Record<string, unknown>; failRun?: boolea
 	const views: Record<string, unknown>[] = [];
 	const actions: Record<string, unknown>[] = [];
 	const opened: string[] = [];
+	const prompts: { id: string }[] = [];
 	const tabs: Record<string, unknown>[] = [];
 	let settingsValue: Record<string, unknown> = settings;
 
@@ -42,6 +43,10 @@ function fakeCtx(options: { settings?: Record<string, unknown>; failRun?: boolea
 				registered.push(registration);
 				return { dispose: () => undefined };
 			},
+			registerSystemPromptProvider: (registration: { id: string }) => {
+				prompts.push(registration);
+				return { dispose: () => undefined };
+			},
 		},
 	};
 
@@ -64,7 +69,7 @@ function fakeCtx(options: { settings?: Record<string, unknown>; failRun?: boolea
 		notify: () => undefined,
 	};
 
-	return { ctx, deps, registered, runs, views, tabs, actions, opened, settings: () => settingsValue };
+	return { ctx, deps, registered, runs, views, tabs, actions, opened, prompts, settings: () => settingsValue };
 }
 
 const AnyComponent = () => null;
@@ -76,13 +81,13 @@ function toolOf(registered: { id: string }[], id: string) {
 }
 
 describe("plugin registration", () => {
-	it("registers the sidebar page, a visible panel tab, and a composer button", () => {
+	it("registers the sidebar page, a dormant panel tab, and a composer button", () => {
 		const { ctx, deps, views, tabs, actions, opened } = fakeCtx();
 		registerTodeskPlugin(ctx as never, deps, AnyComponent);
 
 		expect(views.map((view) => view.id)).toEqual([VIEW_ID]);
-		// On the panel bar from the start: the panel's “+” is not the only way in.
-		expect(tabs[0]).toMatchObject({ id: TAB_ID, initiallyVisible: true });
+		// Off by default: activation must not mount the console into every conversation.
+		expect(tabs[0]).toMatchObject({ id: TAB_ID, initiallyVisible: false });
 
 		// The composer's own “+” lists bottom panels, so a composer entry has to be an
 		// input action; it must open the tab rather than toggle a mode.
@@ -167,5 +172,18 @@ describe("plugin registration", () => {
 		);
 		expect(payload).toMatchObject({ ok: true, requested: false, observed_autostart: true });
 		expect(runs.some((run) => run.args.join(" ") === "-autostart off")).toBe(true);
+	});
+
+	it("teaches the model the tools and the boundary on every turn", async () => {
+		const { ctx, deps, prompts } = fakeCtx();
+		registerTodeskPlugin(ctx as never, deps, AnyComponent);
+
+		expect(prompts.map((p) => p.id)).toEqual(["todesk-capability"]);
+		const handler = (prompts[0] as unknown as { handler: () => Promise<unknown[]> }).handler;
+		const ops = (await handler()) as { type: string; block: { content: string } }[];
+		const text = ops[0].block.content;
+		expect(text).toContain("todesk_status");
+		expect(text).toContain("temporary password");
+		expect(text).toContain("cannot see the remote screen");
 	});
 });

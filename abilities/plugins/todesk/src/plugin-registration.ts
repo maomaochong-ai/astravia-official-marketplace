@@ -1,6 +1,7 @@
 import type { PluginContext } from "@astravia-org/plugin-sdk";
 import { type ComponentType, createElement } from "react";
 import type { ConsoleDeps } from "./runtime-contract";
+import { registerTodeskPrompt } from "./prompt/todesk-prompt";
 import { registerTodeskTools } from "./tools/register-tools";
 
 export const VIEW_ID = "console";
@@ -39,7 +40,10 @@ export function registerTodeskPlugin(
 		label: "%view.label%",
 		component: element,
 		scope_use: ["conversation", "project"],
-		initiallyVisible: true,
+		// Default off on purpose: a mounted panel per conversation costs a render tree and
+		// the identity read behind it. The composer button and the sidebar page open it on
+		// demand — activation alone must not.
+		initiallyVisible: false,
 		retention: "warm",
 	});
 
@@ -57,9 +61,11 @@ export function registerTodeskPlugin(
 	});
 
 	const tools = registerTodeskTools(ctx, { run: deps.run, readSettings: deps.readSettings });
+	const prompt = registerTodeskPrompt(ctx);
 
 	return {
 		dispose: () => {
+			prompt.dispose();
 			tools.dispose();
 			action.dispose();
 			tab.dispose();

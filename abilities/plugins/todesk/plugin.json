@@ -2,7 +2,7 @@
   "id": "todesk",
   "name": "%plugin.name%",
   "icon": "assets/icon.svg",
-  "version": "0.4.10",
+  "version": "0.4.11",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -24,7 +24,8 @@
     "agent.tools.register",
     "agent.toolHandler.execute",
     "agent.skills.control",
-    "agent.command.run"
+    "agent.command.run",
+    "agent.systemPrompt.write"
   ],
   "commands": [
     "ToDesk.exe"
