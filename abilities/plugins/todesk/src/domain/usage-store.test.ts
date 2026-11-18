@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayKey, parseUsage, summarizeUsage } from "../domain/usage-store";
+import { dayKey, parseUsage, summarizeUsage } from "./usage-store";
 
 const sample = JSON.stringify([
 	{ date: "20261118", usageinfo: [{ count: 3, deviceid: "111222333" }] },

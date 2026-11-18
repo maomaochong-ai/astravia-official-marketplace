@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeDevice, matchDevice, mergeDeviceLists, parseDeviceList } from "../domain/device-store";
+import { describeDevice, matchDevice, mergeDeviceLists, parseDeviceList } from "./device-store";
 
 const A = {
 	UserId: "111222333",

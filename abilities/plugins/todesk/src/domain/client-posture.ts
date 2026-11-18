@@ -1,5 +1,3 @@
-import { ACCESS_FIX } from "./access-fixes";
-
 /**
  * This machine's remote-access posture, read from ToDesk's own `config.ini`.
  *
@@ -10,6 +8,8 @@ import { ACCESS_FIX } from "./access-fixes";
  * *"can someone reach this computer, and is it protected?"* — never to hand out the answer
  * value. The account line is masked for the same reason (ADR-0010).
  */
+import type { AccessFixes } from "../features/tooling/copy/access-fixes";
+
 
 export interface ClientPosture {
 	/** An unattended (security) password exists, so the machine can be reached while unattended. */
@@ -102,7 +102,7 @@ export interface PostureFinding {
  * What the posture means, in the order worth saying it. Kept here (not in the tool) so a
  * test can pin the wording: advice that drifts is advice nobody trusts.
  */
-export function postureFindings(posture: ClientPosture): PostureFinding[] {
+export function postureFindings(posture: ClientPosture, fixes: AccessFixes): PostureFinding[] {
 	const findings: PostureFinding[] = [];
 
 	if (posture.unattendedPasswordSet === false) {
@@ -111,7 +111,7 @@ export function postureFindings(posture: ClientPosture): PostureFinding[] {
 			severity: "warn",
 			message:
 				"No unattended password is set, so this computer can only be reached while its ToDesk window is open and handing out a one-time password.",
-			fix: ACCESS_FIX.unattendedPassword,
+			fix: fixes.unattendedPassword,
 		});
 	}
 	if (posture.tempPasswordEnabled === false) {
@@ -119,7 +119,7 @@ export function postureFindings(posture: ClientPosture): PostureFinding[] {
 			code: "temp-password-off",
 			severity: "warn",
 			message: "The one-time password is off — a device that has no saved password cannot connect.",
-			fix: ACCESS_FIX.tempPassword,
+			fix: fixes.tempPassword,
 		});
 	}
 	if (posture.twoFactorForConnect === false) {
@@ -127,7 +127,7 @@ export function postureFindings(posture: ClientPosture): PostureFinding[] {
 			code: "no-2fa",
 			severity: "info",
 			message: "Two-factor authentication for incoming connections is off.",
-			fix: ACCESS_FIX.twoFactor,
+			fix: fixes.twoFactor,
 		});
 	}
 	if (posture.strangerConnectionLock === false) {
@@ -136,7 +136,7 @@ export function postureFindings(posture: ClientPosture): PostureFinding[] {
 			severity: "warn",
 			message:
 				"Strange-device connections are allowed: any code plus a valid password is accepted, not only saved devices.",
-			fix: ACCESS_FIX.strangerDevices,
+			fix: fixes.strangerDevices,
 		});
 	}
 	if (posture.autostart === false) {
@@ -144,7 +144,7 @@ export function postureFindings(posture: ClientPosture): PostureFinding[] {
 			code: "no-autostart",
 			severity: "info",
 			message: "ToDesk does not start with Windows, so this machine is unreachable after a reboot until someone opens it.",
-			fix: ACCESS_FIX.autostart,
+			fix: fixes.autostart,
 		});
 	}
 	if (findings.length === 0) {

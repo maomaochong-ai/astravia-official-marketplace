@@ -14,6 +14,7 @@ import type { ClientPosture } from "../../../domain/client-posture";
 import type { SavedDevice } from "../../../domain/device-store";
 import { assessReadiness, type ReadinessReport } from "../../../domain/remote-readiness";
 import { readLocalFacts } from "../services/local-facts";
+import { ACCESS_FIX } from "../../tooling/copy/access-fixes";
 import { readLocalStore } from "../services/local-store";
 
 export const ALLOW_COMMANDS_KEY = "allowCommands";
@@ -124,6 +125,7 @@ export function useTodeskConsole(
 			autostart: local.autostart,
 			posture,
 			devices,
+			fixes: ACCESS_FIX,
 		});
 
 		setState((prev) => ({

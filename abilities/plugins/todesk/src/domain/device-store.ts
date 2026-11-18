@@ -57,8 +57,6 @@ interface RawDevice {
 	ScreenMode?: unknown;
 	Width?: unknown;
 	Height?: unknown;
-	ResolutionX?: unknown;
-	ResolutionY?: unknown;
 	Quality?: unknown;
 	Fps?: unknown;
 	HD?: unknown;
@@ -66,20 +64,21 @@ interface RawDevice {
 
 const DEVICE_ID = /^\d{5,12}$/;
 
-function num(value: unknown): number | null {
+/** Non-finite and non-numeric input become null, which is what every caller checks. */
+function toFiniteNumber(value: unknown): number | null {
 	const n = Number(value);
 	return Number.isFinite(n) ? n : null;
 }
 
 /** ""-1"" is the client's "not chosen" marker for resolutions, so it is not a size. */
 function profileOf(raw: RawDevice): LastSessionProfile | null {
-	const width = num(raw.Width);
-	const height = num(raw.Height);
+	const width = toFiniteNumber(raw.Width);
+	const height = toFiniteNumber(raw.Height);
 	const resolution = width && height && width > 0 && height > 0 ? { width, height } : null;
 	const screen = String(raw.ScreenId ?? "").trim();
 	const screenMode = String(raw.ScreenMode ?? "").trim();
-	const quality = num(raw.Quality);
-	const fps = num(raw.Fps);
+	const quality = toFiniteNumber(raw.Quality);
+	const fps = toFiniteNumber(raw.Fps);
 	const hd = raw.HD === undefined ? null : String(raw.HD) === "1";
 
 	if (resolution === null && !screen && !screenMode && quality === null && fps === null && hd === null) return null;
@@ -196,15 +195,7 @@ export function describeDevice(device: SavedDevice): Record<string, unknown> {
 		saved_credential: device.hasSavedCredential,
 		login_password_saved: device.hasLoginPassword,
 		pinned: device.isPinned,
-		last_session: device.profile
-			? {
-					screen: device.profile.screen,
-					screen_mode: device.profile.screenMode,
-					resolution: device.profile.resolution,
-					quality: device.profile.quality,
-					fps: device.profile.fps,
-					hd: device.profile.hd,
-				}
-			: null,
+		// Spread as-is: one field list, so adding a field cannot desynchronise two.
+		last_session: device.profile,
 	};
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { DISABLED, capabilityAllowed, hostFailure, readStore, verifyConnection, type ToolBridge } from "../agent/tool-runtime";
+import { DISABLED, capabilityAllowed, hostFailure, readStore, verifyConnection, type ToolBridge } from "./tool-runtime";
 
 function bridge(overrides: Partial<ToolBridge> & { settings?: Record<string, unknown>; runFails?: boolean } = {}): ToolBridge {
 	const settings = overrides.settings ?? {};

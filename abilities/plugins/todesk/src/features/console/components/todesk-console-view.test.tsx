@@ -1,8 +1,8 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
-import { TodeskConsoleView } from "../features/console/components/todesk-console-view";
-import type { ConsoleDeps, RunResult } from "../runtime-contract";
+import { TodeskConsoleView } from "./todesk-console-view";
+import type { ConsoleDeps, RunResult } from "../../../runtime-contract";
 
 afterEach(cleanup);
 

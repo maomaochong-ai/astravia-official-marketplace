@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { INPUT_ACTION_ID, registerTodeskPlugin, TAB_ID, VIEW_ID } from "../plugin-registration";
-import type { ConsoleDeps, RunResult } from "../runtime-contract";
+import { INPUT_ACTION_ID, registerTodeskPlugin, TAB_ID, VIEW_ID } from "./plugin-registration";
+import type { ConsoleDeps, RunResult } from "./runtime-contract";
 
 const STATUS_OUT = `[libusb] Info: noise
 ToDesk ID:123456789

@@ -7,7 +7,7 @@
  * contract (ADR 0011 §3.1).
  */
 
-import { ACCESS_FIX } from "./access-fixes";
+import type { AccessFixes } from "../features/tooling/copy/access-fixes";
 import type { ClientPosture } from "./client-posture";
 import type { SavedDevice } from "./device-store";
 
@@ -35,6 +35,8 @@ export interface ReadinessInput {
 	now?: Date;
 	/** How long a "connected" row may stay true before it counts as leftover. Default 12 h. */
 	staleAfterMs?: number;
+	/** Remedy wording, injected because it is user-facing copy. */
+	fixes: AccessFixes;
 }
 
 export interface ReadinessReport {
@@ -54,7 +56,7 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 			code: "client-stopped",
 			state: "bad",
 			detail: "ToDesk is not running, so nobody can connect to this computer and nothing can be launched from it.",
-			fix: ACCESS_FIX.clientStopped,
+			fix: input.fixes.clientStopped,
 		});
 	}
 
@@ -63,7 +65,7 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 			code: "no-device-code",
 			state: "bad",
 			detail: "This computer has no readable device code, so there is nothing to give the far side.",
-			fix: ACCESS_FIX.noDeviceCode,
+			fix: input.fixes.noDeviceCode,
 		});
 	}
 
@@ -94,7 +96,7 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 			code: "posture-unknown",
 			state: "warn",
 			detail: "The client's settings could not be read, so the access flags are unknown and this verdict only covers the process and the device list.",
-			fix: ACCESS_FIX.postureUnknown,
+			fix: input.fixes.postureUnknown,
 		});
 	}
 
@@ -103,7 +105,7 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 			code: "no-2fa",
 			state: "warn",
 			detail: "Incoming connections are protected by a password only; two-factor authentication is off.",
-			fix: ACCESS_FIX.twoFactor,
+			fix: input.fixes.twoFactor,
 		});
 	}
 
@@ -112,7 +114,7 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 			code: "stranger-devices-allowed",
 			state: "warn",
 			detail: "Any device that knows the code and the password is accepted; only saved devices are not enforced.",
-			fix: ACCESS_FIX.strangerDevices,
+			fix: input.fixes.strangerDevices,
 		});
 	}
 
@@ -122,7 +124,7 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 			code: "autostart",
 			state: "warn",
 			detail: "ToDesk does not start with Windows, so this computer is unreachable after a reboot until someone opens it.",
-			fix: ACCESS_FIX.autostart,
+			fix: input.fixes.autostart,
 		});
 	}
 
@@ -133,7 +135,8 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 	// machine right now, which is not a problem to report.
 	const now = (input.now ?? new Date()).getTime();
 	const staleAfter = input.staleAfterMs ?? STALE_SESSION_MS;
-	const leftover = (input.devices ?? []).filter(
+	const saved = input.devices;
+	const leftover = (saved ?? []).filter(
 		(device) => device.isConnected && (device.lastConnectedAt === null || now - device.lastConnectedAt > staleAfter),
 	);
 	if (leftover.length > 0) {
@@ -148,16 +151,16 @@ export function assessReadiness(input: ReadinessInput): ReadinessReport {
 			code: "stale-session",
 			state: "warn",
 			detail: `The client still marks ${leftover.length} device(s) as connected with no connect since: ${described}. A session left open keeps occupying a channel.`,
-			fix: ACCESS_FIX.staleSession,
+			fix: input.fixes.staleSession,
 		});
 	}
 
-	if (input.devices && input.devices.length === 0) {
+	if (saved !== null && saved.length === 0) {
 		items.push({
 			code: "no-saved-devices",
 			state: "warn",
 			detail: "The client has no saved devices, so reaching another machine needs its 9-digit code and its temporary password.",
-			fix: ACCESS_FIX.noSavedDevices,
+			fix: input.fixes.noSavedDevices,
 		});
 	}
 

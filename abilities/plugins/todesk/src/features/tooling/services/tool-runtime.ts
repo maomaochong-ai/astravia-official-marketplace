@@ -10,24 +10,13 @@
  *    without standing up all eleven tools.
  */
 
-import { parseGetId, parseStatus, parseVersion } from "../domain/todesk-cli";
-import { outputOf, runTodesk } from "../domain/todesk-launch";
-import { readLocalStore, type LocalStore } from "../features/console/services/local-store";
-import type { RunResult } from "../runtime-contract";
+import { parseGetId, parseStatus, parseVersion } from "../../../domain/todesk-cli";
+import { outputOf, runTodesk } from "../../../domain/todesk-launch";
+import { readLocalStore, type LocalStore } from "../../console/services/local-store";
+import type { RunResult } from "../../../runtime-contract";
 
 export const SCOPE = ["conversation", "project"] as const;
 
-export const TOOL_STATUS = "todesk_status";
-export const TOOL_READINESS = "todesk_readiness";
-export const TOOL_DEVICES = "todesk_devices";
-export const TOOL_CONNECT = "todesk_connect";
-export const TOOL_USAGE = "todesk_usage";
-export const TOOL_POSTURE = "todesk_posture";
-export const TOOL_ACCOUNT = "todesk_account";
-export const TOOL_AUTOSTART = "todesk_autostart";
-export const TOOL_OPEN = "todesk_open_client";
-export const TOOL_TRAY = "todesk_tray";
-export const TOOL_DISCONNECT = "todesk_disconnect";
 
 const ALLOW_COMMANDS_KEY = "allowCommands";
 const TOOLS_KEY = "tools";
@@ -53,7 +42,7 @@ export type ToolKey =
 	| "disconnect";
 
 /** Tools that only read files: they work even when the host refused `ToDesk.exe`. */
-const FILE_ONLY = new Set<ToolKey>(["status", "readiness", "devices", "usage", "posture"]);
+const FILE_ONLY: ReadonlySet<ToolKey> = new Set(["status", "readiness", "devices", "usage", "posture"]);
 
 /**
  * Consent is per capability: the panel writes { tools: { connect: false, … } }, and an

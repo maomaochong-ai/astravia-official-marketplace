@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { judgeAutostart } from "../domain/autostart";
+import { judgeAutostart } from "./autostart";
 
 describe("judgeAutostart", () => {
 	it("confirms when the read-back agrees", () => {

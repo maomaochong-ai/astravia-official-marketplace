@@ -14,20 +14,21 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-const TOOL_IDS = [
-	"todesk_status",
-	"todesk_readiness",
-	"todesk_devices",
-	"todesk_connect",
-	"todesk_usage",
-	"todesk_posture",
-	"todesk_account",
-	"todesk_autostart",
-	"todesk_open_client",
-	"todesk_tray",
-	"todesk_disconnect",
-];
-const DIRS = ["C:\\Program Files\\ToDesk", "C:\\Program Files (x86)\\ToDesk"];
+const here = new URL(".", import.meta.url);
+const source = (relPath) => readFileSync(new URL(relPath, here), "utf8");
+
+// Read what the code owns instead of copying it: a renamed tool or a new install path must
+// not leave this script quietly describing an older plugin.
+function toolIds() {
+	return [...source("../src/tools/register-tools.ts").matchAll(/export const TOOL_[A-Z_]+ = "(todesk_[a-z_]+)";/g)].map(
+		(match) => match[1],
+	);
+}
+
+function installDirs() {
+	const block = source("../src/domain/todesk-cli.ts").match(/export const TODESK_DIRS[^=]*=\s*\[([\s\S]*?)\]/);
+	return block ? [...block[1].matchAll(/"([^"]+)"/g)].map((match) => match[1]) : [];
+}
 const manifestPath = join(homedir(), ".astravia", "plugins-manifest.json");
 
 function readManifest() {
@@ -38,7 +39,9 @@ function readManifest() {
 }
 
 function resolveClient() {
-	return DIRS.map((dir) => ({ dir, exe: join(dir, "ToDesk.exe") })).find((c) => existsSync(c.exe)) ?? null;
+	return installDirs()
+		.map((dir) => ({ dir, exe: join(dir, "ToDesk.exe") }))
+		.find((candidate) => existsSync(candidate.exe)) ?? null;
 }
 
 function probeStatus(client) {
@@ -105,5 +108,5 @@ if (!result.ok) {
 console.log(`就绪    |  todesk ${result.version}`);
 console.log(`客户端  |  ${result.exe}  v${result.clientVersion ?? "?"}  ${result.running ? "运行中" : "未运行"}`);
 console.log(`本机码  |  ${result.deviceId ?? "读不到（用 todesk_status 再取一次）"}   开机自启 ${result.autostart ?? "?"}`);
-console.log(`工具    |  ${TOOL_IDS.join("  ")}`);
+console.log(`工具    |  ${toolIds().join("  ")}`);
 console.log(`在对话里说 |  “看下我的设备码和连接状态” / “连接 <9位设备码> 密码 <临时密码>” / “断开远程”`);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { maskAccount, parsePosture, postureFindings } from "../domain/client-posture";
+import { ACCESS_FIX } from "../features/tooling/copy/access-fixes";
+import { maskAccount, parsePosture, postureFindings } from "./client-posture";
 
 const SECRET = "9f8e7d6c5b4a39281706f5e4d3c2b1a0";
 const config = [
@@ -64,7 +65,7 @@ describe("postureFindings", () => {
 			autostart: false,
 			accountType: "phone",
 			accountHint: null,
-		});
+		}, ACCESS_FIX);
 		expect(findings.map((f) => f.code)).toEqual([
 			"no-unattended-password",
 			"temp-password-off",
@@ -84,7 +85,7 @@ describe("postureFindings", () => {
 			autostart: true,
 			accountType: "email",
 			accountHint: "a***@example.com",
-		});
+		}, ACCESS_FIX);
 		expect(findings).toHaveLength(1);
 		expect(findings[0].code).toBe("locked-down");
 	});

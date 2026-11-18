@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CONFIG_CANDIDATES, parseTodeskConfig } from "../domain/todesk-config";
+import { CONFIG_CANDIDATES, parseTodeskConfig } from "./todesk-config";
 
 const REAL = `[ConfigInfo]
 passUpdate=3

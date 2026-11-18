@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { ClientPosture } from "../domain/client-posture";
-import type { SavedDevice } from "../domain/device-store";
-import { assessReadiness } from "../domain/remote-readiness";
+import type { ClientPosture } from "./client-posture";
+import type { SavedDevice } from "./device-store";
+import { ACCESS_FIX } from "../features/tooling/copy/access-fixes";
+import { assessReadiness } from "./remote-readiness";
 
 const healthy: ClientPosture = {
 	unattendedPasswordSet: true,
@@ -24,7 +25,7 @@ const device: SavedDevice = {
 	profile: null,
 };
 
-const base = { deviceId: "999888777", clientRunning: true, autostart: true };
+const base = { deviceId: "999888777", clientRunning: true, autostart: true, fixes: ACCESS_FIX };
 
 describe("assessReadiness", () => {
 	it("says ready when nothing is missing", () => {

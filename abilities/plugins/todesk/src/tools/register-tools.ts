@@ -2,7 +2,8 @@
  * The eleven tools declared to the agent — registration only.
  *
  * Behaviour lives in the domain layer; the gate, the standard failure answers, the status
- * read and the store accessor live in `../agent/tool-runtime` so they can be tested on their own.
+ * read and the store accessor live in `features/tooling/services/tool-runtime` so they can
+ * be tested on their own.
  * Rules that shaped this file:
  *  1. No MCP dependency (ADR 0003/0005).
  *  2. The host's command grant is the consent; the panel switch can only narrow it (ADR 0004).
@@ -15,6 +16,7 @@ import { judgeAutostart } from "../domain/autostart";
 import { assessReadiness } from "../domain/remote-readiness";
 import { describeDevice, matchDevice } from "../domain/device-store";
 import { postureFindings } from "../domain/client-posture";
+import { ACCESS_FIX } from "../features/tooling/copy/access-fixes";
 import {
 	AUTOSTART_OFF_ARGS,
 	AUTOSTART_ON_ARGS,
@@ -27,39 +29,43 @@ import { summarizeUsage } from "../domain/usage-store";
 import {
 	DISABLED,
 	SCOPE,
-	TOOL_ACCOUNT,
-	TOOL_AUTOSTART,
-	TOOL_CONNECT,
-	TOOL_DEVICES,
-	TOOL_DISCONNECT,
-	TOOL_OPEN,
-	TOOL_POSTURE,
-	TOOL_READINESS,
-	TOOL_STATUS,
-	TOOL_TRAY,
-	TOOL_USAGE,
 	capabilityAllowed,
 	hostFailure,
 	readStatus,
 	readStore,
 	verifyConnection,
 	type ToolBridge,
-} from "../agent/tool-runtime";
+} from "../features/tooling/services/tool-runtime";
 
-export {
+// The ids are the tools' contract, so they live next to the registrations that use them.
+export const TOOL_STATUS = "todesk_status";
+export const TOOL_READINESS = "todesk_readiness";
+export const TOOL_DEVICES = "todesk_devices";
+export const TOOL_CONNECT = "todesk_connect";
+export const TOOL_USAGE = "todesk_usage";
+export const TOOL_POSTURE = "todesk_posture";
+export const TOOL_ACCOUNT = "todesk_account";
+export const TOOL_AUTOSTART = "todesk_autostart";
+export const TOOL_OPEN = "todesk_open_client";
+export const TOOL_TRAY = "todesk_tray";
+export const TOOL_DISCONNECT = "todesk_disconnect";
+
+/** Every id this plugin registers, so a drift test can compare it against the docs. */
+export const TOOL_IDS = [
+	TOOL_STATUS,
+	TOOL_READINESS,
+	TOOL_DEVICES,
+	TOOL_CONNECT,
+	TOOL_USAGE,
+	TOOL_POSTURE,
 	TOOL_ACCOUNT,
 	TOOL_AUTOSTART,
-	TOOL_CONNECT,
-	TOOL_DEVICES,
-	TOOL_DISCONNECT,
 	TOOL_OPEN,
-	TOOL_POSTURE,
-	TOOL_READINESS,
-	TOOL_STATUS,
 	TOOL_TRAY,
-	TOOL_USAGE,
-} from "../agent/tool-runtime";
-export type { ToolBridge } from "../agent/tool-runtime";
+	TOOL_DISCONNECT,
+] as const;
+
+export type { ToolBridge } from "../features/tooling/services/tool-runtime";
 
 export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Disposable {
 	const status = ctx.agent.registerTool({
@@ -248,6 +254,7 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 				autostart: typeof status.autostart === "boolean" ? status.autostart : null,
 				posture: store.posture,
 				devices: store.error ? null : store.devices,
+				fixes: ACCESS_FIX,
 			});
 
 			return JSON.stringify({
@@ -316,7 +323,7 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 			if (!store.posture) {
 				return JSON.stringify({ ok: false, reason: "could not read ToDesk's config.ini", directory: store.directory });
 			}
-			return JSON.stringify({ ok: true, ...store.posture, findings: postureFindings(store.posture) });
+			return JSON.stringify({ ok: true, ...store.posture, findings: postureFindings(store.posture, ACCESS_FIX) });
 		},
 	});
 

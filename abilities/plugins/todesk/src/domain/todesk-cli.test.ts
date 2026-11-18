@@ -7,7 +7,7 @@ import {
 	parseGetId,
 	parseStatus,
 	parseVersion,
-} from "../domain/todesk-cli";
+} from "./todesk-cli";
 
 // Verbatim output of `ToDesk.exe -version|-getid|-status` on 4.8.8.4, including the
 // libusb noise and the success-with-exit-1 behaviour the parsers have to survive.
