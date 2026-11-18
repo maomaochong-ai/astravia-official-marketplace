@@ -101,6 +101,23 @@ describe("ToDesk console view", () => {
 		expect(screen.getByText("readiness.item.posture-unknown")).toBeTruthy();
 	});
 
+	it("draws each capability switch as a real switch, and toggling it persists", async () => {
+		const { deps, settings } = harness();
+		render(<TodeskConsoleView deps={deps} t={t} canRun />);
+		await screen.findAllByText(CODE);
+
+		const switches = screen.getAllByRole("switch");
+		expect(switches.length).toBeGreaterThanOrEqual(11);
+		// All on by default, and each one announces its own tool id.
+		expect(switches.every((node) => node.getAttribute("aria-checked") === "true")).toBe(true);
+		expect(switches[0].getAttribute("aria-label")).toBe("diag.tools.status.name");
+
+		await userEvent.click(switches[0]);
+		await waitFor(() => expect(screen.getAllByRole("switch")[0].getAttribute("aria-checked")).toBe("false"));
+		// The choice is stored, not just painted.
+		expect((settings().tools as Record<string, boolean>).status).toBe(false);
+	});
+
 	it("keeps every visible control usable by default", async () => {
 		const { deps } = harness();
 		render(<TodeskConsoleView deps={deps} t={t} canRun />);
@@ -164,8 +181,8 @@ describe("ToDesk console view", () => {
 		render(<TodeskConsoleView deps={deps} t={t} canRun />);
 
 		await screen.findAllByText(CODE);
-		const connectSwitch = screen.getByLabelText("diag.tools.connect.name") as HTMLInputElement;
-		expect(connectSwitch.checked).toBe(true);
+		const connectSwitch = screen.getByLabelText("diag.tools.connect.name") as HTMLElement;
+		expect(connectSwitch.getAttribute("aria-checked")).toBe("true");
 
 		await user.click(connectSwitch);
 		await waitFor(() => expect(settings().tools).toMatchObject({ connect: false, status: true }));

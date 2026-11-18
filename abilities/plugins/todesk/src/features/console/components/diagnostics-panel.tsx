@@ -59,16 +59,18 @@ export function DiagnosticsPanel({
 									<div className="td-mono text-[11px]">{t(`diag.tools.${key}.name`)}</div>
 									<p className="td-meta">{t(`diag.tools.${key}`)}</p>
 								</div>
-								<label className="td-switch shrink-0">
-									<input
-										type="checkbox"
-										checked={enabled[key]}
-										disabled={busy}
-										onChange={(event) => onToggleTool(key, event.target.checked)}
-										aria-label={t(`diag.tools.${key}.name`)}
-									/>
-									<span />
-								</label>
+								<button
+									type="button"
+									role="switch"
+									aria-checked={enabled[key]}
+									aria-label={t(`diag.tools.${key}.name`)}
+									className="td-switch shrink-0"
+									data-on={enabled[key] ? "on" : "off"}
+									disabled={busy}
+									onClick={() => onToggleTool(key, !enabled[key])}
+								>
+									<span className="td-switch-knob" aria-hidden />
+								</button>
 							</li>
 						))}
 					</ul>
