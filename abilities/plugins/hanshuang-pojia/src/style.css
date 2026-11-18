@@ -106,3 +106,39 @@
 		opacity: 0.45;
 	}
 }
+
+/* ---- 中央区铺满 ------------------------------------------------------------
+   主区域是 flex 列：页面根是 Fragment，所以它的卡片就是 main 的直接子节点。
+   最后一张卡片吃掉剩余高度，页面底部不再留一块空白；卡片内部自己滚动。
+   容器查询而不是视口查询：面板是可拖拽的 tab，窗口宽度不等于面板宽度。 */
+.fb-page-fill > * {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.fb-page-fill > :last-child {
+	flex: 1 1 auto;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.fb-page-fill > :last-child > :last-child {
+	min-height: 0;
+	overflow: auto;
+}
+
+/* 窄面板：留白与字号各降一档，避免挤压与溢出。 */
+@container (max-width: 620px) {
+	.fb-page-fill {
+		padding: 10px;
+		gap: 10px;
+	}
+}
+
+@container (max-width: 460px) {
+	.fb-page-fill {
+		padding: 8px;
+		gap: 8px;
+	}
+}

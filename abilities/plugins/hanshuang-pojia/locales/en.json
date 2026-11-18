@@ -766,5 +766,8 @@
   "selfcheck.item.host.storage": "Plugin storage",
   "selfcheck.item.host.chat": "Conversation bridge",
   "selfcheck.item.host.lab": "Lab mode",
-  "action.workbench": "Hanshuang Pojia"
+  "action.workbench": "Hanshuang Pojia",
+  "prompt.template.button": "System contract template",
+  "prompt.template.hint": "Add the verbatim agent/prompts/SYSTEM.md body as a prompt (prepend mode)",
+  "prompt.template.present": "The system contract is already in the library"
 }

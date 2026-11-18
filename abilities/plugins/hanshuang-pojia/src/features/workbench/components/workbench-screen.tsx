@@ -79,7 +79,7 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 			<InjectStatusBar lab={model.lab.state} library={model.promptLibrary} />
 			<div className="flex min-h-0 flex-1">
 				<Sidebar page={model.page} onNavigate={model.go} lab={model.lab.state} status={live} />
-				<main className="fb-scroll min-w-0 flex-1 overflow-y-auto">
+				<main className="fb-page-fill fb-scroll flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
 					<Page {...props} />
 				</main>
 			</div>

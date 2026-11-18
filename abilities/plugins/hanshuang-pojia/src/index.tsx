@@ -265,7 +265,10 @@ export default definePlugin({
 				component: WorkbenchTab,
 				scope_use: ["conversation", "project"],
 				order: 42,
-				initiallyVisible: true,
+				// 不再默认常驻：宿主每次打开一个会话都会把「默认可见」的标签页挂上去，
+				// 十几次会话就是十几次静默启动（面板自己还有 storage/会话订阅的副作用）。
+				// 入口仍在三处：侧栏「+」列表、输入框开关（点了会 openActivityTab）、工具调用。
+				initiallyVisible: false,
 			});
 		} catch (error) {
 			console.error("[hanshuang-pojia] activity tab registration failed", error);

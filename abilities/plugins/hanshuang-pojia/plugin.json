@@ -3,7 +3,7 @@
   "name": "%plugin.name%",
   "description": "%plugin.description%",
   "icon": "assets/icon.svg",
-  "version": "2.14.6",
+  "version": "2.15.0",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "styles": [
@@ -68,44 +68,92 @@
           "displayDescription": "%skill.description%",
           "defaultVisibility": "visible",
           "surfaces": {
+            "abilityCatalog": "visible",
+            "agentConfiguration": "visible",
+            "pluginDetail": "visible",
             "skillPicker": "visible",
-            "commandPalette": "visible",
+            "commandPalette": "visible"
+          }
+        },
+        "apkseep": {
+          "displayName": "%skill.apkseep.name%",
+          "displayDescription": "%skill.apkseep.description%",
+          "defaultVisibility": "hidden",
+          "surfaces": {
             "abilityCatalog": "visible",
             "agentConfiguration": "visible",
             "pluginDetail": "visible"
           }
         },
-        "apkseep": {
-          "displayName": "%skill.apkseep.name%",
-          "displayDescription": "%skill.apkseep.description%"
-        },
         "client-license-validation-bypass": {
           "displayName": "%skill.licenseBypass.name%",
-          "displayDescription": "%skill.licenseBypass.description%"
+          "displayDescription": "%skill.licenseBypass.description%",
+          "defaultVisibility": "hidden",
+          "surfaces": {
+            "abilityCatalog": "visible",
+            "agentConfiguration": "visible",
+            "pluginDetail": "visible"
+          }
         },
         "softseep": {
           "displayName": "%skill.softseep.name%",
-          "displayDescription": "%skill.softseep.description%"
+          "displayDescription": "%skill.softseep.description%",
+          "defaultVisibility": "hidden",
+          "surfaces": {
+            "abilityCatalog": "visible",
+            "agentConfiguration": "visible",
+            "pluginDetail": "visible"
+          }
         },
         "apk-reverse": {
           "displayName": "%skill.apkReverse.name%",
-          "displayDescription": "%skill.apkReverse.description%"
+          "displayDescription": "%skill.apkReverse.description%",
+          "defaultVisibility": "hidden",
+          "surfaces": {
+            "abilityCatalog": "visible",
+            "agentConfiguration": "visible",
+            "pluginDetail": "visible"
+          }
         },
         "ida-reverse": {
           "displayName": "%skill.idaReverse.name%",
-          "displayDescription": "%skill.idaReverse.description%"
+          "displayDescription": "%skill.idaReverse.description%",
+          "defaultVisibility": "hidden",
+          "surfaces": {
+            "abilityCatalog": "visible",
+            "agentConfiguration": "visible",
+            "pluginDetail": "visible"
+          }
         },
         "mcp-js-reverse-playbook": {
           "displayName": "%skill.jsPlaybook.name%",
-          "displayDescription": "%skill.jsPlaybook.description%"
+          "displayDescription": "%skill.jsPlaybook.description%",
+          "defaultVisibility": "hidden",
+          "surfaces": {
+            "abilityCatalog": "visible",
+            "agentConfiguration": "visible",
+            "pluginDetail": "visible"
+          }
         },
         "radare2": {
           "displayName": "%skill.radare2.name%",
-          "displayDescription": "%skill.radare2.description%"
+          "displayDescription": "%skill.radare2.description%",
+          "defaultVisibility": "hidden",
+          "surfaces": {
+            "abilityCatalog": "visible",
+            "agentConfiguration": "visible",
+            "pluginDetail": "visible"
+          }
         },
         "reverse-engineering": {
           "displayName": "%skill.reverseEngineering.name%",
-          "displayDescription": "%skill.reverseEngineering.description%"
+          "displayDescription": "%skill.reverseEngineering.description%",
+          "defaultVisibility": "hidden",
+          "surfaces": {
+            "abilityCatalog": "visible",
+            "agentConfiguration": "visible",
+            "pluginDetail": "visible"
+          }
         }
       }
     }

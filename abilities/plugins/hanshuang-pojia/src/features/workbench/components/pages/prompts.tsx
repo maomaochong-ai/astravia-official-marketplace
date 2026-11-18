@@ -11,6 +11,7 @@ import { BackupRestoreDialog } from "../prompts/backup-restore-dialog";
 import { findSimilar, parsePromptFile, PromptImportError } from "../../services/prompt-import";
 import { Icon } from "../shell/icon";
 import { InjectBlockCard } from "../prompts/inject-block-card";
+import { hasSystemTemplate, SYSTEM_PROMPT_TEMPLATE } from "../../../../domain/prompt-template";
 import type { PageProps } from "./overview";
 
 /**
@@ -31,6 +32,8 @@ export function PromptsPage({ model }: PageProps) {
 	const backups = model.promptBackups;
 
 	const editing = editingId ? library.items.find(p => p.id === editingId) ?? null : null;
+	// 模板已经在库里就不再提示注入：重复点只会多出一条同正文的提示词。
+	const templatePresent = hasSystemTemplate(library.items);
 
 	// 过滤与排序都在 domain/prompt-library 里，页面只做编排：以前这里内联了一份同样的
 	// 逻辑，和 searchPrompts/sortPrompts 各改各的，属于重复实现。
@@ -124,6 +127,24 @@ export function PromptsPage({ model }: PageProps) {
 								if (picked.length > 0) void handleImport(picked);
 							}}
 						/>
+						<button
+							type="button"
+							// 一键注入系统契约：内容是 SYSTEM.md 原文（prepend），不再由用户粘贴。
+							disabled={templatePresent}
+							title={templatePresent ? t("prompt.template.present") : t("prompt.template.hint")}
+							onClick={() =>
+								model.createPrompt({
+									name: SYSTEM_PROMPT_TEMPLATE.name,
+									description: SYSTEM_PROMPT_TEMPLATE.description,
+									content: SYSTEM_PROMPT_TEMPLATE.content,
+									mode: SYSTEM_PROMPT_TEMPLATE.mode,
+								})
+							}
+							className="flex items-center gap-1 rounded-md border border-line-subtle px-2.5 py-1.5 text-[11.5px] font-medium text-text-2 transition-colors hover:bg-surface-hover hover:text-text disabled:cursor-not-allowed disabled:opacity-45"
+						>
+							<Icon name="shield" className="size-3.5" />
+							{t("prompt.template.button")}
+						</button>
 						<button
 							type="button"
 							onClick={() => {
