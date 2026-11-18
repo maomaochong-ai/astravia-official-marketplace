@@ -48,6 +48,29 @@ interface Activation {
 
 let current: Activation | null = null;
 
+/**
+ * 本文件会去登记、而宿主可能没授权的面。
+ *
+ * 只列**这里真的分支**的那几个：抄一份清单会与 manifest 漂移，而漂移的清单比没有清单更糟。
+ * 未授权时宿主对可选贡献只写一行 `contribution skipped`，而 `ctx.permissions.require()` 会抛——
+ * 两者叠加就是「插件在添加列表里消失，控制台只有英文 skipped」。把缺的列出来，读者才知道去哪修。
+ */
+const GATED_SURFACES = ["ui.slot.input-action", "ui.slot.tool-call", "agent.tools.register"] as const;
+
+function ungranted(ctx: PluginContext): string[] {
+	return GATED_SURFACES.filter((permission) => !ctx.permissions.has(permission));
+}
+
+/** 可选面：缺权限就跳过，任何异常都不连坐别的面。 */
+function optional<T>(label: string, make: () => T): T | null {
+	try {
+		return make();
+	} catch (error) {
+		console.warn(`[${APP.id}] ${label} 未注册，其余面继续`, error);
+		return null;
+	}
+}
+
 function release(activation: Activation): void {
   if (activation.released) return;
   activation.released = true;
@@ -58,6 +81,16 @@ function release(activation: Activation): void {
 export default definePlugin({
   activate(ctx: PluginContext) {
     if (current) release(current);
+
+    // 缺权限不是崩溃理由，但必须说出来：只说 skipped 的日志读不出「去哪修」。
+    const missing = ungranted(ctx);
+    if (missing.length > 0) {
+			console.warn(
+				`[${APP.id}] 未授权 ${missing.length} 项：${missing.join(", ")}。` +
+					` 到「设置 → 能力 → 插件 → ${APP.name}」详情页重新授权，入口会随下一次激活恢复。`,
+			);
+    }
+
 
     const tab = ctx.ui.registerActivityTab({
       id: TAB_ID,
@@ -120,23 +153,35 @@ export default definePlugin({
 
     // Tools are what make the plugin usable from the conversation; they fail closed
     // too, and a host build without the two tool permissions registers nothing.
-    const tools = registerCraftTools(ctx);
+    const tools = optional("tools", () => registerCraftTools(ctx)) ?? [];
 
     // A batch is the one tool whose result is a list of things that happened, and the
     // host would print it as JSON. This renders the same result as a timeline in the
     // transcript — the label of each step, what it did, and how far the canvas moved.
-    const timeline = ctx.ui.registerToolCallSlot({
-      id: `${APP.id}:act-timeline`,
-      toolName: `${APP.id}_act`,
-      component: ActTimeline,
-    });
+    // `ui.slot.tool-call` 同样会抛：未授权的安装曾经在这里把整个 activation 打死，
+    // 结果标签页也没注册上——用户在「添加」里就找不到这个插件。改成可选面。
+    const timeline = ctx.permissions.has("ui.slot.tool-call")
+      ? optional("act-timeline", () =>
+          ctx.ui.registerToolCallSlot({
+            id: `${APP.id}:act-timeline`,
+            toolName: `${APP.id}_act`,
+            component: ActTimeline,
+          }),
+        )
+      : null;
 
     // The panel learns what the model is about to do (and where the project is)
     // before any tool result exists; see conversation-bridge.ts.
     const conversation = connectConversation(ctx);
 
     const activation: Activation = {
-      owned: [...(action ? [action] : []), tab, ...tools, timeline, conversation],
+      owned: [
+        ...(action ? [action] : []),
+        tab,
+        ...tools,
+        ...(timeline ? [timeline] : []),
+        conversation,
+      ],
       released: false,
     };
     return () => {
