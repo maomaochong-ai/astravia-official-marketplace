@@ -14,7 +14,18 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-const TOOL_IDS = ["todesk_status", "todesk_connect", "todesk_disconnect", "todesk_autostart", "todesk_open_client"];
+const TOOL_IDS = [
+	"todesk_status",
+	"todesk_devices",
+	"todesk_connect",
+	"todesk_usage",
+	"todesk_posture",
+	"todesk_account",
+	"todesk_autostart",
+	"todesk_open_client",
+	"todesk_tray",
+	"todesk_disconnect",
+];
 const DIRS = ["C:\\Program Files\\ToDesk", "C:\\Program Files (x86)\\ToDesk"];
 const manifestPath = join(homedir(), ".astravia", "plugins-manifest.json");
 

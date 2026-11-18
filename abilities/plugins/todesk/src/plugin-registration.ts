@@ -13,12 +13,12 @@ export const INPUT_ACTION_ID = "console";
  * tested without the SDK:
  *
  *  - **workspace view** — sidebar page, cross-conversation identity;
- *  - **activity tab** — the panel on the right; `initiallyVisible: true` so it is on the
- *    bar as soon as the plugin is active instead of hiding behind the panel's “+”;
+ *  - **activity tab** — the panel on the right; dormant by default, opened on demand;
  *  - **input action** — a ToDesk button at the composer, which opens that tab. This is
  *    the composer-side entry: the composer's own “+” lists *bottom panels*, so a plugin
  *    that wants a composer button must register one of these;
- *  - **five agent tools** — the part that actually lets the agent do work.
+ *  - **ten agent tools** — the part that actually lets the agent do work (ADR 0010);
+ *  - **a per-turn prompt block** — so the tools are reachable without naming a skill.
  */
 export function registerTodeskPlugin(
 	ctx: PluginContext,
@@ -60,7 +60,12 @@ export function registerTodeskPlugin(
 		},
 	});
 
-	const tools = registerTodeskTools(ctx, { run: deps.run, readSettings: deps.readSettings });
+	const tools = registerTodeskTools(ctx, {
+		run: deps.run,
+		readSettings: deps.readSettings,
+		readTextFile: deps.readTextFile,
+		listDirectory: deps.listDirectory,
+	});
 	const prompt = registerTodeskPrompt(ctx);
 
 	return {

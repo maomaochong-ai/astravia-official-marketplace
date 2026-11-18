@@ -35,6 +35,13 @@ export default definePlugin({
 				const result = await ctx.fs.readFile(path);
 				return result.content;
 			},
+			// ToDesk keeps its device list and usage counters under %LOCALAPPDATA%, and the
+			// plugin API exposes no home/env lookup — so the profile is discovered by listing
+			// C:\Users. This is the only way those files are reachable.
+			async listDirectory(path) {
+				const entries = await ctx.fs.readDir(path);
+				return entries.map((entry) => ({ name: entry.name, path: entry.path, isDirectory: entry.isDirectory }));
+			},
 			readSettings,
 			writeSettings: async (value) => {
 				await ctx.storage.writeFile(SETTINGS_FILE, JSON.stringify(value, null, 2), "utf8");

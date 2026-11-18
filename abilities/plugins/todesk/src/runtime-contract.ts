@@ -9,6 +9,10 @@ export interface RunResult {
 export interface ConsoleDeps {
 	/** Read a file outside the workspace; rejects when the host refuses. */
 	readTextFile(path: string): Promise<string>;
+	/** List a directory outside the workspace; rejects when the host refuses. */
+	listDirectory(path: string): Promise<{ name: string; path: string; isDirectory?: boolean }[]>;
+	/** List a directory outside the workspace; rejects when the host refuses. */
+	listDirectory(path: string): Promise<{ name: string; path: string }[]>;
 	readSettings(): Promise<Record<string, unknown> | null>;
 	writeSettings(value: Record<string, unknown>): Promise<void>;
 	openExternal(url: string): Promise<void>;

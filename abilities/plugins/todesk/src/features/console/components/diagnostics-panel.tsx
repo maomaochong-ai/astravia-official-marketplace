@@ -2,7 +2,18 @@ import type { ReactNode } from "react";
 import type { LocalFacts } from "../../../runtime-contract";
 
 /** One switch per agent capability; the host grant still gates all of them. */
-export const TOOL_KEYS = ["status", "connect", "autostart", "open", "disconnect"] as const;
+export const TOOL_KEYS = [
+	"status",
+	"devices",
+	"connect",
+	"usage",
+	"posture",
+	"account",
+	"autostart",
+	"open",
+	"tray",
+	"disconnect",
+] as const;
 export type ToolKey = (typeof TOOL_KEYS)[number];
 
 /**

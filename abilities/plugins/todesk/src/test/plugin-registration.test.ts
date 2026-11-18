@@ -54,6 +54,7 @@ function fakeCtx(options: { settings?: Record<string, unknown>; failRun?: boolea
 		readTextFile: async () => {
 			throw new Error("ENOENT");
 		},
+		listDirectory: async () => [],
 		readSettings: async () => settingsValue,
 		writeSettings: async (value) => {
 			settingsValue = value;
@@ -97,15 +98,20 @@ describe("plugin registration", () => {
 		expect(opened).toEqual([TAB_ID]);
 	});
 
-	it("registers five tools and no MCP-dependent one", () => {
+	it("registers ten tools and no MCP-dependent one", () => {
 		const { ctx, deps, registered } = fakeCtx();
 		registerTodeskPlugin(ctx as never, deps, AnyComponent);
 		expect(registered.map((tool) => tool.id).sort()).toEqual([
+			"todesk_account",
 			"todesk_autostart",
 			"todesk_connect",
+			"todesk_devices",
 			"todesk_disconnect",
 			"todesk_open_client",
+			"todesk_posture",
 			"todesk_status",
+			"todesk_tray",
+			"todesk_usage",
 		]);
 	});
 

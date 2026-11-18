@@ -18,7 +18,18 @@ export const DOWNLOAD_URL = "https://www.todesk.com/download.html";
 
 export type Note = { kind: "ok" | "info" | "error"; text: string } | null;
 export type ToolFlags = Record<ToolKey, boolean>;
-export const ALL_TOOLS_ON: ToolFlags = { status: true, connect: true, autostart: true, open: true, disconnect: true };
+export const ALL_TOOLS_ON: ToolFlags = {
+	status: true,
+	devices: true,
+	connect: true,
+	usage: true,
+	posture: true,
+	account: true,
+	autostart: true,
+	open: true,
+	tray: true,
+	disconnect: true,
+};
 
 /**
  * A launched session, tracked so the panel can stop claiming "connected" forever.
@@ -47,19 +58,24 @@ function readTools(settings: Record<string, unknown>, granted: boolean): ToolFla
 		const record = stored as Record<string, unknown>;
 		return {
 			status: record.status !== false,
+			devices: record.devices !== false,
 			connect: record.connect !== false,
+			usage: record.usage !== false,
+			posture: record.posture !== false,
+			account: record.account !== false,
 			autostart: record.autostart !== false,
 			open: record.open !== false,
+			tray: record.tray !== false,
 			disconnect: record.disconnect !== false,
 		};
 	}
 	if (typeof settings[ALLOW_COMMANDS_KEY] === "boolean") {
 		const on = settings[ALLOW_COMMANDS_KEY] === true;
-		return { status: true, connect: on, autostart: on, open: on, disconnect: on };
+		return { ...ALL_TOOLS_ON, connect: on, autostart: on, open: on, tray: on, disconnect: on };
 	}
 	return granted
 		? ALL_TOOLS_ON
-		: { status: true, connect: false, autostart: false, open: false, disconnect: false };
+		: { ...ALL_TOOLS_ON, connect: false, account: false, autostart: false, open: false, tray: false, disconnect: false };
 }
 
 export function useTodeskConsole(

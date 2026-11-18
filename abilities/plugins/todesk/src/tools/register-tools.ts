@@ -1,16 +1,24 @@
 /**
  * Agent-facing tools.
  *
- * Two rules, both learned the hard way:
+ * Four rules, each one learned from a real failure:
  *  1. **No MCP dependency.** ToDesk's MCP endpoint belongs to its AI subsystem, cannot
  *     be switched on from the client, and never connected; the plugin drives the
  *     documented command line instead (ADR 0003, ADR 0005).
  *  2. **The user's consent is the host's command grant.** The manifest declares
  *     `ToDesk.exe`; the host keeps `grantedCommandNames`. The panel switch can only
  *     turn things further off, never grant what the host refused.
+ *  3. **The client's own local state is a capability, not a secret.** Its saved device
+ *     list turns "type nine digits" into "connect to the office PC"; its settings answer
+ *     "can someone reach this machine". Credential values are never returned — only
+ *     whether one exists (ADR 0010).
+ *  4. **The screen belongs to ToDesk's window.** Nothing here claims to see or click the
+ *     remote desktop (ADR 0009).
  */
 
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
+import { postureFindings } from "../domain/client-posture";
+import { describeDevice, matchDevice } from "../domain/device-store";
 import {
 	AUTOSTART_OFF_ARGS,
 	AUTOSTART_ON_ARGS,
@@ -22,6 +30,8 @@ import {
 	parseVersion,
 } from "../domain/todesk-cli";
 import { outputOf, runTodesk } from "../domain/todesk-launch";
+import { summarizeUsage } from "../domain/usage-store";
+import { readLocalStore } from "../features/console/services/local-store";
 import type { RunResult } from "../runtime-contract";
 
 const SCOPE = ["conversation", "project"] as const;
@@ -29,14 +39,21 @@ const ALLOW_COMMANDS_KEY = "allowCommands";
 const TOOLS_KEY = "tools";
 
 export const TOOL_STATUS = "todesk_status";
+export const TOOL_DEVICES = "todesk_devices";
 export const TOOL_CONNECT = "todesk_connect";
+export const TOOL_USAGE = "todesk_usage";
+export const TOOL_POSTURE = "todesk_posture";
+export const TOOL_ACCOUNT = "todesk_account";
 export const TOOL_AUTOSTART = "todesk_autostart";
 export const TOOL_OPEN = "todesk_open_client";
+export const TOOL_TRAY = "todesk_tray";
 export const TOOL_DISCONNECT = "todesk_disconnect";
 
 export interface ToolBridge {
 	run(file: string, args: string[], env?: Record<string, string>): Promise<RunResult>;
 	readSettings(): Promise<Record<string, unknown> | null>;
+	readTextFile(path: string): Promise<string>;
+	listDirectory(path: string): Promise<{ name: string; path: string }[]>;
 }
 
 async function readStatus(bridge: ToolBridge): Promise<Record<string, unknown>> {
@@ -77,7 +94,20 @@ async function readStatus(bridge: ToolBridge): Promise<Record<string, unknown>> 
 	};
 }
 
-type ToolKey = "status" | "connect" | "autostart" | "open" | "disconnect";
+type ToolKey =
+	| "status"
+	| "devices"
+	| "connect"
+	| "usage"
+	| "posture"
+	| "account"
+	| "autostart"
+	| "open"
+	| "tray"
+	| "disconnect";
+
+/** Tools that only read files: they work even when the host refused `ToDesk.exe`. */
+const FILE_ONLY = new Set<ToolKey>(["status", "devices", "usage", "posture"]);
 
 /**
  * Consent is per capability: the panel writes { tools: { connect: false, … } }, and an
@@ -96,7 +126,7 @@ async function capabilityAllowed(bridge: ToolBridge, key: ToolKey): Promise<bool
 
 	if (typeof settings?.[ALLOW_COMMANDS_KEY] === "boolean" && settings[ALLOW_COMMANDS_KEY] === false) return false;
 
-	if (key === "status") return true;
+	if (FILE_ONLY.has(key)) return true;
 	return (await runTodesk(bridge.run, ["-status"], undefined)).ok;
 }
 
@@ -105,6 +135,15 @@ const DISABLED = JSON.stringify({
 	reason: "ToDesk control is switched off in the plugin panel",
 	hint: "open the ToDesk panel and press 开启 / Allow in the banner, then ask again",
 });
+
+function hostFailure(run: { error?: string | null }, args: string[]): string {
+	return JSON.stringify({
+		ok: false,
+		command: `ToDesk.exe ${args.join(" ")}`,
+		reason: "ToDesk's command line could not be started",
+		host_error: run.error ?? null,
+	});
+}
 
 export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Disposable {
 	const status = ctx.agent.registerTool({
@@ -118,62 +157,235 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 			JSON.stringify({ ...(await readStatus(bridge)), commands_allowed: await capabilityAllowed(bridge, "status") }),
 	});
 
-	const connect = ctx.agent.registerTool({
-		id: TOOL_CONNECT,
-		label: "ToDesk connect",
+	const devices = ctx.agent.registerTool({
+		id: TOOL_DEVICES,
+		label: "ToDesk saved devices",
 		description:
-			"Open a ToDesk remote-control session from this computer to another device. Needs the far side's 9-digit device code AND its temporary password (ToDesk shows that password on the target machine and requires it). The session opens in ToDesk's own window; this tool cannot see or act inside it. Use it when the user asks to connect to another machine of theirs and has given both values. Do NOT use it to control this computer — that is the host's own shell and file tools — and do not promise remote screen control.",
+			"List the machines this computer has saved in ToDesk's own device list: name, 9-digit code, last connect time, and whether a credential is already saved for that device. Use it whenever the user names a machine ('my office PC', 'the laptop') instead of typing nine digits — and before todesk_connect, so the code does not have to be asked for. It never returns passwords. Do NOT use it to guess: if two devices match, report the candidates.",
 		scope_use: SCOPE,
 		parameters: {
 			type: "object",
 			properties: {
+				query: { type: "string", description: "Optional device name, or part of one, to resolve instead of listing everything." },
+			},
+			additionalProperties: false,
+		},
+		handler: async ({ trigger }) => {
+			if (!(await capabilityAllowed(bridge, "devices"))) return DISABLED;
+
+			const input = (trigger.input ?? {}) as { query?: unknown };
+			const query = typeof input.query === "string" ? input.query.trim() : "";
+			const store = await readLocalStore({
+				readTextFile: bridge.readTextFile,
+				listDirectory: bridge.listDirectory,
+			});
+			if (store.error) return JSON.stringify({ ok: false, reason: store.error, directory: store.directory });
+
+			if (!query) {
+				return JSON.stringify({
+					ok: true,
+					count: store.devices.length,
+					devices: store.devices.map(describeDevice),
+					note:
+						store.devices.length === 0
+							? "the client has no saved devices yet; a session needs the far side's 9-digit code and its temporary password"
+							: "connect with the name or the code; saved_credential=true means todesk_connect needs no password for that device",
+				});
+			}
+
+			const match = matchDevice(store.devices, query);
+			if (match.kind === "one") return JSON.stringify({ ok: true, device: describeDevice(match.device) });
+			if (match.kind === "many") {
+				return JSON.stringify({
+					ok: false,
+					reason: "more than one saved device matches",
+					candidates: match.devices.map(describeDevice),
+				});
+			}
+			return JSON.stringify({
+				ok: false,
+				reason: `no saved device matches "${query}"`,
+				hint: "ask for the 9-digit code, or list the saved devices without a query",
+			});
+		},
+	});
+
+	const connect = ctx.agent.registerTool({
+		id: TOOL_CONNECT,
+		label: "ToDesk connect",
+		description:
+			"Open a ToDesk remote-control session from this computer to another device. Target either a saved device by name (`device`: 'my office PC') or a 9-digit code (`device_id`). The temporary password is required only when the target has no saved credential — ToDesk shows that password on the target machine. The session opens in ToDesk's own window; this tool cannot see or act inside it. Use it when the user asks to connect to another machine of theirs. Do NOT use it to control this computer — that is the host's own shell and file tools — and do not promise remote screen control.",
+		scope_use: SCOPE,
+		parameters: {
+			type: "object",
+			properties: {
+				device: { type: "string", description: "Name (or part of one) of a saved device, as todesk_devices reported it." },
 				device_id: { type: "string", description: "The far side's 9-digit ToDesk device code (spaces allowed)." },
 				password: {
 					type: "string",
 					description:
-						"The far side's temporary password, as ToDesk shows it on that machine. Required: ToDesk will not open the session without it.",
+						"The far side's temporary password, as ToDesk shows it on that machine. Required when the target has no saved credential; omit it for a device whose saved_credential is true.",
 				},
 			},
-			required: ["device_id", "password"],
 			additionalProperties: false,
 		},
 		handler: async ({ trigger }) => {
 			if (!(await capabilityAllowed(bridge, "connect"))) return DISABLED;
 
-			const input = (trigger.input ?? {}) as { device_id?: unknown; password?: unknown };
-			const deviceId = normalizeDeviceId(String(input.device_id ?? ""));
+			const input = (trigger.input ?? {}) as { device?: unknown; device_id?: unknown; password?: unknown };
+			const wanted = typeof input.device === "string" ? input.device.trim() : "";
+			const rawId = typeof input.device_id === "string" ? input.device_id : "";
+			if (!wanted && !rawId) {
+				return JSON.stringify({
+					ok: false,
+					reason: "give either a saved device name or a 9-digit device code",
+					hint: "call todesk_devices to see the saved names",
+				});
+			}
+
+			let deviceId = normalizeDeviceId(rawId);
+			let deviceName: string | null = null;
+			let savedCredential = false;
+
+			if (wanted) {
+				const store = await readLocalStore({
+					readTextFile: bridge.readTextFile,
+					listDirectory: bridge.listDirectory,
+				});
+				const match = matchDevice(store.devices, wanted);
+				if (match.kind === "many") {
+					return JSON.stringify({
+						ok: false,
+						reason: "more than one saved device matches",
+						candidates: match.devices.map(describeDevice),
+					});
+				}
+				if (match.kind === "one") {
+					deviceId = match.device.deviceId;
+					deviceName = match.device.name;
+					savedCredential = match.device.hasSavedCredential;
+				} else if (!deviceId) {
+					return JSON.stringify({
+						ok: false,
+						reason: `no saved device matches "${wanted}"`,
+						hint: "ask for the 9-digit code, or call todesk_devices without a query",
+					});
+				}
+			}
+
 			if (!deviceId) return JSON.stringify({ ok: false, reason: "device codes are 9 digits" });
 
 			const password = typeof input.password === "string" ? input.password : "";
-			if (password.trim().length === 0) {
+			if (password.trim().length === 0 && !savedCredential) {
 				return JSON.stringify({
 					ok: false,
 					reason: "a temporary password is required",
 					hint: "ask the user for the password ToDesk shows on the target machine",
 				});
 			}
+
 			const args = buildControlArgs(deviceId, password);
 			if (!args) return JSON.stringify({ ok: false, reason: "device codes are 9 digits" });
 
 			const run = await runTodesk(bridge.run, args, undefined);
-			if (!run.ok) {
-				return JSON.stringify({
-					ok: false,
-					command: `ToDesk.exe ${args.join(" ")}`,
-					reason: "ToDesk's command line could not be started",
-					host_error: run.error,
-				});
-			}
+			if (!run.ok) return hostFailure(run, args);
+
 			return JSON.stringify({
 				ok: true,
 				command: `ToDesk.exe ${args.join(" ")}`,
 				device_id: deviceId,
+				device_name: deviceName,
 				password_used: password.length > 0,
 				note:
 					password.length > 0
 						? "confirm the prompt in the ToDesk client window"
-						: "the ToDesk client should be opening the session; it asks for the password itself when the far side requires one",
+						: savedCredential
+							? "the client is using the credential it already saved for this device"
+							: "the ToDesk client should be opening the session; it asks for the password itself when the far side requires one",
 			});
+		},
+	});
+
+	const usage = ctx.agent.registerTool({
+		id: TOOL_USAGE,
+		label: "ToDesk usage",
+		description:
+			"How often this computer started remote sessions, from ToDesk's own per-day counters: totals per device and the date range covered. Use it when the user asks which machine they connect to most, whether they connected today, or whether a session they remember actually happened (counts only — it is not a session log). Do NOT use it to prove who connected *to* this machine; that is not in this file.",
+		scope_use: SCOPE,
+		parameters: {
+			type: "object",
+			properties: {
+				days: { type: "number", description: "How many days back to count, including today. Default 7." },
+			},
+			additionalProperties: false,
+		},
+		handler: async ({ trigger }) => {
+			if (!(await capabilityAllowed(bridge, "usage"))) return DISABLED;
+
+			const input = (trigger.input ?? {}) as { days?: unknown };
+			const days = typeof input.days === "number" && input.days > 0 ? Math.min(90, Math.trunc(input.days)) : 7;
+			const store = await readLocalStore({
+				readTextFile: bridge.readTextFile,
+				listDirectory: bridge.listDirectory,
+			});
+			if (store.error) return JSON.stringify({ ok: false, reason: store.error });
+
+			const summary = summarizeUsage(store.usage, days, new Date());
+			const names = new Map(store.devices.map((device) => [device.deviceId, device.name]));
+			return JSON.stringify({
+				ok: true,
+				window_days: days,
+				total_sessions: summary.total,
+				from: summary.from,
+				to: summary.to,
+				by_device: summary.byDevice.map((entry) => ({
+					device_id: entry.deviceId,
+					name: names.get(entry.deviceId) ?? null,
+					count: entry.count,
+				})),
+			});
+		},
+	});
+
+	const posture = ctx.agent.registerTool({
+		id: TOOL_POSTURE,
+		label: "ToDesk access posture",
+		description:
+			"This machine's ToDesk access posture, read from the client's settings: whether an unattended password exists, whether the one-time password is offered, two-factor for incoming connections, the lock against strange devices, start-with-Windows, and the signed-in account (masked). Also returns findings. Use it when the user asks how safe remote access to this computer is, why nobody can connect, or whether to harden it. It never returns a password — only whether one is set. Do NOT use it to change settings.",
+		scope_use: SCOPE,
+		parameters: { type: "object", properties: {}, additionalProperties: false },
+		handler: async () => {
+			if (!(await capabilityAllowed(bridge, "posture"))) return DISABLED;
+
+			const store = await readLocalStore({
+				readTextFile: bridge.readTextFile,
+				listDirectory: bridge.listDirectory,
+			});
+			if (!store.posture) {
+				return JSON.stringify({ ok: false, reason: "could not read ToDesk's config.ini", directory: store.directory });
+			}
+			return JSON.stringify({ ok: true, ...store.posture, findings: postureFindings(store.posture) });
+		},
+	});
+
+	const account = ctx.agent.registerTool({
+		id: TOOL_ACCOUNT,
+		label: "ToDesk account",
+		description:
+			"Which ToDesk account this client is signed in as, through the documented `-user` flag. Use it when the user's device list looks wrong, when a connection is refused with an account error, or before relying on saved devices — the saved list belongs to the signed-in account. Do NOT use it to sign in or out.",
+		scope_use: SCOPE,
+		parameters: { type: "object", properties: {}, additionalProperties: false },
+		handler: async () => {
+			if (!(await capabilityAllowed(bridge, "account"))) return DISABLED;
+
+			const args = ["-user"];
+			const run = await runTodesk(bridge.run, args, undefined);
+			if (!run.ok || !run.result) return hostFailure(run, args);
+			const text = outputOf(run.result)
+				.split(/\r?\n/)
+				.map((line) => line.trim())
+				.filter((line) => line.length > 0 && !line.startsWith("[libusb]"));
+			return JSON.stringify({ ok: true, raw: text });
 		},
 	});
 
@@ -193,14 +405,9 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 			if (!(await capabilityAllowed(bridge, "autostart"))) return DISABLED;
 			const input = (trigger.input ?? {}) as { enabled?: unknown };
 			if (typeof input.enabled !== "boolean") return JSON.stringify({ ok: false, reason: "enabled must be a boolean" });
-			const run = await runTodesk(bridge.run, [...(input.enabled ? AUTOSTART_ON_ARGS : AUTOSTART_OFF_ARGS)], undefined);
-			if (!run.ok) {
-				return JSON.stringify({
-					ok: false,
-					reason: "ToDesk's command line could not be started",
-					host_error: run.error,
-				});
-			}
+			const args = [...(input.enabled ? AUTOSTART_ON_ARGS : AUTOSTART_OFF_ARGS)];
+			const run = await runTodesk(bridge.run, args, undefined);
+			if (!run.ok) return hostFailure(run, args);
 			const after = await readStatus(bridge);
 			return JSON.stringify({ ok: true, requested: input.enabled, observed_autostart: after.autostart ?? null });
 		},
@@ -216,10 +423,24 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 		handler: async () => {
 			if (!(await capabilityAllowed(bridge, "open"))) return DISABLED;
 			const run = await runTodesk(bridge.run, [], undefined);
-			return JSON.stringify(run.ok ? { ok: true } : { ok: false, host_error: run.error });
+			return JSON.stringify(run.ok ? { ok: true } : { ok: false, host_error: run.error ?? null });
 		},
 	});
 
+	const tray = ctx.agent.registerTool({
+		id: TOOL_TRAY,
+		label: "Hide ToDesk to tray",
+		description:
+			"Hide the ToDesk client window into the system tray (`-tray`). Use it after a session is over when the user wants the desktop clean, or right before handing the screen over. It does not end a session — pair it with todesk_disconnect when that is the intent.",
+		scope_use: SCOPE,
+		parameters: { type: "object", properties: {}, additionalProperties: false },
+		handler: async () => {
+			if (!(await capabilityAllowed(bridge, "tray"))) return DISABLED;
+			const args = ["-tray"];
+			const run = await runTodesk(bridge.run, args, undefined);
+			return JSON.stringify(run.ok ? { ok: true } : hostFailure(run, args));
+		},
+	});
 
 	const disconnect = ctx.agent.registerTool({
 		id: TOOL_DISCONNECT,
@@ -231,7 +452,7 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 		handler: async () => {
 			if (!(await capabilityAllowed(bridge, "disconnect"))) return DISABLED;
 			const run = await runTodesk(bridge.run, [...DISCONNECT_ARGS], undefined);
-			if (!run.ok) return JSON.stringify({ ok: false, host_error: run.error });
+			if (!run.ok) return JSON.stringify({ ok: false, host_error: run.error ?? null });
 			const after = await readStatus(bridge);
 			return JSON.stringify({ ok: true, client_running: after.client_running ?? false });
 		},
@@ -240,9 +461,14 @@ export function registerTodeskTools(ctx: PluginContext, bridge: ToolBridge): Dis
 	return {
 		dispose: () => {
 			status.dispose();
+			devices.dispose();
 			connect.dispose();
+			usage.dispose();
+			posture.dispose();
+			account.dispose();
 			autostart.dispose();
 			open.dispose();
+			tray.dispose();
 			disconnect.dispose();
 		},
 	};

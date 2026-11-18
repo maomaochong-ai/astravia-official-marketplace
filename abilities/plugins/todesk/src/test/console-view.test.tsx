@@ -23,6 +23,7 @@ function harness(options: { settings?: Record<string, unknown>; failRun?: boolea
 		readTextFile: async () => {
 			throw new Error("ENOENT");
 		},
+		listDirectory: async () => [],
 		readSettings: async () => settingsValue,
 		writeSettings: async (value) => {
 			settingsValue = value;
