@@ -136,7 +136,7 @@ addressing, labels, directives, immediates that would need two instructions) are
 | Permission | Why |
 | --- | --- |
 | `ui.slot.activity-tab` | the workbench panel |
-| `agent.tools.register`, `agent.toolHandler.execute` | the thirty-one tools |
+| `agent.tools.register`, `agent.toolHandler.execute`, `agent.tools.control` | the thirty-one tools; `agent.tools.control` lets the kernel block hide the twenty-two lab-only tools while lab mode is off (ADR 0009) |
 | `agent.command.run` | `probe_environment`, `install_toolchain`, `run_radare`, `decompile_android`, `verify_signature`, `frida_dump`: the fourteen executables declared in `commands`, each one approved by the user |
 | `agent.session.write` | tool results in the conversation, the panel's send-to-chat button |
 | `agent.session.read` | the panel's live conversation status (turn running, tool in flight) |
@@ -289,7 +289,6 @@ binaries, keys, salts, endpoints, real product names. ADRs 006 and 007 record th
 ```text
 cases/                             # 19 precedent packages: source only, inlined at build time, never shipped
 docs/                              # engineering docs: README.md index + contract/ reference/ audits/ plans/
-                                   # ADRs live at the repo root: docs/adr/
 agent/
 ├── skills/                          # registered via skillPaths; nine SKILL.md directories
 │   ├── hanshuang-pojia/             # the handbook, PART I–V, including the kit protocol
