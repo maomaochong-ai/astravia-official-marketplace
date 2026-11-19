@@ -75,8 +75,9 @@ function hook(harness: Harness, eventName: string): Harness["hooks"][number] {
 }
 
 async function blockIds(harness: Harness): Promise<string[]> {
-	const operations = (await harness.providers[0].handler({})) as Array<{ block: { id: string } }>;
-	return operations.map(operation => operation.block.id);
+	// 同一份 operations 里既可能有 addBlock，也可能有工具闸门（ADR 0019 D3）：只取前者。
+	const operations = (await harness.providers[0].handler({})) as Array<{ type?: string; block?: { id: string } }>;
+	return operations.filter(operation => operation.type === "addBlock").map(operation => operation.block?.id ?? "");
 }
 
 describe("lab chain survives storage failures", () => {

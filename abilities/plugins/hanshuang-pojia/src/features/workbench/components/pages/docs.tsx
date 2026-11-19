@@ -99,6 +99,9 @@ export function DocsPage({ model }: PageProps) {
 											);
 										})
 									)
+								) : !docs.ready ? (
+									// 索引按需读取（ADR 0009 D5）：未到达时说清楚，不要用空目录冒充「没有文档」。
+									<div className="px-3 py-6 text-center text-[11.5px] text-text-4">{t("docs.index.loading")}</div>
 								) : (
 									docs.groups.map(group => (
 										<div key={group.id} className="border-b border-line-subtle last:border-0">

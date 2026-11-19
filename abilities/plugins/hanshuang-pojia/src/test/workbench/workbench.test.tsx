@@ -77,6 +77,7 @@ function makeBridge(overrides: Partial<WorkbenchBridge> = {}): WorkbenchBridge {
 		saveLibrary: vi.fn(async () => true),
 		// 新增的四个存储面：默认不可用（null / 空），与「没授权」的真实表现一致。
 		listState: vi.fn(async () => []),
+		stateUsage: vi.fn(async () => ({ files: 0, bytes: 0 })),
 		removeState: vi.fn(async () => true),
 		myCases: vi.fn(async () => null),
 		saveMyCases: vi.fn(async () => true),
@@ -111,7 +112,8 @@ describe("workbench shell", () => {
 		await go("docs");
 		expect(await screen.findByText("page.docs.title")).toBeTruthy();
 		// 默认选中知识库根文档；正文经 import.meta.glob 惰性加载后才出现。
-		expect(await screen.findByRole("heading", { level: 1 }, { timeout: 4000 })).toBeTruthy();
+		// 页面按需加载（ADR 0019 D2）：标题与正文都是异步到的，用 findAll 让它不必猜谁先到。
+		expect((await screen.findAllByRole("heading", { level: 1 }, { timeout: 4000 })).length).toBeGreaterThan(0);
 		expect(screen.getAllByText(/Knowledge Base/).length).toBeGreaterThan(0);
 	}, 15_000);
 
@@ -175,7 +177,7 @@ describe("workbench shell", () => {
 		const api = makeBridge();
 		await open(api);
 		await go("settings");
-		fireEvent.click(screen.getByText("mode.full"));
+		fireEvent.click(await screen.findByText("mode.full"));
 		await analyseDemo(api);
 		await waitFor(() => expect(api.analyse).toHaveBeenLastCalledWith(SAMPLE, { mode: "full", disabledRules: [] }));
 	});
@@ -185,7 +187,7 @@ describe("workbench shell", () => {
 		await open(api);
 		await analyseDemo(api);
 		await go("reports");
-		fireEvent.click(screen.getByText("reports.export"));
+		fireEvent.click(await screen.findByText("reports.export"));
 		await waitFor(() => expect(api.saveReport).toHaveBeenCalledWith(REPORT, "summary", "markdown"));
 		expect(api.notify).toHaveBeenCalledWith("panel.action.saved", "success");
 	});
@@ -267,7 +269,7 @@ describe("workbench shell", () => {
 	});
 
 	it("reads a shipped precedent in place, without touching the disk", async () => {
-		// 先例正文在编译期内联，预览它不需要任何文件通道。
+		// 正文按需从包内读取：预览它不经过宿主的文件通道。
 		const api = makeBridge();
 		await open(api);
 		await go("cases");
@@ -275,12 +277,12 @@ describe("workbench shell", () => {
 		fireEvent.click(await screen.findByTitle("cases/elf-packed-loader/"));
 
 		const reader = screen.getByTestId("cases-reader");
-		expect(within(reader).getByText("Packed ELF loader — precedent")).toBeTruthy();
+		expect(await within(reader).findByText("Packed ELF loader — precedent")).toBeTruthy();
 		expect(screen.getByTestId("precedent-doc-tabs")).toBeTruthy();
 		const methodTab = document.querySelector('[data-doc-id="docs/method.md"]');
 		expect(methodTab).not.toBeNull();
 		fireEvent.click(methodTab!);
-		expect(within(reader).getByText("Method — recovering a packed ELF")).toBeTruthy();
+		expect(await within(reader).findByText("Method — recovering a packed ELF")).toBeTruthy();
 		// 一份先例都没碰过文件通道：命中它的路径既没被列过，也没被读过。
 		const touched = [...vi.mocked(api.listFiles).mock.calls, ...vi.mocked(api.readTextFile).mock.calls]
 			.map(call => call[0])
@@ -295,7 +297,7 @@ describe("workbench handoff", () => {
 		await open(api);
 		await go("guide");
 		expect(await screen.findByText("guide.step.pick.title")).toBeTruthy();
-		fireEvent.click(screen.getByTitle("ai.workflow"));
+		fireEvent.click(await screen.findByTitle("ai.workflow"));
 		await waitFor(() => expect(api.chat).toHaveBeenCalled());
 		expect(api.notify).toHaveBeenCalledWith("chat.sent", "success");
 	});

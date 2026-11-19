@@ -45,8 +45,8 @@
 		"topic": "",
 		"label": "Tool index: which of the 42 upstream tools this plugin probes, recommends, or declines, and why",
 		"path": "src/content/docs/kit-docs/tool-index.json",
-		"bytes": 15740,
+		"bytes": 15725,
 		"lines": 678,
-		"sha256": "e73d8c0c5696fc5e"
+		"sha256": "dd8e2ab1a288bcf4"
 	}
 ]

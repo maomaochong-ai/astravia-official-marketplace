@@ -115,7 +115,7 @@ node scripts/analyze.mjs asm x86-64 "mov rax, rbx" "ret" --address 0x1000
 | 权限 | 原因 |
 | --- | --- |
 | `ui.slot.activity-tab` | 工作台面板 |
-| `agent.tools.register`、`agent.toolHandler.execute` | 三十一个工具 |
+| `agent.tools.register`、`agent.toolHandler.execute`、`agent.tools.control` | 三十一个工具；`agent.tools.control` 让 kernel 块在 lab 关闭时收起二十二个 lab 专属工具（ADR 0009） |
 | `agent.command.run` | `probe_environment`、`install_toolchain`、`run_radare`、`decompile_android`、`verify_signature`、`frida_dump`：使用 `commands` 里声明的十四个可执行文件，每个都需用户授权 |
 | `agent.session.write` | 工具结果写回对话、面板的「发给对话」按钮 |
 | `agent.session.read` | 面板显示对话实时状态（本轮是否在跑、哪个工具在跑） |
@@ -225,15 +225,14 @@ MCP 工具全表、十篇手册索引、宿主安装矩阵、校验基线、中�
 自证，退出码 0 之后才值得指上真样本。
 
 语料派生自上游 `seep-kit` 2.0 的 `Tool/cases/`。过线的是：偏移、RVA、AOB 特征码、补丁字节、协议
-字段、算法常量；不过线的是：样本字节、二进制、密钥、盐、端点、真实产品名。规则与理由在 ADR 0006 与
-0007。
+字段、算法常量；不过线的是：样本字节、二进制、密钥、盐、端点、真实产品名。规则与理由见
+[案例语料编写契约](docs/contract/case-corpus.md)。
 
 ## 目录
 
 ```text
 cases/                             # 19 个先例包：只有源码，构建期内联，从不随包
 docs/                              # 工程文档：README.md 索引 + contract/ reference/ audits/ plans/
-                                   # ADR 在仓库根：docs/adr/
 agent/
 ├── skills/                          # 九个 SKILL.md 目录，经 skillPaths 注册
 │   ├── hanshuang-pojia/             # 宿主在对话区列出的主技能，含 references/

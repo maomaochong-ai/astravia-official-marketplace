@@ -601,7 +601,7 @@
 			"kind": "unsupported",
 			"group": "radare2",
 			"skill": "native-reverse",
-			"reason": "package manager: the plugin plans installs, it never runs them (ADR 0003 §2)"
+			"reason": "package manager: the plugin plans installs, it never runs them"
 		},
 		{
 			"name": "jshookmcp",

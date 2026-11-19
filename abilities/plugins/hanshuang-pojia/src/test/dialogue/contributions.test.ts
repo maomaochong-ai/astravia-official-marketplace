@@ -4,6 +4,7 @@ import { MAX_CONTINUATIONS_PER_TURN } from "../../domain/refusal";
 import { LAB_STATE_PATH } from "../../features/workbench/hooks/use-lab";
 import { SYSTEM_PROMPT_BLOCK_ID } from "../../domain/system-prompt.generated";
 import { registerRuntimeContributions } from "../../runtime/contributions";
+import { LAB_ONLY_TOOL_IDS } from "../../tools/gate";
 
 interface Harness {
 	ctx: PluginContext;
@@ -54,16 +55,25 @@ describe("registerRuntimeContributions", () => {
 	});
 
 	it("pays for the contract block only while lab mode is on", async () => {
+		type Operation = { type?: string; block?: { id: string }; toolName?: string; enabled?: boolean };
+		const blocksOf = (ops: Operation[]) => ops.filter(op => op.type === "addBlock");
+		const gatesOf = (ops: Operation[]) => ops.filter(op => op.type === "setToolEnabled");
+
 		const off = makeHarness();
 		registerRuntimeContributions(off.ctx);
-		const offBlocks = (await off.providers[0].handler({})) as Array<{ block: { id: string } }>;
-		expect(offBlocks).toHaveLength(1);
+		const offOps = (await off.providers[0].handler({})) as Operation[];
+		expect(blocksOf(offOps)).toHaveLength(1);
+		// 工具表闸门（ADR 0019 D3）：lab 关闭时 lab-only 工具逐条显式关闭。
+		expect(gatesOf(offOps).map(op => op.toolName)).toEqual([...LAB_ONLY_TOOL_IDS]);
+		expect(gatesOf(offOps).every(op => op.enabled === false)).toBe(true);
 
 		const on = makeHarness({ enabled: true, since: "2026-10-23T00:00:00.000Z" });
 		registerRuntimeContributions(on.ctx);
-		const onBlocks = (await on.providers[0].handler({})) as Array<{ block: { id: string; priority: number } }>;
+		const onOps = (await on.providers[0].handler({})) as Operation[];
+		const onBlocks = blocksOf(onOps);
 		expect(onBlocks).toHaveLength(2);
-		expect(onBlocks[1].block.id).toBe(SYSTEM_PROMPT_BLOCK_ID);
+		expect(onBlocks[1].block?.id).toBe(SYSTEM_PROMPT_BLOCK_ID);
+		expect(gatesOf(onOps).every(op => op.enabled === true)).toBe(true);
 	});
 });
 

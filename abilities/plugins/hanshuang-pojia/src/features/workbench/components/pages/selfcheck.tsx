@@ -1,5 +1,6 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { loadDocsLibrary, type DocsLibrary } from "../../services/docs";
 import { buildHealthReport, statusOfTally, tallyOf, type HealthItem, type HealthStatus, type HealthVerdict } from "../../services/health";
 import { AiButton } from "../shell/ai-button";
 import { Card } from "../shell/card";
@@ -44,16 +45,47 @@ export function SelfCheckPage({ model }: PageProps) {
 	const { t } = useTranslation();
 	const { state: lab } = model.lab;
 
+	// 文档索引是异步到达的（ADR 0009 D5）：没到之前不报「四组通过」，也不拿空索引糊弄。
+	const [library, setLibrary] = useState<DocsLibrary | null>(null);
+	useEffect(() => {
+		let cancelled = false;
+		void loadDocsLibrary().then(
+			next => {
+				if (!cancelled) setLibrary(next);
+			},
+			() => {
+				if (!cancelled) setLibrary(null);
+			},
+		);
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
 	const report = useMemo(
 		() =>
-			buildHealthReport({
-				cwd: model.cwd,
-				persisted: model.persisted,
-				chatStatus: model.chat.state.status,
-				lab,
-			}),
-		[model.cwd, model.persisted, model.chat.state.status, lab],
+			library
+				? buildHealthReport(
+						{
+							cwd: model.cwd,
+							persisted: model.persisted,
+							chatStatus: model.chat.state.status,
+							lab,
+						},
+						{ entries: library.entries, totals: library.totals },
+					)
+				: null,
+		[library, model.cwd, model.persisted, model.chat.state.status, lab],
 	);
+
+	if (!report) {
+		return (
+			<>
+				<PageHeader title={t("page.selfcheck.title")} description={t("page.selfcheck.lead")} />
+				<div className="p-4 text-[11.5px] text-text-4">{t("docs.index.loading")}</div>
+			</>
+		);
+	}
 
 	// 组级结论看最差一项；整体结论在 health.ts 里算，页面只负责呈现。
 	const groupsPassing = report.groups.filter(group => statusOfTally(tallyOf(group.items)) === "pass").length;

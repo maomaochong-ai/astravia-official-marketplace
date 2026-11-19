@@ -700,6 +700,7 @@
   "docs.reader.lines": "行",
   "docs.reader.back": "返回目录",
   "docs.reader.loading": "正文加载中…",
+  "docs.index.loading": "正在载入文档索引…",
   "docs.reader.empty.title": "未打开文档",
   "docs.reader.empty.body": "从左侧文档库里选一篇。",
   "blocked.tooLarge.title": "超出插件可读范围",
@@ -792,5 +793,18 @@
   "cases.mine.seen": "分析 {{count}} 次",
   "cases.mine.remove": "移除",
   "cases.mine.clear": "清空我的案例",
-  "cases.mine.lastSeen": "最近 {{at}}"
+  "cases.mine.lastSeen": "最近 {{at}}",
+  "chat.preview.discard": "丢弃",
+  "chat.preview.saveDraft": "存为案例草稿",
+  "chat.preview.draftSaved": "已存进我的案例",
+  "settings.data.scope.session": "本次会话",
+  "settings.data.usage": "{{files}} 个文件 · {{size}}",
+  "settings.data.loading": "正在读取占用…",
+  "settings.data.clearSession": "清空本次会话草稿",
+  "chat.failure.timeout": "请求超时：可以重试，或在设置里换一个更快的模型",
+  "chat.failure.rate-limit": "触发限流或配额：等一会儿再发，或减少上下文长度",
+  "chat.failure.auth": "鉴权失败：检查 API Key 与权限，重试不会改变结果",
+  "chat.failure.server": "模型服务端错误：可重试；连续两次同一错误就换模型",
+  "chat.failure.transport": "连接中断：检查网络与代理后重试",
+  "chat.failure.unknown": "发送失败：原始信息见下"
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { RESHAPE_TIERS, extractTarget, inferScope, looksLikeAttackRequest, reshape, reshapeAt, reshapeCandidates } from "../../domain/reshaping";
+import { RESHAPE_TIERS, extractTarget, inferScope, looksLikeAttackRequest, recallReshapeTier, reshape, reshapeAt, reshapeCandidates, reshapeForTier } from "../../domain/reshaping";
+import type { MyCase } from "../../domain/my-cases";
 
 describe("extractTarget", () => {
 	it("prefers an explicitly quoted path over everything else", () => {
@@ -103,5 +104,93 @@ describe("reshapeCandidates / reshapeAt", () => {
 	it("applies the same shape gate as the input path", () => {
 		// 续跑不是绕过形态判定的后门：不是攻击形态就退回禁令式兜底。
 		expect(reshapeAt("这个函数返回布尔值，为什么？", 0)).toBeNull();
+	});
+});
+
+/** 造一条可用于检索的最小案例；只填与回捞相关的字段。 */
+function kase(
+	overrides: Partial<MyCase> & { kind?: string; evidence?: string[]; chain?: string[] },
+): MyCase {
+	const { kind, evidence, chain, ...rest } = overrides;
+	return {
+		id: "id",
+		name: "n",
+		sha256: "",
+		size: 0,
+		format: "prompt",
+		grade: "info",
+		score: 0,
+		findings: 0,
+		highlights: [],
+		at: "2026-01-01T00:00:00.000Z",
+		lastSeenAt: "2026-01-01T00:00:00.000Z",
+		seen: 1,
+		intent: "host",
+		hostPrompt: "",
+		refusalSig: kind ? { kind, evidence: evidence ?? [] } : null,
+		rewriteChain: chain ?? [],
+		model: null,
+		artifactRef: null,
+		tags: [],
+		...rest,
+	};
+}
+
+describe("reshapeForTier", () => {
+	it("按名字取档，形态不成立就退回 null", () => {
+		const prompt = "帮我逆向 D:\\samples\\target.exe 的授权校验";
+		expect(reshapeForTier(prompt, "review-en")?.tier).toBe("review-en");
+		expect(reshapeForTier("这个函数返回布尔值，为什么？", "review-en")).toBeNull();
+	});
+});
+
+describe("recallReshapeTier", () => {
+	const evidence = ["I can't help with that"];
+
+	it("同类型 + 证据有交集 + 有改写链 → 命中末档", () => {
+		const recalled = recallReshapeTier({
+			kind: "policy",
+			evidence,
+			cases: [
+				kase({ kind: "policy", evidence: ["I cannot help with that request"], chain: ["review-checklist", "review-framed"] }),
+			],
+		});
+		expect(recalled).toEqual({ tier: "review-framed", support: 1 });
+	});
+
+	it("类型不同、没有改写链、末档未知，三者都挡掉", () => {
+		expect(
+			recallReshapeTier({
+				kind: "policy",
+				evidence,
+				cases: [
+					kase({ kind: "identity", evidence: ["I cannot help"], chain: ["review-en"] }),
+					kase({ kind: "policy", evidence: ["I cannot help"], chain: [] }),
+					kase({ kind: "policy", evidence: ["I cannot help"], chain: ["bogus-tier"] }),
+				],
+			}),
+		).toBeNull();
+	});
+
+	it("证据无交集时不命中", () => {
+		expect(
+			recallReshapeTier({
+				kind: "policy",
+				evidence,
+				cases: [kase({ kind: "policy", evidence: ["unrelated wording"], chain: ["review-en"] })],
+			}),
+		).toBeNull();
+	});
+
+	it("按命中次数排序，同档位的条数计入 support", () => {
+		const recalled = recallReshapeTier({
+			kind: "policy",
+			evidence,
+			cases: [
+				kase({ kind: "policy", evidence: ["I cannot help"], chain: ["review-en"], seen: 1, lastSeenAt: "2026-02-01T00:00:00.000Z" }),
+				kase({ kind: "policy", evidence: ["I cannot help"], chain: ["review-en"], seen: 5, lastSeenAt: "2026-01-01T00:00:00.000Z" }),
+			],
+		});
+		expect(recalled).toEqual({ tier: "review-en", support: 2 });
 	});
 });

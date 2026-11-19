@@ -41,14 +41,14 @@ function render(precedents) {
 		"// Source of truth: cases/<slug>/{case.json,README.md,scope.md,docs/{method,defense}.md,...}",
 		"// Run `node scripts/sync-precedents.mjs` after editing a precedent package.",
 		"// Case studies themselves live in src/content/docs/cases/<slug>/ and load lazily.",
+		"// Precedent bodies are NOT inlined: they ship under dist/assets/cases/<slug>/ and load on demand.",
 	].join("\n");
 
 	return `${banner}
 
 export interface PrecedentDoc {
-\t/** Package-relative file name, e.g. \`docs/method.md\`. */
-\treadonly id: string;
-\treadonly text: string;
+\t/** Package-relative file name, e.g. \`docs/method.md\`. Read it with readPrecedentDoc. */
+	readonly id: string;
 }
 
 export interface PrecedentSource {

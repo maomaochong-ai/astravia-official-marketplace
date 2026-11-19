@@ -18,12 +18,13 @@ import { isPluginTool } from "./tools/ids";
 import { publishTaskEvent } from "./runtime/panel-channel";
 import type { LabState } from "./domain/lab-mode";
 import { LAB_STATE_PATH } from "./features/workbench/hooks/use-lab";
-import { registerRuntimeContributions } from "./runtime/contributions";
+import { cacheLabState, registerRuntimeContributions } from "./runtime/contributions";
 import "./style.css";
 
 function chatStateOf(state: ConversationState): ChatState {
 	return {
 		status: state.id === null ? "disconnected" : state.isStreaming ? "streaming" : "idle",
+		sessionId: state.id,
 		tool: null,
 		cwd: state.cwd,
 	};
@@ -151,7 +152,7 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 
 		subscribeChat: listener => {
 			// 真值来自 conversation-changed；turn 事件只在该会话存在时改流式状态。
-			let latest: ChatState = { status: "disconnected", tool: null, cwd: null };
+			let latest: ChatState = { status: "disconnected", sessionId: null, tool: null, cwd: null };
 			let hasSession = false;
 			const push = (next: ChatState) => {
 				latest = next;
@@ -210,6 +211,23 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 				return [];
 			}
 		},
+		// 真实占用：只认 list 返回的路径，再用一次快照把字节数读出来。
+		// 上限 200 个文件：插件的私有存储本来就只有几十份 JSON，超过说明前缀传错了。
+		stateUsage: async prefix => {
+			try {
+				const paths = (await ctx.storage.list(prefix)).slice(0, 200);
+				// 空目录是「真的空」，不是「读不到」：两者在设置页上文案不同。
+				if (paths.length === 0) return { files: 0, bytes: 0 };
+				const snapshot = await ctx.storage.readSnapshot(paths, "utf8");
+				let bytes = 0;
+				for (const content of Object.values(snapshot.files)) {
+					if (typeof content === "string") bytes += content.length;
+				}
+				return { files: paths.length, bytes };
+			} catch {
+				return null;
+			}
+		},
 		removeState: async paths => {
 			try {
 				await ctx.storage.commit(paths.map(path => ({ type: "remove" as const, path })));
@@ -237,7 +255,11 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 		},
 		saveMyCases: (cases, cwd) => writeJson(ctx.storage, storageEntry("cases", cwd).path, cases),
 		labMode: () => readJson<LabState>(ctx.storage, LAB_STATE_PATH),
-		saveLabMode: state => writeJson(ctx.storage, LAB_STATE_PATH, state),
+		saveLabMode: state => {
+			// 面板开关是写穿路径：缓存先更新，否则下一条消息仍按旧值注入。
+			cacheLabState(ctx, state);
+			return writeJson(ctx.storage, LAB_STATE_PATH, state);
+		},
 	};
 	bridgeCache = { ctx, bridge };
 	return bridge;

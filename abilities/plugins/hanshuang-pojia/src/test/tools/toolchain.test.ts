@@ -743,7 +743,7 @@ describe("toolchain tools", () => {
 		const again = await call("init_task", { name: "demo" });
 		expect(again).toContain("already existed");
 
-		// 「scope.md 写一次」是工具描述与 ADR 的承诺：第二次换了 in_scope 也不能改写它。
+		// 「scope.md 写一次」是工具描述承诺的：第二次换了 in_scope 也不能改写它。
 		const declared = written.get("/work/demo/scope.md");
 		await call("init_task", { name: "demo", auth_status: "pending", in_scope: ["second.apk"] });
 		expect(written.get("/work/demo/scope.md")).toBe(declared);

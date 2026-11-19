@@ -700,6 +700,7 @@
   "docs.reader.lines": "lines",
   "docs.reader.back": "Back to list",
   "docs.reader.loading": "Loading the document…",
+  "docs.index.loading": "Loading the document index…",
   "docs.reader.empty.title": "No document open",
   "docs.reader.empty.body": "Pick a document from the library on the left.",
   "blocked.tooLarge.title": "Larger than the plugin can read",
@@ -792,5 +793,18 @@
   "cases.mine.seen": "analysed {{count}}×",
   "cases.mine.remove": "Remove",
   "cases.mine.clear": "Clear my cases",
-  "cases.mine.lastSeen": "last {{at}}"
+  "cases.mine.lastSeen": "last {{at}}",
+  "chat.preview.discard": "Discard",
+  "chat.preview.saveDraft": "Save as case draft",
+  "chat.preview.draftSaved": "Saved to My cases",
+  "settings.data.scope.session": "This session",
+  "settings.data.usage": "{{files}} file(s) · {{size}}",
+  "settings.data.loading": "Reading usage…",
+  "settings.data.clearSession": "Clear this session's drafts",
+  "chat.failure.timeout": "Request timed out — retry, or switch to a faster model",
+  "chat.failure.rate-limit": "Rate limited or out of quota — wait, or shorten the context",
+  "chat.failure.auth": "Authentication failed — check the API key; retrying will not help",
+  "chat.failure.server": "Model server error — retryable; two identical errors in a row means switch models",
+  "chat.failure.transport": "Connection dropped — check the network and proxy, then retry",
+  "chat.failure.unknown": "Send failed — raw message below"
 }

@@ -10,7 +10,7 @@ import { runEngineSelfCheck } from "../../../domain/selfcheck";
 import type { LabState } from "../../../domain/lab-mode";
 import { EXPECTED_TOOL_COUNT, TOOL_IDS } from "../../../tools/ids";
 import { ROUTING_ROUTES, routingCoverage } from "../../../domain/routing-table";
-import { DOC_ENTRIES, DOC_TOTALS } from "./docs";
+import type { DocEntry, DocTotals } from "./docs";
 import { CASE_PROJECTS, capabilityCount } from "../../../domain/case-projects/catalog";
 
 export type HealthStatus = "pass" | "warn" | "fail";
@@ -49,6 +49,12 @@ export interface HostFacts {
 	lab: LabState;
 }
 
+/** 文档索引的事实：由调用方先 `await loadDocsLibrary()` 再传进来，避免自检页读空索引。 */
+export interface DocsFacts {
+	readonly entries: readonly DocEntry[];
+	readonly totals: DocTotals;
+}
+
 function item(id: string, status: HealthStatus, detail: string): HealthItem {
 	return { id, status, detail };
 }
@@ -57,18 +63,18 @@ function item(id: string, status: HealthStatus, detail: string): HealthItem {
  * 文档索引的完整性：条数、重复 id、空标题、分组覆盖。
  * 只读 import 进来的索引，不读磁盘 —— 面板运行的就是包里那一份。
  */
-function assetGroup(): HealthGroup {
+function assetGroup(docs: DocsFacts): HealthGroup {
 	const ids = new Set<string>();
 	let duplicates = 0;
 	let emptyTitles = 0;
-	for (const entry of DOC_ENTRIES) {
+	for (const entry of docs.entries) {
 		if (ids.has(entry.id)) duplicates += 1;
 		ids.add(entry.id);
 		if (!entry.title.trim()) emptyTitles += 1;
 	}
 
-	const declared = DOC_TOTALS.documents;
-	const groups = DOC_TOTALS.byGroup;
+	const declared = docs.totals.documents;
+	const groups = docs.totals.byGroup;
 
 	// 路由表只是数据：它不说「能不能做」，只说「这条路由指向的技能在不在包里」。
 	const coverage = routingCoverage();
@@ -82,8 +88,8 @@ function assetGroup(): HealthGroup {
 		items: [
 			item(
 				"assets.docs",
-				DOC_ENTRIES.length === declared ? "pass" : "fail",
-				`${DOC_ENTRIES.length} entries indexed, index.json declares ${declared}.`,
+				docs.entries.length === declared ? "pass" : "fail",
+				`${docs.entries.length} entries indexed, index.json declares ${declared}.`,
 			),
 			item("assets.unique", duplicates === 0 ? "pass" : "fail", duplicates === 0 ? "No duplicate document ids." : `${duplicates} duplicate id(s).`),
 			item("assets.titles", emptyTitles === 0 ? "pass" : "warn", emptyTitles === 0 ? "Every document carries a title." : `${emptyTitles} document(s) have no title.`),
@@ -165,8 +171,8 @@ export function statusOfTally(tally: HealthTally): HealthStatus {
 	return "pass";
 }
 
-export function buildHealthReport(facts: HostFacts): HealthReport {
-	const groups = [assetGroup(), engineGroup(), toolGroup(), hostGroup(facts)];
+export function buildHealthReport(facts: HostFacts, docs: DocsFacts): HealthReport {
+	const groups = [assetGroup(docs), engineGroup(), toolGroup(), hostGroup(facts)];
 	const tally = tallyOf(groups.flatMap(group => group.items));
 	return {
 		groups,

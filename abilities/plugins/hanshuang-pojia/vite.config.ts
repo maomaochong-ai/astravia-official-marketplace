@@ -43,18 +43,33 @@ export default defineConfig({
 					});
 				}
 
-				// 3. 先例包的可执行工具以真实文件随包发布。脚本必须落盘才能被解释器执行，
-				//    内联进 JS 分块等于把它变成不可执行的字符串。
+				// 3. 先例包以真实文件随包发布。工具必须落盘才能被解释器执行；正文必须落盘，
+				//     否则每次启动都要为 19 个包的全部正文付解析成本。
 				const casesRoot = new URL("cases/", import.meta.url);
 				for (const entry of readdirSync(casesRoot, { withFileTypes: true })) {
 					if (!entry.isDirectory() || entry.name.startsWith("_")) continue;
-					const toolsRoot = new URL(`${entry.name}/tools/`, casesRoot);
-					if (!existsSync(toolsRoot)) continue;
-					for (const file of walk(toolsRoot)) {
+					const pkgRoot = new URL(`${entry.name}/`, casesRoot);
+
+					const toolsRoot = new URL("tools/", pkgRoot);
+					if (existsSync(toolsRoot)) {
+						for (const file of walk(toolsRoot)) {
+							this.emitFile({
+								type: "asset",
+								fileName: `assets/cases/${entry.name}/tools/${file}`,
+								source: readFileSync(new URL(file, toolsRoot)),
+							});
+						}
+					}
+
+					// 正文：包根的 README/scope 与 docs/ 下的 md，由 readPrecedentDoc 按需 fetch。
+					const bodies = ["README.md", "scope.md"].filter(name => existsSync(new URL(name, pkgRoot)));
+					const docsRoot = new URL("docs/", pkgRoot);
+					if (existsSync(docsRoot)) for (const file of walk(docsRoot)) bodies.push(`docs/${file}`);
+					for (const file of bodies) {
 						this.emitFile({
 							type: "asset",
-							fileName: `assets/cases/${entry.name}/tools/${file}`,
-							source: readFileSync(new URL(file, toolsRoot)),
+							fileName: `assets/cases/${entry.name}/${file}`,
+							source: readFileSync(new URL(file, pkgRoot)),
 						});
 					}
 				}

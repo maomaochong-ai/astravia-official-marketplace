@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { KERNEL_BLOCK_ID, KERNEL_PRIORITY, buildKernelBlock } from "../../domain/kernel";
 import { LAB_OFF, labAfter, parseLabCommand } from "../../domain/lab-mode";
+import { loadDocsLibrary } from "../../features/workbench/services/docs";
 import { buildHealthReport } from "../../features/workbench/services/health";
 import { clearPanelBacklog, getAgentPage, publishPanelEvent, setAgentPage, subscribePanel } from "../../runtime/panel-channel";
 import { TOOL_IDS } from "../../tools/ids";
@@ -170,25 +171,30 @@ describe("buildHealthReport", () => {
 		chatStatus: "idle" as const,
 		lab: LAB_OFF,
 	});
+	// 索引是异步到达的（ADR 0009 D5）：先加载一次，再把同一份事实传给三个用例。
+	const docsFacts = async () => {
+		const library = await loadDocsLibrary();
+		return { entries: library.entries, totals: library.totals };
+	};
 
-	it("reports four groups and counts every item exactly once", () => {
-		const report = buildHealthReport(facts());
+	it("reports four groups and counts every item exactly once", async () => {
+		const report = buildHealthReport(facts(), await docsFacts());
 		expect(report.groups.map(group => group.id)).toEqual(["assets", "engine", "tools", "host"]);
 		const total = report.groups.reduce((sum, group) => sum + group.items.length, 0);
 		expect(report.passed + report.optional + report.failed).toBe(total);
 		expect(report.failed).toBe(0);
 	});
 
-	it("flags a missing workspace and an off lab mode as warnings, not failures", () => {
-		const report = buildHealthReport({ ...facts(), cwd: null, lab: LAB_OFF });
+	it("flags a missing workspace and an off lab mode as warnings, not failures", async () => {
+		const report = buildHealthReport({ ...facts(), cwd: null, lab: LAB_OFF }, await docsFacts());
 		const host = report.groups.find(group => group.id === "host");
 		expect(host?.items.find(entry => entry.id === "host.cwd")?.status).toBe("warn");
 		expect(host?.items.find(entry => entry.id === "host.lab")?.status).toBe("warn");
 		expect(report.failed).toBe(0);
 	});
 
-	it("marks the kit layer as optional because the panel never pretends it answered", () => {
-		const report = buildHealthReport(facts());
+	it("marks the kit layer as optional because the panel never pretends it answered", async () => {
+		const report = buildHealthReport(facts(), await docsFacts());
 		const tools = report.groups.find(group => group.id === "tools");
 		expect(tools?.items.find(entry => entry.id === "tools.kit")?.status).toBe("warn");
 		expect(tools?.items.find(entry => entry.id === "tools.declared")?.detail).toContain("search_docs");

@@ -21,6 +21,8 @@
  *     归进「授权 / 许可」，答出来的东西与目标无关。
  */
 
+import type { MyCase } from "./my-cases";
+
 /** 级联档位。命名与上游一致，便于对照实测记录。 */
 export type ReshapeTier = "review-checklist" | "review-framed" | "review-en";
 
@@ -178,4 +180,104 @@ export function reshapeAt(text: string, index: number): ReshapeCandidate | null 
 	if (!tier) return null;
 	const candidate = reshape(text, tier);
 	return candidate ? { tier, text: candidate } : null;
+}
+
+/**
+ * 取指定档位的候选。形态不成立时返回 `null`。
+ *
+ * 与 `reshapeAt` 的区别只在选择方式：那个按序推进，这个按名字取，
+ * 用于「案例库说这一档以前管用」时直接跳到那一档。
+ */
+export function reshapeForTier(text: string, tier: ReshapeTier): ReshapeCandidate | null {
+	if (!looksLikeAttackRequest(text)) return null;
+	const candidate = reshape(text, tier);
+	return candidate ? { tier, text: candidate } : null;
+}
+
+/* ───────────────────────── 案例库回捞 ───────────────────────── */
+
+/**
+ * 回捞的输入。刻意与 `planRecovery` 的入参分开：候选由调用方查好再传进纯函数，
+ * 这样 `planRecovery` 仍然不读盘。
+ */
+export interface RecallInput {
+	/** 本次拒答类型，与 `RefusalKind` 同名。用 `string` 是为了不让本模块依赖 refusal.ts。 */
+	kind: string;
+	/** 本次命中的证据片段。 */
+	evidence: readonly string[];
+	/** 已按 `lastSeenAt` 降序排好的本工作区案例。 */
+	cases: readonly MyCase[];
+}
+
+export interface RecalledTier {
+	/** 建议优先使用的档位。 */
+	tier: ReshapeTier;
+	/** 给出该建议的候选条数：1 表示只此一条，数值越大越可信。 */
+	support: number;
+}
+
+/** 归一化证据：折叠大小写与标点，中文补 2-gram。用于「形态相近」判定。 */
+function evidenceTokens(segments: readonly string[]): Set<string> {
+	const tokens = new Set<string>();
+	for (const raw of segments) {
+		const text = raw.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
+		if (text.length === 0) continue;
+		for (const word of text.split(" ")) {
+			if (word.length === 0) continue;
+			tokens.add(word);
+			// 中文没有空格分词：补 2-gram，否则「我不能帮你做这个」整段只算一个词。
+			if (/[\u3400-\u9fff]/.test(word) && word.length >= 2) {
+				for (let index = 0; index + 2 <= word.length; index += 1) tokens.add(word.slice(index, index + 2));
+			}
+		}
+	}
+	return tokens;
+}
+
+function overlaps(left: Set<string>, right: Set<string>): boolean {
+	for (const token of left) {
+		if (right.has(token)) return true;
+	}
+	return false;
+}
+
+function asTier(value: string): ReshapeTier | null {
+	return (RESHAPE_TIERS as readonly string[]).includes(value) ? (value as ReshapeTier) : null;
+}
+
+/**
+ * 从案例库里挑一个「以前真的把这类拒答拧过来」的档位。
+ *
+ * 命中条件四项全中：同拒答类型、证据形态有交集、改写链非空、末档是已知档位。
+ * 「成功」由写入侧保证 —— 只有以 clean 收尾的链路才会写 `rewriteChain`，
+ * 所以这里不再额外判一次成败；旧数据里末档不是已知档位的条目会被 `asTier` 挡掉。
+ *
+ * 返回 `null` 表示没有可信候选，调用方退回按 `attempt.continued` 的顺序取档 ——
+ * 也就是说：没有候选时行为与引入本函数之前完全一致。
+ */
+export function recallReshapeTier(input: RecallInput): RecalledTier | null {
+	const current = evidenceTokens(input.evidence);
+	if (current.size === 0) return null;
+
+	const hits: Array<{ tier: ReshapeTier; seen: number; lastSeenAt: string }> = [];
+	for (const item of input.cases) {
+		if (item.refusalSig?.kind !== input.kind) continue;
+		if (item.rewriteChain.length === 0) continue;
+		const tier = asTier(item.rewriteChain[item.rewriteChain.length - 1] ?? "");
+		if (!tier) continue;
+		if (!overlaps(current, evidenceTokens(item.refusalSig.evidence))) continue;
+		hits.push({ tier, seen: item.seen, lastSeenAt: item.lastSeenAt });
+	}
+	if (hits.length === 0) return null;
+
+	// 排序：命中次数多者优先，其次更近发生的；同票时按档位靠前者（它在上游通过率更高）。
+	hits.sort((left, right) => {
+		if (right.seen !== left.seen) return right.seen - left.seen;
+		return right.lastSeenAt.localeCompare(left.lastSeenAt);
+	});
+
+	const best = hits[0];
+	// support 只数「与首选档位相同」的条目：它表示这条建议被多少次独立观察支持。
+	const support = hits.filter(hit => hit.tier === best.tier).length;
+	return { tier: best.tier, support };
 }

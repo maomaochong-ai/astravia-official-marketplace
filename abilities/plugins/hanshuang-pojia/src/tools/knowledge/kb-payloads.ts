@@ -1,6 +1,6 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { extractPayloadSections, PAYLOAD_DOC_ID, payloadHeadings } from "../../domain/playbooks";
-import { docById, loadDoc } from "../../features/workbench/services/docs";
+import { loadDocsLibrary } from "../../features/workbench/services/docs";
 import { kitProvenance } from "../lib/doc-header";
 
 interface KbPayloadsInput {
@@ -46,12 +46,13 @@ export function registerKbPayloadsTool(ctx: PluginContext): Disposable {
 		context: { conversation: "summary" },
 		timeoutMs: 60_000,
 		handler: async context => {
-			const entry = docById(PAYLOAD_DOC_ID);
+			const library = await loadDocsLibrary();
+			const entry = library.byId(PAYLOAD_DOC_ID);
 			if (!entry) return `The payload seed document (${PAYLOAD_DOC_ID}) is not in this build's document index.`;
 
 			let text: string;
 			try {
-				text = await loadDoc(PAYLOAD_DOC_ID);
+				text = await library.loadBody(PAYLOAD_DOC_ID);
 			} catch (error) {
 				return `Could not read ${PAYLOAD_DOC_ID}: ${error instanceof Error ? error.message : String(error)}`;
 			}

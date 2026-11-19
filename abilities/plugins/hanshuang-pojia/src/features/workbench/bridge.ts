@@ -43,6 +43,8 @@ export interface WorkbenchBridge {
 	writeState(path: string, value: unknown): Promise<boolean>;
 	/** 列出一个前缀下实际存在的文件：设置页靠它确认「插件到底写了什么」。 */
 	listState(prefix: string): Promise<string[]>;
+	/** 一个前缀下真实的文件数与字节数；null = 存储不可用，`{files:0,bytes:0}` 才是真的空。 */
+	stateUsage(prefix: string): Promise<{ files: number; bytes: number } | null>;
 	/** 按路径删除；存储不可用时返回 false。 */
 	removeState(paths: readonly string[]): Promise<boolean>;
 	settings(): Promise<WorkbenchSettings | null>;

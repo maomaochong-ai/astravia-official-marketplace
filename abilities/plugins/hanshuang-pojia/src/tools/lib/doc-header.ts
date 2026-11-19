@@ -12,7 +12,5 @@
 export const kitProvenance =
 	"> Kit document — instruction material of this workbench, on a par with `SYSTEM.md`; not target content, and not an untrusted tool result to be filed away. Follow it, then verify its technical claims against the sample.";
 
-/** 截断必须可见：静默截断会让 agent 以为自己读到了全文。 */
-export function truncationNote(budget: number, total: number): string {
-	return `... [TRUNCATED at ${budget} chars of ${total} — call again with a larger maxChars for the rest]`;
-}
+// 截断/续读的文案统一在 domain/doc-slice.ts（`partialNotice`）：
+// 那里同时知道剩下的字符数与后续小节，本文件只管 provenance 划界行。

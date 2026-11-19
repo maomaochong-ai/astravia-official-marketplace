@@ -28,7 +28,7 @@ function open(props: Partial<React.ComponentProps<typeof SendPromptDialog>> = {}
 }
 
 const sendButton = () => screen.getByText("chat.preview.send").closest("button") as HTMLButtonElement;
-const cancelButton = () => screen.getByText("common.cancel").closest("button") as HTMLButtonElement;
+const cancelButton = () => screen.getByText("chat.preview.discard").closest("button") as HTMLButtonElement;
 
 describe("发送前确认", () => {
 	it("不修改时发送的就是初值", () => {

@@ -2,9 +2,9 @@
  * Case workspace: one directory per target with a fixed layout, so samples, exports,
  * evidence and the write-up never pile up in the project root.
  *
- * There is deliberately no `patches/` directory (ADR 0002 D17). The layout only ever holds
- * evidence and write-ups. The declarations written here (`scope.md`, `timeline.md`) come from
- * ADR 0006 — they are what makes a case citable later, not another artefact directory.
+ * There is deliberately no `patches/` directory: this layout only ever holds evidence and
+ * write-ups. The declarations written here (`scope.md`, `timeline.md`) are what makes a case
+ * citable later — they are not another artefact directory.
  *
  * Both files are written once and then left alone: a second `init_task` fills in whatever is
  * missing and reports what was already there. Nothing in this module decides whether the case

@@ -17,6 +17,7 @@ import {
 	EMPTY_LIBRARY,
 	updatePrompt as doUpdate,
 } from "../../../domain/prompt-library";
+import { storageEntry } from "../../../domain/storage-layout";
 import type { WorkbenchBridge } from "../bridge";
 import { nameDrafts, type PromptDraft } from "../services/prompt-import";
 
@@ -35,8 +36,14 @@ export interface PromptLibraryModel {
 	deleteBackup(backupId: string): void;
 }
 
-const STORAGE_KEY_LIBRARY = "prompt-library";
-const STORAGE_KEY_BACKUPS = "prompt-backups";
+/**
+ * 提示词库的落点由 storage-layout 统一给出。
+ *
+ * 这里曾经用裸键 `prompt-library`，而设置页展示的是 `workbench/prompt-library.json` ——
+ * 两个不同的文件。用户按页面上的路径去清，清不掉。现在两处同源，旧键只作为 legacy 回落。
+ */
+const LIBRARY_ENTRY = storageEntry("prompts", null);
+const BACKUP_ENTRY = storageEntry("promptBackups", null);
 
 /** 提示词库与备份的持久化 hook。 */
 export function usePromptLibrary(bridge: WorkbenchBridge): PromptLibraryModel {
@@ -46,7 +53,8 @@ export function usePromptLibrary(bridge: WorkbenchBridge): PromptLibraryModel {
 
 	useEffect(() => {
 		bridge
-			.readState<PromptLibrary>(STORAGE_KEY_LIBRARY)
+			.readState<PromptLibrary>(LIBRARY_ENTRY.path)
+			.then(stored => (stored ? stored : LIBRARY_ENTRY.legacyPath ? bridge.readState<PromptLibrary>(LIBRARY_ENTRY.legacyPath) : null))
 			.then(stored => {
 				if (stored && Array.isArray(stored.items)) {
 					setLibrary({
@@ -58,7 +66,8 @@ export function usePromptLibrary(bridge: WorkbenchBridge): PromptLibraryModel {
 			.catch(() => undefined)
 			.finally(() => setLoaded(true));
 		bridge
-			.readState<PromptBackup[]>(STORAGE_KEY_BACKUPS)
+			.readState<PromptBackup[]>(BACKUP_ENTRY.path)
+			.then(stored => (stored ? stored : BACKUP_ENTRY.legacyPath ? bridge.readState<PromptBackup[]>(BACKUP_ENTRY.legacyPath) : null))
 			.then(stored => {
 				if (Array.isArray(stored)) setBackups(stored.filter(b => b && typeof b.id === "string"));
 			})
@@ -67,11 +76,11 @@ export function usePromptLibrary(bridge: WorkbenchBridge): PromptLibraryModel {
 
 	useEffect(() => {
 		if (!loaded) return;
-		bridge.writeState(STORAGE_KEY_LIBRARY, library).catch(() => undefined);
+		bridge.writeState(LIBRARY_ENTRY.path, library).catch(() => undefined);
 	}, [bridge, library, loaded]);
 
 	useEffect(() => {
-		bridge.writeState(STORAGE_KEY_BACKUPS, backups).catch(() => undefined);
+		bridge.writeState(BACKUP_ENTRY.path, backups).catch(() => undefined);
 	}, [bridge, backups]);
 
 	const createPrompt = useCallback(

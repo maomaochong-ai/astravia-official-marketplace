@@ -3,8 +3,8 @@
  * queryable precedent list.
  *
  * Upstream keeps its packages under `Tool/cases/` with no index; finding the right precedent is
- * a directory walk plus reading. The mechanism worth copying is the retrieval, not the corpus
- * (ADR 0001 §2.3 keeps the corpus out of the package). So this module scans the operator's own
+ * a directory walk plus reading. The mechanism worth copying is the retrieval, not the corpus:
+ * the 14 upstream projects stay out of this package. So this module scans the operator's own
  * `cases/` and `work/` namespaces, parses each `scope.md`, and ranks them against a query.
  *
  * Nothing here judges a case: there is no readiness verdict, no blocker list and no "ready"

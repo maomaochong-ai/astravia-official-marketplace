@@ -10,9 +10,9 @@
  * no clock.
  *
  * Section names, key names and the preset table are copied from `Tool/scripts/case-init.ps1` so
- * a case written by either tool reads the same. Two deliberate departures, both documented in
- * ADR 0006: the name limit is 64 instead of 80 (an `E-###-<slug>.md` under `evidence/` must
- * still fit a Windows path), and unknown words fail closed instead of being warned past.
+ * a case written by either tool reads the same. Two deliberate departures: the name limit is
+ * 64 instead of 80 (an `E-###-<slug>.md` under `evidence/` must still fit a Windows path), and
+ * unknown words fail closed instead of being warned past.
  *
  * - `scope.md` is written once and never rewritten; a changed scope is a new case.
  * - `timeline.md` is append-only, one timestamped block per event.

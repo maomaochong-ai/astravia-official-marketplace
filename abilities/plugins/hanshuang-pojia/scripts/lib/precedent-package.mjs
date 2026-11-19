@@ -295,7 +295,8 @@ export function readPackage({ casesDir, docsDir, dir }) {
 		caseDocs: meta.caseDocs ?? [],
 		...(meta.source ? { source: meta.source } : {}),
 		tools: readToolManifest(join(casesDir, dir)),
-		docs: meta.docs.map(id => ({ id, text: readFileSync(join(casesDir, dir, id), "utf8") })),
+		// 只有 id：正文由 readCaseText 按需从 assets/cases/<slug>/ 取，不进 JS 分块。
+		docs: meta.docs.map(id => ({ id })),
 	};
 }
 

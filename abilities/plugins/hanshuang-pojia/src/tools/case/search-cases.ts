@@ -66,13 +66,16 @@ export function registerSearchCasesTool(ctx: PluginContext): Disposable {
 		timeoutMs: 30_000,
 		handler: async context => {
 			const input = context.trigger.input;
-			// 整包正文按 slug 现取：只有显式要一份时才把 2 KB 正文放进上下文。
+			// 整包正文按 slug 现取：只有显式要一份时才把包内正文放进上下文。
 			const wanted = (input.precedent ?? "").trim();
 			if (wanted) {
 				const precedent = findPrecedent(wanted);
-				return precedent
-					? renderPrecedentPackage(precedent)
-					: `No shipped precedent is named "${wanted}". Available: ${shippedPrecedentSlugs()}.`;
+				if (!precedent) return `No shipped precedent is named "${wanted}". Available: ${shippedPrecedentSlugs()}.`;
+				try {
+					return await renderPrecedentPackage(precedent);
+				} catch (error) {
+					return `search_cases could not read cases/${precedent.slug}/: ${error instanceof Error ? error.message : String(error)}`;
+				}
 			}
 			const cwd = context.session.cwd;
 			const rawRoot = (input.root ?? "").trim();

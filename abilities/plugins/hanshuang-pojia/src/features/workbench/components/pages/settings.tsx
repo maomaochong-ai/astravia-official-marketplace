@@ -5,13 +5,15 @@
  */
 
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { RULES, type Severity } from "../../../../domain/audit/rules";
 import { getActivePrompt } from "../../../../domain/prompt-library";
 import { DEFAULT_SETTINGS } from "../../state";
 import { SEVERITY_DOT, SEVERITY_TEXT } from "../../severity";
 import { Card } from "../shell/card";
+import { formatBytes } from "../../../../domain/report/report";
 import { storageEntries } from "../../../../domain/storage-layout";
+import type { StorageUsageRow } from "../../hooks/use-workbench";
 import { Icon } from "../shell/icon";
 import { NumberField } from "../shell/number-field";
 import { PageHeader } from "../shell/page-header";
@@ -59,10 +61,17 @@ export function SettingsPage({ model }: PageProps) {
 
 	// 清理结果只留一行提示：删文件是副作用，不需要弹窗打断。
 	const [clearState, setClearState] = useState<string | null>(null);
-	const clear = async (scope: "workspace" | "all") => {
+	// 占用逐项问宿主，不估算：用户看到的是真实文件数与字节数。
+	const [usage, setUsage] = useState<StorageUsageRow[] | null>(null);
+	const loadUsage = () => {
+		void model.storageUsage().then(setUsage);
+	};
+	useEffect(loadUsage, []);
+	const clear = async (scope: "session" | "workspace" | "all") => {
 		const done = await model.clearStorage(scope);
 		setClearState(done ? "settings.data.cleared" : "settings.data.clearFailed");
-	}
+		loadUsage();
+	};
 
 	const sortValue = (severity: Severity) => ORDER.indexOf(severity);
 
@@ -207,17 +216,41 @@ export function SettingsPage({ model }: PageProps) {
 					<div className="px-3.5 py-2">
 						<p className="text-[10.5px] leading-relaxed text-text-3">{t("settings.data.lead")}</p>
 					</div>
-					{storageEntries(model.cwd).map(entry => (
-						<div key={entry.key} className="flex items-baseline gap-2 px-3.5 py-1.5">
+					{(usage ?? []).map(row => (
+						<div key={row.key} className="flex items-baseline gap-2 px-3.5 py-1.5">
 							<span className="w-24 shrink-0 text-[10px] text-text-4">
-								{t(entry.scope === "workspace" ? "settings.data.scope.workspace" : "settings.data.scope.plugin")}
+								{t(`settings.data.scope.${row.scope}`)}
 							</span>
-							<span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-text-2" title={entry.path}>
-								{entry.path}
+							<span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-text-2" title={row.path}>
+								{row.path}
+							</span>
+							<span className="shrink-0 tabular-nums text-[10px] text-text-4">
+								{row.unavailable
+									? t("settings.data.unavailable")
+									: t("settings.data.usage", { files: row.files, size: formatBytes(row.bytes) })}
 							</span>
 						</div>
 					))}
+					{usage === null ? <div className="px-3.5 py-1.5 text-[10px] text-text-4">{t("settings.data.loading")}</div> : null}
+					{/* usage 为空但模型已经返回：只可能是存储整体不可用，按 storageEntries 的路径列出来更诚实。 */}
+					{(usage ?? []).length === 0
+						? storageEntries(model.cwd, model.sessionId).map(entry => (
+								<div key={entry.key} className="flex items-baseline gap-2 px-3.5 py-1.5">
+									<span className="w-24 shrink-0 text-[10px] text-text-4">{t(`settings.data.scope.${entry.scope}`)}</span>
+									<span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-text-2" title={entry.path}>
+										{entry.path}
+									</span>
+								</div>
+							))
+						: null}
 					<div className="flex flex-wrap items-center gap-2 px-3.5 py-2.5">
+						<button
+							type="button"
+							onClick={() => void clear("session")}
+							className="rounded-md border border-line-subtle px-2.5 py-1.5 text-[11px] font-medium text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+						>
+							{t("settings.data.clearSession")}
+						</button>
 						<button
 							type="button"
 							onClick={() => void clear("workspace")}

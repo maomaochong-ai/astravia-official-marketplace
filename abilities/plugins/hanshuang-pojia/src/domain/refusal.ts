@@ -18,7 +18,7 @@
  * 宿主侧另有 `max-stop-continuations` 兜底。
  */
 
-import { type ReshapeCandidate, type ReshapeTier, reshapeAt } from "./reshaping";
+import { type RecalledTier, type ReshapeCandidate, type ReshapeTier, reshapeAt, reshapeForTier } from "./reshaping";
 
 /**
  * `silent` 是「什么都没说就停下」：宿主在 Agent 自然停止点给出空正文，
@@ -134,6 +134,8 @@ export interface RecoveryAttempt {
 	continued: number;
 	/** 上一次续跑用的幂等键：同一条拒绝不重复续跑。 */
 	lastKey?: string | null;
+	/** 本回合已经用过的档位；案例库推荐的档位踩过就不再踩。 */
+	tried?: readonly ReshapeTier[];
 }
 
 export interface RecoveryDecision {
@@ -148,6 +150,11 @@ export interface RecoveryDecision {
 	 */
 	prompt?: string | null;
 	attempt?: RecoveryAttempt;
+	/**
+	 * 案例库推荐的档位（调用方查好后传入，本函数不读盘）。
+	 * `null` / 缺省 = 没有可信候选，退回到按次数轮换。
+	 */
+	recalled?: RecalledTier | null;
 }
 
 export interface RecoveryOutcome {
@@ -155,7 +162,7 @@ export interface RecoveryOutcome {
 	fragment: string;
 	/** 由拒绝类型、证据与**本档策略**共同决定：换一档写法就不再是同一条指令。 */
 	idempotencyKey: string;
-	/** 有值 = 本次真的换了句式；`null` = 提不出目标，退回禁令式片段（见 ADR 0010 D2）。 */
+	/** 有值 = 本次真的换了句式；`null` = 提不出目标，退回禁令式片段。 */
 	strategy: ReshapeTier | null;
 }
 
@@ -183,9 +190,15 @@ export function planRecovery(lastMessage: string | null, decision: RecoveryDecis
 	// 静默拦截没有任何可供改写的正文，作用对象只能是原话；没有原话就不介入。
 	if (signal.kind === "silent" && !prompt.trim()) return null;
 
-	const reshape = reshapeAt(prompt, attempt.continued);
+	// 案例库推荐的档位只在「本回合没踩过」时采信：同一档再发一次已被证明无效，
+	// 换问法的全部价值在「换」。踩过就退回按次数轮换，不降级成重复。
+	const recalled = decision.recalled ?? null;
+	const tried = attempt.tried ?? [];
+	const fromCase = recalled && !tried.includes(recalled.tier) ? reshapeForTier(prompt, recalled.tier) : null;
+	const reshape = fromCase ?? reshapeAt(prompt, attempt.continued);
+	const source = fromCase ? "case" : "index";
 	const strategy = reshape?.tier ?? null;
-	const idempotencyKey = `refusal:${signal.kind}:${hash(signal.evidence.join("|"))}:${strategy ?? "legacy"}`;
+	const idempotencyKey = `refusal:${signal.kind}:${hash(signal.evidence.join("|"))}:${strategy ?? "legacy"}:${source}`;
 	// 同一档写法再来一次：上一轮指令没起作用，再问一遍只是抬高成本。
 	if (attempt.lastKey === idempotencyKey) return null;
 

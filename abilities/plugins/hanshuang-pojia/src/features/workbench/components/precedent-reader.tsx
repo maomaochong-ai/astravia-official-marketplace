@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import type { ShippedPrecedent } from "../../../domain/case/precedents";
+import { readPrecedentDoc, type ShippedPrecedent } from "../../../domain/case/precedents";
 import { AiButton } from "./shell/ai-button";
 import { DocTabs } from "./shell/doc-tabs";
 import { Icon } from "./shell/icon";
@@ -19,14 +19,36 @@ export interface PrecedentReaderProps {
 /**
  * 一份随包先例的阅读视图。
  *
- * 正文在编译期已内联进 `precedents.generated.ts`，所以这里点开即读、不需要 IO；
- * 它的 scope 恒为 `pending`，页面上不提供任何「可开工」的暗示，只给「复制成你的案例」一个动作。
+ * 索引在分块里，正文按需读取（`assets/cases/<slug>/`）：点开哪一篇读哪一篇，
+ * 切换标签不重复抓包。它的 scope 恒为 `pending`，页面上不提供任何「可开工」的暗示，
+ * 只给「复制成你的案例」一个动作。
  */
 export function PrecedentReader({ precedent, onOpenStudy, onScaffold, busy }: PrecedentReaderProps) {
 	const { t } = useTranslation();
 	const [active, setActive] = useState(precedent.docs[0]?.id ?? null);
 	const doc = precedent.docs.find(entry => entry.id === active) ?? precedent.docs[0];
+	const docId = doc?.id ?? null;
+	const [body, setBody] = useState<string | null>(null);
+	const [failed, setFailed] = useState(false);
 	const packagePath = `cases/${precedent.slug}/`;
+
+	useEffect(() => {
+		let cancelled = false;
+		setBody(null);
+		setFailed(false);
+		if (!docId) return;
+		readPrecedentDoc(precedent, docId).then(
+			text => {
+				if (!cancelled) setBody(text ?? null);
+			},
+			() => {
+				if (!cancelled) setFailed(true);
+			},
+		);
+		return () => {
+			cancelled = true;
+		};
+	}, [precedent, docId]);
 
 	return (
 		<>
@@ -75,7 +97,11 @@ export function PrecedentReader({ precedent, onOpenStudy, onScaffold, busy }: Pr
 
 			{doc ? (
 				<div className="fb-scroll max-h-[560px] overflow-y-auto px-3.5 py-3">
-					<Markdown source={doc.text} />
+					{body !== null ? (
+						<Markdown source={body} />
+					) : (
+						<p className="text-[11.5px] text-text-4">{failed ? t("cases.reader.unreadable") : t("cases.reader.loading")}</p>
+					)}
 				</div>
 			) : (
 				<div className="px-3.5 py-6 text-center text-[11.5px] text-text-4">{t("cases.reader.nofiles")}</div>

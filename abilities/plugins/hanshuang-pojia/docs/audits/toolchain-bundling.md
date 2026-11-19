@@ -6,8 +6,7 @@
 被测对象：`abilities/plugins/hanshuang-pojia`，`plugin.json` **2.8.0**（实测于 2026-10-23）。
 
 相关文档：[工具链对照表（42 项逐条判定）](../reference/toolchain-parity.md)、
-ADR 0002 外部进程桥、
-ADR 0003 插件出计划、agent 执行。
+外部进程桥与安装计划在 `src/domain/toolchain/`。
 
 ---
 
@@ -126,8 +125,8 @@ python / bash / PowerShell 才能跑——它带的是"脚本"，不是"解释�
 | 权限模型 | 无细粒度授权：面板点一下就用 `runPowerShell` 跑脚本；MCP 的 `seep_r2_cmd` 直接把用户字符串拼进 `r2 -c`（零限制） | 双层：`plugin.json#commands` 静态白名单 + `agent.command.run` 用户授权；`run_radare` 的 `cmd` 对等上游零限制直通（2.9.0 反转 D16 只读守卫），保持参数数组完整、不走 shell |
 | 安装权限 | 部署脚本要管理员/UAC | 插件**零**安装权限：不持有 brew / apt / winget / pipx（`install-toolchain.ts:30`）。安装命令由 Agent 经宿主对话执行，宿主按其授权门逐条放行，管理员提权由宿主负责询问——这既是权限收紧（插件无权直装），也和上游“面板点一下即装”对等（用户仍只需一次确认） |
 | 样本执行 | 工具链本身可以运行样本（r2 debug、frida、IDA） | 从不执行样本；样本只经宿主 `fs` 读取（≤32 MiB） |
-| 补丁/重签 | 上游带 `Tool/cases` 与 PoC 脚手架，鼓励落地 | `init_task` 不建 `patches/`（ADR 0002 D17）；`write_assessment_report` 不引用 `patches/`（D19） |
-| 网络 | 需要（pip / npx / 重下工具） | 插件零网络；IDA 常驻会话（`127.0.0.1:13337`）明确不移植（ADR 0002 :81） |
+| 补丁/重签 | 上游带 `Tool/cases` 与 PoC 脚手架，鼓励落地 | `init_task` 不建 `patches/`（见 `src/domain/toolchain/workspace.ts`）；`write_assessment_report` 不引用 `patches/` |
+| 网络 | 需要（pip / npx / 重下工具） | 插件零网络；IDA 常驻会话（`127.0.0.1:13337`）明确不移植（见 `catalog.ts` 的迁移判定） |
 
 ---
 
@@ -140,13 +139,13 @@ python / bash / PowerShell 才能跑——它带的是"脚本"，不是"解释�
 | 分发体积 | 整包 **618 MB**（`resources/` 350 MB，其中 `seep-kit` 310 MB；Electron 本体 `寒霜破甲工具.exe` 188 MB + `app.asar` 41.7 MB 不属工具链） | `.astraviapkg` 7.67 MB |
 | 工具元数据来源 | `Tool/docs/tool-index.json`（42 项）+ `repair-tools.ps1` 的下载表 | `src/domain/toolchain/catalog.ts`：`TOOLCHAIN` 14 项（进 commands）+ `COMPANIONS` 11 项（零权限，只出现在计划里） |
 
-> 注：ADR 0001 D8 写作时的声明是 8 个可执行文件，2.5.0 起扩到 14 个，以 ADR 0003 §4 与 `catalog.ts` 为准。
+> 注：2.0 时代的声明是 8 个可执行文件，2.5.0 起扩到 14 个，以 `src/domain/toolchain/catalog.ts` 为准。
 
 ---
 
 ## 9. 为什么不做成"自带"
 
-四条理由（详见 ADR 0003 §2，逐条都能单独否决）：
+四条理由（逐条都能单独否决）：
 
 1. `plugin.json#commands` 是**静态白名单**。要自带安装能力就得声明 `brew` / `apt-get` / `winget` / `pipx` / `scoop`
    各一个授权位——五个"什么都能干"的权限换一个"装个 jadx"，权限面换得不划算。
@@ -186,7 +185,7 @@ node -e 'console.log(require("./src/content/docs/index.json").length)'          
 - **宿主的 PATH 解析语义未在真实宿主内实测**：`ctx.command.run` 由宿主进程 spawn，本文件只验证到"插件不内置、
   一律交宿主"这一层。宿主是否使用受限 PATH、是否限定 cwd，需以宿主实现为准。
 - **本机缺 r2 / rabin2 / radiff2 / rasm2 / jadx / apktool**（`frida 17.24.1` 可用），故"借用用户二进制"的
-  端到端行为只在"探针判定 + 参数构造"层验证（同 ADR 0002 §5）。
+  端到端行为只在"探针判定 + 参数构造"层验证。
 - **上游依赖的版本敏感信息未核**：`.mcp.json` 用裸 `python`，实际取到哪个解释器由用户 PATH 决定；`npx -y`
   每次可能取到不同上游版本。这是上游的既存风险，本插件不复制这种做法。
 - 上游体积/条目数取自当前解包目录，若上游换版需重测。

@@ -19,12 +19,13 @@
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outPath = join(root, "src/content/docs/kit-docs/tool-index.json");
 
-const { TOOLCHAIN, COMPANIONS } = await import(join(root, "src/domain/toolchain/catalog.ts"));
+// Windows 上不能用裸绝对路径 import：Node 会把 `D:\…` 读成 scheme `d:` 并拒绝（ADR 0009 待补项）。
+const { TOOLCHAIN, COMPANIONS } = await import(pathToFileURL(join(root, "src/domain/toolchain/catalog.ts")).href);
 
 /**
  * 2.0 索引里有、本插件明确不做的 17 项。
@@ -37,7 +38,7 @@ const UNSUPPORTED = [
 	{ name: "r2xsql", group: "radare2", skill: "native-reverse", reason: "r2 plugin installed through r2pm — a second permission surface" },
 	{ name: "r2xsql-full", group: "radare2", skill: "native-reverse", reason: "same r2 plugin, full build" },
 	{ name: "radius2", group: "radare2", skill: "native-reverse", reason: "symbolic execution; same r2pm surface" },
-	{ name: "r2pm", group: "radare2", skill: "native-reverse", reason: "package manager: the plugin plans installs, it never runs them (ADR 0003 §2)" },
+	{ name: "r2pm", group: "radare2", skill: "native-reverse", reason: "package manager: the plugin plans installs, it never runs them" },
 	{ name: "jshookmcp", group: "js-reverse", skill: "js-reverse", reason: "MCP server" },
 	{ name: "reqable-mcp", group: "pentest-tools", skill: "js-reverse", reason: "MCP server" },
 	{ name: "xquik-mcp", group: "threat-intelligence", skill: "threat-intelligence", reason: "remote MCP server with OAuth" },

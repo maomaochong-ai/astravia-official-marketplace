@@ -17,7 +17,7 @@ import type { MyCasesModel } from "./use-my-cases";
 import { useMyCases } from "./use-my-cases";
 import { chunkCount, IMPORT_DIRECTORY, importRelativePath, readChunkAsBase64 } from "../services/import-file";
 import type { LibraryEntry, PageId, WorkbenchSettings } from "../state";
-import { pathsToClear, type StorageScope } from "../../../domain/storage-layout";
+import { pathsToClear, storageEntries, type StorageScope } from "../../../domain/storage-layout";
 import { useChat, type ChatModel } from "./use-chat";
 import type { SampleFailure } from "../sample-error";
 import type { HandoffReason, HandoffTarget } from "../services/sample-handoff";
@@ -39,6 +39,16 @@ const SAMPLE_EXTENSIONS = [".apk", ".aab", ".ipa", ".jar", ".zip", ".dex", ".so"
 const MAX_LISTED = 120;
 
 export type WorkbenchPhase = "idle" | "loading" | "ready" | "error";
+
+/** 设置页一行数据占用。`unavailable` 表示存储没授权，不是「零字节」。 */
+export interface StorageUsageRow {
+	key: string;
+	scope: string;
+	path: string;
+	files: number;
+	bytes: number;
+	unavailable: boolean;
+}
 
 export interface StringHit {
 	value: string;
@@ -108,6 +118,8 @@ export interface WorkbenchModel {
 	caseDocs: CaseDocsModel;
 	/** 面板自己沉淀的案例库：按工作区隔离，与 cases/ 扫描结果并列展示。 */
 	myCases: MyCasesModel;
+	/** 当前会话 id；存储的会话作用域靠它分区，null = 还没有活跃会话。 */
+	sessionId: string | null;
 
 	exportReport(format: "markdown" | "json"): void;
 	copyReport(format: "markdown" | "json"): void;
@@ -127,6 +139,10 @@ export interface WorkbenchModel {
 	previewPrompt(action: PromptAction, extra?: Partial<PromptContext>): string;
 	/** 清理插件自己写的文件；返回是否全部删成。 */
 	clearStorage(scope: StorageScope | "all"): Promise<boolean>;
+	/** 每个作用域真实占了多少：文件数与字节数，来自宿主的 list + 快照，不是估算。 */
+	storageUsage(): Promise<StorageUsageRow[]>;
+	/** 把一段草稿存进我的案例：用户显式沉淀，不是自动搬运。 */
+	recordDraft(prompt: string, tags?: readonly string[]): void;
 	/** 面板气泡提示；下发给需要自报结果的子组件（注入块复制等）。 */
 	notify(message: string, variant?: NotifyVariant): void;
 }
@@ -149,6 +165,8 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 	const active = options.active !== false;
 	const library = useLibrary(bridge, cwd);
 	const chat = useChat(bridge, cwd, active);
+	// 所有会话作用域的存储都以它分区：宿主 replay 的 conversation-changed 一到达就有值。
+	const sessionId = chat.state.sessionId;
 	const lab = useLab(bridge);
 	const promptLib = usePromptLibrary(bridge);
 
@@ -363,8 +381,14 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		const stamp = `${report.target.sha256}-${report.target.size}-${report.target.generatedAt}`;
 		if (recordedReport.current === stamp) return;
 		recordedReport.current = stamp;
-		myCases.record(report);
-	}, [myCases, report]);
+		// 溯源：报告来自对话还是面板自分析，决定了 hostPrompt 有没有意义。
+		myCases.record(report, {
+			intent: fromAgent ? "host" : "triage",
+			hostPrompt: fromAgent ? (chat.lastPrompt ?? "") : "",
+			artifactRef: report.target.path,
+			tags: [report.target.format],
+		});
+	}, [chat.lastPrompt, fromAgent, myCases, report]);
 	// 案例正文只在案例页读：选中的案例一变就重新列目录，切走再回来不影响已选的案例。
 	const caseDocs = useCaseDocs(bridge, cases.selected?.path ?? null);
 
@@ -403,8 +427,36 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 
 	// 清理：只删插件自己写的文件，路径由 storage-layout 统一给出（含旧位置）。
 	const clearStorage = useCallback(
-		(scope: StorageScope | "all") => bridge.removeState(pathsToClear(cwd, scope)),
-		[bridge, cwd],
+		// 会话作用域必须带上当前 sessionId，否则会去清一个不存在的分区。
+		(scope: StorageScope | "all") => bridge.removeState(pathsToClear(cwd, scope, sessionId)),
+		[bridge, cwd, sessionId],
+	);
+
+	// 真实占用：逐项去问宿主，不估算。旧位置也算进去，否则用户会看到「清了但没少」。
+	const storageUsage = useCallback(async (): Promise<StorageUsageRow[]> => {
+		const rows: StorageUsageRow[] = [];
+		for (const entry of storageEntries(cwd, sessionId)) {
+			const primary = await bridge.stateUsage(entry.path);
+			const legacy = entry.legacyPath ? await bridge.stateUsage(entry.legacyPath) : { files: 0, bytes: 0 };
+			const unavailable = primary === null && legacy === null;
+			rows.push({
+				key: entry.key,
+				scope: entry.scope,
+				path: entry.path,
+				files: (primary?.files ?? 0) + (legacy?.files ?? 0),
+				bytes: (primary?.bytes ?? 0) + (legacy?.bytes ?? 0),
+				unavailable,
+			});
+		}
+		return rows;
+	}, [bridge, cwd, sessionId]);
+
+	// 用户显式沉淀一段草稿：这是会话草稿跨会话可见的唯一途径。
+	const recordDraft = useCallback(
+		(prompt: string, tags?: readonly string[]) => {
+			myCases.recordDraft({ prompt, tags, model: null });
+		},
+		[myCases],
 	);
 
 	const copyReport = useCallback(
@@ -554,6 +606,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 
 	return {
 		cwd,
+		sessionId,
 		page,
 		go,
 		files,
@@ -613,6 +666,8 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		askText,
 		previewPrompt,
 		clearStorage,
+		storageUsage,
+		recordDraft,
 		notify: bridge.notify,
 	};
 }

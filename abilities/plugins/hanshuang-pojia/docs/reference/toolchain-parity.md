@@ -41,7 +41,7 @@
 | 29 | r2xsql | radare2 | 不做 | r2 生态插件，装它要跑 `r2pm`，属另一个授权面 |
 | 30 | r2xsql-full | radare2 | 不做 | 同上 |
 | 31 | radius2 | radare2 | 不做 | 符号执行，同上 |
-| 32 | r2pm | radare2 | 不做 | 包管理器；插件不代跑安装器（ADR 0003 §2） |
+| 32 | r2pm | radare2 | 不做 | 包管理器；插件不代跑安装器 |
 | 33 | jshookmcp | js-reverse | 不做 | MCP 服务 |
 | 34 | reqable-mcp | pentest-tools | 不做 | MCP 服务 |
 | 35 | xquik-mcp | threat-intelligence | 不做 | 远程 MCP + OAuth |
@@ -60,7 +60,7 @@
 - **17 项不做**：13 项是 MCP 服务或 r2 生态插件（本插件通过自己的语义化工具直接做同一件事，不再套一层 MCP），
   4 项是浏览器 / 代理 / 字典类，不属文件审计。
 - **能力上的实质差异只有一处**：2.0 内置离线二进制，装完即用；本插件不捆绑任何工具，靠 `install_toolchain`
-  按目标给出平台命令，由 agent 在用户同意后执行（[ADR 0003](./adr/0003-toolchain-install-plan.md)）。
+  按目标给出平台命令，由 agent 在用户同意后执行（实现见 `src/domain/toolchain/`）。
   该差异在分发形态、部署动作、离线依赖与权限边界上的逐项证据见 [自带工具链对照](./toolchain-bundling.md)。
 
 ## 与 2.0 的安装机制差异

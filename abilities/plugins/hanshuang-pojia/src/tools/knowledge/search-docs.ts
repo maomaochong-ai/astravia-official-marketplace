@@ -1,5 +1,5 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
-import { DOC_ENTRIES, type DocEntry } from "../../features/workbench/services/docs";
+import { loadDocsLibrary, type DocEntry } from "../../features/workbench/services/docs";
 
 const MAX_HITS = 60;
 const MAX_SCAN = 400;
@@ -13,11 +13,11 @@ export interface DocHit {
  * 标题 / id / 主题打分：完全相等 > 前缀 > 子串，标题权重高于路径。
  * 不做模糊匹配——这里拿到的一般是关键词，排序稳定比召回率重要。
  */
-export function rankDocs(query: string, limit = 20, group = ""): DocHit[] {
+export function rankDocs(entries: readonly DocEntry[], query: string, limit = 20, group = ""): DocHit[] {
 	const needle = query.trim().toLowerCase();
 	if (needle === "") return [];
 	const hits: DocHit[] = [];
-	for (const entry of DOC_ENTRIES) {
+	for (const entry of entries) {
 		if (group !== "" && entry.group !== group) continue;
 		const title = entry.title.toLowerCase();
 		const id = entry.id.toLowerCase();
@@ -74,7 +74,9 @@ export function registerSearchDocsTool(ctx: PluginContext): Disposable {
 				const input = context.trigger.input;
 				const limit = Math.max(1, Math.min(MAX_HITS, Math.trunc(input.limit ?? 20)));
 				const group = (input.group ?? "").trim();
-				const hits = rankDocs(input.query, limit, group);
+				// 索引按需加载：110 KB 不再压在启动上，第一次搜索才读（ADR 0009 D5）。
+				const { entries } = await loadDocsLibrary();
+				const hits = rankDocs(entries, input.query, limit, group);
 				if (hits.length === 0) {
 					const scope = group === "" ? "kb, manual and kit-docs" : `the ${group} collection`;
 					return `No document in ${scope} matches "${input.query.trim()}". Try a broader keyword, or a term that appears in a document title.`;

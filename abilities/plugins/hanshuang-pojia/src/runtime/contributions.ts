@@ -4,10 +4,11 @@ import { KERNEL_BLOCK_ID, KERNEL_PRIORITY, buildKernelBlock } from "../domain/ke
 import { LAB_OFF, parseLabCommand, type LabState } from "../domain/lab-mode";
 import { LAB_STATE_PATH } from "../features/workbench/hooks/use-lab";
 import { SYSTEM_PROMPT_BLOCK_ID, SYSTEM_PROMPT_BODY, SYSTEM_PROMPT_PRIORITY } from "../domain/system-prompt.generated";
-import { planRecovery } from "../domain/refusal";
+import { type RefusalSignal, planRecovery } from "../domain/refusal";
+import { classifyStop } from "../domain/turn-outcome";
 import { describeEquivalentPath, readTargetShape, type ShapeReading } from "../domain/target-shape";
 import { describeRouteMatch, matchRoutes } from "../domain/routing-table";
-import { reshapeCandidates } from "../domain/reshaping";
+import { type RecalledTier, type ReshapeTier, recallReshapeTier, reshapeCandidates } from "../domain/reshaping";
 import {
 	applySensitiveRewrite,
 	decideSafetyInjection,
@@ -15,8 +16,11 @@ import {
 	resolveShortcut,
 	sanitizeRefusalLeak,
 } from "../domain/interceptor";
+import { sanitizeCases } from "../domain/my-cases";
+import { storageEntry } from "../domain/storage-layout";
 import { TOOL_IDS } from "../tools/ids";
-import { getAgentPage } from "./panel-channel";
+import { LAB_ONLY_TOOL_IDS } from "../tools/gate";
+import { getAgentPage, publishRefusal } from "./panel-channel";
 
 /** 插件声明的会话场景；与工具、活动面板保持一致。 */
 export const SCENARIOS: readonly ConversationScenario[] = ["conversation", "project"];
@@ -43,19 +47,30 @@ function rememberLab(ctx: PluginContext, state: LabState): void {
 	labCacheByStorage.set(ctx.storage as unknown as object, state);
 }
 
+/**
+ * 写穿入口：面板开关与 `lab：` 口令都走这里，保证缓存与存储同步。
+ * 只写盘不写缓存会让下一条消息读回旧值——缓存优先的前提就是这个函数被调用。
+ */
+export function cacheLabState(ctx: PluginContext, state: LabState): void {
+	rememberLab(ctx, state);
+}
+
+/**
+ * 每轮都调两次（系统提示 provider + UserPromptSubmit），所以缓存优先、存储是补充。
+ *
+ * 读失败不等于关闭：本会话开过就继续算开着；确实没读到文件也算一次确定事实，记进缓存，
+ * 免得每条消息都为「本来就是关的」付一次 IPC。
+ */
 async function readLab(ctx: PluginContext): Promise<LabState> {
+	const cached = cachedLab(ctx);
+	if (cached) return cached;
 	try {
 		const stored = await readJsonFile<LabState>(ctx.storage, LAB_STATE_PATH);
-		if (stored) {
-			const next: LabState = stored.enabled ? { enabled: true, since: stored.since ?? null } : LAB_OFF;
-			rememberLab(ctx, next);
-			return next;
-		}
-		// 文件确实不存在（首次使用或已被清理）：沿用本会话已读到的值，没有就算关闭。
-		return cachedLab(ctx) ?? LAB_OFF;
+		const next: LabState = stored?.enabled ? { enabled: true, since: stored.since ?? null } : LAB_OFF;
+		rememberLab(ctx, next);
+		return next;
 	} catch {
-		// 读失败不等于关闭：本会话开过就继续算开着。
-		return cachedLab(ctx) ?? LAB_OFF;
+		return LAB_OFF;
 	}
 }
 
@@ -94,7 +109,7 @@ const loggedSafetyEndpoints = new Set<string>();
  * 按回合记续跑次数、上一次的幂等键与**本回合用户原话**；Map 保序，超限时丢最早的一条。
  *
  * 为什么要存原话：`Stop` 事件只有 `lastAssistantMessage`，没有用户原话就提不出目标，
- * 改写就退化成禁令重申（见 ADR 0010 D5）。两个事件都带 `turnId`，它是可用的关联键。
+ * 改写就退化成禁令重申。两个事件都带 `turnId`，它是可用的关联键。
  */
 interface TurnMemory {
 	/** 上一次续跑用的幂等键；未续跑过时为 null。 */
@@ -102,26 +117,35 @@ interface TurnMemory {
 	count: number;
 	/** 用户本回合打的原话。值为空串表示「本回合没有可用的原话」。 */
 	prompt: string;
+	/** 本回合已经用过的改写档位：案例库推荐的那一档踩过就不再踩。 */
+	tried: ReshapeTier[];
 }
 
 const recoveryByTurn = new Map<string, TurnMemory>();
 const MAX_TRACKED_TURNS = 8;
 
-/** 写入/更新一个回合的原话，保留已有的续跑计数。 */
+/** 写入/更新一个回合的原话，保留已有的续跑计数与已试档位。 */
 function rememberPrompt(turnId: string, prompt: string): void {
 	const previous = recoveryByTurn.get(turnId);
 	recoveryByTurn.set(turnId, {
 		key: previous?.key ?? null,
 		count: previous?.count ?? 0,
 		prompt,
+		tried: previous?.tried ?? [],
 	});
 	trimTurnMemory();
 }
 
-/** 回写续跑结果，保留原话。 */
-function rememberRecovery(turnId: string, key: string, prompt: string): void {
+/** 回写续跑结果，保留原话与已试档位。 */
+function rememberRecovery(turnId: string, key: string, prompt: string, tier: ReshapeTier | null): void {
 	const previous = recoveryByTurn.get(turnId);
-	recoveryByTurn.set(turnId, { key, count: (previous?.count ?? 0) + 1, prompt });
+	const tried = previous?.tried ?? [];
+	recoveryByTurn.set(turnId, {
+		key,
+		count: (previous?.count ?? 0) + 1,
+		prompt,
+		tried: tier && !tried.includes(tier) ? [...tried, tier] : tried,
+	});
 	trimTurnMemory();
 }
 
@@ -130,6 +154,29 @@ function trimTurnMemory(): void {
 		const oldest = recoveryByTurn.keys().next().value;
 		if (oldest === undefined) break;
 		recoveryByTurn.delete(oldest);
+	}
+}
+
+/**
+ * 读本工作区的「我的案例」，挑一个以前真把这类拒答拧过来的档位。
+ *
+ * 只读 `cases` 这一个工作区作用域键：随包 `cases/` 是方法论语料，不记录成功率，
+ * 拿它排序等于按主题相近度猜。读不到、读坏了都当「没有候选」，续跑照常跑。
+ */
+async function recallTier(
+	ctx: PluginContext,
+	cwd: string | null | undefined,
+	sessionId: string | null | undefined,
+	signal: RefusalSignal,
+): Promise<RecalledTier | null> {
+	try {
+		const entry = storageEntry("cases", cwd, sessionId);
+		const stored = await readJsonFile<unknown>(ctx.storage, entry.path);
+		const cases = sanitizeCases(stored);
+		if (cases.length === 0) return null;
+		return recallReshapeTier({ kind: signal.kind, evidence: signal.evidence, cases });
+	} catch {
+		return null;
 	}
 }
 
@@ -169,7 +216,7 @@ function logSafetyEndpointOnce(model: { provider?: string; api?: string }): void
  *   0. 等距入口 → 对象是线上账号时，把同一件事在自有资产上的入口一并给出
  *      （`target-shape.ts`）。它是**附加**，不接管、不替换、不了结原请求；
  *   1. 快捷口令 → 展开成完整任务描述（上游直接替换成展开文案）；
- *   2. 命中「命令式要求对具体目标下手」的形态 → 注入评审式重述（ADR 0010 D6）。
+ *   2. 命中「命令式要求对具体目标下手」的形态 → 注入评审式重述。
  *      这一档是上游实测有效的唯一一类，所以它是主手段；
  *   3. 提不出目标时退回术语转译 —— 此时不改句式，因为改不清目标就是答非所问。
  *
@@ -281,6 +328,11 @@ export function registerRuntimeContributions(ctx: PluginContext): Disposable[] {
 							},
 						});
 					}
+					// 工具表闸门：效果在一个 turn 内累积重放，所以每轮都显式给两个方向。
+					// lab 关闭时只留 CORE_TOOL_IDS，其余 22 个不进工具表。
+					for (const toolName of LAB_ONLY_TOOL_IDS) {
+						operations.push({ type: "setToolEnabled", toolName, enabled: lab.enabled });
+					}
 					return operations as never;
 				},
 			}),
@@ -349,15 +401,35 @@ export function registerRuntimeContributions(ctx: PluginContext): Disposable[] {
 				timeoutMs: 2000,
 				handler: async ({ event }) => {
 					const lab = await readLab(ctx);
+					// 非实验环境不插手：日常对话里的拒绝是模型与用户的对话，不是插件的判断对象。
+					if (!lab.enabled) return;
+					const verdict = classifyStop(event.lastAssistantMessage);
+					// 干净收尾就走：过去这里是「无论如何都续」，正常答完也会被多问一轮。
+					if (verdict.kind !== "refusal") return;
+
 					const previous = recoveryByTurn.get(event.turnId);
 					const prompt = previous?.prompt ?? "";
+					const attempted = previous?.count ?? 0;
+					// 查案例库只决定「这一轮用哪一档」，不增加轮数；读不到就当没有候选。
+					const recalled = await recallTier(ctx, event.cwd, event.sessionId, verdict.signal);
 					const outcome = planRecovery(event.lastAssistantMessage, {
-						enabled: lab.enabled,
+						enabled: true,
 						prompt,
-						attempt: { continued: previous?.count ?? 0, lastKey: previous?.key ?? null },
+						attempt: { continued: attempted, lastKey: previous?.key ?? null, tried: previous?.tried ?? [] },
+						recalled,
 					});
+
+					// 观测先发：续不续都要让面板留下「这一轮因为什么停下」。
+					// 不带正文，只留类型与命中片段——能被复核，也不会把拒绝话术再传播一遍。
+					publishRefusal({
+						kind: verdict.signal.kind,
+						evidence: verdict.signal.evidence,
+						attempted,
+						terminal: outcome === null,
+					});
+
 					if (!outcome) return;
-					rememberRecovery(event.turnId, outcome.idempotencyKey, prompt);
+					rememberRecovery(event.turnId, outcome.idempotencyKey, prompt, outcome.strategy);
 					// 宿主对 Stop 续跑另有硬上限（max-stop-continuations）。
 					return { action: "continue-agent" as const, continuationFragments: [outcome.fragment] };
 				},

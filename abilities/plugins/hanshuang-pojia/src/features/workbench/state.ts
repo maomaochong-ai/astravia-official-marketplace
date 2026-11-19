@@ -48,6 +48,8 @@ export type ChatStatus = "disconnected" | "idle" | "streaming";
 
 export interface ChatState {
 	status: ChatStatus;
+	/** 宿主会话 id；null = 还没有活跃会话。存储的会话作用域靠它分区。 */
+	sessionId: string | null;
 	/** 正在跑的插件工具名（triage_binary 等），null 表示对话没在动插件。 */
 	tool: string | null;
 	cwd: string | null;

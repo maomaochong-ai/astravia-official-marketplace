@@ -2,7 +2,7 @@
  * Scaffolding a shipped precedent into a working directory.
  *
  * A precedent package is text: case.json, four canonical documents, extra method
- * notes, and (since ADR 0008) a `tools/` directory of Python scripts. The text is
+ * notes, and (since 2.9.0) a `tools/` directory of Python scripts. The text is
  * inlined into the bundle; the scripts are published as plain files under
  * `dist/assets/cases/`, because a script that is not on disk cannot be executed.
  *

@@ -323,8 +323,7 @@ toolkit's `checklist_type` values map one-to-one onto `read_doc` ids:
 
 The payload seed list is one document, `kb/ctf-website/payloads/web-payload-seeds`; read it whole.
 The toolkit's `category` slicing is not reproduced on purpose, and nothing here assembles a payload
-for a target — read the file to understand a technique you are auditing, not to build one
-(ADR 0001 row 20).
+for a target — read the file to understand a technique you are auditing, not to build one.
 
 ### 7.6 Coverage: what runs without the kit, what needs the machine's tools, what only the kit adds
 

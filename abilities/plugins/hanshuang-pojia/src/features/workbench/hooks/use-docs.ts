@@ -1,13 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { docById, docGroups, DOC_ENTRIES, DOC_TOTALS, loadDoc, searchFullText, searchTitles, type DocEntry, type DocHit } from "../services/docs";
+import {
+	loadDocsLibrary,
+	type DocEntry,
+	type DocGroup,
+	type DocHit,
+	type DocsLibrary,
+	type DocTotals,
+} from "../services/docs";
 import type { WorkbenchBridge } from "../bridge";
 
 export type DocSearchMode = "title" | "full";
 
 export interface DocsModel {
-	groups: ReturnType<typeof docGroups>;
-	totals: typeof DOC_TOTALS;
+	/** 索引尚未到达时为 false：此时 groups 为空、totals 为零，不是「没有文档」。 */
+	ready: boolean;
+	groups: DocGroup[];
+	totals: DocTotals;
 	query: string;
 	setQuery(value: string): void;
 	mode: DocSearchMode;
@@ -28,9 +37,11 @@ export interface DocsModel {
 
 const DEFAULT_DOC = "kb/README";
 
-/** 打开文档页时给谁一个默认正文：索引里有的第一篇，避免首屏空着。 */
-function initialDoc(): DocEntry | null {
-	return docById(DEFAULT_DOC) ?? DOC_ENTRIES[0] ?? null;
+const EMPTY_TOTALS: DocTotals = { documents: 0, assets: 0, bytes: 0, lines: 0, byGroup: {} };
+
+/** 打开文档页时给谁一个默认正文：索引里有的那篇根文档，避免首屏空着。 */
+function initialDoc(library: DocsLibrary): DocEntry | null {
+	return library.byId(DEFAULT_DOC) ?? library.entries[0] ?? null;
 }
 
 export function useDocs(bridge: WorkbenchBridge, enabled: boolean): DocsModel {
@@ -44,18 +55,36 @@ export function useDocs(bridge: WorkbenchBridge, enabled: boolean): DocsModel {
 	const [body, setBody] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [library, setLibrary] = useState<DocsLibrary | null>(null);
 
-	// 正文按需分块加载；没进文档页就一篇都不读。
+	// 索引按需加载（ADR 0009 D5）：没进文档页就一个字节都不读。
 	useEffect(() => {
 		if (!enabled) return;
-		setSelected(current => current ?? initialDoc());
+		let cancelled = false;
+		void loadDocsLibrary().then(
+			next => {
+				if (cancelled) return;
+				setLibrary(next);
+				setSelected(current => current ?? initialDoc(next));
+			},
+			(reason: unknown) => {
+				if (cancelled) return;
+				setError(reason instanceof Error ? reason.message : String(reason));
+			},
+		);
+		return () => {
+			cancelled = true;
+		};
 	}, [enabled]);
 
 	const needle = query.trim();
-	const titleHits = useMemo(() => (needle && mode === "title" ? searchTitles(needle) : null), [needle, mode]);
+	const titleHits = useMemo(
+		() => (needle && mode === "title" && library ? library.searchTitles(needle) : null),
+		[library, needle, mode],
+	);
 
 	useEffect(() => {
-		if (mode !== "full" || needle.length < 2) {
+		if (mode !== "full" || needle.length < 2 || !library) {
 			setFullHits(null);
 			setSearching(false);
 			return;
@@ -63,7 +92,7 @@ export function useDocs(bridge: WorkbenchBridge, enabled: boolean): DocsModel {
 		let cancelled = false;
 		setSearching(true);
 		const timer = setTimeout(() => {
-			void searchFullText(needle).then(
+			void library.searchFullText(needle).then(
 				hits => {
 					if (cancelled) return;
 					setFullHits(hits);
@@ -80,19 +109,19 @@ export function useDocs(bridge: WorkbenchBridge, enabled: boolean): DocsModel {
 			cancelled = true;
 			clearTimeout(timer);
 		};
-	}, [needle, mode]);
+	}, [library, needle, mode]);
 
 	const selectedId = selected?.id ?? null;
 
 	useEffect(() => {
-		if (!selectedId) {
+		if (!selectedId || !library) {
 			setBody(null);
 			return;
 		}
 		let cancelled = false;
 		setLoading(true);
 		setError(null);
-		void loadDoc(selectedId).then(
+		void library.loadBody(selectedId).then(
 			text => {
 				if (cancelled) return;
 				setBody(text);
@@ -108,20 +137,23 @@ export function useDocs(bridge: WorkbenchBridge, enabled: boolean): DocsModel {
 		return () => {
 			cancelled = true;
 		};
-	}, [selectedId]);
+	}, [library, selectedId]);
 
-	const select = useCallback((id: string | null) => {
-		if (id === null) {
-			setSelected(null);
-			return;
-		}
-		const entry = docById(id);
-		if (entry) {
-			setSelected(entry);
-			// 窄面板里正文与目录是二选一，点完就切到正文；宽面板不受影响。
-			setListOpen(false);
-		}
-	}, []);
+	const select = useCallback(
+		(id: string | null) => {
+			if (id === null) {
+				setSelected(null);
+				return;
+			}
+			const entry = library?.byId(id);
+			if (entry) {
+				setSelected(entry);
+				// 窄面板里正文与目录是二选一，点完就切到正文；宽面板不受影响。
+				setListOpen(false);
+			}
+		},
+		[library],
+	);
 
 	const showList = useCallback(() => setListOpen(true), []);
 
@@ -133,9 +165,12 @@ export function useDocs(bridge: WorkbenchBridge, enabled: boolean): DocsModel {
 		);
 	}, [bridge, selected, t]);
 
+	const groups = useMemo(() => library?.groups() ?? [], [library]);
+
 	return {
-		groups: useMemo(() => docGroups(), []),
-		totals: DOC_TOTALS,
+		ready: library !== null,
+		groups,
+		totals: library?.totals ?? EMPTY_TOTALS,
 		query,
 		setQuery,
 		mode,

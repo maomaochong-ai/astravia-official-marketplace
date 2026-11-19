@@ -6,13 +6,11 @@
  * 「打开错了清单还照它做」比「没打开」更糟。
  */
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
+import { DEFAULT_DOC_BUDGET, MAX_DOC_BUDGET, partialNotice, sliceDocument } from "../../domain/doc-slice";
 import { CHECKLIST_TYPES, checklistById, checklistMenu } from "../../domain/playbooks";
-import { docById, loadDoc } from "../../features/workbench/services/docs";
-import { kitProvenance, truncationNote } from "../lib/doc-header";
+import { loadDocsLibrary } from "../../features/workbench/services/docs";
+import { kitProvenance } from "../lib/doc-header";
 import { publishToolResult } from "../../runtime/panel-channel";
-
-const DEFAULT_CHARS = 12_000;
-const MAX_CHARS = 60_000;
 
 interface KbChecklistInput {
 	checklist_type?: string;
@@ -41,7 +39,10 @@ export function registerKbChecklistTool(ctx: PluginContext): Disposable {
 			type: "object",
 			properties: {
 				checklist_type: { type: "string", description: `One of: ${CHECKLIST_TYPES.map(entry => entry.id).join(", ")}.` },
-				maxChars: { type: "integer", description: `Character budget (default ${DEFAULT_CHARS}, max ${MAX_CHARS}).` },
+				maxChars: {
+					type: "integer",
+					description: `Characters in this part (default ${DEFAULT_DOC_BUDGET}, max ${MAX_DOC_BUDGET}).`,
+				},
 			},
 			additionalProperties: false,
 		},
@@ -62,17 +63,18 @@ export function registerKbChecklistTool(ctx: PluginContext): Disposable {
 				].join("\n");
 			}
 
-			const entry = docById(type.doc);
+			const library = await loadDocsLibrary();
+			const entry = library.byId(type.doc);
 			if (!entry) return `Checklist ${type.id} points at ${type.doc}, which is not in this build's document index.`;
 
 			let text: string;
 			try {
-				text = await loadDoc(type.doc);
+				text = await library.loadBody(type.doc);
 			} catch (error) {
 				return `Could not read ${type.doc}: ${error instanceof Error ? error.message : String(error)}`;
 			}
 
-			const budget = Math.max(500, Math.min(MAX_CHARS, Math.trunc(input.maxChars ?? DEFAULT_CHARS)));
+			const budget = Math.max(500, Math.min(MAX_DOC_BUDGET, Math.trunc(input.maxChars ?? DEFAULT_DOC_BUDGET)));
 			publishToolResult({
 				toolId: "kb_checklist",
 				kind: "checklist",
@@ -92,8 +94,13 @@ export function registerKbChecklistTool(ctx: PluginContext): Disposable {
 				`${type.id} · \`${type.doc}\` · ${entry.bytes} bytes · ${entry.lines} lines`,
 				"",
 			];
-			if (text.length <= budget) return [...header, text].join("\n");
-			return [...header, text.slice(0, budget), "", truncationNote(budget, text.length)].join("\n");
+			// 与 read_doc 同一套分片：清单也可能超过一份回复的预算（ADR 0009 D5 的续读口径）。
+			const slice = sliceDocument(text, 0, budget);
+			const notice = partialNotice(slice, {
+				id: type.doc,
+				extraArgs: input.maxChars === undefined ? undefined : { maxChars: budget },
+			});
+			return [...header, slice.text, ...(notice === "" ? [] : ["", notice])].join("\n");
 		},
 	});
 }

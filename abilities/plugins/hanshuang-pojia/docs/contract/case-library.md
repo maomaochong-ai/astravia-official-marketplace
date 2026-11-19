@@ -1,13 +1,14 @@
 # 案件契约与战例库
 
-> 面向改这份代码的人。决策依据见 ADR 0006（案例契约）与 ADR 0007（语料层）；
+> 面向改这份代码的人。契约实现在 `src/domain/case/contract.ts`，语料层规则见
+> [case-corpus.md](./case-corpus.md)；
 > 用户视角的操作步骤见 [USAGE.md](../../USAGE.md)；界面逐页说明见随包手册
 > [PANEL-HANDBOOK.md](../../src/content/docs/manual/PANEL-HANDBOOK.md)。
 
 上游 `seep-kit 2.0` 把案例当一等对象，由 `Tool/scripts/case-init.ps1`（契约）与 `Tool/cases/`
 （14 个可复现发布包＝先例）共同构成。本插件对齐的是**机制**：契约由 `init_task` 逐节产出，先例由
 两处提供——操作者自己目录里的真实案例（`search_cases`），以及随包发布的方法级先例包（`cases/`）。
-上游那 14 个工程本身不随包（ADR 0001 §2.3）。
+上游那 14 个工程本身不随包（体积与分发都不划算，只搬运机制）。
 
 **一条贯穿全篇的原则：声明只记事实，不设门禁。** `scope.md` 里没有任何字段能让插件拒绝开工，
 `init_task` 不推导「可动/不可动」，`search_cases` 不按授权过滤，面板也不显示就绪标签。
@@ -124,13 +125,13 @@ src/content/docs/cases/<slug>/<topic>.md   # 案例原文（中文，文档库�
 五条纪律：
 
 1. **不含样本字节 / 密钥 / 端点 / 第三方制品**；**含**补丁偏移、AOB 特征码、补丁字节表、
-   协议字段与算法常量——它们是派生地址而非样本字节（ADR 0007 D2）。
+   协议字段与算法常量——它们是派生地址而非样本字节。
 2. 随包 `scope.md` 写 `pending`：随包语料不是操作者的授权，复制后重跑 `init_task`。
    语料里也**不许**出现 `ready_for_act` / `MUST NOT proceed` / `blockers` 这类门禁字段——
    模板被照抄进工作区时不能把已删除的判定带回来，`case-precedents.test.ts` 会拦。
 3. `fieldNotes` 与 `caseDocs` 只能引用真实存在的文档 id（生成器与测试各拦一次）。
 4. 写了 `source`（由上游某案派生）就必须写 `caseDocs`：只转述、不留原文指针的包不算语料。
-5. 每个包至少一个 `tools/` 工具，且 `--self-test` 必须退 0（ADR 0008 D4）；工具与 `cases/_shared/hpkit/`
+5. 每个包至少一个 `tools/` 工具，且 `--self-test` 必须退 0；工具与 `cases/_shared/hpkit/`
    的源码由 `vite.config.ts` 发布到 `dist/assets/cases/**`，不内联进 JS。
 
 正文分两层：方法摘要内联进 `src/domain/case/precedents.generated.ts`（`.astraviapkg` 只带构建产物，
@@ -166,12 +167,12 @@ src/content/docs/cases/<slug>/<topic>.md   # 案例原文（中文，文档库�
 
 ## 八、明确不做
 
-- **不 vendor `Tool/cases/` 的 14 个工程**：`dist/*.dll`、keygen、代理 DLL 一律不收（ADR 0008 §2.3）。
-  **但文本收**——14 案已按「先例方法 + 原文走查」双层落地，见 ADR 0007。
+- **不 vendor `Tool/cases/` 的 14 个工程**：`dist/*.dll`、keygen、代理 DLL 一律不收。
+  **但文本收**——14 案已按「先例方法 + 原文走查」双层落地。
 - **不搬密钥、盐值、卡密、端点、样本哈希**；**搬偏移与特征码**：补丁 RVA、AOB、补丁字节表、
-  协议字段表是派生地址而非样本字节，去掉它们先例就只剩口号（ADR 0007 D2）。
+  协议字段表是派生地址而非样本字节，去掉它们先例就只剩口号。
 - **不设授权门**：2.14.0 删除了 `ready_for_act`、`auth-log.md` 与 `workitems.md` 播种，
   上游也没有这些东西。
-- **不建 `patches/` 制品目录**（ADR 0002 D17）。
+- **不建 `patches/` 制品目录**（见 `src/domain/toolchain/workspace.ts`）。
 - **不复刻 PowerShell 形态**：插件没有 PowerShell 运行时，对齐行为而非形态。
 - **面板不写盘**：建案例、追加时间线、写笔记都走工具，页面只读。

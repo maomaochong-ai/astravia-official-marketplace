@@ -4,7 +4,7 @@ import { buildReport } from "../../domain/report/report";
 import { countTurnTools, deriveLiveStatus } from "../../features/workbench/live-status";
 import type { ChatState, TaskStreamEntry } from "../../features/workbench/state";
 
-const IDLE: ChatState = { status: "idle", tool: null, cwd: "/work" };
+const IDLE: ChatState = { status: "idle", sessionId: null, tool: null, cwd: "/work" };
 
 function entry(phase: TaskStreamEntry["phase"], at: number, extra: Partial<TaskStreamEntry> = {}): TaskStreamEntry {
 	return {
@@ -81,7 +81,7 @@ describe("deriveLiveStatus", () => {
 	it("goes live while the conversation streams and a tool runs", () => {
 		const live = deriveLiveStatus({
 			...base,
-			chat: { status: "streaming", tool: "triage_binary", cwd: "/work" },
+			chat: { status: "streaming", sessionId: null, tool: "triage_binary", cwd: "/work" },
 			stream: { entries: newestFirst([entry("turn-start", 1), entry("tool-start", 2, { toolName: "triage_binary" })]), active: true },
 		});
 		expect(live.session).toMatchObject({ tone: "live", tool: "triage_binary" });
@@ -89,7 +89,7 @@ describe("deriveLiveStatus", () => {
 	});
 
 	it("turns the session dot into an alert when the host has no conversation", () => {
-		expect(deriveLiveStatus({ ...base, chat: { status: "disconnected", tool: null, cwd: null } }).session).toMatchObject({ tone: "alert", disconnected: true });
+		expect(deriveLiveStatus({ ...base, chat: { status: "disconnected", sessionId: null, tool: null, cwd: null } }).session).toMatchObject({ tone: "alert", disconnected: true });
 	});
 
 	it("escalates the run dot on a tool error", () => {

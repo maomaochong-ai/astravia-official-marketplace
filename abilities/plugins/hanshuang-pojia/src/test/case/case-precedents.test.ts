@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
 	findPrecedent,
-	precedentDoc,
+	readPrecedentDoc,
 	rankPrecedents,
 	renderPrecedentIndex,
 	SHIPPED_PRECEDENTS,
@@ -55,7 +55,7 @@ describe("shipped precedent packages", () => {
 		expect(missing, "add a table row in cases/README.md for each new package").toEqual([]);
 	});
 
-	it("opens with the four documents every precedent is read through", () => {
+	it("opens with the four documents every precedent is read through", async () => {
 		for (const precedent of SHIPPED_PRECEDENTS) {
 			// 顺序是阅读协议的一部分：打法 → 原始记录 → 做法 → 防守侧，其余追加。
 			// 少一份就等于把「怎么打」和「怎么防」拆开讲，读的人只能照抄。
@@ -65,8 +65,10 @@ describe("shipped precedent packages", () => {
 				"docs/method.md",
 				"docs/defense.md",
 			]);
+			// 正文不在分块里：每份都要真能读到，且不是空壳。
 			for (const doc of precedent.docs) {
-				expect(doc.text.trim().length, `${precedent.slug}/${doc.id}`).toBeGreaterThan(200);
+				const text = await readPrecedentDoc(precedent, doc.id);
+				expect(text?.trim().length ?? 0, `${precedent.slug}/${doc.id}`).toBeGreaterThan(200);
 			}
 		}
 	});
@@ -93,11 +95,11 @@ describe("shipped precedent packages", () => {
 		}
 	});
 
-	it("starts from a real preset and an unclaimed authorisation", () => {
+	it("starts from a real preset and an unclaimed authorisation", async () => {
 		const presetIds = CASE_PRESETS.map(preset => preset.id);
 		for (const precedent of SHIPPED_PRECEDENTS) {
 			expect(presetIds).toContain(precedent.preset);
-			const scope = precedentDoc(precedent, "scope.md") ?? "";
+			const scope = (await readPrecedentDoc(precedent, "scope.md")) ?? "";
 			// 随包语料不是操作者的授权：复制后必须重跑 init_task 记录自己的 scope。
 			expect(scope).toContain("- status: pending");
 			// 语料里也不许留门禁字段：模板照抄进工作区时不能把已删除的判定带回来。
@@ -107,9 +109,9 @@ describe("shipped precedent packages", () => {
 		}
 	});
 
-	it("declares the network profile its preset implies", () => {
+	it("declares the network profile its preset implies", async () => {
 		for (const precedent of SHIPPED_PRECEDENTS) {
-			const scope = precedentDoc(precedent, "scope.md") ?? "";
+			const scope = (await readPrecedentDoc(precedent, "scope.md")) ?? "";
 			expect(parseNetworkProfile(/^- mode: (\S+)$/m.exec(scope)?.[1])).toBe("offline");
 			// 先例是方法，不是授权：随包 scope.md 一律记 pending，操作者自己声明范围。
 			expect(parseAuthStatus(/^- status: (\S+)$/m.exec(scope)?.[1])).toBe("pending");
@@ -132,10 +134,12 @@ describe("precedent search", () => {
 		expect(rankPrecedents("webpack")[0]?.precedent.slug).toBe("js-sign-chain");
 	});
 
-	it("matches the method text, not only the signal list", () => {
-		const hits = rankPrecedents("handshake");
-		expect(hits.length).toBeGreaterThan(0);
-		expect(hits[0]?.reasons.join(" ")).toContain("method text mentions");
+	it("matches the summary, not only the signal list", () => {
+		// "interpreter" 不在任何 signals 里，只写在摘要里：检索必须能靠摘要命中。
+		// 正文匹配已不在评分里，正文检索是 search_docs 的职责。
+		const hits = rankPrecedents("interpreter");
+		expect(hits.map(hit => hit.precedent.slug)).toContain("eazfuscator-vm-minimal-patch");
+		expect(hits[0]?.reasons.join(" ")).toContain("summary mentions");
 	});
 
 	it("returns nothing for a token no precedent covers, and says what exists", () => {

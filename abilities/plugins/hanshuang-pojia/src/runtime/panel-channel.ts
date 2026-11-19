@@ -19,7 +19,27 @@ export interface PanelReportEvent {
 	source: "agent";
 }
 
-export type PanelEvent = PanelReportEvent | PanelToolResultEvent | PanelTaskEvent;
+/**
+ * 一次回合边界上的拒答观测。
+ *
+ * 只在真命中拒答时发，且**不含正文**：留下的是类型与命中的片段，供人事后复核
+ * 「这一轮为什么会停」。它不是重试信号，也不跨模型。
+ */
+export interface PanelRefusalEvent {
+	type: "refusal";
+	/** 拒答类型，与 domain/refusal.ts 的 RefusalKind 同名。 */
+	kind: string;
+	/** 命中的原文片段；空数组 = 空正文形态。 */
+	evidence: readonly string[];
+	/** 本轮已经用过的改写档位数（0 表示还没改写）。 */
+	attempted: number;
+	/** 改写链已经用尽，本轮不会再续。 */
+	terminal: boolean;
+	/** 触发时间（ISO）。 */
+	at: string;
+}
+
+export type PanelEvent = PanelReportEvent | PanelToolResultEvent | PanelTaskEvent | PanelRefusalEvent;
 
 /**
  * 任意 Agent 工具跑出的结构化结果。
@@ -105,6 +125,18 @@ export function publishTaskEvent(event: Omit<PanelTaskEvent, "type">): void {
 		timestamp: event.timestamp ?? new Date().toISOString(),
 		...event,
 	} satisfies PanelTaskEvent);
+}
+
+/** 拒答观测：面板据此在活动流里留一条「为什么停」，不用用户猜。 */
+export function publishRefusal(event: Omit<PanelRefusalEvent, "type" | "at"> & { at?: string }): void {
+	publishPanelEvent({
+		type: "refusal",
+		at: event.at ?? new Date().toISOString(),
+		kind: event.kind,
+		evidence: event.evidence,
+		attempted: event.attempted,
+		terminal: event.terminal,
+	});
 }
 
 const backlog: PanelEvent[] = [];

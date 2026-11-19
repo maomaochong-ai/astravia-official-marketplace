@@ -7,16 +7,19 @@ export interface ChatModel {
 	state: ChatState;
 	/** 一次发送还没拿到回执。 */
 	sending: boolean;
+	/** 最近一次投进对话的原话：案例溯源用它，不靠调用点再传一遍。 */
+	lastPrompt: string | null;
 	/** 把一句英文指令送进对话，并把回执翻成一句提示。 */
 	ask(prompt: string): void;
 }
 
-const INITIAL: ChatState = { status: "disconnected", tool: null, cwd: null };
+const INITIAL: ChatState = { status: "disconnected", sessionId: null, tool: null, cwd: null };
 
 export function useChat(bridge: WorkbenchBridge, cwd: string | null, enabled = true): ChatModel {
 	const { t } = useTranslation();
 	const [state, setState] = useState<ChatState>(INITIAL);
 	const [sending, setSending] = useState(false);
+	const [lastPrompt, setLastPrompt] = useState<string | null>(null);
 	const alive = useRef(true);
 
 	// 订阅只建一次（bridge 不进依赖），并在同值时不产生新引用：宿主在订阅时会立刻 replay
@@ -59,6 +62,7 @@ export function useChat(bridge: WorkbenchBridge, cwd: string | null, enabled = t
 				return;
 			}
 			setSending(true);
+			setLastPrompt(prompt);
 			bridge
 				.chat(prompt, cwd)
 				.then(outcome => {
@@ -78,5 +82,5 @@ export function useChat(bridge: WorkbenchBridge, cwd: string | null, enabled = t
 		[bridge, cwd, t],
 	);
 
-	return { state, sending, ask };
+	return { state, sending, lastPrompt, ask };
 }
