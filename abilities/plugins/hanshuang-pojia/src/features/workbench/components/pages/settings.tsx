@@ -5,11 +5,13 @@
  */
 
 import { useTranslation } from "@astravia-org/plugin-sdk";
+import { useState } from "react";
 import { RULES, type Severity } from "../../../../domain/audit/rules";
 import { getActivePrompt } from "../../../../domain/prompt-library";
 import { DEFAULT_SETTINGS } from "../../state";
 import { SEVERITY_DOT, SEVERITY_TEXT } from "../../severity";
 import { Card } from "../shell/card";
+import { storageEntries } from "../../../../domain/storage-layout";
 import { Icon } from "../shell/icon";
 import { NumberField } from "../shell/number-field";
 import { PageHeader } from "../shell/page-header";
@@ -54,6 +56,13 @@ export function SettingsPage({ model }: PageProps) {
 	};
 
 	const reset = () => updateSettings({ ...DEFAULT_SETTINGS });
+
+	// 清理结果只留一行提示：删文件是副作用，不需要弹窗打断。
+	const [clearState, setClearState] = useState<string | null>(null);
+	const clear = async (scope: "workspace" | "all") => {
+		const done = await model.clearStorage(scope);
+		setClearState(done ? "settings.data.cleared" : "settings.data.clearFailed");
+	}
 
 	const sortValue = (severity: Severity) => ORDER.indexOf(severity);
 
@@ -190,6 +199,40 @@ export function SettingsPage({ model }: PageProps) {
 					</div>
 					<div className="px-3.5 py-2.5">
 						<p className="text-[10px] leading-relaxed text-text-4">{t("settings.about")}</p>
+					</div>
+				</Card>
+
+				{/* 插件到底写了什么：路径直接列出来，不用用户去猜宿主把它藏在哪儿。 */}
+				<Card title={t("settings.data.title")} bodyClassName="divide-y divide-line-subtle">
+					<div className="px-3.5 py-2">
+						<p className="text-[10.5px] leading-relaxed text-text-3">{t("settings.data.lead")}</p>
+					</div>
+					{storageEntries(model.cwd).map(entry => (
+						<div key={entry.key} className="flex items-baseline gap-2 px-3.5 py-1.5">
+							<span className="w-24 shrink-0 text-[10px] text-text-4">
+								{t(entry.scope === "workspace" ? "settings.data.scope.workspace" : "settings.data.scope.plugin")}
+							</span>
+							<span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-text-2" title={entry.path}>
+								{entry.path}
+							</span>
+						</div>
+					))}
+					<div className="flex flex-wrap items-center gap-2 px-3.5 py-2.5">
+						<button
+							type="button"
+							onClick={() => void clear("workspace")}
+							className="rounded-md border border-line-subtle px-2.5 py-1.5 text-[11px] font-medium text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+						>
+							{t("settings.data.clearProducts")}
+						</button>
+						<button
+							type="button"
+							onClick={() => void clear("all")}
+							className="rounded-md border border-risk-high/40 bg-risk-high/10 px-2.5 py-1.5 text-[11px] font-medium text-risk-high transition-colors hover:bg-risk-high/15"
+						>
+							{t("settings.data.clearAll")}
+						</button>
+						{clearState ? <span className="text-[10.5px] text-text-4">{t(clearState)}</span> : null}
 					</div>
 				</Card>
 			</div>

@@ -198,6 +198,56 @@ export function CasesPage({ model }: PageProps) {
 						</Card>
 					</div>
 
+					{/* 面板自己沉淀的案例：与 cases/ 扫描结果并列，不混在一张表里。 */}
+					<Card
+						title={t("cases.mine.title")}
+						actions={
+							model.myCases.cases.length > 0 ? (
+								<button
+									type="button"
+									onClick={() => model.myCases.clear()}
+									className="rounded border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+								>
+									{t("cases.mine.clear")}
+								</button>
+							) : null
+						}
+						bodyClassName="px-3.5 py-2.5"
+					>
+						{model.myCases.cases.length === 0 ? (
+							<p className="text-[10.5px] leading-relaxed text-text-4">{t("cases.mine.empty")}</p>
+						) : (
+							<ul className="space-y-1.5">
+								{model.myCases.cases.slice(0, 8).map(item => (
+									<li key={item.id} className="flex items-start gap-2">
+										<span className="mt-1 size-1.5 shrink-0 rounded-full bg-purple" />
+										<div className="min-w-0 flex-1">
+											<div className="flex items-baseline gap-1.5">
+												<span className="min-w-0 truncate text-[11.5px] text-text" title={item.name}>
+													{item.name}
+												</span>
+												<span className="shrink-0 text-[10px] text-text-4">{item.grade}</span>
+												<span className="shrink-0 text-[10px] text-text-4">
+													{t("cases.mine.seen", { count: item.seen })}
+												</span>
+											</div>
+											<p className="min-w-0 truncate text-[10px] text-text-4" title={item.highlights.join(" · ")}>
+												{item.highlights.join(" · ") || item.format}
+											</p>
+										</div>
+										<button
+											type="button"
+											onClick={() => model.myCases.remove(item.id)}
+											className="shrink-0 text-[10px] text-text-4 transition-colors hover:text-risk-high"
+										>
+											{t("cases.mine.remove")}
+										</button>
+									</li>
+								))}
+							</ul>
+						)}
+					</Card>
+
 					<Card
 						title={record ? record.name : precedent ? precedent.title : t("cases.reader.title")}
 						actions={

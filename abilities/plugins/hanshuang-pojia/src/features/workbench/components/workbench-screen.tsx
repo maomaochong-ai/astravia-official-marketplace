@@ -1,3 +1,5 @@
+import { useTranslation } from "@astravia-org/plugin-sdk";
+import { useState } from "react";
 import type { ReactElement } from "react";
 import type { WorkbenchBridge } from "../bridge";
 import { useWorkbench } from "../hooks/use-workbench";
@@ -24,6 +26,7 @@ import { SignaturePage } from "./pages/signature";
 import { StringsPage } from "./pages/strings";
 import { PromptsPage } from "./pages/prompts";
 import { HandoffDialog } from "./workbench/handoff-dialog";
+import { SendPromptDialog } from "./workbench/send-prompt-dialog";
 
 const PAGES: Record<string, (props: PageProps) => ReactElement> = {
 	overview: OverviewPage,
@@ -65,6 +68,10 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 		activePrompt: getActivePrompt(model.promptLibrary),
 	});
 
+	// 发送前确认：先算出「不编辑时会发什么」，再让用户在对话框里改。
+	const [pending, setPending] = useState<string | null>(null);
+	const { t } = useTranslation();
+
 	return (
 		<div className="fb-root @container flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface text-text">
 			<TopBar
@@ -72,7 +79,7 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 				chat={model.chat.state}
 				sending={model.chat.sending}
 				canSend={model.cwd !== null}
-				onSend={() => model.ask("continue")}
+				onSend={() => setPending(model.previewPrompt("continue"))}
 				lab={model.lab.state}
 				onToggleLab={() => model.lab.set(!model.lab.state.enabled)}
 			/>
@@ -89,6 +96,14 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 				busy={model.chat.sending}
 				onClose={model.closeHandoff}
 				onSend={model.sendHandoff}
+			/>
+			{/* 发送前编辑：初值与不编辑时完全一致（同一个 buildPrompt）。 */}
+			<SendPromptDialog
+				open={pending !== null}
+				initial={pending ?? ""}
+				label={t("chat.preview.label.continue")}
+				onClose={() => setPending(null)}
+				onSend={text => model.askText(text)}
 			/>
 		</div>
 	);

@@ -3,7 +3,7 @@
   "name": "%plugin.name%",
   "description": "%plugin.description%",
   "icon": "assets/icon.svg",
-  "version": "2.15.0",
+  "version": "2.16.0",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "styles": [

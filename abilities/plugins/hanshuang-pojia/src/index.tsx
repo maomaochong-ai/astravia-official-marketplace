@@ -8,7 +8,9 @@ import { deliverPrompt } from "./features/workbench/services/chat";
 import { IMPORT_DIRECTORY, importRelativePath } from "./features/workbench/services/import-file";
 import { PanelBoundary } from "./features/workbench/components/shell/panel-boundary";
 import { WorkbenchScreen } from "./features/workbench/components/workbench-screen";
-import { LIBRARY_STATE_PATH, SETTINGS_STATE_PATH, type ChatState, type LibraryEntry, type WorkbenchSettings } from "./features/workbench/state";
+import { sanitizeCases } from "./domain/my-cases";
+import { storageEntry } from "./domain/storage-layout";
+import { type ChatState, type LibraryEntry, type WorkbenchSettings } from "./features/workbench/state";
 import { getRuntime, setRuntime } from "./runtime-contract";
 import { registerTools } from "./tools/register-tools";
 import { loadSample } from "./tools/lib/read-sample";
@@ -200,10 +202,40 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 
 		readState: <T,>(path: string) => readJson<T>(ctx.storage, path),
 		writeState: (path, value) => writeJson(ctx.storage, path, value),
-		settings: () => readJson<WorkbenchSettings>(ctx.storage, SETTINGS_STATE_PATH),
-		saveSettings: settings => writeJson(ctx.storage, SETTINGS_STATE_PATH, settings),
-		library: () => readJson<LibraryEntry[]>(ctx.storage, LIBRARY_STATE_PATH),
-		saveLibrary: entries => writeJson(ctx.storage, LIBRARY_STATE_PATH, entries),
+		// 设置页要把「插件到底写了什么」列全：list 读的是真实存在的文件，不是我们以为的路径。
+		listState: async prefix => {
+			try {
+				return await ctx.storage.list(prefix);
+			} catch {
+				return [];
+			}
+		},
+		removeState: async paths => {
+			try {
+				await ctx.storage.commit(paths.map(path => ({ type: "remove" as const, path })));
+				return true;
+			} catch {
+				return false;
+			}
+		},
+		settings: () => readJson<WorkbenchSettings>(ctx.storage, storageEntry("settings", null).path),
+		saveSettings: settings => writeJson(ctx.storage, storageEntry("settings", null).path, settings),
+		// 产物按工作区分文件，并回落到旧路径：升级后第一次打开还能看到原来的样本库。
+		library: async cwd => {
+			const entry = storageEntry("library", cwd);
+			const scoped = await readJson<LibraryEntry[]>(ctx.storage, entry.path);
+			if (scoped) return scoped;
+			return entry.legacyPath ? readJson<LibraryEntry[]>(ctx.storage, entry.legacyPath) : null;
+		},
+		saveLibrary: (entries, cwd) => writeJson(ctx.storage, storageEntry("library", cwd).path, entries),
+		myCases: async cwd => {
+			const entry = storageEntry("cases", cwd);
+			const scoped = await readJson<unknown>(ctx.storage, entry.path);
+			if (scoped) return sanitizeCases(scoped);
+			const legacy = entry.legacyPath ? await readJson<unknown>(ctx.storage, entry.legacyPath) : null;
+			return legacy ? sanitizeCases(legacy) : null;
+		},
+		saveMyCases: (cases, cwd) => writeJson(ctx.storage, storageEntry("cases", cwd).path, cases),
 		labMode: () => readJson<LabState>(ctx.storage, LAB_STATE_PATH),
 		saveLabMode: state => writeJson(ctx.storage, LAB_STATE_PATH, state),
 	};

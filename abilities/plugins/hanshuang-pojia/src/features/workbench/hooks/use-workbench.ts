@@ -13,12 +13,15 @@ import type { TriageSample } from "../../../domain/triage";
 import { subscribePanel } from "../../../runtime/panel-channel";
 import type { NotifyVariant, WorkbenchBridge } from "../bridge";
 import { buildPrompt, type PromptAction, type PromptContext } from "../prompts";
-import type { SampleFailure } from "../sample-error";
+import type { MyCasesModel } from "./use-my-cases";
+import { useMyCases } from "./use-my-cases";
 import { chunkCount, IMPORT_DIRECTORY, importRelativePath, readChunkAsBase64 } from "../services/import-file";
+import type { LibraryEntry, PageId, WorkbenchSettings } from "../state";
+import { pathsToClear, type StorageScope } from "../../../domain/storage-layout";
+import { useChat, type ChatModel } from "./use-chat";
+import type { SampleFailure } from "../sample-error";
 import type { HandoffReason, HandoffTarget } from "../services/sample-handoff";
 import { classifySampleFailure } from "../sample-error";
-import type { LibraryEntry, PageId, WorkbenchSettings } from "../state";
-import { useChat, type ChatModel } from "./use-chat";
 import { useDisasm, type DisasmModel } from "./use-disasm";
 import { useDocs, type DocsModel } from "./use-docs";
 import { useCases, type CasesModel } from "./use-cases";
@@ -103,6 +106,8 @@ export interface WorkbenchModel {
 	docs: DocsModel;
 	cases: CasesModel;
 	caseDocs: CaseDocsModel;
+	/** 面板自己沉淀的案例库：按工作区隔离，与 cases/ 扫描结果并列展示。 */
+	myCases: MyCasesModel;
 
 	exportReport(format: "markdown" | "json"): void;
 	copyReport(format: "markdown" | "json"): void;
@@ -116,6 +121,12 @@ export interface WorkbenchModel {
 	/** 导入进度 0–1；null 表示没在导入。 */
 	importProgress: number | null;
 	ask(action: PromptAction, extra?: Partial<PromptContext>): void;
+	/** 把一句已经拼好的话直接送进去：发送前编辑过的文本走这里。 */
+	askText(text: string): void;
+	/** 同一句的预兑文本：对话框先用它填初值，用户改完再 askText。 */
+	previewPrompt(action: PromptAction, extra?: Partial<PromptContext>): string;
+	/** 清理插件自己写的文件；返回是否全部删成。 */
+	clearStorage(scope: StorageScope | "all"): Promise<boolean>;
 	/** 面板气泡提示；下发给需要自报结果的子组件（注入块复制等）。 */
 	notify(message: string, variant?: NotifyVariant): void;
 }
@@ -136,7 +147,7 @@ function toSamples(entries: PluginFsEntry[]): PluginFsEntry[] {
 export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, options: { active?: boolean } = {}): WorkbenchModel {
 	const { t } = useTranslation();
 	const active = options.active !== false;
-	const library = useLibrary(bridge);
+	const library = useLibrary(bridge, cwd);
 	const chat = useChat(bridge, cwd, active);
 	const lab = useLab(bridge);
 	const promptLib = usePromptLibrary(bridge);
@@ -340,6 +351,20 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 	const disasm = useDisasm({ bytes: sample?.bytes ?? null, facts: nativeFacts, map: nativeMap, bridge, enabled: page === "disasm" });
 	const docs = useDocs(bridge, page === "docs");
 	const cases = useCases(bridge, cwd, page === "cases");
+	// 面板自己的案例库：不随页面开关，因为分析完成后不管停在哪一页都要沉淀。
+	const myCases = useMyCases(bridge, cwd);
+
+	// 沉淀时机：一份报告出现就记一条。
+	// 用 effect 而不是塞进 run()：run 在 myCases 之前定义，且面板从 agent 工具收到报告时
+	// 不走 run——两条路径都应该落到同一处。按 sha+size+时间 去重，同一份报告只记一次。
+	const recordedReport = useRef<string | null>(null);
+	useEffect(() => {
+		if (!report) return;
+		const stamp = `${report.target.sha256}-${report.target.size}-${report.target.generatedAt}`;
+		if (recordedReport.current === stamp) return;
+		recordedReport.current = stamp;
+		myCases.record(report);
+	}, [myCases, report]);
 	// 案例正文只在案例页读：选中的案例一变就重新列目录，切走再回来不影响已选的案例。
 	const caseDocs = useCaseDocs(bridge, cases.selected?.path ?? null);
 
@@ -365,6 +390,21 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 			chat.ask(buildPrompt(action, { target: promptTarget, ...extra }));
 		},
 		[chat, promptTarget],
+	);
+
+	// 发送前编辑：先算出同一段文本给对话框当初值，用户改完再原样送进去。
+	// 两者共用 buildPrompt，所以“预览的内容”就是“不编辑时发的内容”。
+	const previewPrompt = useCallback(
+		(action: PromptAction, extra: Partial<PromptContext> = {}) => buildPrompt(action, { target: promptTarget, ...extra }),
+		[promptTarget],
+	);
+
+	const askText = useCallback((text: string) => chat.ask(text), [chat]);
+
+	// 清理：只删插件自己写的文件，路径由 storage-layout 统一给出（含旧位置）。
+	const clearStorage = useCallback(
+		(scope: StorageScope | "all") => bridge.removeState(pathsToClear(cwd, scope)),
+		[bridge, cwd],
 	);
 
 	const copyReport = useCallback(
@@ -559,6 +599,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		disasm,
 		docs,
 		cases,
+		myCases,
 		caseDocs,
 		exportReport,
 		copyReport,
@@ -569,6 +610,9 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		handoff: { open: handoffTarget !== null, target: handoffTarget },
 		importProgress,
 		ask,
+		askText,
+		previewPrompt,
+		clearStorage,
 		notify: bridge.notify,
 	};
 }

@@ -2,6 +2,7 @@ import type { PluginFsEntry } from "@astravia-org/plugin-sdk";
 import type { LabState } from "../../domain/lab-mode";
 import type { ReportMode, TriageReport } from "../../domain/report/report";
 import type { TriageSample } from "../../domain/triage";
+import type { MyCase } from "../../domain/my-cases";
 import type { ChatOutcome, ChatState, LibraryEntry, WorkbenchSettings } from "./state";
 
 export type NotifyVariant = "info" | "success" | "warning" | "error";
@@ -40,8 +41,19 @@ export interface WorkbenchBridge {
 	/** 宿主私有存储；没有 storage 权限时全部返回 null / false，面板退回会话内状态。 */
 	readState<T>(path: string): Promise<T | null>;
 	writeState(path: string, value: unknown): Promise<boolean>;
+	/** 列出一个前缀下实际存在的文件：设置页靠它确认「插件到底写了什么」。 */
+	listState(prefix: string): Promise<string[]>;
+	/** 按路径删除；存储不可用时返回 false。 */
+	removeState(paths: readonly string[]): Promise<boolean>;
 	settings(): Promise<WorkbenchSettings | null>;
 	saveSettings(settings: WorkbenchSettings): Promise<boolean>;
-	library(): Promise<LibraryEntry[] | null>;
-	saveLibrary(entries: readonly LibraryEntry[]): Promise<boolean>;
+	/** 样本库按工作区分文件：换一个项目不该看到上一个项目的分析结果。 */
+	library(cwd: string | null): Promise<LibraryEntry[] | null>;
+	saveLibrary(entries: readonly LibraryEntry[], cwd: string | null): Promise<boolean>;
+	/** 我的案例（面板自己沉淀的）：同样按工作区隔离。 */
+	myCases(cwd: string | null): Promise<MyCase[] | null>;
+	saveMyCases(cases: readonly MyCase[], cwd: string | null): Promise<boolean>;
+	writeState(path: string, value: unknown): Promise<boolean>;
+	settings(): Promise<WorkbenchSettings | null>;
+	saveSettings(settings: WorkbenchSettings): Promise<boolean>;
 }

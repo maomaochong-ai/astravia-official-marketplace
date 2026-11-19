@@ -75,6 +75,11 @@ function makeBridge(overrides: Partial<WorkbenchBridge> = {}): WorkbenchBridge {
 		saveSettings: vi.fn(async () => true),
 		library: vi.fn(async () => null),
 		saveLibrary: vi.fn(async () => true),
+		// 新增的四个存储面：默认不可用（null / 空），与「没授权」的真实表现一致。
+		listState: vi.fn(async () => []),
+		removeState: vi.fn(async () => true),
+		myCases: vi.fn(async () => null),
+		saveMyCases: vi.fn(async () => true),
 		labMode: vi.fn(async () => null),
 		saveLabMode: vi.fn(async () => true),
 		...overrides,

@@ -59,7 +59,7 @@ function normalizeEntry(value: LibraryEntry): LibraryEntry | null {
 	return value;
 }
 
-export function useLibrary(bridge: WorkbenchBridge): LibraryModel {
+export function useLibrary(bridge: WorkbenchBridge, cwd: string | null): LibraryModel {
 	const [settings, setSettings] = useState<WorkbenchSettings>(DEFAULT_SETTINGS);
 	const [entries, setEntries] = useState<LibraryEntry[]>([]);
 	const [reports, setReports] = useState<Record<string, TriageReport>>({});
@@ -71,7 +71,7 @@ export function useLibrary(bridge: WorkbenchBridge): LibraryModel {
 
 	useEffect(() => {
 		let cancelled = false;
-		Promise.all([bridge.settings(), bridge.library()])
+		Promise.all([bridge.settings(), bridge.library(cwd)])
 			.then(([storedSettings, storedLibrary]) => {
 				if (cancelled) return;
 				setSettings(current => {
@@ -110,10 +110,10 @@ export function useLibrary(bridge: WorkbenchBridge): LibraryModel {
 		const signature = JSON.stringify([settings, settings.persistLibrary ? entries : null]);
 		if (signature === lastWrite.current) return;
 		lastWrite.current = signature;
-		Promise.all([bridge.saveSettings(settings), settings.persistLibrary ? bridge.saveLibrary(entries) : Promise.resolve(true)])
+		Promise.all([bridge.saveSettings(settings), settings.persistLibrary ? bridge.saveLibrary(entries, cwd) : Promise.resolve(true)])
 			.then(([settingsSaved, librarySaved]) => setPersisted(settingsSaved && librarySaved))
 			.catch(() => setPersisted(false));
-	}, [bridge, entries, loaded, settings]);
+	}, [bridge, cwd, entries, loaded, settings]);
 
 	const updateSettings = useCallback((patch: Partial<WorkbenchSettings>) => {
 		setSettings(current => normalizeSettings({ ...current, ...patch }));
