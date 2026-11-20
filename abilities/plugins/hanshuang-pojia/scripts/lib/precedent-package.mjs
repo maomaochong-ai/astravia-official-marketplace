@@ -12,6 +12,13 @@ import { join, relative, sep } from "node:path";
 export const CASE_PRESETS = ["offline-sample", "ctf-public", "own-system"];
 
 /**
+ * 先例的能力族。界面上的分类筛选直接读这一个集合，不在 UI 里另写一份。
+ * `preset` 不合适做筛选维度：它是「开始时的沙箱类型」，19 个包全是 `offline-sample`。
+ * 新增一族要同时改这里、写进 `case.json`、同步生成物，否则 `--check` 会红。
+ */
+export const CASE_CATEGORIES = ["android", "client-auth", "dotnet", "native-loader", "crypto-keygen", "web-js"];
+
+/**
  * 每份先例都必须能被人按顺序读完的四份文档。
  * `README.md` / `scope.md` 说这个包打过什么仗，`docs/method.md` 是做法，
  * `docs/defense.md` 是同一件事在防守侧要改成什么样 —— 一份只讲怎么打的先例，
@@ -197,6 +204,9 @@ export function checkPackage({ casesDir, docsDir, dir, runTools = false }) {
 	}
 	if (!Array.isArray(meta.signals) || meta.signals.length === 0) problems.push("signals must be a non-empty array");
 	if (!CASE_PRESETS.includes(meta.preset)) problems.push(`preset "${meta.preset}" is not one of ${CASE_PRESETS.join(", ")}`);
+	if (!CASE_CATEGORIES.includes(meta.category)) {
+		problems.push(`category "${meta.category}" is not one of ${CASE_CATEGORIES.join(", ")}`);
+	}
 	if (!Array.isArray(meta.fieldNotes)) problems.push("fieldNotes must be an array");
 
 	const docs = Array.isArray(meta.docs) ? meta.docs : [];
@@ -291,6 +301,7 @@ export function readPackage({ casesDir, docsDir, dir }) {
 		summary: meta.summary,
 		signals: meta.signals,
 		preset: meta.preset,
+		category: meta.category,
 		fieldNotes: meta.fieldNotes,
 		caseDocs: meta.caseDocs ?? [],
 		...(meta.source ? { source: meta.source } : {}),

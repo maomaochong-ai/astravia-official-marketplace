@@ -13,6 +13,7 @@
 		"application class replaced"
 	],
 	"preset": "offline-sample",
+	"category": "android",
 	"fieldNotes": [
 		"kb/field_journal_2026-07-14_android-arm64-self-extract-source-recovery",
 		"kb/field_journal_2026-08-20_apk-flutter-banner-ad-removal"

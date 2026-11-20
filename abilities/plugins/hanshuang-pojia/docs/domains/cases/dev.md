@@ -14,6 +14,16 @@
 
 配套：`write_assessment_report` 产出四节报告（概要 / 判定点 / 验证证据 / 纵深防御）。
 
+## 先例的分类（面板筛选的数据源）
+
+`case.json` 的 `category` 是唯一分类字段，取值六族：`android` / `client-auth` / `dotnet` /
+`native-loader` / `crypto-keygen` / `web-js`。它经 `sync-precedents` 进生成物，面板的分类筛选条直接读它——
+**不在页面里按 slug 前缀猜**：猜出来的分类没法校验，新包漏填也不会被发现。
+
+新增一族要同时改三处：`scripts/lib/precedent-package.mjs` 的 `CASE_CATEGORIES`（构建期校验）、
+`src/domain/case/categories.ts`（运行期类型面）、`locales/{zh,en}.json` 的 `cases.category.<id>`（文案）。
+前两者由 `src/test/case/case-precedents.test.ts` 做字面比对，漏一处会红。
+
 ## 两种 scaffold 形态
 
 **先例工具**：`cases/<slug>/tools/*.py` + `cases/_shared/hpkit/`（8 个模块，三系统同源）一起复制。

@@ -10,6 +10,7 @@ import {
 	SHIPPED_PRECEDENTS,
 } from "../../domain/case/precedents";
 import { parseAuthStatus, parseNetworkProfile, CASE_PRESETS } from "../../domain/case/contract";
+import { CASE_CATEGORIES } from "../../domain/case/categories";
 
 const pluginRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const casesDir = join(pluginRoot, "cases");
@@ -53,6 +54,34 @@ describe("shipped precedent packages", () => {
 			slug => !index.includes(`](${slug}/README.md)`),
 		);
 		expect(missing, "add a table row in cases/README.md for each new package").toEqual([]);
+	});
+
+	it("tags every package with a category the panel can filter on", () => {
+		// 分类是数据，不是页面里猜的：`case.json` 写 `category`，生成物带出来，
+		// 面板的分类筛选读同一份。漏填或拼错在这里红，不会拖到界面上变成「点了一页空」。
+		const known = new Set<string>(CASE_CATEGORIES);
+		const counts = new Map<string, number>();
+		for (const precedent of SHIPPED_PRECEDENTS) {
+			expect(known.has(precedent.category), `${precedent.slug}: ${precedent.category}`).toBe(true);
+			counts.set(precedent.category, (counts.get(precedent.category) ?? 0) + 1);
+		}
+		// 每一族都要至少有 1 个包：空族在筛选条上就是一个永远点不出结果的按钮。
+		const empty = [...known].filter(category => !counts.has(category));
+		expect(empty, "a category with no package would render an always-empty filter").toEqual([]);
+		// 与 case.json 逐包对账：生成物被手改过时这里最先发现。
+		for (const precedent of SHIPPED_PRECEDENTS) {
+			const meta = JSON.parse(readFileSync(join(casesDir, precedent.slug, "case.json"), "utf8")) as { category?: string };
+			expect(meta.category).toBe(precedent.category);
+		}
+
+		// 构建期校验器与自己这份列表必须逐字一致：不同步时包能过校验、界面却没有对应的文案键。
+		const script = readFileSync(join(pluginRoot, "scripts/lib/precedent-package.mjs"), "utf8");
+		const literal = /export const CASE_CATEGORIES = \[([^\]]+)\]/.exec(script)?.[1] ?? "";
+		const declared = literal
+			.split(",")
+			.map(part => part.trim().replace(/^"|"$/g, ""))
+			.filter(Boolean);
+		expect(declared).toEqual([...CASE_CATEGORIES]);
 	});
 
 	it("opens with the four documents every precedent is read through", async () => {

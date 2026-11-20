@@ -17,6 +17,7 @@
 		"service restart"
 	],
 	"preset": "offline-sample",
+	"category": "native-loader",
 	"fieldNotes": [
 		"kb/field_journal_precedent-auth",
 		"kb/field_journal_precedent-reverse"

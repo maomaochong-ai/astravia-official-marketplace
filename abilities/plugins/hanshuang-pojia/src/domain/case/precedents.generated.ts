@@ -40,6 +40,8 @@ export interface ShippedPrecedent {
 	readonly signals: readonly string[];
 	/** Preset to start from when the package is copied into a real case. */
 	readonly preset: string;
+	/** Capability family, used by the panel's category filter. */
+	readonly category: string;
 	/** Field-journal documents this precedent is derived from. */
 	readonly fieldNotes: readonly string[];
 	/** Document-library ids holding the full case study, read with read_doc. */
@@ -66,6 +68,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 			"mitm"
 		],
 		"preset": "offline-sample",
+		"category": "android",
 		"fieldNotes": [
 			"kb/field_journal_seed-008_apk-okhttp-ssl-pin-bypass",
 			"kb/field_journal_2026-08-01_pentest-encryption-oracle-public-template-sql-admin-takeover"
@@ -123,6 +126,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 			"fail-closed"
 		],
 		"preset": "offline-sample",
+		"category": "native-loader",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -196,6 +200,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 			"application class replaced"
 		],
 		"preset": "offline-sample",
+		"category": "android",
 		"fieldNotes": [
 			"kb/field_journal_2026-07-14_android-arm64-self-extract-source-recovery",
 			"kb/field_journal_2026-08-20_apk-flutter-banner-ad-removal"
@@ -255,6 +260,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 			"returnAddress"
 		],
 		"preset": "offline-sample",
+		"category": "client-auth",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -323,6 +329,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 			"cwe-602"
 		],
 		"preset": "offline-sample",
+		"category": "client-auth",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -382,6 +389,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 			"offline entitlement"
 		],
 		"preset": "offline-sample",
+		"category": "dotnet",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -451,6 +459,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 			"cwe-602"
 		],
 		"preset": "offline-sample",
+		"category": "dotnet",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -519,6 +528,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 			"frida"
 		],
 		"preset": "offline-sample",
+		"category": "crypto-keygen",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -585,6 +595,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 			"self-extract"
 		],
 		"preset": "offline-sample",
+		"category": "native-loader",
 		"fieldNotes": [
 			"kb/field_journal_seed-001_elf-packed-loader",
 			"kb/re_pattern_elf-analysis"
@@ -643,6 +654,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 			"clock rollback"
 		],
 		"preset": "offline-sample",
+		"category": "native-loader",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -712,6 +724,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 			"cwe-427"
 		],
 		"preset": "offline-sample",
+		"category": "native-loader",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -774,6 +787,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 			"crypto-js"
 		],
 		"preset": "offline-sample",
+		"category": "web-js",
 		"fieldNotes": [
 			"kb/field_journal_seed-004_js-sign-webpack",
 			"kb/js_reverse_SKILL"
@@ -845,6 +859,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 			"service restart"
 		],
 		"preset": "offline-sample",
+		"category": "native-loader",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -914,6 +929,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 			"pe offset"
 		],
 		"preset": "offline-sample",
+		"category": "client-auth",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -981,6 +997,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 			"堆损坏"
 		],
 		"preset": "offline-sample",
+		"category": "client-auth",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -1050,6 +1067,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 			"cwe-602"
 		],
 		"preset": "offline-sample",
+		"category": "client-auth",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -1117,6 +1135,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 			"模数分解"
 		],
 		"preset": "offline-sample",
+		"category": "crypto-keygen",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -1188,6 +1207,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 			"wpf"
 		],
 		"preset": "offline-sample",
+		"category": "dotnet",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -1253,6 +1273,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 			"跨进程枚举"
 		],
 		"preset": "offline-sample",
+		"category": "client-auth",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"

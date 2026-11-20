@@ -18,6 +18,7 @@
 		"frida"
 	],
 	"preset": "offline-sample",
+	"category": "crypto-keygen",
 	"fieldNotes": [
 		"kb/field_journal_precedent-auth",
 		"kb/field_journal_precedent-reverse"

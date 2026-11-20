@@ -17,6 +17,7 @@
 		"跨进程枚举"
 	],
 	"preset": "offline-sample",
+	"category": "client-auth",
 	"fieldNotes": [
 		"kb/field_journal_precedent-auth",
 		"kb/field_journal_precedent-reverse"

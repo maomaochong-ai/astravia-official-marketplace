@@ -80,8 +80,10 @@ export interface ShippedPrecedent {
 \treadonly summary: string;
 \t/** Lower-case fragments the query is matched against. */
 \treadonly signals: readonly string[];
-\t/** Preset to start from when the package is copied into a real case. */
-\treadonly preset: string;
+	/** Preset to start from when the package is copied into a real case. */
+	readonly preset: string;
+	/** Capability family, used by the panel's category filter. */
+	readonly category: string;
 \t/** Field-journal documents this precedent is derived from. */
 \treadonly fieldNotes: readonly string[];
 \t/** Document-library ids holding the full case study, read with read_doc. */

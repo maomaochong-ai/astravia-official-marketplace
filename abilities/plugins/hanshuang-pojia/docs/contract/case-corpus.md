@@ -28,6 +28,7 @@ src/content/docs/cases/<slug>/<topic>.md   案例原文（中文，1–3 篇）
 	"summary": "One or two sentences: the shape of the target and the decisive fact.",
 	"signals": ["cardkey", "卡密", "ws2_32"],
 	"preset": "offline-sample",
+	"category": "client-auth",
 	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
 	"caseDocs": ["cases/<slug>/<topic>"],
 	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目X" },
@@ -36,6 +37,10 @@ src/content/docs/cases/<slug>/<topic>.md   案例原文（中文，1–3 篇）
 ```
 
 - `preset`：`offline-sample`（默认）| `ctf-public` | `own-system`。
+- `category`：能力族，面板的**分类筛选**读它。取值只能是 `android` / `client-auth` / `dotnet` /
+  `native-loader` / `crypto-keygen` / `web-js` 之一（定义在 `scripts/lib/precedent-package.mjs` 的
+  `CASE_CATEGORIES`，与 `src/domain/case/categories.ts` 逐字一致）。
+  为什么不用 `preset` 筛：19 个包全是 `offline-sample`，拿它做筛选会得到一个只有一档的按钮组。
 - `fieldNotes`：只允许引用已存在的文档 id（`kb/field_journal_precedent-auth`、
   `kb/field_journal_precedent-reverse` 是最常用的两条）。
 - `caseDocs`：文档库 id，**必须**与 `src/content/docs/cases/<slug>/` 下的文件名对应。

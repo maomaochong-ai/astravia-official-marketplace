@@ -17,6 +17,7 @@
 		"offline entitlement"
 	],
 	"preset": "offline-sample",
+	"category": "dotnet",
 	"fieldNotes": [
 		"kb/field_journal_precedent-auth",
 		"kb/field_journal_precedent-reverse"
