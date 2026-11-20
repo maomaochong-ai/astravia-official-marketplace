@@ -941,5 +941,16 @@
   "docs.menu.export": "Export .md",
   "docs.menu.explain": "Explain in chat",
   "docs.menu.apply": "Apply this method",
-  "inject.resize": "Drag to resize the body (or ↑↓)"
+  "inject.resize": "Drag to resize the body (or ↑↓)",
+  "inject.check": "Check status",
+  "inject.copiedInstall": "Installer copied. It is text until you run it.",
+  "inject.copiedRemove": "Uninstaller copied. Running it removes the marker block from {{path}}; nothing outside the block changes.",
+  "template.title": "Preset templates",
+  "template.lead": "Read-only word lists shipped with the tool. Importing turns one into an ordinary library entry you can edit, back up and activate.",
+  "template.import": "Import",
+  "template.importing": "reading…",
+  "template.imported": "Imported {{name}}; edit it in the library",
+  "template.alreadyImported": "The library already has this body: {{name}}",
+  "reports.clearCurrent": "Clear",
+  "inject.copiedRestore": "Restore script copied. Running it overwrites the target with the newest backup (system-layer targets)."
 }
