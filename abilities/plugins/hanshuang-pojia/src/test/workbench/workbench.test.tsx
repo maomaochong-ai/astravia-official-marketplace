@@ -122,17 +122,16 @@ describe("workbench shell", () => {
 		await go("knowledge");
 		await screen.findByTestId("docs-list");
 
-		// 窄面板下单列：目录在开，正文在下方。
-		const list = screen.getByTestId("docs-list");
-		expect(list.className).toContain("flex");
-		expect(list.className).not.toContain("hidden");
+		// 目录卡的可见性在外层 Card 上；窄面板下选中即收起。
+		const card = () => screen.getByTestId("docs-list-card");
+		expect(card().className.includes("hidden @min")).toBe(false);
 
-		fireEvent.click(list.querySelector('[data-doc-id="kb/README"]') as HTMLButtonElement);
-		await waitFor(() => expect(screen.getByTestId("docs-list").className).toContain("hidden"));
+		fireEvent.click(screen.getByTestId("docs-list").querySelector('[data-doc-id="kb/README"]') as HTMLButtonElement);
+		await waitFor(() => expect(card().className.includes("hidden @min")).toBe(true));
 
-		// 返回按钮把目录让回来，而不是让人以为文档打不开。
+		// 返回按钮清掉选中，目录重新占满。
 		fireEvent.click(screen.getByText("docs.reader.back"));
-		await waitFor(() => expect(screen.getByTestId("docs-list").className).not.toContain("hidden"));
+		await waitFor(() => expect(card().className.includes("hidden @min")).toBe(false));
 	}, 15_000);
 
 	it("lists only sample files from the workspace", async () => {
@@ -242,11 +241,11 @@ describe("workbench shell", () => {
 		// 知识页默认在文档视图；案例是同一页的另一个分段。
 		fireEvent.click(await screen.findByText("page.knowledge.cases"));
 
-		expect(await screen.findByText("cases.precedent.title")).toBeTruthy();
+		expect(await screen.findByText("cases.tab.precedent")).toBeTruthy();
+		// 扫描到的案例在「我的案例」清单里。
+		fireEvent.click(screen.getByText("cases.tab.mine"));
 		// 目录名就是案例名；计数在行里，正文在右侧阅读区。
 		const row = await screen.findByTitle("/work/cases/demo");
-		// 行尾不再是「就绪/受阻」，而是这份案例自己的预设标记。
-		expect(screen.getByText("cases.row.case")).toBeTruthy();
 		expect(screen.getByText("cases.count", { exact: false })).toBeTruthy();
 		expect(screen.getByText("cases.reader.empty.title")).toBeTruthy();
 		fireEvent.click(row);
@@ -264,8 +263,8 @@ describe("workbench shell", () => {
 		expect(evidenceTab).not.toBeNull();
 		fireEvent.click(evidenceTab!);
 		expect(await within(reader).findByText(/the stub jumps to a computed address/)).toBeTruthy();
-		// 先例库与本地案例同页但不同源：包名来自随包语料，而它自己的 scope 仍是待定。
-		expect(screen.getByText("cases.precedent.title")).toBeTruthy();
+		// 两份清单同页但不同源：切回先例清单才会列出随包包名。
+		fireEvent.click(screen.getByText("cases.tab.precedent"));
 		expect(screen.getByText("cases/elf-packed-loader/")).toBeTruthy();
 	});
 

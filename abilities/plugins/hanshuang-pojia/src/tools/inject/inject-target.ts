@@ -1,6 +1,6 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { PACKS } from "../../domain/inject/packs";
-import { renderInstaller, renderRestoreScript, type Shell } from "../../domain/inject/script";
+import { renderBatchRemoval, renderInstaller, renderRemovalScript, renderRestoreScript, type Shell } from "../../domain/inject/script";
 import { entryFromPlan } from "../../domain/inject/state";
 import { applyCommand, chooseRoute, handoffCommands, readEvidence, scriptPathFor, type ApplyEnv } from "../../domain/inject/apply";
 import { ensureDir } from "../lib/write-files";
@@ -14,6 +14,8 @@ interface InjectTargetInput {
 	/** 提示词包 id；留空用执行内核。 */
 	pack?: string;
 	shell?: Shell;
+	/** install（默认）| remove（卸载单个目标）| clear（批量摘除标记块）。 */
+	action?: "install" | "remove" | "clear";
 	/** R1：写进工作区并走命令通道执行。 */
 	apply?: boolean;
 	/** R3：交给保存对话框。优先于 apply。 */
@@ -168,6 +170,11 @@ export function registerInjectTargetTool(ctx: PluginContext): Disposable {
 					description:
 						"Execute the script through the host command channel (R1). Requires agent.command.run plus a declared `pwsh`. Falls back to handing over command lines (R2) when either is missing.",
 				},
+				action: {
+					type: "string",
+					enum: ["install", "remove", "clear"],
+					description: "install renders the installer; remove strips the marker block from one target; clear strips it from every marker-block target.",
+				},
 				save: {
 					type: "boolean",
 					description: "Hand the rendered script to the native save dialog (R3). Wins over apply.",
@@ -198,6 +205,31 @@ export function registerInjectTargetTool(ctx: PluginContext): Disposable {
 				const shell: Shell = input.shell === "posix" ? "posix" : "powershell";
 				const script = renderInstaller(plan, shell);
 				const restore = renderRestoreScript(plan, shell);
+
+				// 卸载与批量清除只产出脚本：目标文件在本机主目录，插件没有写权限（与安装同一条边界）。
+				if (input.action === "remove") {
+					return [
+						`# 卸载 · ${target.label}`,
+						"",
+						"只摘除标记块，块外内容不动；系统层目标改用备份还原。",
+						"",
+						"```" + (shell === "powershell" ? "powershell" : "bash"),
+						renderRemovalScript(plan, shell),
+						"```",
+					].join("\n");
+				}
+				if (input.action === "clear") {
+					const plans = INJECT_TARGETS.map(item => planFor(item, { packLabel: packId, body, statePath: input.statePath }));
+					return [
+						"# 批量清除",
+						"",
+						"一次摘除所有标记块目标；系统层与不可用目标不在内（需单独处理）。",
+						"",
+						"```" + (shell === "powershell" ? "powershell" : "bash"),
+						renderBatchRemoval(plans, shell),
+						"```",
+					].join("\n");
+				}
 
 				const header = [
 					`# 注入计划 · ${target.label}`,

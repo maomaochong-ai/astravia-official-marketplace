@@ -24,8 +24,9 @@ export function SamplesPage({ model }: PageProps) {
 	return (
 		<>
 			<PageHeader title={t("page.samples.title")} description={t("page.samples.lead")} />
-			<div className="grid gap-3 @min-[880px]:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
-				<Card title={t("page.samples.picker")} className="flex min-h-[320px] flex-col" bodyClassName="flex min-h-0 flex-1 flex-col pt-2">
+			{/* 两列都吃满页面高度：之前用 `grid` + 固定 min-h-[320px]，底部留一大截空白。 */}
+			<div className="fb-page grid @min-[880px]:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
+				<Card title={t("page.samples.picker")} fill bodyClassName="flex min-h-0 flex-1 flex-col pt-2">
 					<SamplePicker
 						cwd={model.cwd}
 						files={model.files}
@@ -39,7 +40,7 @@ export function SamplesPage({ model }: PageProps) {
 					/>
 				</Card>
 
-				<div className="space-y-3">
+				<div className="flex min-h-0 flex-col gap-3">
 					<Card title={t("page.samples.formats")} bodyClassName="px-1 py-1">
 						<DataTable columns={[t("page.samples.col.format"), t("page.samples.col.parsed")]} rows={rows} mono={[true, false]} />
 					</Card>

@@ -2,7 +2,7 @@ import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useEffect, useMemo, useState } from "react";
 import { PACKS } from "../../../../domain/inject/packs";
 import { applyCommand, scriptPathFor } from "../../../../domain/inject/apply";
-import { renderInstaller, renderRestoreScript, type Shell } from "../../../../domain/inject/script";
+import { renderBatchRemoval, renderInstaller, renderRemovalScript, renderRestoreScript, type Shell } from "../../../../domain/inject/script";
 import { INJECT_TARGETS, planFor, type InjectForm } from "../../../../domain/inject/targets";
 import { loadPackBody } from "../../services/packs";
 import { Card } from "../shell/card";
@@ -80,6 +80,18 @@ export function InjectPage({ model, embedded = false }: PageProps & { embedded?:
 			{embedded ? null : <PageHeader title={t("page.inject.title")} description={t("page.inject.lead")} />}
 
 			<div className="fb-page">
+				<div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-surface-2 px-3 py-2 text-[10.5px] leading-relaxed text-text-3 ring-1 ring-line-subtle">
+					<Icon name="shield" className="size-3.5 shrink-0 text-accent" />
+					<span className="min-w-0 flex-1">{t("inject.intro")}</span>
+					<button
+						type="button"
+						onClick={() => copy(renderBatchRemoval(INJECT_TARGETS.map(item => planFor(item, { packLabel: packId, body: body ?? "" })), shell), t("inject.copied"))}
+						className="inline-flex shrink-0 items-center gap-1 rounded-md border border-line-subtle px-2 py-0.5 text-[10.5px] text-text-2 hover:bg-surface-hover hover:text-text"
+					>
+						<Icon name="close" className="size-3" />
+						{t("inject.clearAll")}
+					</button>
+				</div>
 				<div className="flex shrink-0 flex-wrap items-center gap-2">
 					<FilterChips items={PACKS.map(pack => ({ id: pack.id, label: pack.title }))} value={packId} onChange={setPackId} />
 					<SegmentedControl<Shell>
@@ -92,9 +104,10 @@ export function InjectPage({ model, embedded = false }: PageProps & { embedded?:
 							{ value: "posix", label: "sh" },
 						]}
 					/>
-					<span className="font-mono text-[10px] text-text-4">{PACKS.find(pack => pack.id === packId)?.chars ?? 0} chars</span>
+					<span className="ms-auto font-mono text-[10px] text-text-4">
+						{body === null ? t("inject.pack.loading") : t("inject.pack.chars", { count: PACKS.find(pack => pack.id === packId)?.chars ?? 0 })}
+					</span>
 				</div>
-
 				<div className="fb-fill grid min-h-0 gap-2.5 grid-rows-[minmax(0,45%)_minmax(0,1fr)] @min-[900px]:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] @min-[900px]:grid-rows-[minmax(0,1fr)]">
 					<Card title={t("inject.targets.title")} bodyClassName="p-0" fill>
 						<div className="fb-scroll fb-fill-scroll flex flex-col gap-2 overflow-y-auto p-2.5">
@@ -136,6 +149,19 @@ export function InjectPage({ model, embedded = false }: PageProps & { embedded?:
 												>
 													<Icon name="send" className="size-3" />
 													{t("inject.applyInChat")}
+												</button>
+											)}
+											{/* 卸载：摘掉标记块，块外内容不动；不可用目标不给按钮。 */}
+											{blocked ? null : (
+												<button
+													type="button"
+													onClick={() =>
+														copy(renderRemovalScript(planFor(item, { packLabel: packId, body: body ?? "" }), shell), t("inject.copied"))
+													}
+													className="inline-flex items-center gap-1 rounded-md border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-3 hover:bg-surface-hover hover:text-risk-high"
+												>
+													<Icon name="ban" className="size-3" />
+													{t("inject.remove")}
 												</button>
 											)}
 										</div>

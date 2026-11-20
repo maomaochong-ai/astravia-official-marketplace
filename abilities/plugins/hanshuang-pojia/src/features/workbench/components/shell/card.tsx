@@ -13,6 +13,8 @@ export interface CardProps {
 	 * 卡体自己滚——否则卡片停在内容高度，下面留一条底色空白。
 	 */
 	fill?: boolean;
+	/** 测试锚点：可见性由外层 className 控制，断言要能看到同一节点。 */
+	testId?: string;
 	children: ReactNode;
 }
 
@@ -26,9 +28,12 @@ export interface CardProps {
  *     看起来是「该圆的地方成了直角」；
  *   - 描边用 ring 而不是 border：border 会占 1px 宽，卡片和侧栏之间出现宽度不为整数的缝。
  */
-export function Card({ title, actions, className, bodyClassName, fill = false, children }: CardProps) {
+export function Card({ title, actions, className, bodyClassName, fill = false, testId, children }: CardProps) {
 	return (
-		<section className={`flex min-w-0 flex-col overflow-hidden rounded-xl bg-surface-2 ring-1 ring-line-subtle ${fill ? "fb-fill" : ""} ${className ?? ""}`}>
+		<section
+			data-testid={testId}
+			className={`flex min-w-0 flex-col overflow-hidden rounded-xl bg-surface-2 ring-1 ring-line-subtle ${fill ? "fb-fill" : ""} ${className ?? ""}`}
+		>
 			{title ? (
 				<header className="fb-card-head flex shrink-0 items-center gap-2 border-b border-line-subtle">
 					<h2 className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text">{title}</h2>

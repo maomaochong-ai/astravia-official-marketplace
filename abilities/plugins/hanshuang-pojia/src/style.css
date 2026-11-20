@@ -96,6 +96,13 @@
 	--color-risk-low: var(--fb-risk-low);
 	--color-risk-low-deep: var(--fb-risk-low-deep);
 	--color-purple: var(--fb-purple);
+	/*
+	 * accent 是面板的**唯一强调色**：选中态、开关开启态、进度。
+	 * 早先只在个别地方写了 `text-accent` / `bg-accent`，但 @theme 里没有这个 token，
+	 * Tailwind 直接丢掉这些类 —— 结果是「侧栏选中图标仍是灰的」「lab 开关不亮」。
+	 */
+	--color-accent: var(--fb-accent);
+	--color-accent-soft: var(--fb-accent-soft);
 }
 
 .fb-root {
@@ -121,6 +128,9 @@
 	--fb-risk-medium: light-dark(#bf4a00, #ff8549);
 	--fb-risk-medium-deep: light-dark(#9a3a00, #e25507);
 	--fb-risk-low: light-dark(#0b7a37, #40c977);
+	/* 强调色取宿主的 accent 变量；宿主没给时回落到一个中性蓝。 */
+	--fb-accent: var(--accent, #4f8cff);
+	--fb-accent-soft: color-mix(in oklab, var(--fb-accent) 16%, transparent);
 	--fb-risk-low-deep: light-dark(#075f2a, #00a240);
 	--fb-purple: light-dark(#7b3ec4, #c27aff);
 }
