@@ -156,7 +156,7 @@ install_toolchain
 | 常驻提示词母本 | `agent/prompts/SYSTEM.md` |
 | 跨 Agent 协议（本文件） | `agent/prompts/AGENTS.md` |
 | 完整作战手册 | `agent/skills/memory/SKILL.md` |
-| 技能库清单与哈希 | `docs/reference/skill-library.md` / `docs/reference/skill-library.sha256` |
+| 技能库清单与哈希 | `docs/reference/skill-library.md` / `spec/skill-library.sha256` |
 
 ---
 

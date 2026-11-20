@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 重新生成 `docs/reference/skill-library.sha256`：随包携带的技能库逐文件摘要。
+ * 重新生成 `spec/skill-library.sha256`：随包携带的技能库逐文件摘要。
  *
  * 清单此前是手工维护的，改一次目录结构就得手工重算两份东西（清单本身 + 测试里的
  * 清单摘要）。这里把「按路径排序、相对 agent/skills 计算」的规则固定下来，
@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const libraryRoot = join(root, "agent/skills");
-const manifestPath = join(root, "docs/reference/skill-library.sha256");
+const manifestPath = join(root, "spec/skill-library.sha256");
 
 /**
  * 上游 `Tool/skill` 的两层归类：根层是作战台技能，`safe-skills/` 下是通用逆向战术包。

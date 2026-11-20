@@ -51,5 +51,5 @@ Kerberos 相关的打法在哪一篇
 ## 相关的其他域
 
 - 工具判定（探测 / 建议 / 不做）的权威表：[工具链域](../toolchain-and-limits/usage.md) +
-  [`reference/toolchain-parity.md`](../../reference/toolchain-parity.md)。
+  [`spec/toolchain-parity.md`](../../spec/toolchain-parity.md)。
 - 提问模板（lab 前缀、占位符规则）：[`reference/prompt-templates.md`](../../reference/prompt-templates.md)。

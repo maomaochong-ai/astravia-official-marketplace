@@ -46,4 +46,4 @@
 ## 相关的其他域
 
 - 环境探测与安装命令：[工具链域](../toolchain-and-limits/usage.md)。
-- 每条工具「探测 / 建议 / 不做」的判定：[`reference/toolchain-parity.md`](../../reference/toolchain-parity.md)。
+- 每条工具「探测 / 建议 / 不做」的判定：[`spec/toolchain-parity.md`](../../spec/toolchain-parity.md)。

@@ -50,6 +50,6 @@ CI 打包会报 `"existsSync" is not exported by "__vite-browser-external"`。�
 
 ## 相关文档与测试
 
-- 事实表（**测试直接读**）：[`../reference/toolchain-parity.md`](../../reference/toolchain-parity.md)
+- 事实表（**测试直接读**）：[`spec/toolchain-parity.md`](../../spec/toolchain-parity.md)
 - 时点观察：[`../audits/toolchain-bundling.md`](../../audits/toolchain-bundling.md)
 - 测试：`src/test/tools/{toolchain,ida-status,tools,tool-index}.test.ts`

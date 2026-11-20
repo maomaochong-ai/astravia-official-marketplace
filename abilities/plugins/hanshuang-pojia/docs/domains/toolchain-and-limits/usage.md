@@ -55,6 +55,6 @@ IDA 那头连上了吗
 
 ## 相关的其他域
 
-- 每条工具「探测 / 建议 / 不做」的判定：[`reference/toolchain-parity.md`](../../reference/toolchain-parity.md)。
+- 每条工具「探测 / 建议 / 不做」的判定：[`spec/toolchain-parity.md`](../../spec/toolchain-parity.md)。
 - 要不要装外部 MCP 服务器：[MCP 域](../mcp-and-external-servers/usage.md)。
 - 权限面与浏览器沙箱的硬边界（写代码的人看）：[dev.md](dev.md)。

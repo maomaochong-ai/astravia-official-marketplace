@@ -1515,7 +1515,7 @@ The kit's `seep_kb_checklist` and `seep_kb_payloads` are document reads too, and
 A reverse, license or mobile request enters through `softseep` unless the user names a narrower skill; then go straight there and keep the kernel's deliverable shape.
 
 All five ship inside this plugin: `agent/skills/<name>/` is a byte-exact copy of the kit's
-`Tool/skill/` (165 files / 2,450,341 bytes, manifest `docs/reference/skill-library.sha256`). Open the
+`Tool/skill/` (165 files / 2,450,341 bytes, manifest `spec/skill-library.sha256`). Open the
 `SKILL.md` there, then only the `references/` file the task needs. They are not registered skill
 paths because the upstream frontmatter would have to be edited; routing stays by path.
 
@@ -1544,7 +1544,7 @@ paths because the upstream frontmatter would have to be edited; routing stays by
 |---|---|
 | Operating protocol / host prompt | `seep-kit/Tool/prompts/{AGENTS.md, SYSTEM.md}` |
 | Skills | **bundled**: `agent/skills/{softseep, apkseep, ida-reverse, client-license-validation-bypass, safe-skills/}` — 165 files / 2.4 MB |
-| Skill index / provenance | `docs/reference/skill-library.md` · `docs/reference/skill-library.sha256` |
+| Skill index / provenance | `docs/reference/skill-library.md` · `spec/skill-library.sha256` |
 | MCP server | `seep-kit/Tool/mcp/seep_mcp_server.py` |
 | Manuals | `seep-kit/MANUAL/` (deployment, checklist, unpacking, anti-debug, PoC validation, cross-platform, relay, refusal matrix) |
 | Setup / repair | `seep-kit/setup/` — 15 scripts: `install`, `update`, `uninstall`, `verify`, `repair-tools`, `install-ida`, `install-python`, `install-pi`, `generate-configs`, `extract-deps` (`.ps1`) plus `clean-format.py` and the `.sh` twins |

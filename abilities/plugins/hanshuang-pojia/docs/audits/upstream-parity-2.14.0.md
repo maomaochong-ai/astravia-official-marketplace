@@ -42,7 +42,7 @@
 | 技能 | `Tool/skill/` 5 顶层 + `safe-skills/` 5 子技能 | `agent/skills/` 同 5 顶层 + 同 5 子技能 | **对等** |
 | 提示词 | `Tool/prompts/SYSTEM.md` + `extensions/` | `agent/prompts/SYSTEM.md` 母本 → 生成物 | **对等且更强**（母本 + byte-for-byte 测试 + `--check`） |
 | 工作区规则 | `Tool/docs/WORKSPACE_RULES.md` | `docs/contract/case-library.md` + `init_task` 目录契约 | **对等**（规则变成可执行的目录生成） |
-| 工具索引 | `Tool/docs/tool-index.{md,json}` + `refresh-tool-index.ps1` | `src/content/docs/kit-docs/tool-index.{md,json}` + `scripts/sync-tool-index.mjs` | **对等**，且 `src/test/tools/tool-index.test.ts` 会拿 `reference/toolchain-parity.md` 数三档行数对账 |
+| 工具索引 | `Tool/docs/tool-index.{md,json}` + `refresh-tool-index.ps1` | `src/content/docs/kit-docs/tool-index.{md,json}` + `scripts/sync-tool-index.mjs` | **对等**，且 `src/test/tools/tool-index.test.ts` 会拿 `spec/toolchain-parity.md` 数三档行数对账 |
 | 用法文档 | `MANUAL/` 10 篇 | `src/content/docs/manual/`（随包发布） | **对等** |
 | 工程文档 | 上游只有 `Tool/docs` 8 篇，无模块化 | `docs/` 12 篇 → 本轮 **9 篇模块 + 索引重写** | **超出**（见 §5） |
 

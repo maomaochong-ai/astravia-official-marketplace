@@ -31,11 +31,14 @@
 |---|---|---|---|
 | `domains/` | 按功能域的两份：`usage.md` 怎么用 / `dev.md` 怎么改 | 使用者 + 改代码的人 | 功能变了就改 |
 | `contract/` | 必须遵守的规则 | 改代码、写案例的人 | 改规则时同步改 |
-| `reference/` | 当前事实的权威表 | **代码与测试直接读** | 事实变了就必须改 |
+| `reference/` | 人读的事实叙述（来源、区别、清单解读） | 人 | 事实变了就必须改 |
+| `audits/` | 带版本与时点的一次性报告 | 人 | 会，标题里写着版本 |
+| `../spec/`（在 `docs/` 外） | **被代码解析的产物**：哈希清单、对账表 | 测试与脚本 | 事实变了、生成物过期就红 |
 | `audits/` | 带版本与时点的一次性报告 | 人 | 会，标题里写着版本 |
 
-分类轴是**拿它干什么**，不是主题。「工具链」一个主题就横跨三类：`reference/toolchain-parity.md` 是当前
-事实表（测试读它），`audits/toolchain-bundling.md` 是 2.8.0 那天的观察，`src/domain/toolchain/` 是当时的处置。
+分类轴是**拿它干什么**，不是主题。「工具链」一个主题就横跨四处：`../spec/toolchain-parity.md` 是人工逐条
+判定的对账表（测试数它三档行数），`audits/toolchain-bundling.md` 是 2.8.0 那天的观察，
+`reference/` 里是给人读的来源叙述，`src/domain/toolchain/` 是当时的处置。
 三者过期方式不同，混在一起就会在改代码时误信旧报告。
 
 ## `contract/` — 必须遵守的
@@ -45,11 +48,18 @@
 - [case-corpus.md](contract/case-corpus.md) — 案例语料编写契约。新增一个先例包要交哪些文件、哪些东西
   不能进语料、`signals` 怎么写、自检命令是什么。**写案例的人读这一篇，不用读代码。**
 
-## `reference/` — 当前事实
+## `../spec/` — 被代码解析的产物
+这一组不在 `docs/` 里，因为它们的读者不是人。判定标准：**删掉它，有没有代码会失败**。
 
-- [toolchain-parity.md](reference/toolchain-parity.md) — 42 项工具逐条判定：探测（占一个授权位）、建议
-  （零权限）、不做（写明原因）。**唯一被测试当数据读的文档**：`src/test/tool-index.test.ts` 打开它数
-  三档行数，跟 `tool-index.json` 对账。改这里要同时改 catalog 与 json，三者不一致会红。
+
+- [toolchain-parity.md](../spec/toolchain-parity.md) — 42 项工具逐条判定：探测（占一个授权位）、建议
+  （零权限）、不做（写明原因）。`src/test/tool-index.test.ts` 打开它数三档行数，跟 `tool-index.json`
+  对账。改这里要同时改 catalog 与 json，三者不一致会红。
+- [skill-library.sha256](../spec/skill-library.sha256) — 171 个随包技能文件的逐文件哈希；
+  `src/test/knowledge/skill-library.test.ts` 逐行复算。
+
+## `reference/` — 人读的当前事实
+
 - [prompt-templates.md](reference/prompt-templates.md) — 可直接粘贴的提问模板（lab 前缀、占位符规则、
   哪些问法不改变判定）。
 - [injection-targets.md](reference/injection-targets.md) — 九个注入目标 × 四种形态、四个提示词包、
@@ -91,6 +101,9 @@
 
 ## 不在 `docs/` 里的东西
 
+- **被代码解析的产物**：`spec/`（插件根）。判定标准就一句：删掉它，有没有代码会失败。
+  哈希清单与对账表放那里，散文留在这里。`node scripts/check-docs-deps.mjs --strict` 会拦住方向错了的迁移。
+
 - **使用者手册**：`src/content/docs/manual/`（含 [PANEL-HANDBOOK.md](../src/content/docs/manual/PANEL-HANDBOOK.md)
   面板 17 页逐页说明，以及部署、反调试、IDA、合规中继等）。它们随 `.astraviapkg` 发布，面板「文档」页
   按需 fetch。`docs/` 下的工程文档**不进包**——随包只发 `dist/`，所以给使用者看的东西必须放在
@@ -117,10 +130,11 @@
 |---|---|
 | `docs/case-library.md` | `docs/contract/case-library.md` |
 | `docs/case-corpus.md` | `docs/contract/case-corpus.md` |
-| `docs/toolchain-parity.md` | `docs/reference/toolchain-parity.md` |
+| `docs/toolchain-parity.md` | `spec/toolchain-parity.md`（曾短暂在 `docs/reference/`） |
 | `docs/toolchain-bundling.md` | `docs/audits/toolchain-bundling.md` |
 | `docs/upstream-parity-audit-2.9.3.md` | `docs/audits/upstream-parity-audit-2.9.3.md` |
 | `docs/upstream-ui-parity-2.9.8.md` | `docs/audits/upstream-ui-parity-2.9.8.md` |
 | `docs/win-defender-triage-2.9.8.md` | `docs/audits/win-defender-triage-2.9.8.md` |
 | `docs/ui-handbook.md` | `src/content/docs/manual/PANEL-HANDBOOK.md`（随包发布） |
 | `docs/modules/<域>.md`（9 篇） | `docs/domains/<域>/dev.md`，并新增 `docs/domains/<域>/usage.md` |
+| `docs/reference/skill-library.sha256` | `spec/skill-library.sha256` |

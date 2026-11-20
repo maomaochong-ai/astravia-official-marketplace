@@ -107,7 +107,7 @@ turns that into the command you actually type: it filters by goal (`apk` / `nati
 `full`), picks the recipe for this platform (brew / apt / winget / scoop / pipx) and stops there — the plugin
 runs no installer, so you see every command first. Commercial suites (IDA, Binary Ninja, JEB) are listed as
 context, never as a command; commercial and optional tools never take a permission because the plugin never
-spawns them. Full 2.0 parity table: [docs/reference/toolchain-parity.md](docs/reference/toolchain-parity.md).
+spawns them. Full 2.0 parity table: [spec/toolchain-parity.md](spec/toolchain-parity.md).
 
 The same engines run from a terminal, outside the plugin sandbox:
 
@@ -239,13 +239,13 @@ Since 2.1 the kit's **skill library ships inside the plugin**: `agent/skills/` i
 `ida-reverse`, `client-license-validation-bypass`, the five `safe-skills/*` packs, the
 `hanshuang-pojia` handbook itself, and three script-bearing packs that carry both `.ps1` and `.sh`
 variants. `docs/reference/skill-library.md` holds the inventory and provenance,
-`docs/reference/skill-library.sha256` the per-file hashes, and `src/test/skill-library.test.ts`
+`spec/skill-library.sha256` the per-file hashes, and `src/test/skill-library.test.ts`
 recomputes the manifest so the tree cannot drift between builds.
 
 They are registered through `plugin.json#agent.skillPaths = ["agent/skills"]`, with
 `skillPresentation.defaultVisibility` set to `visible` across all five surfaces, so they show up in
 the skill picker as soon as the plugin installs. The tree is not byte-identical to upstream in four
-places, deliberately — `SKILL-LIBRARY.md` lists them.
+places, deliberately — `docs/reference/skill-library.md` lists them.
 
 `agent/skills/memory/references/plugin-handbook.md` holds the detail the skill body should
 not carry: the verified kit layout, the full MCP tool list, the ten manuals, the per-host installer
@@ -289,17 +289,15 @@ binaries, keys, salts, endpoints, real product names. ADRs 006 and 007 record th
 
 ```text
 cases/                             # 19 precedent packages: source only, inlined at build time, never shipped
-docs/                              # engineering docs: README.md index + contract/ reference/ audits/ plans/
+docs/                              # engineering docs, never packed: README.md index + contract/ reference/ audits/ domains/ adr/
+spec/                              # machine-read artefacts, never packed: skill hash manifest + toolchain parity table
+AGENTS.md                          # cross-agent protocol for hosts outside Astravia (packed, root level)
 agent/
-├── skills/                          # registered via skillPaths; nine SKILL.md directories
-│   ├── hanshuang-pojia/             # the handbook, PART I–V, including the kit protocol
-│   ├── apk-reverse/  ida-reverse/  radare2/     # each with scripts/*.ps1 and *.sh
-│   └── apkseep/  softseep/  reverse-engineering/  …  # the safe-skills ports
-└── docs/                            # packed as a whole: this is the only agent/ subtree the packer collects
-    ├── SYSTEM.md                    # standing contract: injected as a prompt block while lab mode is on
-    ├── AGENTS.md                    # the same protocol for agents outside Astravia
-    ├── SKILL-LIBRARY.md             # bundled skill tree: inventory, provenance, the four deliberate deltas
-    └── skill-library.sha256         # 171 per-file hashes; the test recomputes this
+├── prompts/SYSTEM.md              # standing contract: injected as a prompt block while lab mode is on
+└── skills/                        # registered via skillPaths; the host walks it recursively
+    ├── memory/                    # the core handbook (PART I–V + references/); loaded before any other skill
+    ├── apkseep/  softseep/  client-license-validation-bypass/
+    └── safe-skills/               # apk-reverse, ida-reverse, radare2, reverse-engineering, mcp-js-reverse-playbook
 src/
 ├── index.tsx                        # assembly only: bridge, tab, tools, cleanup
 ├── runtime-contract.ts              # the PluginContext handle the tab reads

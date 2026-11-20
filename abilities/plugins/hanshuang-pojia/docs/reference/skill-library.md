@@ -10,8 +10,8 @@ skill no longer requires touching the manifest.
 | Source | `hanshuang-pojia-2.0/resources/seep-kit/Tool/skill/` (kit `VERSION` 1.6.0) |
 | Files | 171 |
 | Bytes | 2,481,555 |
-| Manifest SHA-256 | `e0b8530a33ff3e7f2f852fa306ab5934ce175ee9bc54d54649804dcb6b9c803e` for `docs/reference/skill-library.sha256` (171 per-file hashes) |
-| Per-file hashes | `docs/reference/skill-library.sha256` — verify with `cd agent/skills && shasum -a 256 -c ../../docs/reference/skill-library.sha256` (171/171 OK) |
+| Manifest SHA-256 | `e0b8530a33ff3e7f2f852fa306ab5934ce175ee9bc54d54649804dcb6b9c803e` for `spec/skill-library.sha256` (171 per-file hashes) |
+| Per-file hashes | `spec/skill-library.sha256` — verify with `cd agent/skills && shasum -a 256 -c ../../spec/skill-library.sha256` (171/171 OK) |
 | Regression guard | `src/test/skill-library.test.ts` recomputes the manifest and fails on any count, byte or hash drift |
 
 Relative to the upstream tree the following is **not** byte-identical, by design:
@@ -43,7 +43,7 @@ Relative to the upstream tree the following is **not** byte-identical, by design
 | `hanshuang-pojia/` | 2 | 132,381 | the plugin's own skill: kernel rule, tool table, doc routing |
 
 Per-directory totals are for orientation only; the authoritative list is
-`docs/reference/skill-library.sha256` (one hash per file, 171 lines).
+`spec/skill-library.sha256` (one hash per file, 171 lines).
 
 Licenses stay as the upstream files declare them: MIT for `apkseep`, `softseep` and the five
 `safe-skills` packs, GPL-3.0 for `ida-reverse`.

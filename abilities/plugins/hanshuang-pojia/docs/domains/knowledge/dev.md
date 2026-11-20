@@ -42,5 +42,5 @@
 ## 相关文档与测试
 
 - 测试：`src/test/knowledge/{docs,skill-library}.test.ts、src/test/tools/{tool-index}.test.ts`
-- 事实表：[`../reference/toolchain-parity.md`](../../reference/toolchain-parity.md)
+- 事实表：[`spec/toolchain-parity.md`](../../spec/toolchain-parity.md)
 - 生成脚本：`scripts/sync-docs.mjs`、`scripts/sync-skill-library.mjs`

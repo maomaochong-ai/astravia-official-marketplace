@@ -59,5 +59,5 @@
 
 - 工具阶梯与探测：[`toolchain-and-limits.md`](../toolchain-and-limits/dev.md)
 - 上游原文档：`Tool/docs/MCP-SETUP.md`、`Tool/docs/README_MCP.md`（在 2.0 便携包内）
-- 判定表：[`../reference/toolchain-parity.md`](../../reference/toolchain-parity.md)
+- 判定表：[`spec/toolchain-parity.md`](../../spec/toolchain-parity.md)
 - 测试：`src/test/tools/ida-status.test.ts`
