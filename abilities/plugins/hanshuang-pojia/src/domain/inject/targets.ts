@@ -39,6 +39,27 @@ export interface InjectTarget {
 export const INJECT_MARKER_BEGIN = "<!-- 寒霜破甲注入开始";
 export const INJECT_MARKER_END = "<!-- 寒霜破甲注入结束 -->";
 
+/**
+ * 旧标记：上游早期版本写的是 `<!-- HANSHUANG-INJECT:BEGIN -->`。
+ * 卸载必须先认它，否则升级过一轮的用户卸不掉自己机器上的旧注入。
+ */
+export const LEGACY_MARKER_BEGIN = "HANSHUANG-INJECT:BEGIN";
+export const LEGACY_MARKER_END = "HANSHUANG-INJECT:END";
+
+/**
+ * 注入产物的特征串：再早的版本是“整份覆盖”式注入、不留任何标记，只能靠内容认。
+ * 卸载遇到这种文件既不能当用户内容原样保留（等于没卸），也不能把“注入了内容的备份”
+ * 当成原始备份还原回去。
+ */
+export const INJECT_SIGNATURES: readonly string[] = [
+	"HANSHUANG-INJECT",
+	"寒霜破甲",
+	"拒绝话术全清单",
+	"激活词",
+	"SES-OS",
+	"样例 A：给另一 AI",
+];
+
 export const INJECT_TARGETS: readonly InjectTarget[] = [
 	{
 		id: "codex",

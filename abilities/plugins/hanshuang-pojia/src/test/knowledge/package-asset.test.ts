@@ -31,9 +31,10 @@ describe("hosted asset urls", () => {
 
 	it("every caller passes both prefixes, so source and build layout stay separate", () => {
 		const root = join(__dirname, "..", "..", "..");
-		const docs = readFileSync(join(root, "src/features/workbench/services/docs.ts"), "utf8");
+		const docs = readFileSync(join(root, "src/features/workbench/services/docs-bodies.ts"), "utf8");
 		const packs = readFileSync(join(root, "src/features/workbench/services/packs.ts"), "utf8");
-		expect(docs).toContain('assetDir: "docs"');
-		expect(packs).toContain('assetDir: "packs"');
+		// 逐篇 .md 会被安全软件拦（copyfile 返回 UNKNOWN），两者都改走整包 gzip。
+		expect(docs).toContain('const BUNDLE = "bodies.json.gz"');
+		expect(packs).toContain('const BUNDLE = "packs.json.gz"');
 	});
 });

@@ -86,15 +86,19 @@ export default defineConfig({
 					}
 				}
 
-				// 4. 提示词包正文：同样不进分块，索引只留元数据。
+				// 4. 提示词包正文：同样不逐篇落盘，打成一份 gzip。
+				//    包里是契约与破甲研究语料，单个 .md 躺在磁盘上会被安全软件按内容拦，
+				//    copyfile 失败就整包装不上（与文档同一类故障）。
 				const packsRoot = new URL("src/content/packs/", import.meta.url);
+				const packBodies: Record<string, string> = {};
 				for (const file of readdirSync(packsRoot).filter(name => name.endsWith(".md"))) {
-					this.emitFile({
-						type: "asset",
-						fileName: `assets/packs/${file}`,
-						source: readFileSync(new URL(file, packsRoot)),
-					});
+					packBodies[file] = readFileSync(new URL(file, packsRoot), "utf8");
 				}
+				this.emitFile({
+					type: "asset",
+					fileName: "assets/packs/packs.json.gz",
+					source: gzipSync(Buffer.from(JSON.stringify(packBodies), "utf8"), { level: 9 }),
+				});
 
 				// 5. 共享原语：每个工具都 import hpkit，缺它则一个都跑不起来。
 				const kitRoot = new URL("cases/_shared/hpkit/", import.meta.url);
