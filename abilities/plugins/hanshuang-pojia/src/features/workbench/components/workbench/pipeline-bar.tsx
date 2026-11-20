@@ -22,7 +22,7 @@ interface Stage {
 	/** 点亮条件：为该段注入真实状态。 */
 	lit: boolean;
 	/** 点击跳转的目标页；lit 才可点。 */
-	page: "overview" | "findings" | "docs" | "selfcheck";
+	page: "overview" | "findings" | "knowledge" | "selfcheck";
 }
 
 export function PipelineBar({ model }: PipelineBarProps) {
@@ -34,13 +34,13 @@ export function PipelineBar({ model }: PipelineBarProps) {
 	const stages: Stage[] = [
 		{ id: "profile", page: "overview", lit: hasReport },
 		{ id: "controlflow", page: "findings", lit: hasFindings },
-		{ id: "knowledge", page: "docs", lit: true },
+		{ id: "knowledge", page: "knowledge", lit: true },
 		{ id: "verify", page: "selfcheck", lit: true },
 	];
 
 	// 当前激活段跟页面走：findings->controlflow, docs->knowledge, selfcheck->verify, 其余->profile。
 	const active =
-		model.page === "findings" ? "controlflow" : model.page === "docs" ? "knowledge" : model.page === "selfcheck" ? "verify" : "profile";
+		model.page === "findings" ? "controlflow" : model.page === "knowledge" ? "knowledge" : model.page === "selfcheck" ? "verify" : "profile";
 
 	return (
 		<div className="flex items-center gap-2 bg-surface-2 px-3 py-1.5">

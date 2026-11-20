@@ -15,12 +15,12 @@ import { InjectStatusBar } from "./shell/inject-status-bar";
 import { ActivityPage } from "./pages/activity";
 import { ComparePage } from "./pages/compare";
 import { DisasmPage } from "./pages/disasm";
-import { DocsPage } from "./pages/docs";
+import { KnowledgePage } from "./pages/knowledge";
 import { FindingsPage } from "./pages/findings";
 import { GuidePage } from "./pages/guide";
 import { OverviewPage, type PageProps } from "./pages/overview";
 import { ReportsPage } from "./pages/reports";
-import { CasesPage } from "./pages/cases";
+
 import { SamplesPage } from "./pages/samples";
 import { SelfCheckPage } from "./pages/selfcheck";
 import { SettingsPage } from "./pages/settings";
@@ -50,8 +50,7 @@ const PAGES: Record<string, PageComponent> = {
 	prompts: PromptsPage,
 	inject: InjectPage,
 	disasm: DisasmPage,
-	docs: DocsPage,
-	cases: CasesPage,
+	knowledge: KnowledgePage,
 	static: StaticPage,
 	compare: ComparePage,
 	selfcheck: SelfCheckPage,
@@ -119,8 +118,8 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 					width={sidebarWidth}
 					counts={{
 						// 徽标回答「这里有多少东西可读」：知识库与案例库是主入口，没有数字时看不出空不空。
-						docs: model.docs.totals.documents,
-						cases: model.cases.cases.length + SHIPPED_PRECEDENTS.length,
+						// 文档与案例同属一页：徽标给的是这两个来源的总量。
+						knowledge: model.docs.totals.documents + model.cases.cases.length + SHIPPED_PRECEDENTS.length,
 						prompts: model.promptLibrary.items.length,
 					}}
 				/>

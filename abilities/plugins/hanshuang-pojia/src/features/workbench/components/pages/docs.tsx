@@ -1,5 +1,5 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { SplitHandle, useStoredWidth } from "../../hooks/use-sidebar-width";
 import { AiButton } from "../shell/ai-button";
 import { Card } from "../shell/card";
@@ -30,17 +30,48 @@ function kilobytes(bytes: number): string {
  * 以前用 max-h-[520px]/[620px] 封顶，面板比它高时下面就空出一条底色——
  * 圆角容器停在半空是这类界面最明显的缺陷。
  */
-export function DocsPage({ model }: PageProps) {
+export function DocsPage({ model, embedded = false }: PageProps & { embedded?: boolean }) {
 	const { t } = useTranslation();
 	const { docs, chat } = model;
 	const listing = docs.hits;
-	// 分组筛选：文档从 4 类变成 5 类（多了「参考实现」），不再能靠一路滑到底找。
+	// 两级筛选：先按语料组（kb / manual / kit-docs / cases / reference），
+	// 再按子目录（kb 的 66 个专题目录、cases 的 19 个案例目录）。一级筛选只能缩到几百篇，两级才找得到。
 	const [group, setGroup] = useState<string | null>(null);
+	const [topic, setTopic] = useState<string | null>(null);
 	// 列表与栅格列模板必须同进同退：列模板留在两列时，收起列表会让正文落进 240–300px 的首列。
 	const showList = docs.listOpen || !docs.selected;
 	const groupCounts = docs.groups.map(item => ({ id: item.id, count: item.topics.reduce((sum, topic) => sum + topic.entries.length, 0) }));
 	const total = groupCounts.reduce((sum, item) => sum + item.count, 0);
 	const visibleGroups = group ? docs.groups.filter(item => item.id === group) : docs.groups;
+
+	// 子目录 = 条目 topic 的第一段（`apk-reverse/ai-findings` → `apk-reverse`）。
+	// 二级筛选读这一段而不是完整 topic：66 个专题目录会变成一屏 chip，反而没人选。
+	const subdirOf = (id: string | null | undefined): string => (id ? id.split("/")[0] : "");
+	const subdirCounts = useMemo(() => {
+		const counts = new Map<string, number>();
+		for (const item of visibleGroups) {
+			for (const entry of item.topics) {
+				{
+					const key = subdirOf(entry.id);
+					if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+				}
+			}
+		}
+		return [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]));
+	}, [visibleGroups]);
+
+	const browsableGroups = useMemo(
+		() =>
+			visibleGroups
+				.map(item => ({
+					...item,
+					topics: item.topics
+						.filter(entry => !topic || subdirOf(entry.id) === topic)
+						.map(entry => ({ ...entry, entries: entry.entries })),
+				}))
+				.filter(item => item.topics.length > 0),
+		[visibleGroups, topic],
+	);
 	// 左右两栏之间可以拖：分类从 4 组变成 5 组后，列表标题变长，固定 240–300px 会截断。
 	const [listWidth, setListWidth, resetListWidth] = useStoredWidth({
 		storageKey: "hanshuang-pojia:docs-list-width",
@@ -51,22 +82,24 @@ export function DocsPage({ model }: PageProps) {
 
 	return (
 		<>
-			<PageHeader
-				title={t("page.docs.title")}
-				description={t("page.docs.lead")}
-				actions={
-					<AiButton
-						label={t("ai.docs")}
-						busy={chat.sending}
-						disabled={!docs.selected}
-						onClick={() =>
-							model.ask("docs", {
-								other: docs.selected ? `${docs.selected.title} · ${docs.selected.path}` : undefined,
-							})
-						}
-					/>
-				}
-			/>
+			{embedded ? null : (
+				<PageHeader
+					title={t("page.docs.title")}
+					description={t("page.docs.lead")}
+					actions={
+						<AiButton
+							label={t("ai.docs")}
+							busy={chat.sending}
+							disabled={!docs.selected}
+							onClick={() =>
+								model.ask("docs", {
+									other: docs.selected ? `${docs.selected.title} · ${docs.selected.path}` : undefined,
+								})
+							}
+						/>
+					}
+				/>
+			)}
 
 			<div className="fb-page">
 				<div className="grid shrink-0 grid-cols-3 gap-2">
@@ -108,9 +141,26 @@ export function DocsPage({ model }: PageProps) {
 										})),
 									]}
 									value={group ?? "all"}
-									onChange={next => setGroup(next === "all" ? null : next)}
+									onChange={next => {
+										setGroup(next === "all" ? null : next);
+										// 换了语料组，上一组的子目录就没有意义了。
+										setTopic(null);
+									}}
 								/>
 							</div>
+							{/* 二级：子目录。只在多于一页时出现，否则它是占地方的一行。 */}
+							{subdirCounts.length > 1 ? (
+								<div className="flex items-center gap-1 overflow-x-auto pb-0.5">
+									<FilterChips
+										items={[
+											{ id: "all", label: t("docs.topic.all"), count: subdirCounts.reduce((sum, item) => sum + item[1], 0) },
+											...subdirCounts.map(([id, count]) => ({ id, label: id, count })),
+										]}
+										value={topic ?? "all"}
+										onChange={next => setTopic(next === "all" ? null : next)}
+									/>
+								</div>
+							) : null}
 						</div>
 
 						<Card
@@ -147,7 +197,7 @@ export function DocsPage({ model }: PageProps) {
 									// 索引按需读取（ADR 0009 D5）：未到达时说清楚，不要用空目录冒充「没有文档」。
 									<div className="px-3 py-6 text-center text-[11.5px] text-text-4">{t("docs.index.loading")}</div>
 								) : (
-									visibleGroups.map(group => (
+									browsableGroups.map(group => (
 										<div key={group.id} className="border-b border-line-subtle last:border-0">
 											<div className="bg-surface-2 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-text-4">
 												{t(DOC_GROUPS.find(item => item.id === group.id)?.labelKey ?? "docs.group.kb")}

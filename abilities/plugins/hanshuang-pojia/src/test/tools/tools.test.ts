@@ -127,6 +127,7 @@ describe("agent tools", () => {
 			"kb_payloads",
 			"list_code_symbols",
 			"probe_environment",
+			"probe_refusal",
 			"read_doc",
 			"record_case_note",
 			"run_radare",

@@ -30,7 +30,7 @@ type CategoryFilter = "all" | string;
  * 分类筛选读的是 `case.json` 的 `category`（经 `sync-precedents` 进生成物），
  * 不在页面里靠 slug 前缀猜——猜出来的分类没法校验，也挡不住新包漏填。
  */
-export function CasesPage({ model }: PageProps) {
+export function CasesPage({ model, embedded = false }: PageProps & { embedded?: boolean }) {
 	const { t } = useTranslation();
 	const cases = model.cases;
 	const docs = model.caseDocs;
@@ -71,6 +71,7 @@ export function CasesPage({ model }: PageProps) {
 
 	return (
 		<>
+			{embedded ? null : (
 			<PageHeader
 				title={t("page.cases.title")}
 				description={t("page.cases.lead")}
@@ -87,7 +88,8 @@ export function CasesPage({ model }: PageProps) {
 						</button>
 					</>
 				}
-			/>
+				/>
+			)}
 
 			<div className="fb-page">
 				{cases.error ? (
@@ -299,7 +301,7 @@ export function CasesPage({ model }: PageProps) {
 									onScaffold={() => model.ask("case-open", { other: precedent.slug })}
 									onOpenStudy={id => {
 										model.docs.select(id);
-										model.go("docs");
+										model.go("knowledge");
 									}}
 								/>
 							) : (
@@ -309,7 +311,7 @@ export function CasesPage({ model }: PageProps) {
 									<p className="max-w-sm text-[11px] leading-relaxed text-text-4">{t("cases.reader.empty.body")}</p>
 									<button
 										type="button"
-										onClick={() => model.go("docs")}
+										onClick={() => model.go("knowledge")}
 										className="mt-1 inline-flex items-center gap-1 rounded-md border border-line-subtle px-2 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
 									>
 										<Icon name="book" className="size-3" />

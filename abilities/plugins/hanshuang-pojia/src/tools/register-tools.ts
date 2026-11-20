@@ -31,6 +31,7 @@ import { registerSearchCasesTool } from "./case/search-cases";
 import { registerRecordCaseNoteTool } from "./case/record-case-note";
 import { registerScaffoldCaseTool } from "./case/scaffold-case";
 import { registerInjectTargetTool } from "./inject/inject-target";
+import { registerProbeRefusalTool } from "./lab/probe-refusal";
 
 /**
  * 工具注册总入口。每个工具单独 try：
@@ -72,6 +73,7 @@ export function registerTools(ctx: PluginContext): Disposable[] {
 		registerRecordCaseNoteTool,
 		registerScaffoldCaseTool,
 		registerInjectTargetTool,
+		registerProbeRefusalTool,
 	]) {
 		try {
 			disposables.push(register(ctx));

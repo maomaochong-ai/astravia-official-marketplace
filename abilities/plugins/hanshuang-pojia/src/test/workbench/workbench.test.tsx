@@ -109,8 +109,8 @@ describe("workbench shell", () => {
 	it("opens the document library and renders a bundled write-up", async () => {
 		const api = makeBridge();
 		await open(api);
-		await go("docs");
-		expect(await screen.findByText("page.docs.title")).toBeTruthy();
+		await go("knowledge");
+		expect(await screen.findByText("page.knowledge.title")).toBeTruthy();
 		// 默认选中知识库根文档；正文经包内资源按需加载后才出现，所以等它，不同步断言。
 		expect(await screen.findAllByText(/Knowledge Base/)).toBeTruthy();
 	}, 15_000);
@@ -118,8 +118,8 @@ describe("workbench shell", () => {
 	it("hands the pane to the reader after a pick, and gives the list back", async () => {
 		const api = makeBridge();
 		await open(api);
-		await go("docs");
-		await screen.findByRole("heading", { level: 1 }, { timeout: 4000 });
+		await go("knowledge");
+		await screen.findByTestId("docs-list");
 
 		// 窄面板下单列：目录在开，正文在下方。
 		const list = screen.getByTestId("docs-list");
@@ -237,9 +237,11 @@ describe("workbench shell", () => {
 			}),
 		});
 		await open(api);
-		await go("cases");
+		await go("knowledge");
+		// 知识页默认在文档视图；案例是同一页的另一个分段。
+		fireEvent.click(await screen.findByText("page.knowledge.cases"));
 
-		expect(await screen.findByText("page.cases.title")).toBeTruthy();
+		expect(await screen.findByText("cases.precedent.title")).toBeTruthy();
 		// 目录名就是案例名；计数在行里，正文在右侧阅读区。
 		const row = await screen.findByTitle("/work/cases/demo");
 		// 行尾不再是「就绪/受阻」，而是这份案例自己的预设标记。
@@ -270,7 +272,8 @@ describe("workbench shell", () => {
 		// 正文按需从包内读取：预览它不经过宿主的文件通道。
 		const api = makeBridge();
 		await open(api);
-		await go("cases");
+		await go("knowledge");
+		fireEvent.click(await screen.findByText("page.knowledge.cases"));
 
 		fireEvent.click(await screen.findByTitle("cases/elf-packed-loader/"));
 

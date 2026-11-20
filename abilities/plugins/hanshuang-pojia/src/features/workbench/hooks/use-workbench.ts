@@ -367,8 +367,8 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 	const nativeFacts = native?.value ?? null;
 	const nativeMap = useMemo(() => (nativeFacts ? addressMapFor(nativeFacts) : null), [nativeFacts]);
 	const disasm = useDisasm({ bytes: sample?.bytes ?? null, facts: nativeFacts, map: nativeMap, bridge, enabled: page === "disasm" });
-	const docs = useDocs(bridge, page === "docs");
-	const cases = useCases(bridge, cwd, page === "cases");
+	const docs = useDocs(bridge, page === "knowledge");
+	const cases = useCases(bridge, cwd, page === "knowledge");
 	// 面板自己的案例库：不随页面开关，因为分析完成后不管停在哪一页都要沉淀。
 	const myCases = useMyCases(bridge, cwd);
 
