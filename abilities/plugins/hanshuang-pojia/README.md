@@ -78,7 +78,7 @@ Registered from `src/tools/register-tools.ts`, one file per tool:
 | `install_astravia` | the instruction block for a global `AGENTS.md`, handed to the save dialog |
 | `inject_target` | injection plan + runnable installer script for Codex / Claude / OpenCode / Cursor / ZCode / DSH / WorkBuddy; the plugin never writes your home directory |
 
-All thirty-two declare `scope_use` explicitly (fail-closed) and only touch the workspace through the host `fs`
+All thirty-four declare `scope_use` explicitly (fail-closed) and only touch the workspace through the host `fs`
 API. Samples are read with `fs.readBinaryFile`, capped at the host's own 32 MiB binary-read ceiling.
 Bigger or out-of-project samples are handed to the chat agent, which runs with the app's file access.
 
@@ -138,7 +138,7 @@ addressing, labels, directives, immediates that would need two instructions) are
 | --- | --- |
 | `ui.slot.activity-tab` | the workbench panel |
 | `agent.tools.register`, `agent.toolHandler.execute`, `agent.tools.control` | the thirty-two tools; `agent.tools.control` lets the kernel block hide the lab-only tools while lab mode is off (ADR 0009) |
-| `agent.command.run` | `probe_environment`, `install_toolchain`, `run_radare`, `decompile_android`, `verify_signature`, `frida_dump`: the sixteen executables declared in `commands`, each one approved by the user. `pwsh` / `powershell` are there for the injector's R1 route — `inject_target { apply: true }` runs the generated script through this channel |
+| `agent.command.run` | `probe_environment`, `install_toolchain`, `run_radare`, `decompile_android`, `verify_signature`, `frida_dump`: the seventeen executables declared in `commands`, each one approved by the user. `python` is what runs a precedent's tools (`run_case_tool`), and `pwsh` / `powershell` are there for the injector's R1 route — `inject_target { apply: true }` runs the generated script through this channel |
 | `agent.session.write` | tool results in the conversation, the panel's send-to-chat button |
 | `agent.session.read` | the panel's live conversation status (turn running, tool in flight) |
 | `storage.read`, `storage.write` | the sample shelf and settings survive a restart; without them the panel falls back to in-session memory |
