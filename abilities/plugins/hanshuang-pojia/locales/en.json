@@ -928,5 +928,6 @@
   "inject.clearAll.hint": "Build a script that strips marker blocks from {{count}} targets (asks first)",
   "inject.copiedTo": "Script copied and saved to {{path}}",
   "docs.filter": "Filter",
-  "settings.group.data": "Data"
+  "settings.group.data": "Data",
+  "tool.runCaseTool.label": "Run precedent tool"
 }

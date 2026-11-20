@@ -928,5 +928,6 @@
   "inject.clearAll.hint": "生成摘除 {{count}} 个目标标记块的脚本（会先让你确认）",
   "inject.copiedTo": "脚本已复制，并保存到 {{path}}",
   "docs.filter": "筛选",
-  "settings.group.data": "数据"
+  "settings.group.data": "数据",
+  "tool.runCaseTool.label": "运行先例工具"
 }

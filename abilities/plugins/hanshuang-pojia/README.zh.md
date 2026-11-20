@@ -71,7 +71,7 @@
 | `install_astravia` | 生成注入全局 `AGENTS.md` 的指令块，交给保存对话框 |
 | `inject_target` | 为 Codex / Claude / OpenCode / Cursor / ZCode / DSH / WorkBuddy 等目标生成注入计划与可执行脚本；插件自己不写主目录 |
 
-三十二个工具都显式声明 `scope_use`（fail-closed），并且只通过宿主 `fs` 访问工作区。样本用 `fs.readBinaryFile` 读取，上限对齐宿主自己的 32 MiB 二进制读取天花板。更大或位于项目外的样本交给对话里的 Agent，它用的是应用自身的文件权限。注入类工具不落地主目录：只生成计划、脚本与还原步骤。
+三十四个工具都显式声明 `scope_use`（fail-closed），并且只通过宿主 `fs` 访问工作区。样本用 `fs.readBinaryFile` 读取，上限对齐宿主自己的 32 MiB 二进制读取天花板。更大或位于项目外的样本交给对话里的 Agent，它用的是应用自身的文件权限。注入类工具不落地主目录：只生成计划、脚本与还原步骤。
 
 几个分析工具把「返回什么」说清楚：伪代码没有类型恢复、没有 SSA、不做变量合并；函数级比对是指令形状
 指纹，不是等价性证明；hook 模板默认只观测并原样返回。最后一条是默认值而不是天花板 —— `mode`
@@ -117,7 +117,7 @@ node scripts/analyze.mjs asm x86-64 "mov rax, rbx" "ret" --address 0x1000
 | --- | --- |
 | `ui.slot.activity-tab` | 工作台面板 |
 | `agent.tools.register`、`agent.toolHandler.execute`、`agent.tools.control` | 三十二个工具；`agent.tools.control` 让 kernel 块在 lab 关闭时收起 lab 专属工具（ADR 0009） |
-| `agent.command.run` | `probe_environment`、`install_toolchain`、`run_radare`、`decompile_android`、`verify_signature`、`frida_dump`：使用 `commands` 里声明的十六个可执行文件，每个都需用户授权。`pwsh` / `powershell` 是注入器的 R1 路由在用 —— `inject_target { apply: true }` 会通过这个通道真执行生成的脚本 |
+| `agent.command.run` | `probe_environment`、`install_toolchain`、`run_radare`、`decompile_android`、`verify_signature`、`frida_dump`：使用 `commands` 里声明的十七个可执行文件，每个都需用户授权。`python` 用来跑先例包里的工具（`run_case_tool`），`pwsh` / `powershell` 是注入器的 R1 路由在用 —— `inject_target { apply: true }` 会通过这个通道真执行生成的脚本 |
 | `agent.session.write` | 工具结果写回对话、面板的「发给对话」按钮 |
 | `agent.session.read` | 面板显示对话实时状态（本轮是否在跑、哪个工具在跑） |
 | `storage.read`、`storage.write` | 样本架与设置能跨重启保留；没有授权时面板退化为会话内存 |

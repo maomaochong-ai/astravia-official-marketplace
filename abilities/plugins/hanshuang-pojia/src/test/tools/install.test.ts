@@ -176,7 +176,7 @@ describe("renderPlan", () => {
 describe("catalog consistency", () => {
 	it("covers every probed binary, plus the injector shell that is declared but not probed as a capability", () => {
 		// pwsh 不是逆向引擎：它是注入流水线的执行器（R1 路由），不得出现在 probe 的版本表里。
-		expect(COMMANDS).toEqual([...TOOLCHAIN.map(spec => spec.binary), "pwsh", "powershell"]);
+		expect(COMMANDS).toEqual([...TOOLCHAIN.map(spec => spec.binary), "python", "pwsh", "powershell"]);
 		expect(TOOLCHAIN.map(spec => spec.binary)).not.toContain("pwsh");
 	});
 

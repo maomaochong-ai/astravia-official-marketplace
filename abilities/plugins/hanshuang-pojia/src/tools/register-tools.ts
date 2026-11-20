@@ -30,6 +30,7 @@ import { registerDisassembleDexMethodTool } from "./apk/disassemble-dex-method";
 import { registerSearchCasesTool } from "./case/search-cases";
 import { registerRecordCaseNoteTool } from "./case/record-case-note";
 import { registerScaffoldCaseTool } from "./case/scaffold-case";
+import { registerRunCaseTool } from "./case/run-case-tool";
 import { registerInjectTargetTool } from "./inject/inject-target";
 import { registerProbeRefusalTool } from "./lab/probe-refusal";
 
@@ -72,6 +73,7 @@ export function registerTools(ctx: PluginContext): Disposable[] {
 		registerSearchCasesTool,
 		registerRecordCaseNoteTool,
 		registerScaffoldCaseTool,
+		registerRunCaseTool,
 		registerInjectTargetTool,
 		registerProbeRefusalTool,
 	]) {

@@ -3,7 +3,7 @@
   "name": "%plugin.name%",
   "description": "%plugin.description%",
   "icon": "assets/icon.svg",
-  "version": "2.17.19",
+  "version": "2.17.20",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "styles": [
@@ -48,6 +48,7 @@
     "zipalign",
     "frida",
     "frida-ps",
+    "python",
     "pwsh",
     "powershell"
   ],

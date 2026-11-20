@@ -408,7 +408,7 @@ export const COMPANIONS: readonly CompanionSpec[] = [
  * `pwsh` 不在 TOOLCHAIN 里：它不是逆向引擎，而是注入流水线的执行器（`inject_target` 的 R1 路由），
  * 由 `domain/inject/apply.ts` 自己探测，不让 `probe_environment` 的版本表把它算成一个逆向能力。
  */
-export const COMMANDS: readonly string[] = [...TOOLCHAIN.map(spec => spec.binary), "pwsh", "powershell"];
+export const COMMANDS: readonly string[] = [...TOOLCHAIN.map(spec => spec.binary), "python", "pwsh", "powershell"];
 
 export const CAPABILITY_LABEL: Record<Capability, string> = {
 	radare: "radare2 analysis (info, strings, functions, disassembly, pseudo-C, xrefs)",

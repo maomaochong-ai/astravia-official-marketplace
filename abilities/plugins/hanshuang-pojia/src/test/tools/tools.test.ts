@@ -130,6 +130,7 @@ describe("agent tools", () => {
 			"probe_refusal",
 			"read_doc",
 			"record_case_note",
+			"run_case_tool",
 			"run_radare",
 			"scaffold_case",
 			"scan_binary_strings",
