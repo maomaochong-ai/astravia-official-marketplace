@@ -44,7 +44,7 @@ export function DataTable({ columns, rows, mono, empty, className }: DataTablePr
 							{row.cells.map((cell, index) => (
 								<td
 									key={`${row.key}-${index}`}
-									className={`max-w-[42ch] truncate px-3.5 py-2 align-top text-[12px] ${isMono(index) ? "font-mono text-text-2" : "text-text"}`}
+									className={`max-w-[52ch] fb-wrap px-3.5 py-2 align-top text-[12px] ${isMono(index) ? "font-mono text-text-2" : "text-text"}`}
 								>
 									{cell}
 								</td>

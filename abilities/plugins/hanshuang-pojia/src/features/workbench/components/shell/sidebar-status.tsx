@@ -97,8 +97,8 @@ export function SidebarStatus({ status, rail }: SidebarStatusProps) {
 					<span aria-hidden className={`mt-1 size-1.5 shrink-0 rounded-full ${DOT[row.tone]}`} />
 					<div className="min-w-0 flex-1 leading-tight">
 						<span className="truncate text-[10px] text-text-4">{row.label}</span>
-						<span className="block truncate text-[11px] text-text">{row.value}</span>
-						{row.detail ? <span className="block truncate text-[9.5px] text-text-4">{row.detail}</span> : null}
+						<span className="block truncate text-[11px] text-text" title={row.value}>{row.value}</span>
+						{row.detail ? <span className="block truncate text-[9.5px] text-text-4" title={row.detail}>{row.detail}</span> : null}
 					</div>
 				</div>
 			))}

@@ -120,7 +120,7 @@ const STEP_TONE: Record<"strong" | "weak" | "fallback", string> = {
 									</span>
 									<span className="min-w-0 flex-1 text-[11.5px] leading-relaxed text-text">{step.hypothesis}</span>
 								</div>
-								<code className="truncate font-mono text-[10px] text-text-2">{`${step.action.tool} ${step.action.args}`}</code>
+								<code className="fb-wrap font-mono text-[10px] text-text-2">{`${step.action.tool} ${step.action.args}`}</code>
 								<span className="text-[10.5px] leading-relaxed text-text-3">
 									{t("guide.next.disproof")} {step.disproof}
 								</span>

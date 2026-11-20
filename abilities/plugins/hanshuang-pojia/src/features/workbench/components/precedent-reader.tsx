@@ -54,7 +54,7 @@ export function PrecedentReader({ precedent, onOpenStudy, onScaffold, busy }: Pr
 		<>
 			{/* 头部与 tabs 固定高度，正文吃剩余：不加 shrink-0 时正文会把 tabs 挤出去。 */}
 			<div className="flex shrink-0 min-w-0 flex-wrap items-center gap-1.5 px-3.5 pt-2.5">
-				<span className="min-w-0 truncate font-mono text-[10.5px] text-text-4" title={packagePath}>
+				<span className="min-w-0 fb-wrap font-mono text-[10.5px] text-text-4" title={packagePath}>
 					{packagePath}
 				</span>
 				<Tag tone="neutral">{precedent.preset}</Tag>
@@ -85,7 +85,7 @@ export function PrecedentReader({ precedent, onOpenStudy, onScaffold, busy }: Pr
 						className="inline-flex min-w-0 items-center gap-1 rounded border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
 					>
 						<Icon name="book" className="size-3 shrink-0" />
-						<span className="truncate">{t("cases.precedent.study")}</span>
+						<span className="fb-wrap">{t("cases.precedent.study")}</span>
 						{precedent.caseDocs.length > 1 ? (
 							<span className="shrink-0 font-mono text-[9.5px] text-text-4">{precedent.caseDocs.length}</span>
 						) : null}

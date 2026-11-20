@@ -102,7 +102,7 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 							}`}
 						>
 							<Icon name="filter" className="size-3" />
-							<span className="max-w-[120px] truncate">
+							<span className="max-w-[120px] fb-wrap">
 								{filterOpen ? t(DOC_GROUPS.find(entry => entry.id === group)?.labelKey ?? "docs.group.kb") : t("docs.filter")}
 							</span>
 						</summary>
@@ -114,7 +114,7 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 									group === null ? "bg-accent-soft text-accent" : "text-text-2 hover:bg-surface-hover"
 								}`}
 							>
-								<span className="min-w-0 flex-1 truncate">{t("docs.group.all")}</span>
+								<span className="min-w-0 flex-1 fb-wrap">{t("docs.group.all")}</span>
 								<span className="font-mono text-[9.5px] text-text-4">{total}</span>
 							</button>
 							{groupCounts.map(item => (
@@ -126,7 +126,7 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 										group === item.id ? "bg-accent-soft text-accent" : "text-text-2 hover:bg-surface-hover"
 									}`}
 								>
-									<span className="min-w-0 flex-1 truncate">{t(DOC_GROUPS.find(entry => entry.id === item.id)?.labelKey ?? "docs.group.kb")}</span>
+									<span className="min-w-0 flex-1 fb-wrap">{t(DOC_GROUPS.find(entry => entry.id === item.id)?.labelKey ?? "docs.group.kb")}</span>
 									<span className="font-mono text-[9.5px] text-text-4">{item.count}</span>
 								</button>
 							))}
@@ -159,8 +159,8 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 										}}
 										className="flex w-full flex-col gap-0.5 border-b border-line-subtle px-3 py-1.5 text-left last:border-0 hover:bg-surface-hover"
 									>
-										<span className="w-full truncate text-[11.5px] text-text">{hit.entry.title}</span>
-										<span className="w-full truncate font-mono text-[10px] text-text-4">{hit.entry.id}</span>
+										<span className="w-full fb-wrap text-[11.5px] text-text">{hit.entry.title}</span>
+										<span className="w-full fb-wrap font-mono text-[10px] text-text-4">{hit.entry.id}</span>
 										{hit.snippet ? <span className="line-clamp-2 w-full text-[10.5px] leading-snug text-text-3">{hit.snippet}</span> : null}
 									</button>
 								))
@@ -188,7 +188,7 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 													}}
 													className="flex w-full items-center gap-2 px-3 py-1 text-left hover:bg-surface-hover"
 												>
-													<span className="min-w-0 flex-1 truncate text-[11.5px] text-text">{doc.title}</span>
+													<span className="min-w-0 flex-1 fb-wrap text-[11.5px] text-text">{doc.title}</span>
 													<span className="shrink-0 font-mono text-[9.5px] text-text-4">{kilobytes(doc.bytes)}</span>
 												</button>
 											))}
@@ -301,8 +301,8 @@ function DocPreview({
 						{t("docs.preview.back")}
 					</button>
 					<div className="min-w-0 flex-1">
-						<div className="truncate text-[12.5px] font-semibold text-text">{entry.title}</div>
-						<div className="truncate font-mono text-[10px] text-text-4">{entry.path}</div>
+						<div className="fb-wrap text-[12.5px] font-semibold text-text">{entry.title}</div>
+						<div className="fb-wrap font-mono text-[10px] text-text-4">{entry.path}</div>
 					</div>
 					<div className="flex shrink-0 items-center gap-1">
 						<button

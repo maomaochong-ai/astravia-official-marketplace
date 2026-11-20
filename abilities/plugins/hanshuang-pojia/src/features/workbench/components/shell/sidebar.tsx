@@ -70,8 +70,8 @@ export function Sidebar({ page, onNavigate, status, timeline, rail, collapsed, o
 				</div>
 				{rail ? null : (
 					<div className="min-w-0 flex-1 leading-tight">
-						<div className="truncate text-[12.5px] font-semibold text-text">{t("plugin.name")}</div>
-						<div className="truncate text-[10px] text-text-4">{t("panel.tagline")}</div>
+						<div className="truncate text-[12.5px] font-semibold text-text" title={t("plugin.name")}>{t("plugin.name")}</div>
+						<div className="truncate text-[10px] text-text-4" title={t("panel.tagline")}>{t("panel.tagline")}</div>
 					</div>
 				)}
 				<button

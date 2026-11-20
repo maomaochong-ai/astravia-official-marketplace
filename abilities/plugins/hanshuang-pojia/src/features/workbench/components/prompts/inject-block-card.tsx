@@ -122,7 +122,7 @@ export function InjectBlockCard({ library, notify, packId, onPackChange }: Injec
 							))}
 						</div>
 					) : null}
-					<span className="ms-auto truncate font-mono text-[10px] text-text-4">~/.astravia/agent/{ASTRAVIA_AGENTS_FILE}</span>
+					<span className="fb-wrap ms-auto font-mono text-[10px] text-text-4">~/.astravia/agent/{ASTRAVIA_AGENTS_FILE}</span>
 					<button
 						type="button"
 						onClick={copy}

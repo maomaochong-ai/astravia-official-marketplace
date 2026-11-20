@@ -22,7 +22,7 @@ export function CaseReader({ record, docs }: CaseReaderProps) {
 	return (
 		<>
 			<div className="flex min-w-0 flex-wrap items-center gap-1.5 px-3.5 pt-2.5">
-				<span className="min-w-0 truncate font-mono text-[10.5px] text-text-4" title={record.path}>
+				<span className="min-w-0 fb-wrap font-mono text-[10.5px] text-text-4" title={record.path}>
 					{record.path}
 				</span>
 				<Tag tone="neutral">{record.authStatus ?? "pending"}</Tag>
@@ -67,7 +67,7 @@ function List({ title, items }: { title: string; items: readonly string[] }) {
 			) : (
 				<ul className="mt-1 space-y-0.5">
 					{items.map(item => (
-						<li key={item} className="truncate font-mono text-[10.5px] text-text-3" title={item}>
+						<li key={item} className="fb-wrap font-mono text-[10.5px] text-text-3" title={item}>
 							{item}
 						</li>
 					))}

@@ -117,14 +117,14 @@ export function ComparePage({ model }: PageProps) {
 										<div key={`add-${finding.ruleId}`} className="flex items-center gap-2 px-3.5 py-1.5">
 											<span className="font-mono text-[10px] text-risk-high">+</span>
 											<span className={`font-mono text-[10px] ${SEVERITY_TEXT[finding.severity]}`}>{finding.severity}</span>
-											<span className="min-w-0 flex-1 truncate text-[11.5px] text-text">{finding.title}</span>
+											<span className="min-w-0 flex-1 fb-wrap text-[11.5px] text-text">{finding.title}</span>
 										</div>
 									))}
 									{diff.findings.resolved.map(finding => (
 										<div key={`res-${finding.ruleId}`} className="flex items-center gap-2 px-3.5 py-1.5">
 											<span className="font-mono text-[10px] text-risk-low">−</span>
 											<span className={`font-mono text-[10px] ${SEVERITY_TEXT[finding.severity]}`}>{finding.severity}</span>
-											<span className="min-w-0 flex-1 truncate text-[11.5px] text-text-3 line-through">{finding.title}</span>
+											<span className="min-w-0 flex-1 fb-wrap text-[11.5px] text-text-3 line-through">{finding.title}</span>
 										</div>
 									))}
 								</>
@@ -149,7 +149,7 @@ export function ComparePage({ model }: PageProps) {
 									<span>{t("compare.family.leftOnly")}</span>
 									<span className="ml-1 font-mono text-risk-low">{(baseline as { familyOnlyFindings: number }).familyOnlyFindings}</span>
 									<span>{t("compare.family.familyOnly")}</span>
-									<span className="ml-auto truncate font-mono text-[10px] text-text-4">avg {baseline.score.familyAvg.toFixed(1)} · max {baseline.score.familyMax}</span>
+									<span className="ml-auto fb-wrap font-mono text-[10px] text-text-4">avg {baseline.score.familyAvg.toFixed(1)} · max {baseline.score.familyMax}</span>
 								</div>
 								{baseline.findings.map(finding => (
 									<div key={`${finding.side}-${finding.ruleId}`} className="flex items-center gap-2 px-3.5 py-1.5">
@@ -157,7 +157,7 @@ export function ComparePage({ model }: PageProps) {
 											{finding.side === "common" ? "·" : finding.side === "left-only" ? "+" : "◊"}
 										</span>
 										<span className={`font-mono shrink-0 text-[10px] ${SEVERITY_TEXT[finding.severity]}`}>{finding.severity}</span>
-										<span className={`min-w-0 flex-1 truncate text-[11.5px] ${finding.side === "left-only" ? "text-text" : "text-text-3"}`}>{finding.title}</span>
+										<span className={`min-w-0 flex-1 fb-wrap text-[11.5px] ${finding.side === "left-only" ? "text-text" : "text-text-3"}`}>{finding.title}</span>
 										{finding.familyCount > 0 && (
 											<span className="shrink-0 rounded bg-surface-3 px-1.5 py-0.5 font-mono text-[9.5px] text-text-4">{finding.familyCount}×</span>
 										)}
@@ -192,14 +192,14 @@ function DiffLines({ added, removed, empty, addedLabel, removedLabel }: DiffLine
 				<div key={`a-${item}`} className="flex min-w-0 items-baseline gap-1.5">
 					<span className="shrink-0 font-mono text-[10px] text-risk-medium">+</span>
 					<span className="sr-only shrink-0 text-[9.5px] text-text-4">{addedLabel}</span>
-					<span className="min-w-0 truncate font-mono text-[10.5px] text-text-2">{item}</span>
+					<span className="min-w-0 fb-wrap font-mono text-[10.5px] text-text-2">{item}</span>
 				</div>
 			))}
 			{removed.map(item => (
 				<div key={`r-${item}`} className="flex min-w-0 items-baseline gap-1.5">
 					<span className="shrink-0 font-mono text-[10px] text-text-4">−</span>
 					<span className="sr-only shrink-0 text-[9.5px] text-text-4">{removedLabel}</span>
-					<span className="min-w-0 truncate font-mono text-[10.5px] text-text-4 line-through">{item}</span>
+					<span className="min-w-0 fb-wrap font-mono text-[10.5px] text-text-4 line-through">{item}</span>
 				</div>
 			))}
 		</div>

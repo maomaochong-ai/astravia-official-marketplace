@@ -397,3 +397,107 @@
 		--fb-ins: 10px;
 	}
 }
+
+
+/*
+ * 跨操作系统与大小屏的排版契约。三类机器三个变量：Windows 的 cjk 字体更宽、
+ * macOS 的字距更松、Linux 常见等宽字体缺少字形回退。所以：
+ *   · 行高用 leading-* 的**倍数**（随字体缩放），不用固定 h-*;
+ *   · 内容型文字（标题/路径/摘要）允许换行，只有时间戳与计数保留单行;
+ *   · 所有容器 min-width:0，否则 flex 子项撑不回去，长词直接把右边裁掉。
+ */
+.fb-wrap {
+	min-width: 0;
+	overflow-wrap: anywhere;
+	word-break: break-word;
+}
+
+/* 只有「列宽固定、内容必然是短标量」的地方才用单行截断（时间、计数）。 */
+.fb-oneline {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* 表单式两列：标签固定、值换行。比「一行 span 拼」更抗字体差异。 */
+.fb-field {
+	display: grid;
+	grid-template-columns: minmax(64px, max-content) minmax(0, 1fr);
+	gap: 4px 10px;
+	align-items: baseline;
+}
+
+.fb-field > dt,
+.fb-field > .fb-field-label {
+	color: var(--color-text-4, #94a3b8);
+	font-size: 10.5px;
+	white-space: nowrap;
+}
+
+.fb-field > dd,
+.fb-field > .fb-field-value {
+	margin: 0;
+	min-width: 0;
+	overflow-wrap: anywhere;
+	word-break: break-word;
+	font-size: 11.5px;
+	color: var(--color-text, #e2e8f0);
+}
+
+/* 窄面板：标签列收窄，值那一列才不会被挤成一条竖线。 */
+@container (max-width: 460px) {
+	.fb-field {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 1px;
+	}
+}
+
+/*
+ * 活动页日志行：原来是「时间 | 符号 | 单行截断的正文」三列 grid，
+ * 窄屏或 Windows 字体下正文被裁成半句。改成两行——第一行时间+工具名，
+ * 第二行摘要（可换行、完整显示）。
+ */
+.fb-log {
+	padding: 3px 10px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 10.5px;
+	line-height: 1.6;
+	color: var(--color-text-3, #94a3b8);
+	border-radius: 6px;
+}
+
+.fb-log-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 2px 8px;
+	min-width: 0;
+}
+
+.fb-log-body {
+	min-width: 0;
+	overflow-wrap: anywhere;
+	word-break: break-word;
+	font-size: 10px;
+	color: var(--color-text-4, #94a3b8);
+}
+
+/*
+ * 跨系统字体栈：Windows 用 Segoe UI + 微软雅黑、macOS 用 -apple-system + 苹方、
+ * Linux 用 Noto Sans SC。不定这串的话，Linux 上 CJK 会回退到缺字形的等宽字体，
+ * 行高与字宽一起变，同样的卡片就「显示不下」了。
+ * text-size-adjust 挡住移动端/高 DPI 下的自动放大。
+ */
+.fb-root {
+	-webkit-text-size-adjust: 100%;
+	text-size-adjust: 100%;
+	font-family:
+		system-ui,
+		-apple-system,
+		"Segoe UI",
+		"Noto Sans SC",
+		"Microsoft YaHei",
+		"PingFang SC",
+		sans-serif;
+}

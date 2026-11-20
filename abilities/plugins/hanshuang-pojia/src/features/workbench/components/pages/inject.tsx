@@ -90,7 +90,7 @@ export function InjectPage({ model, embedded = false, packId: packIdProp }: Page
 				<div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1.5 rounded-xl bg-surface-2 px-3 py-2 text-[10.5px] leading-relaxed text-text-3 ring-1 ring-line-subtle">
 					{clearArmed ? (
 						<span className="flex min-w-0 shrink-0 flex-wrap items-center gap-1.5 rounded-md border border-risk-high/40 bg-risk-high/10 px-2 py-0.5">
-							<span className="min-w-0 truncate text-risk-high">
+							<span className="min-w-0 fb-wrap text-risk-high">
 								{t("inject.clearAll.confirm", { count: markerTargets.length })}
 							</span>
 							<button
@@ -160,12 +160,12 @@ export function InjectPage({ model, embedded = false, packId: packIdProp }: Page
 										}`}
 									>
 										<button type="button" onClick={() => setTargetId(item.id)} className="flex w-full items-center gap-2 text-left">
-											<span className="min-w-0 flex-1 truncate text-[12px] font-medium text-text">{item.label}</span>
+											<span className="min-w-0 flex-1 fb-wrap text-[12px] font-medium text-text">{item.label}</span>
 											<span className={`shrink-0 rounded px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide ${FORM_TONE[item.form]}`}>
 												{t(`inject.form.${item.form}`)}
 											</span>
 										</button>
-										<div className="mt-1 w-full truncate font-mono text-[10px] text-text-4">{item.entry}</div>
+										<div className="mt-1 w-full fb-wrap font-mono text-[10px] text-text-4">{item.entry}</div>
 										{/* 操作按可用性出现：不可用目标不给「执行」，否则等于给一个永远失败的按钮。 */}
 										<div className="mt-2 flex flex-wrap items-center gap-1">
 											<button

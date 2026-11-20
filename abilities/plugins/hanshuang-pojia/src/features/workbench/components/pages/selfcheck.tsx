@@ -175,7 +175,7 @@ export function SelfCheckPage({ model }: PageProps) {
 							return (
 								<div key={id} className="flex items-center gap-2 px-3.5 py-1.5">
 									<span className={`size-1.5 shrink-0 rounded-full ${called ? "bg-accent" : "bg-text-4"}`} />
-									<span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-text-2">{id}</span>
+									<span className="min-w-0 flex-1 fb-wrap font-mono text-[10.5px] text-text-2">{id}</span>
 									<span className="shrink-0 rounded bg-surface-3 px-1.5 py-0.5 text-[9px] text-text-3">
 										{t(core ? "selfcheck.tools.core" : "selfcheck.tools.labOnly")}
 									</span>
@@ -193,14 +193,17 @@ export function SelfCheckPage({ model }: PageProps) {
 }
 
 function HealthRow({ entry, label }: { entry: HealthItem; label: string }) {
+	// 表单式两列：值那一列可换行，长路径不再被裁掉。
 	return (
 		<div className="flex items-start gap-2.5 px-3.5 py-2">
 			<Icon name={ICON[entry.status]} className={`mt-0.5 size-3.5 shrink-0 ${TONE[entry.status]}`} />
-			<div className="min-w-0 flex-1">
-				<div className="text-[11.5px] text-text">{label}</div>
-				<div className="mt-0.5 break-words font-mono text-[10px] leading-relaxed text-text-4">{entry.detail}</div>
-			</div>
-			<span className={`shrink-0 font-mono text-[9.5px] uppercase tracking-wide ${TONE[entry.status]}`}>{entry.status}</span>
+			<dl className="fb-field min-w-0 flex-1">
+				<dt className="flex items-center gap-1.5">
+					{label}
+					<span className={`font-mono text-[9.5px] uppercase tracking-wide ${TONE[entry.status]}`}>{entry.status}</span>
+				</dt>
+				<dd className="font-mono text-[10px] leading-relaxed text-text-4">{entry.detail}</dd>
+			</dl>
 		</div>
 	);
 }

@@ -99,7 +99,7 @@ export function DisasmPage({ model }: PageProps) {
 												active ? "fb-selected" : "hover:bg-surface-hover"
 											}`}
 										>
-											<span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-text">{item.name ?? t("disasm.functions.unnamed")}</span>
+											<span className="min-w-0 flex-1 fb-wrap font-mono text-[11.5px] text-text">{item.name ?? t("disasm.functions.unnamed")}</span>
 											<span className="shrink-0 font-mono text-[10.5px] text-text-4">{hex(item.offset)}</span>
 											<span className="shrink-0 rounded border border-line-subtle px-1 text-[9.5px] uppercase tracking-wide text-text-4">{t(`disasm.source.${item.source}`)}</span>
 										</button>

@@ -36,7 +36,9 @@ export function Card({ title, actions, className, bodyClassName, fill = false, t
 		>
 			{title ? (
 				<header className="fb-card-head flex shrink-0 items-center gap-2 border-b border-line-subtle">
-					<h2 className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text">{title}</h2>
+					<h2 className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text" title={title}>
+					{title}
+				</h2>
 					{actions ? <div className="flex shrink-0 items-center gap-1">{actions}</div> : null}
 				</header>
 			) : null}

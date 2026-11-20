@@ -164,8 +164,8 @@ export function CasesPage({ model, embedded = false }: PageProps & { embedded?: 
 													}`}
 												>
 													<div className="min-w-0 flex-1">
-														<div className="truncate text-[11.5px] text-text">{item.title}</div>
-														<div className="truncate font-mono text-[10px] text-text-4">{`cases/${item.slug}/`}</div>
+														<div className="fb-wrap text-[11.5px] text-text">{item.title}</div>
+														<div className="fb-wrap font-mono text-[10px] text-text-4">{`cases/${item.slug}/`}</div>
 														<div className="truncate font-mono text-[9.5px] text-text-4">
 															{t("cases.precedent.counts", { signals: item.signals.length, docs: item.docs.length })}
 														</div>
@@ -194,7 +194,7 @@ export function CasesPage({ model, embedded = false }: PageProps & { embedded?: 
 													active ? "fb-selected" : "hover:bg-surface-hover"
 												}`}
 											>
-												<span className="min-w-0 flex-1 truncate text-[11.5px] text-text">{item.name}</span>
+												<span className="min-w-0 flex-1 fb-wrap text-[11.5px] text-text">{item.name}</span>
 												<span className="shrink-0 font-mono text-[9.5px] text-text-4">
 													{t("cases.row.counts", { assets: item.inScope.length, evidence: item.evidenceCount })}
 												</span>
@@ -207,7 +207,7 @@ export function CasesPage({ model, embedded = false }: PageProps & { embedded?: 
 							{/* 扫描状态是脚注，不占一整张卡。 */}
 							<div className="flex shrink-0 items-center gap-1.5 border-t border-line-subtle px-3 py-1.5 text-[10px] text-text-4">
 								<Icon name={cases.scanning ? "refresh" : "check"} className={`size-3 shrink-0 ${cases.scanning ? "animate-spin" : ""}`} />
-								<span className="min-w-0 flex-1 truncate">
+								<span className="min-w-0 flex-1 fb-wrap">
 									{cases.scanning ? t("cases.scanning") : t("cases.count", { total: cases.cases.length })}
 								</span>
 								{cases.truncated > 0 ? <span className="shrink-0 text-risk-medium">{t("cases.truncated", { count: cases.truncated })}</span> : null}

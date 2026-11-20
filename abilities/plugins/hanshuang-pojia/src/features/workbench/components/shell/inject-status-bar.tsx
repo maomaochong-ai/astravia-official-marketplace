@@ -20,7 +20,7 @@ export function InjectStatusBar({ library }: InjectStatusBarProps) {
 	if (!active) return null;
 
 	return (
-		<div className="flex h-7 shrink-0 items-center gap-2 overflow-hidden border-b border-line-subtle bg-surface-3/40 px-4 text-[10.5px]">
+		<div className="flex min-h-7 shrink-0 items-center gap-2 border-b border-line-subtle bg-surface-3/40 px-4 text-[10.5px]">
 			<span className="flex min-w-0 items-center gap-1.5 text-text-2">
 				<span className="size-1.5 shrink-0 rounded-full bg-accent" />
 				<span className="max-w-[200px] truncate font-medium">{active.name}</span>

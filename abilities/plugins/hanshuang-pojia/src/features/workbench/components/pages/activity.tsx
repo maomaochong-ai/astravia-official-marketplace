@@ -25,14 +25,15 @@ function atValue(at: string): number {
 	return Number.isNaN(parsed) ? 0 : parsed;
 }
 
+const MARK: Record<string, string> = { error: "✗", running: "▸" };
+
 /**
- * 活动页：**终端日志**风格的调用链。
+ * 活动页：终端日志风格的调用链，**两行一条**。
  *
- * 这一页回答的是「插件在跟宿主对话时，过程中发生了什么」——工具何时开始、跑了多久、
- * 谁报错、结果多大。这类信息本来就是流式日志，用卡片逐条排版反而把时间轴拆散了。
- * 所以改成等宽、单行、带时间戳的日志流：一屏能看到更多行，失败行自带颜色。
- *
- * 配色不另起一套：运行中 = risk-medium，成功 = risk-low，失败 = risk-high，工具名 = 前景色。
+ * 上一版是「时间 | 符号 | 正文」三列 grid，正文那一列被 `truncate` 卡成一行 ——
+ * 窄面板或 Windows 字体下摘要只显示半句话，看起来就是「被圆角容器遮住」。
+ * 现在第一行放时间 + 工具名 + 耗时（都是短标量），第二行放摘要（可换行，完整显示）；
+ * 提示链本来就该是流式的，两行比一行更好读。
  */
 export function ActivityPage({ model }: ActivityPageProps) {
 	const { t } = useTranslation();
@@ -73,7 +74,7 @@ export function ActivityPage({ model }: ActivityPageProps) {
 			/>
 
 			<div className="fb-page">
-				<div className="grid shrink-0 grid-cols-2 gap-2 @min-[560px]:grid-cols-4">
+				<div className="grid shrink-0 grid-cols-2 gap-2 @min-[520px]:grid-cols-4">
 					<StatTile label={t("activity.stat.turn")} value={timeline.current.tools} />
 					<StatTile label={t("activity.stat.failed")} value={timeline.current.failures} tone={timeline.current.failures > 0 ? "high" : "default"} />
 					<StatTile label={t("activity.stat.elapsed")} value={formatDuration(timeline.current.ms)} hint={timeline.current.open ? t("activity.stat.open") : undefined} />
@@ -106,22 +107,21 @@ export function ActivityPage({ model }: ActivityPageProps) {
 							<p className="max-w-sm whitespace-pre-line text-[10.5px] leading-relaxed text-text-4">{t("page.activity.empty.steps")}</p>
 						</div>
 					) : (
-						<div className="fb-terminal fb-scroll fb-fill-scroll overflow-y-auto py-1.5">
+						<div className="fb-terminal fb-scroll fb-fill-scroll overflow-y-auto p-1.5">
 							{rows.map(row => {
 								if (row.kind === "span") {
 									const span = row.payload as (typeof timeline.spans)[number];
 									const tone = span.status === "error" ? "err" : span.status === "running" ? "run" : "ok";
 									return (
 										<div key={row.key} className="fb-log" data-tone={tone} data-span-status={span.status}>
-											<span className="fb-log-time tabular-nums text-text-4">{clock(span.startedAt)}</span>
-											<span className="fb-log-mark">
-												{span.status === "error" ? "✗" : span.status === "running" ? "▸" : "✓"}
-											</span>
-											<span className="min-w-0 truncate">
-												<span className="fb-log-name">{span.toolName}</span>
-												<span className="ms-2 text-text-4 tabular-nums">{formatDuration(span.ms)}</span>
-												<span className="ms-2 text-text-4">{span.turn > 0 ? t("activity.turnBehind", { count: span.turn }) : t("activity.turnNow")}</span>
-											</span>
+											<div className="fb-log-head">
+												<span className="shrink-0 tabular-nums text-text-4">{clock(span.startedAt)}</span>
+												<span className="shrink-0 text-text-4">{MARK[span.status] ?? "✓"}</span>
+												<span className="fb-log-name fb-wrap font-medium">{span.toolName}</span>
+												<span className="shrink-0 tabular-nums text-text-4">{formatDuration(span.ms)}</span>
+												<span className="shrink-0 text-text-4">{span.turn > 0 ? t("activity.turnBehind", { count: span.turn }) : t("activity.turnNow")}</span>
+											</div>
+											<div className="fb-log-body">{span.status === "error" ? t("status.span.error") : span.status === "running" ? t("status.span.running") : t("status.span.ok")}</div>
 										</div>
 									);
 								}
@@ -129,13 +129,14 @@ export function ActivityPage({ model }: ActivityPageProps) {
 								const hints = payloadHints(entry.payload);
 								return (
 									<div key={row.key} className="fb-log" data-tone="ok">
-										<span className="fb-log-time tabular-nums text-text-4">{clock(entry.at)}</span>
-										<span className="fb-log-mark text-text-4">·</span>
-										<span className="min-w-0">
-											<span className="fb-log-name">{entry.toolId}</span>
-											<span className="ms-2 text-text-3">{entry.summary}</span>
-											{hints.length > 0 ? <span className="ms-2 text-text-4">[{hints.join(" · ")}]</span> : null}
-										</span>
+										<div className="fb-log-head">
+											<span className="shrink-0 tabular-nums text-text-4">{clock(entry.at)}</span>
+											<span className="shrink-0 text-text-4">·</span>
+											<span className="fb-log-name fb-wrap font-medium">{entry.toolId}</span>
+										</div>
+										{/* 摘要与规模量都是内容型文字：换行显示，不截断。 */}
+										<div className="fb-log-body">{entry.summary}</div>
+										{hints.length > 0 ? <div className="fb-log-body">[{hints.join(" · ")}]</div> : null}
 									</div>
 								);
 							})}

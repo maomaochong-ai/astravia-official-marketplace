@@ -64,7 +64,7 @@ export function SignaturePage({ model, embedded = false }: PageProps & { embedde
 							/>
 							<div className="min-w-0 flex-1">
 								<div className="flex items-center gap-2">
-									<span className="truncate font-mono text-[11.5px] text-text">{scheme.label}</span>
+									<span className="fb-wrap font-mono text-[11.5px] text-text">{scheme.label}</span>
 									<Tag tone={scheme.enabled ? "low" : "neutral"}>{scheme.enabled ? t("signature.present") : t("signature.absent")}</Tag>
 								</div>
 								<p className="mt-0.5 text-[10.5px] leading-relaxed text-text-4">{scheme.detail}</p>

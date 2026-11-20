@@ -49,7 +49,7 @@ export function BackupRestoreDialog({ open, backups, onClose, onRestore, onDelet
 							{sorted.map(backup => (
 								<li key={backup.id} className="flex items-center gap-3 px-4 py-2.5">
 									<div className="min-w-0 flex-1">
-										<div className="truncate text-[12px] font-medium text-text">{backup.promptName}</div>
+										<div className="fb-wrap text-[12px] font-medium text-text">{backup.promptName}</div>
 										<div className="text-[10.5px] text-text-4">{formatTime(backup.createdAt)}</div>
 									</div>
 									<button

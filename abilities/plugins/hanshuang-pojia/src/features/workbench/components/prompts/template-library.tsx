@@ -58,7 +58,7 @@ export function TemplateLibrary({ existing, onImport, notify }: TemplateLibraryP
 					<div key={entry.id} className="flex items-start gap-2 px-3.5 py-2">
 						<Icon name="file" className="mt-0.5 size-3 shrink-0 text-text-4" />
 						<div className="min-w-0 flex-1">
-							<div className="truncate text-[11.5px] text-text" title={entry.id}>
+							<div className="fb-wrap text-[11.5px] text-text" title={entry.id}>
 								{entry.title}
 							</div>
 							<div className="line-clamp-2 text-[10px] leading-relaxed text-text-4">{entry.summary}</div>

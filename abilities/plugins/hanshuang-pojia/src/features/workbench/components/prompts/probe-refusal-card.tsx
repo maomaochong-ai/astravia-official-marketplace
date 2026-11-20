@@ -70,10 +70,10 @@ export function ProbeRefusalCard({ record, onRun, onDiscuss, refresh }: ProbeRef
 					<div className="flex flex-wrap items-center gap-2 border-b border-line-subtle px-3.5 py-2 text-[10.5px]">
 						<span className="font-mono text-text-2">{record.model}</span>
 						<span className="text-text-4">·</span>
-						<span className="truncate font-mono text-text-4">{record.host}</span>
+						<span className="fb-wrap font-mono text-text-4">{record.host}</span>
 						<span className="text-text-4">·</span>
 						<span className="text-text-4">{record.at.slice(0, 19).replace("T", " ")}</span>
-						<span className="ml-auto min-w-0 truncate text-text-2">{record.summary.headline}</span>
+						<span className="ml-auto min-w-0 fb-wrap text-text-2">{record.summary.headline}</span>
 					</div>
 
 					<div className="fb-scroll m-2 overflow-x-auto rounded-lg ring-1 ring-line-subtle">

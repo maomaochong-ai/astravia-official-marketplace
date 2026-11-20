@@ -141,9 +141,9 @@ export function ReportsPage({ model }: PageProps) {
 											<p className="px-3.5 py-2 text-[10.5px] text-text-4">{t("reports.severity.none")}</p>
 										) : (
 											severity.map(([level, count]) => (
-												<div key={level} className="flex items-center gap-2 px-3.5 py-1.5">
-													<span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-text-2">{level}</span>
-													<span className="shrink-0 font-mono text-[11px] tabular-nums text-text">{count}</span>
+												<div key={level} className="fb-field px-3.5 py-1.5">
+													<span className="fb-field-label font-mono">{level}</span>
+													<span className="fb-field-value font-mono tabular-nums">{count}</span>
 												</div>
 											))
 										)}
@@ -220,7 +220,7 @@ export function ReportsPage({ model }: PageProps) {
 										title={entry.path}
 										className="flex w-full min-w-0 items-center gap-2 px-3.5 py-2 text-left transition-colors hover:bg-surface-hover"
 									>
-										<span className="min-w-0 flex-1 truncate text-[11.5px] text-text">{entry.name}</span>
+										<span className="min-w-0 flex-1 fb-wrap text-[11.5px] text-text">{entry.name}</span>
 										<Tag tone="neutral">{entry.format.toUpperCase()}</Tag>
 										<span className="shrink-0 font-mono text-[10.5px] tabular-nums text-text-2">
 											{entry.score} · {entry.grade}
@@ -258,7 +258,7 @@ export function ReportsPage({ model }: PageProps) {
 									className="flex w-full min-w-0 items-center gap-2 px-3.5 py-1.5 text-left transition-colors hover:bg-surface-hover"
 								>
 									<Icon name="file" className="size-3 shrink-0 text-text-4" />
-									<span className="min-w-0 flex-1 truncate text-[11.5px] text-text">{file.name}</span>
+									<span className="min-w-0 flex-1 fb-wrap text-[11.5px] text-text">{file.name}</span>
 									<span className="shrink-0 font-mono text-[9.5px] text-text-4">{formatBytes(file.bytes)}</span>
 								</button>
 							))}
@@ -269,7 +269,7 @@ export function ReportsPage({ model }: PageProps) {
 				{/* 存储状态是事实，不是提示：放在页尾一行，不占一整个卡片。 */}
 				<div className="flex shrink-0 items-center gap-1.5 px-1 text-[10px] text-text-4">
 					<Icon name={model.persisted ? "check" : "alert"} className={`size-3 shrink-0 ${model.persisted ? "text-risk-low" : "text-risk-medium"}`} />
-					<span className="min-w-0 truncate">{model.persisted ? t("reports.storage.on") : t("reports.storage.off")}</span>
+					<span className="min-w-0 fb-wrap">{model.persisted ? t("reports.storage.on") : t("reports.storage.off")}</span>
 				</div>
 			</div>
 
@@ -288,7 +288,7 @@ export function ReportsPage({ model }: PageProps) {
 								<Icon name="chevron" className="size-3 rotate-180" />
 								{t("reports.workspace.back")}
 							</button>
-							<span className="min-w-0 flex-1 truncate font-mono text-[10px] text-text-4">{previewPath}</span>
+							<span className="min-w-0 flex-1 fb-wrap font-mono text-[10px] text-text-4">{previewPath}</span>
 						</div>
 						<div className="fb-scroll min-h-0 flex-1 overflow-y-auto px-4 py-3">
 							{previewBody === null ? (
