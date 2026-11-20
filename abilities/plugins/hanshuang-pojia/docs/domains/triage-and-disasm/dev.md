@@ -40,5 +40,5 @@
 ## 相关文档与测试
 
 - 契约：[`../contract/case-library.md`](../../contract/case-library.md)（判定点怎么进案卷）
-- 审计：[`../audits/upstream-parity-audit-2.9.3.md`](../../audits/upstream-parity-audit-2.9.3.md)
+- 审计：[`../audits/upstream-parity.md` §3.1](../../audits/upstream-parity.md)
 - 测试：`src/test/analysis/{triage,disasm,deep,diff,symbols,code-item}.test.ts`

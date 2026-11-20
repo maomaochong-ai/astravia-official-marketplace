@@ -29,7 +29,7 @@
 - **先查 `kb-index.json`，再全文搜**：信号已知时它是直达的；只有不知道叫什么才全文搜。
 - `search_docs` 匹配的是标题 / id / 主题，**不搜正文**。关键词只活在正文里时，换成该文档标题里的词再搜。
 - 手册随 SDK 装：`npx astravia-plugin-cli docs` 给出插件实际编译版本的合同，**不要硬编码 `node_modules` 路径**。
-- 知识库是从上游 1:1 移植的（292 篇，SHA-256 集合 diff 为 0，见 [`../audits/capability-gap-2.13.1.md`](../../audits/capability-gap-2.13.1.md) §3.4）。感觉「应该有的文章没有」时先确认是移植缺失还是上游本来没有。
+- 知识库是从上游 1:1 移植的（292 篇，SHA-256 集合 diff 为 0，见 [`../audits/upstream-parity.md`](../../audits/upstream-parity.md) §5.5）。感觉「应该有的文章没有」时先确认是移植缺失还是上游本来没有。
 
 ## 失败怎么读
 

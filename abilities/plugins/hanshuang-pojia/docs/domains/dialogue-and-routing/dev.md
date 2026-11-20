@@ -31,7 +31,7 @@
 - `target` 用**完整路径段**（`reverse-engineering/dsl-vm-reverse`），不是首段目录名——按首段算会把
   R4 误判成「已具备」。
 - 44 个目标里插件只有 5 个（R0 / R1 / R3 / R6 / R7），缺 39 个；那 39 个**上游便携包里也没有**。
-  缺口是「39 个目标 ≈ 5 份能力」，不是 39 份内容，见 [`../audits/capability-gap-2.13.1.md`](../../audits/capability-gap-2.13.1.md) §3.1。
+  缺口是「39 个目标 ≈ 5 份能力」，不是 39 份内容，见 [`../audits/upstream-parity.md`](../../audits/upstream-parity.md) §5.2。
 - 自检页 `assets.routing` 会打印表的指纹（`table bfc208b6`）与 fallback：排查「页面还是旧版」时，
   它比版本号更能说明加载的是哪一份表。
 

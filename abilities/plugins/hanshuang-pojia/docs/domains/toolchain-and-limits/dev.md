@@ -33,7 +33,7 @@
 | `agent.session.write` | `sendPrompt` / `insertText` / `abort` | 面板发送与一键提问 |
 | `ui.slot.activity-tab` | `ctx.ui.registerActivityTab(...)` | `src/index.tsx:235` |
 
-这条方法学写在 [`../audits/capability-gap-2.13.1.md`](../../audits/capability-gap-2.13.1.md) §4.5 ——
+这条方法学写在 [`../audits/upstream-parity.md`](../../audits/upstream-parity.md) §9.3 ——
 2.13.1 那轮审计曾把这三条误判为「僵尸」，后续更正，一条都没删。
 
 ## 浏览器沙箱的硬边界

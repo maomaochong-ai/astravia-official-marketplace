@@ -113,5 +113,5 @@ src/content/{docs,packs}/    # 随包语料，索引与正文分离
 ## 相关文档与测试
 
 - 使用者手册：`src/content/docs/manual/PANEL-HANDBOOK.md`
-- 界面审计：[`../audits/upstream-ui-parity-2.9.8.md`](../../audits/upstream-ui-parity-2.9.8.md)
+- 界面审计：[`../audits/upstream-parity.md` §10](../../audits/upstream-parity.md)
 - 测试：`src/test/workbench/{panel-boundary,workbench,chat}.test.ts`、`src/test/report/live-status.test.ts`

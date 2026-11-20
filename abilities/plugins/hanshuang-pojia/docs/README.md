@@ -69,24 +69,15 @@
 
 读之前先看标题里的版本号：它们记录的是当时的对照结果，之后版本前进了，结论可能已经不成立。
 
-- [toolchain-bundling.md](audits/toolchain-bundling.md) — 2.8.0：插件到底带不带工具链，与 2.0 便携版逐项对照。
-- [upstream-parity-audit-2.9.3.md](audits/upstream-parity-audit-2.9.3.md) — 2.9.3：能力对等全量审计。
-  部分结论已被 [case-library.md](contract/case-library.md) 补正。
-- [upstream-ui-parity-2.9.8.md](audits/upstream-ui-parity-2.9.8.md) — 2.9.8：界面与实时面板对等审计。
-- [win-defender-triage-2.9.8.md](audits/win-defender-triage-2.9.8.md) — 2.9.8：Defender 报毒的定性排查，
-  顺带记了 2.9.6 文档加载机制的返工（`import.meta.glob` → 纯文本静态资源）。
-- [skill-registration-2.13.md](audits/skill-registration-2.13.md) — 2.13：技能「未注册」排查，
-  结论是注册正常、运行的是旧版本。
+- [upstream-parity.md](audits/upstream-parity.md) — **主对等报告**（合并了原来五份）：2.9.3 → 2.13.1 → 2.14.0 三代基线、
+  逐能力点对照、310 MB 拆账、31 个脚本归宿、14 条战例工程的跨 OS 落地、三处卡点与四项偏差。
+  先读它的 §2–§3（现在对等不对等），§9 是已被后续轮次修正的早期结论，保留为可查。
+- [toolchain-bundling.md](audits/toolchain-bundling.md) — 2.8.0：插件到底带不带工具链，与 2.0 便携版逐项对照；
+  「自带」分三层（随包制品 / 运行时获取 / 安装动作），混看是误判的根源。
 - [refusal-scope-router.md](audits/refusal-scope-router.md) — 2.13.1：「范围路由」写成划界的一次错误设计，**已推翻**，
   取代者是 `src/domain/target-shape.ts`（只读形态、只附加入口）。
-- [capability-gap-2.13.1.md](audits/capability-gap-2.13.1.md) — 2.13.1：便携包基线下的能力缺口、僵尸代码处置、
-  路由覆盖 44/39。**基线口径已被下一篇取代，结论仍有效。**
-- [upstream-parity-2.14.0.md](audits/upstream-parity-2.14.0.md) — 2.14.0：改用**上游整体项目**（310MB 分发树）作基线，
-  拆账 300MB 第三方资产、31 个脚本逐个归宿、14 条战例工程的跨 OS 落地方式。当前的主对等报告。
-- [capability-comparison-2.14.0.md](audits/capability-comparison-2.14.0.md) — 2.14.0：上游逐能力点对等表，
-  每行只有「对等 / 更强 / 有意不对等 / 不适用」四种结论，不对等的都写了理由。
-- [completion-2.14.0.md](audits/completion-2.14.0.md) — 2.14.0：13 条要求的落点、三处卡点的改法、
-  验证矩阵与仍保留的差异。**要判断「这次到底改完了没有」看这一篇。**
+- [win-defender-triage-2.9.8.md](audits/win-defender-triage-2.9.8.md) — 2.9.8：Defender 报毒的定性排查，
+  顺带记了 2.9.6 文档加载机制的返工（`import.meta.glob` → 纯文本静态资源）。
 
 新增一篇照同样写法：**文件名或首行带版本，正文第一段写清时点、被测对象、对比对象**。别写成「当前状态」——
 那种东西属于 `domains/*/dev.md` 或 `reference/`。
@@ -132,8 +123,12 @@
 | `docs/case-corpus.md` | `docs/contract/case-corpus.md` |
 | `docs/toolchain-parity.md` | `spec/toolchain-parity.md`（曾短暂在 `docs/reference/`） |
 | `docs/toolchain-bundling.md` | `docs/audits/toolchain-bundling.md` |
-| `docs/upstream-parity-audit-2.9.3.md` | `docs/audits/upstream-parity-audit-2.9.3.md` |
-| `docs/upstream-ui-parity-2.9.8.md` | `docs/audits/upstream-ui-parity-2.9.8.md` |
+| `docs/upstream-parity-audit-2.9.3.md` | 并入 `docs/audits/upstream-parity.md` §9 |
+| `docs/audits/capability-gap-2.13.1.md` | 并入 `docs/audits/upstream-parity.md` §5.2–§5.5、§9.3 |
+| `docs/audits/upstream-parity-2.14.0.md` | 并入 `docs/audits/upstream-parity.md` §4–§7 |
+| `docs/audits/capability-comparison-2.14.0.md` | 并入 `docs/audits/upstream-parity.md` §2–§3 |
+| `docs/audits/completion-2.14.0.md` | 并入 `docs/audits/upstream-parity.md` §7.1–§7.2、§8 |
+| `docs/audits/upstream-ui-parity-2.9.8.md` | 并入 `docs/audits/upstream-parity.md` §10 |
 | `docs/win-defender-triage-2.9.8.md` | `docs/audits/win-defender-triage-2.9.8.md` |
 | `docs/ui-handbook.md` | `src/content/docs/manual/PANEL-HANDBOOK.md`（随包发布） |
 | `docs/modules/<域>.md`（9 篇） | `docs/domains/<域>/dev.md`，并新增 `docs/domains/<域>/usage.md` |
