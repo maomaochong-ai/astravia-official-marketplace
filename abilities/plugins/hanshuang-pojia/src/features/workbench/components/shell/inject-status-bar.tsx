@@ -19,7 +19,7 @@ export function InjectStatusBar({ lab, library }: InjectStatusBarProps) {
 	if (!active && !lab.enabled) return null;
 
 	return (
-		<div className="flex items-center gap-2 border-b border-line-subtle bg-surface-3/50 px-3 py-1.5 text-[10.5px]">
+		<div className="flex h-7 shrink-0 items-center gap-2 overflow-hidden border-b border-line-subtle bg-surface-3/50 px-4 text-[10.5px]">
 			{lab.enabled ? (
 				<span className="flex items-center gap-1 rounded-full bg-risk-low/10 px-2 py-0.5 font-medium text-risk-low">
 					<span className="size-1.5 rounded-full bg-risk-low" />

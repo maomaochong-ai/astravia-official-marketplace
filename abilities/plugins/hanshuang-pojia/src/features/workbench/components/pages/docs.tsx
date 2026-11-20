@@ -1,5 +1,6 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useState } from "react";
+import { SplitHandle, useStoredWidth } from "../../hooks/use-sidebar-width";
 import { AiButton } from "../shell/ai-button";
 import { Card } from "../shell/card";
 import { EmptyState } from "../shell/empty-state";
@@ -40,6 +41,13 @@ export function DocsPage({ model }: PageProps) {
 	const groupCounts = docs.groups.map(item => ({ id: item.id, count: item.topics.reduce((sum, topic) => sum + topic.entries.length, 0) }));
 	const total = groupCounts.reduce((sum, item) => sum + item.count, 0);
 	const visibleGroups = group ? docs.groups.filter(item => item.id === group) : docs.groups;
+	// 左右两栏之间可以拖：分类从 4 组变成 5 组后，列表标题变长，固定 240–300px 会截断。
+	const [listWidth, setListWidth, resetListWidth] = useStoredWidth({
+		storageKey: "hanshuang-pojia:docs-list-width",
+		fallback: 288,
+		min: 220,
+		max: 460,
+	});
 
 	return (
 		<>
@@ -67,11 +75,12 @@ export function DocsPage({ model }: PageProps) {
 					<StatTile label={t("docs.stat.lines")} value={docs.totals.lines} />
 				</div>
 
-				{/* 窄面板：列表吃 38% 高度、正文吃剩下的；宽面板：左右两列各占满一整行。 */}
+				{/* 窄面板：列表吃 38% 高度；宽面板：三列，中间那条是拖拽把手。 */}
 				<div
+					style={{ "--docs-list": `${listWidth}px` } as Record<string, string>}
 					className={`fb-fill grid min-h-0 gap-2.5 ${
 						showList
-							? "grid-rows-[minmax(0,38%)_minmax(0,1fr)] @min-[900px]:grid-cols-[minmax(240px,300px)_minmax(0,1fr)] @min-[900px]:grid-rows-[minmax(0,1fr)]"
+							? "grid-rows-[minmax(0,38%)_minmax(0,1fr)] @min-[900px]:grid-cols-[var(--docs-list)_9px_minmax(0,1fr)] @min-[900px]:grid-rows-[minmax(0,1fr)] @min-[900px]:gap-0"
 							: ""
 					}`}
 				>
@@ -170,6 +179,20 @@ export function DocsPage({ model }: PageProps) {
 							</div>
 						</Card>
 					</div>
+					{/* 只在宽布局出现：窄布局上下堆叠，横向拖没有意义。 */}
+					{showList ? (
+						<div className="hidden @min-[900px]:flex">
+							<SplitHandle
+								side="right"
+								value={listWidth}
+								min={220}
+								max={460}
+								onChange={setListWidth}
+								onReset={resetListWidth}
+								label={t("docs.list.resize")}
+							/>
+						</div>
+					) : null}
 
 					<Card
 						title={docs.selected ? docs.selected.title : t("docs.reader.title")}

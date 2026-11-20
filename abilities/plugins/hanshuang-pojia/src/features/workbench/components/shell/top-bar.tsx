@@ -34,7 +34,7 @@ export function TopBar({ page, chat, sending, onSend, canSend, lab, onToggleLab 
 				: t("chat.state.disconnected");
 
 	return (
-		<header className="flex h-11 shrink-0 items-center gap-2 border-b border-line-subtle bg-surface-2 px-3 @min-[720px]:px-4">
+		<header className="flex h-11 shrink-0 items-center gap-2 border-b border-line-subtle bg-surface-2 px-4">
 			<div className="flex min-w-0 flex-1 items-center gap-1.5 text-[11.5px]">
 				<Icon name="folder" className="size-3.5 shrink-0 text-text-4" />
 				<span className="hidden shrink-0 text-text-4 @min-[560px]:inline">{t("nav.workspace")}</span>

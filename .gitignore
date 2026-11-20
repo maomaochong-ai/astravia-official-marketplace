@@ -2,6 +2,9 @@
 .DS_Store
 .release-artifacts/
 .marketplace-build/
+# 带后缀的临时输出（曾用过 `--output .marketplace-build-2.17.x`）也不进仓库：
+# 构建目录只应该有一个，名字固定为 `.marketplace-build/`。
+.marketplace-build*/
 .tooling/
 .gh-pages-wt/
 abilities/plugins/*/dist/

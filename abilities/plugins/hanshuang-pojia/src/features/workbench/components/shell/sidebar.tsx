@@ -17,6 +17,8 @@ export interface SidebarProps {
 	/** 用户的显式选择，只用于按钮的方向与提示。 */
 	collapsed: boolean;
 	onToggle(): void;
+	/** 展开时的宽度（像素），由拖拽把手给出。 */
+	width: number;
 }
 
 /** 导航项的小圆点：只在「有东西在动」或「有东西要看」时出现。 */
@@ -44,7 +46,7 @@ const DOT_TONE: Record<"live" | "alert", string> = {
  * 图标才会落在同一条竖线上；以前各行 padding 不同（px-0 / px-2 / p-1.5），
  * 折叠后就是一眼可见的错位。
  */
-export function Sidebar({ page, onNavigate, lab, status, timeline, rail, collapsed, onToggle }: SidebarProps) {
+export function Sidebar({ page, onNavigate, lab, status, timeline, rail, collapsed, onToggle, width }: SidebarProps) {
 	const { t } = useTranslation();
 	const recent = timeline.spans.slice(0, rail ? 0 : 3);
 
@@ -52,7 +54,8 @@ export function Sidebar({ page, onNavigate, lab, status, timeline, rail, collaps
 		<aside
 			data-testid="workbench-sidebar"
 			data-rail={rail ? "true" : "false"}
-			className={`flex shrink-0 flex-col border-r border-line-subtle bg-surface-2 transition-[width] duration-150 ${rail ? "w-12" : "w-56"}`}
+			style={{ width: rail ? 48 : width }}
+			className="flex shrink-0 flex-col overflow-hidden border-r border-line-subtle bg-surface-2 transition-[width] duration-150"
 		>
 			<div className={`flex items-center ${rail ? "flex-col gap-1.5 px-2 pb-2 pt-3" : "gap-2.5 px-4 pb-3 pt-4"}`}>
 				<div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface-4 text-text-2">

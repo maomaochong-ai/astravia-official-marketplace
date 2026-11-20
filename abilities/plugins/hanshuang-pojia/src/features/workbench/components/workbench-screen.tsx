@@ -6,7 +6,7 @@ import { useWorkbench } from "../hooks/use-workbench";
 import { getActivePrompt } from "../../../domain/prompt-library";
 import { deriveLiveStatus } from "../live-status";
 import { buildTimeline } from "../timeline";
-import { useElementWidth } from "../hooks/use-element-width";
+import { SIDEBAR_MAX, SIDEBAR_MIN, SplitHandle, useSidebarWidth } from "../hooks/use-sidebar-width";
 import { useSidebarCollapsed } from "../hooks/use-sidebar-collapsed";
 import { Sidebar } from "./shell/sidebar";
 import { TopBar } from "./shell/top-bar";
@@ -87,19 +87,19 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 	// 会话信息链：事件流在组件外压成「一轮几次、各用多久、谁报错」，侧栏与活动页共用。
 	const timeline = buildTimeline(model.stream.entries);
 
-	// 侧栏宽度只有两档：用户点了收起，或面板本身容不下文字。
-	const [rootRef, width] = useElementWidth<HTMLDivElement>();
+	// 侧栏宽度由用户拖出来（默认 240，范围 200–360），收起是另一件事。
+	// 不按面板宽度自动收起：面板常驻 400–500px，自动收会把中文标签全藏起来，
+	// 用户看到的是「侧栏被遮住、没有文字」。
+	const [sidebarWidth, setSidebarWidth, resetSidebarWidth] = useSidebarWidth();
 	const [collapsed, setCollapsed] = useSidebarCollapsed();
-	// width === 0 表示还没量到（首帧 / 无 ResizeObserver）：按展开渲染，
-	// 否则每一帧都会先闪一下图标轨。
-	const rail = collapsed || (width > 0 && width < 560);
+	const rail = collapsed;
 
 	// 发送前确认：先算出「不编辑时会发什么」，再让用户在对话框里改。
 	const [pending, setPending] = useState<string | null>(null);
 	const { t } = useTranslation();
 
 	return (
-		<div ref={rootRef} className="fb-root @container flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface text-text">
+		<div className="fb-root @container flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface text-text">
 			<TopBar
 				page={model.page}
 				chat={model.chat.state}
@@ -120,7 +120,20 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 					rail={rail}
 					collapsed={collapsed}
 					onToggle={() => setCollapsed(!collapsed)}
+					width={sidebarWidth}
 				/>
+				{/* 面板里的分区由用户决定谁占多宽：收起时没有可拖的对象。 */}
+				{rail ? null : (
+					<SplitHandle
+						side="left"
+						value={sidebarWidth}
+						min={SIDEBAR_MIN}
+						max={SIDEBAR_MAX}
+						onChange={setSidebarWidth}
+						onReset={resetSidebarWidth}
+						label={t("sidebar.resize")}
+					/>
+				)}
 				<main className="fb-main fb-scroll">
 					<Page {...props} />
 				</main>

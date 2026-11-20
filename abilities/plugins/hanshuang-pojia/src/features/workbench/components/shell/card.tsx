@@ -17,26 +17,25 @@ export interface CardProps {
 }
 
 /**
- * 面板里所有内容块的外框：靠底色分层，只留一层几乎看不见的描边；不再叠加阴影。
+ * 面板里所有内容块的外框。
  *
- * `overflow-hidden` 不是装饰：卡片内的列表行会自绘底色（选中的 `bg-surface-4`、
- * 分组头的 `bg-surface-3`），不裁切就会把这些底色画到圆角外面，看起来是「该圆的地方成了直角」。
- * 圆角只保留一档 12px（rounded-xl），控件用 6px（rounded-md），内嵌件用 4px（rounded）。
+ * 三件事由 CSS 变量统一，页面不再各写一遍内边距：
+ *   - 卡头与卡体都用 `--fb-ins`（面板窄时自动降档）；
+ *   - 圆角只有一档 12px，`overflow-hidden` 必须留：列表行自绘底色
+ *     （选中 `bg-surface-4`、分组头 `bg-surface-3`）不裁切就会画到圆角外面，
+ *     看起来是「该圆的地方成了直角」；
+ *   - 描边用 ring 而不是 border：border 会占 1px 宽，卡片和侧栏之间出现宽度不为整数的缝。
  */
 export function Card({ title, actions, className, bodyClassName, fill = false, children }: CardProps) {
 	return (
-		<section
-			className={`min-w-0 flex-col overflow-hidden rounded-xl bg-surface-2 ring-1 ring-line-subtle ${
-				fill ? "fb-fill flex" : "flex"
-			} ${className ?? ""}`}
-		>
+		<section className={`flex min-w-0 flex-col overflow-hidden rounded-xl bg-surface-2 ring-1 ring-line-subtle ${fill ? "fb-fill" : ""} ${className ?? ""}`}>
 			{title ? (
-				<header className="flex shrink-0 items-center gap-2 border-b border-line-subtle px-3.5 py-2.5">
+				<header className="fb-card-head flex shrink-0 items-center gap-2 border-b border-line-subtle">
 					<h2 className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text">{title}</h2>
 					{actions ? <div className="flex shrink-0 items-center gap-1">{actions}</div> : null}
 				</header>
 			) : null}
-			<div className={`min-h-0 min-w-0 ${fill ? "flex flex-1 flex-col" : ""} ${bodyClassName ?? ""}`}>{children}</div>
+			<div className={`min-h-0 min-w-0 ${fill ? "flex flex-1 flex-col" : ""} ${bodyClassName ?? "fb-card-body"}`}>{children}</div>
 		</section>
 	);
 }
