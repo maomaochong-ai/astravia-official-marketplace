@@ -63,7 +63,7 @@ function Block({ block }: { block: MdBlock }) {
 			);
 		case "code":
 			return (
-				<div className="overflow-hidden rounded border border-line-subtle bg-surface">
+				<div className="overflow-hidden rounded-lg border border-line-subtle bg-surface">
 					{block.lang ? <div className="border-b border-line-subtle px-2.5 py-1 font-mono text-[9.5px] uppercase tracking-wide text-text-4">{block.lang}</div> : null}
 					<pre className="fb-scroll overflow-x-auto px-2.5 py-2 font-mono text-[11px] leading-[1.6] text-text-2">{block.text}</pre>
 				</div>

@@ -74,7 +74,17 @@ export default defineConfig({
 					}
 				}
 
-				// 4. 共享原语：每个工具都 import hpkit，缺它则一个都跑不起来。
+				// 4. 提示词包正文：同样不进分块，索引只留元数据。
+				const packsRoot = new URL("src/content/packs/", import.meta.url);
+				for (const file of readdirSync(packsRoot).filter(name => name.endsWith(".md"))) {
+					this.emitFile({
+						type: "asset",
+						fileName: `assets/packs/${file}`,
+						source: readFileSync(new URL(file, packsRoot)),
+					});
+				}
+
+				// 5. 共享原语：每个工具都 import hpkit，缺它则一个都跑不起来。
 				const kitRoot = new URL("cases/_shared/hpkit/", import.meta.url);
 				for (const file of walk(kitRoot)) {
 					this.emitFile({

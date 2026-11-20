@@ -8,6 +8,7 @@ import type { PromptFormData } from "../prompts/prompt-editor-dialog";
 import { PromptEditorDialog } from "../prompts/prompt-editor-dialog";
 import { PromptCard } from "../prompts/prompt-card";
 import { BackupRestoreDialog } from "../prompts/backup-restore-dialog";
+import { PromptPreviewDialog } from "../prompts/prompt-preview-dialog";
 import { findSimilar, parsePromptFile, PromptImportError } from "../../services/prompt-import";
 import { Icon } from "../shell/icon";
 import { InjectBlockCard } from "../prompts/inject-block-card";
@@ -26,6 +27,8 @@ export function PromptsPage({ model }: PageProps) {
 	const [editorOpen, setEditorOpen] = useState(false);
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [backupPromptId, setBackupPromptId] = useState<string | null>(null);
+	// 预览窗只看内容；要改再跳编辑器，两件事不挤在一个弹窗里。
+	const [previewId, setPreviewId] = useState<string | null>(null);
 	const importRef = useRef<HTMLInputElement>(null);
 
 	const library = model.promptLibrary;
@@ -159,10 +162,15 @@ export function PromptsPage({ model }: PageProps) {
 				}
 			/>
 
-			<div className="space-y-3 p-4">
+			<div className="fb-page">
 				{library.items.length > 0 ? (
-					<Card title={t("prompt.libraryTitle")} bodyClassName="p-3">
-						<div className="mb-3">
+					<Card
+						title={t("prompt.libraryTitle")}
+						bodyClassName="p-0"
+						fill
+						actions={<span className="font-mono text-[10px] text-text-4">{filtered.length}</span>}
+					>
+						<div className="shrink-0 border-b border-line-subtle p-3">
 							<input
 								type="text"
 								value={query}
@@ -172,29 +180,33 @@ export function PromptsPage({ model }: PageProps) {
 							/>
 						</div>
 
-						{filtered.length === 0 ? (
-							<div className="py-8 text-center text-[12px] text-text-4">{t("prompt.searchEmpty")}</div>
-						) : (
-							<div className="grid gap-2.5 @min-[640px]:grid-cols-2">
-								{filtered.map(prompt => (
-									<PromptCard
-										key={prompt.id}
-										prompt={prompt}
-										onActivate={() => model.activatePrompt(prompt.id)}
-										onDeactivate={() => model.deactivatePrompt()}
-										onEdit={() => {
-											setEditingId(prompt.id);
-											setEditorOpen(true);
-										}}
-										onDelete={() => handleDelete(prompt.id)}
-										onShowBackups={() => setBackupPromptId(prompt.id)}
-									/>
-								))}
-							</div>
-						)}
+						{/* 列表自己滚：卡片贴到面板底部，不经 max-h 封顶。 */}
+						<div className="fb-scroll fb-fill-scroll overflow-y-auto p-3">
+							{filtered.length === 0 ? (
+								<div className="py-8 text-center text-[12px] text-text-4">{t("prompt.searchEmpty")}</div>
+							) : (
+								<div className="grid gap-2.5 @min-[640px]:grid-cols-2">
+									{filtered.map(prompt => (
+										<PromptCard
+											key={prompt.id}
+											prompt={prompt}
+											onActivate={() => model.activatePrompt(prompt.id)}
+											onDeactivate={() => model.deactivatePrompt()}
+											onPreview={() => setPreviewId(prompt.id)}
+											onEdit={() => {
+												setEditingId(prompt.id);
+												setEditorOpen(true);
+											}}
+											onDelete={() => handleDelete(prompt.id)}
+											onShowBackups={() => setBackupPromptId(prompt.id)}
+										/>
+									))}
+								</div>
+							)}
+						</div>
 					</Card>
 				) : (
-					<Card bodyClassName="p-8">
+					<Card bodyClassName="p-8" fill>
 						<div className="text-center">
 							<div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-surface-3 text-text-4">
 								📝
@@ -234,6 +246,18 @@ export function PromptsPage({ model }: PageProps) {
 					setBackupPromptId(null);
 				}}
 				onDelete={backupId => model.deleteBackup(backupId)}
+			/>
+
+			<PromptPreviewDialog
+				open={previewId !== null}
+				prompt={previewId ? (library.items.find(item => item.id === previewId) ?? null) : null}
+				onClose={() => setPreviewId(null)}
+				onEdit={() => {
+					setEditingId(previewId);
+					setPreviewId(null);
+					setEditorOpen(true);
+				}}
+				notify={model.notify}
 			/>
 		</>
 	);

@@ -19,7 +19,7 @@ beforeAll(async () => {
 });
 
 describe("document library index", () => {
-	it("covers the four shipped collections", () => {
+	it("covers the five shipped collections", () => {
 		const counts = new Map<string, number>();
 		for (const entry of library.entries) counts.set(entry.group, (counts.get(entry.group) ?? 0) + 1);
 		expect(counts.get("kb")).toBe(292);
@@ -31,7 +31,9 @@ describe("document library index", () => {
 		for (const id of SHIPPED_PRECEDENTS.flatMap(precedent => precedent.caseDocs)) {
 			expect(library.entries.some(entry => entry.id === id), id).toBe(true);
 		}
-		expect(library.entries.length).toBe(310 + caseCount);
+		// 参考实现是第五组：能力清单 + 整合映射，共 5 篇。
+		expect(counts.get("reference")).toBe(5);
+		expect(library.entries.length).toBe(310 + caseCount + 5);
 	});
 
 	it("matches the committed checksum manifest entry for entry", () => {
@@ -67,7 +69,7 @@ describe("document library index", () => {
 
 	it("builds the navigation tree without empty groups", () => {
 		const groups = library.groups();
-		expect(groups.map(group => group.id)).toEqual(["kb", "manual", "kit-docs", "cases"]);
+		expect(groups.map(group => group.id)).toEqual(["kb", "manual", "kit-docs", "cases", "reference"]);
 		for (const group of groups) {
 			expect(group.topics.length).toBeGreaterThan(0);
 			for (const topic of group.topics) expect(topic.entries.length).toBeGreaterThan(0);

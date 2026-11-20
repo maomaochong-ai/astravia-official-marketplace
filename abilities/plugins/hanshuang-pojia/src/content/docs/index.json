@@ -3398,5 +3398,55 @@
 		"bytes": 6924,
 		"lines": 189,
 		"sha256": "d5a737c26071bd00"
+	},
+	{
+		"id": "reference/deva",
+		"group": "reference",
+		"topic": "",
+		"title": "deva · 分层提示词与双能力角色",
+		"path": "src/content/docs/reference/deva.md",
+		"bytes": 3088,
+		"lines": 46,
+		"sha256": "e09bc4a79c77a1ed"
+	},
+	{
+		"id": "reference/dsh-workflow",
+		"group": "reference",
+		"topic": "",
+		"title": "dsh-workflow · 画布 → 计划提示词 → 模型执行",
+		"path": "src/content/docs/reference/dsh-workflow.md",
+		"bytes": 2971,
+		"lines": 47,
+		"sha256": "f25b14775c492045"
+	},
+	{
+		"id": "reference/hanshuang-mac",
+		"group": "reference",
+		"topic": "",
+		"title": "hanshuang-mac · 九目标的注入器",
+		"path": "src/content/docs/reference/hanshuang-mac.md",
+		"bytes": 3346,
+		"lines": 51,
+		"sha256": "eb06ee988ff33a58"
+	},
+	{
+		"id": "reference/integration-map",
+		"group": "reference",
+		"topic": "",
+		"title": "四个参考实现 · 整合地图",
+		"path": "src/content/docs/reference/integration-map.md",
+		"bytes": 2561,
+		"lines": 40,
+		"sha256": "db59fd233ef06b9b"
+	},
+	{
+		"id": "reference/release-repo",
+		"group": "reference",
+		"topic": "",
+		"title": "发布仓库 · 「装完长什么样」的验收口径",
+		"path": "src/content/docs/reference/release-repo.md",
+		"bytes": 2052,
+		"lines": 48,
+		"sha256": "37c72ae3240fb820"
 	}
 ]

@@ -35,7 +35,7 @@ export function BlockedPanel({ failure, root, busy, onHandOff, onClear }: Blocke
 			: t("blocked.other.body");
 
 	return (
-		<div className="rounded-lg border border-line-subtle bg-surface-2 p-4">
+		<div className="rounded-xl border border-line-subtle bg-surface-2 p-4">
 			<div className="flex items-start gap-3">
 				<div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-risk-medium/12 text-risk-medium">
 					<Icon name={tooLarge ? "chip" : outside ? "folder" : "alert"} className="size-4.5" />

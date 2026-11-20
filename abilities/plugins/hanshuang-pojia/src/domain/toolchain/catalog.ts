@@ -402,11 +402,13 @@ export const COMPANIONS: readonly CompanionSpec[] = [
 ];
 
 /**
- * Must stay byte-identical to `plugin.json#commands`. An undeclared binary is
- * refused by the host, and a declared-but-unused binary asks the user for a
- * permission nothing needs — both are defects caught by `toolchain.test.ts`.
+ * 必须与 `plugin.json#commands` 逐字一致。未声明的可执行文件会被宿主拒绝，
+ * 声明了却没人用的会让用户多授一个不需要的权限 —— 两种都是缺陷，`toolchain.test.ts` 会捕获。
+ *
+ * `pwsh` 不在 TOOLCHAIN 里：它不是逆向引擎，而是注入流水线的执行器（`inject_target` 的 R1 路由），
+ * 由 `domain/inject/apply.ts` 自己探测，不让 `probe_environment` 的版本表把它算成一个逆向能力。
  */
-export const COMMANDS: readonly string[] = TOOLCHAIN.map(spec => spec.binary);
+export const COMMANDS: readonly string[] = [...TOOLCHAIN.map(spec => spec.binary), "pwsh", "powershell"];
 
 export const CAPABILITY_LABEL: Record<Capability, string> = {
 	radare: "radare2 analysis (info, strings, functions, disassembly, pseudo-C, xrefs)",

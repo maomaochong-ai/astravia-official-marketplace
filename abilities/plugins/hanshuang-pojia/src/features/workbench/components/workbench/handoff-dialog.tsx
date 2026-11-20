@@ -33,7 +33,7 @@ export function HandoffDialog({ open, target, busy, onClose, onSend }: HandoffDi
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
 			<div
-				className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-lg border border-line-subtle bg-surface-2"
+				className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-surface-2 ring-1 ring-line-subtle"
 				onClick={event => event.stopPropagation()}
 				data-testid="handoff-dialog"
 			>

@@ -31,7 +31,7 @@ export function GuidePage({ model }: PageProps) {
 				description={t("page.guide.lead")}
 				actions={<AiButton label={t("ai.workflow")} onClick={() => model.ask("continue")} busy={busy} />}
 			/>
-			<div className="grid gap-3 p-4 @min-[900px]:grid-cols-2">
+			<div className="grid gap-3 @min-[900px]:grid-cols-2">
 				<Card title={t("guide.flow")} bodyClassName="p-3.5" className="@min-[900px]:col-span-2">
 					<ol className="grid gap-2.5 @min-[760px]:grid-cols-5">
 						{FLOW.map((step, index) => (

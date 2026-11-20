@@ -39,6 +39,7 @@ export const TOOL_IDS = [
 	"search_cases",
 	"scaffold_case",
 	"record_case_note",
+	"inject_target",
 ]
 
 export type ToolId = (typeof TOOL_IDS)[number];
@@ -47,7 +48,7 @@ export type ToolId = (typeof TOOL_IDS)[number];
  * 工具总数的防漂移锚点。自检页用它断言注册表没有在重构里悄悄少一项：
  * 只比 `TOOL_IDS` 自己永远不会失败，必须有一个外部数字。
  */
-export const EXPECTED_TOOL_COUNT = 31;
+export const EXPECTED_TOOL_COUNT = 32;
 
 /** 宿主可能给工具名加前缀，所以按后缀 / 包含判定。 */
 export function isPluginTool(toolName: string): boolean {

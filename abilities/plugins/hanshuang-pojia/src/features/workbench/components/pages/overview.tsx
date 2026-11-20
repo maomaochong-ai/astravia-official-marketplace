@@ -37,7 +37,7 @@ export function OverviewPage({ model }: PageProps) {
 				description={t("page.overview.lead")}
 				actions={<AiButton label={t("ai.summary")} onClick={() => model.ask("findings-summary")} busy={busy} disabled={!report} />}
 			/>
-			<div className="space-y-3 p-4">
+			<div className="fb-page">
 			<PipelineBar model={model} />
 			<WorkflowBar model={model} />
 				{error ? <BlockedPanel failure={error} root={model.cwd} busy={busy} onHandOff={model.handOff} onClear={model.reset} /> : null}

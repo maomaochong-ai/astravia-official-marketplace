@@ -44,7 +44,7 @@ export function StringsPage({ model }: PageProps) {
 				description={t("page.strings.lead")}
 				actions={<AiButton label={t("ai.strings")} onClick={() => model.ask("strings")} busy={busy} disabled={!model.report} />}
 			/>
-			<div className="space-y-3 p-4">
+			<div className="fb-page">
 				{hits === null ? (
 					<EmptyState icon="type" title={t("strings.null.title")} body={t("strings.null.body")} />
 				) : (

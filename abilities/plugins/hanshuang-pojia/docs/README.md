@@ -52,6 +52,8 @@
   三档行数，跟 `tool-index.json` 对账。改这里要同时改 catalog 与 json，三者不一致会红。
 - [prompt-templates.md](reference/prompt-templates.md) — 可直接粘贴的提问模板（lab 前缀、占位符规则、
   哪些问法不改变判定）。
+- [injection-targets.md](reference/injection-targets.md) — 九个注入目标 × 四种形态、四个提示词包、
+  标记与状态文件的命名。改 `src/domain/inject/` 时同步改这里。
 
 ## `audits/` — 写在那一天的结论
 

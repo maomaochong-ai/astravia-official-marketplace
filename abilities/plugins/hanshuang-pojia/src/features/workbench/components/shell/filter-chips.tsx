@@ -22,7 +22,7 @@ export function FilterChips<T extends string>({ items, value, onChange }: Filter
 						type="button"
 						onClick={() => onChange(item.id)}
 						aria-pressed={active}
-						className={`whitespace-nowrap rounded-lg px-1.5 py-0.5 text-[10.5px] font-medium transition-colors ${
+						className={`whitespace-nowrap rounded-md px-1.5 py-0.5 text-[10.5px] font-medium transition-colors ${
 							active ? "bg-surface-4 text-text" : "text-text-4 hover:bg-surface-hover hover:text-text-2"
 						}`}
 					>

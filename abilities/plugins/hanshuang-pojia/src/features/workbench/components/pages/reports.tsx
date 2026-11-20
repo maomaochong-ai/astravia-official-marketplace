@@ -76,7 +76,7 @@ export function ReportsPage({ model }: PageProps) {
 					</>
 				}
 			/>
-			<div className="space-y-3 p-4">
+			<div className="fb-page">
 				<Card
 					title={t("reports.library")}
 					actions={

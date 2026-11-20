@@ -24,7 +24,7 @@ export function SamplesPage({ model }: PageProps) {
 	return (
 		<>
 			<PageHeader title={t("page.samples.title")} description={t("page.samples.lead")} />
-			<div className="grid gap-3 p-4 @min-[880px]:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
+			<div className="grid gap-3 @min-[880px]:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
 				<Card title={t("page.samples.picker")} className="flex min-h-[320px] flex-col" bodyClassName="flex min-h-0 flex-1 flex-col pt-2">
 					<SamplePicker
 						cwd={model.cwd}

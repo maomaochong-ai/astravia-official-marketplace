@@ -98,7 +98,7 @@ export function SelfCheckPage({ model }: PageProps) {
 				description={t("page.selfcheck.lead")}
 				actions={<AiButton label={t("ai.toolchain")} onClick={() => model.ask("toolchain")} busy={model.chat.sending} />}
 			/>
-			<div className="space-y-3 p-4">
+			<div className="fb-page">
 				<div className="flex flex-wrap items-center gap-2 rounded-md border border-line-subtle bg-surface-2 px-3.5 py-2.5">
 					<Tag tone={verdictTone}>{t(VERDICT_KEY[report.verdict], { passed: report.passed, total: report.total, optional: report.optional })}</Tag>
 					<span className="font-mono text-[10.5px] text-text-3">{t("selfcheck.summary.groups", { passed: groupsPassing, total: report.groups.length })}</span>

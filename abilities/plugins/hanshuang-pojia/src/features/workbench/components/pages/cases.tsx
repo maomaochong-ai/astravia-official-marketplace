@@ -69,7 +69,7 @@ export function CasesPage({ model }: PageProps) {
 					</>
 				}
 			/>
-			<div className="flex flex-col gap-2.5 p-3">
+			<div className="fb-page gap-2.5">
 				{cases.error ? (
 					<Card bodyClassName="px-3.5 py-2.5">
 						<div className="flex items-start gap-2">

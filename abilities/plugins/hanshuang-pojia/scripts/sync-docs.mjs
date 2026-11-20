@@ -25,6 +25,8 @@ const GROUPS = [
 	{ id: "kit-docs", label: "Tool docs", source: "Tool/docs", minFiles: 7 },
 	// 案例原文：先例包（cases/<slug>/）只写方法摘要，走查细节、补丁全表与算法在这里。
 	{ id: "cases", label: "Case studies", source: "Tool/cases", minFiles: 14 },
+	// 参考实现：四个上游仓库的能力清单与整合映射。正文由本项目撰写，不搬第三方文档。
+	{ id: "reference", label: "Reference implementations", source: "src/content/docs/reference", minFiles: 0 },
 ];
 
 function walk(dir, base = dir) {

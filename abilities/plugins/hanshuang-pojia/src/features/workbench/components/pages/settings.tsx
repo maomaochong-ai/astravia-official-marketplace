@@ -90,7 +90,7 @@ export function SettingsPage({ model }: PageProps) {
 					</button>
 				}
 			/>
-			<div className="space-y-3 p-4">
+			<div className="fb-page">
 				<div className="px-1 text-[9.5px] font-medium uppercase tracking-wider text-text-4">{t("settings.group.runtime")}</div>
 				<Card title={t("settings.runtime.title")} bodyClassName="divide-y divide-line-subtle">
 					{runtimeRows.map(row => (

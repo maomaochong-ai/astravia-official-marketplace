@@ -53,7 +53,7 @@ export function SampleDropzone({ report, busy, fromAgent, onClear, onReanalyse, 
 					const dropped = [...event.dataTransfer.files];
 					if (dropped.length > 0) onImport(dropped);
 				}}
-				className={`rounded-lg border border-dashed px-4 py-5 ${dragging ? "border-purple bg-surface-active" : "border-line-strong bg-surface-2"}`}
+				className={`rounded-xl border border-dashed px-4 py-5 ${dragging ? "border-purple bg-surface-active" : "border-line-strong bg-surface-2"}`}
 			>
 				<div className="flex items-start gap-3">
 					<div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-surface-4 text-text-2">
@@ -82,7 +82,7 @@ export function SampleDropzone({ report, busy, fromAgent, onClear, onReanalyse, 
 
 	const arch = factValue(report, ["Architecture", "Main binary architecture"]);
 	return (
-		<div className="rounded-lg border border-line-subtle bg-surface-2 px-4 py-3.5">
+		<div className="rounded-xl border border-line-subtle bg-surface-2 px-4 py-3.5">
 			<div className="flex items-start gap-3">
 				<div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-surface-4 text-text-2">
 					<Icon name="boxes" className="size-5" />

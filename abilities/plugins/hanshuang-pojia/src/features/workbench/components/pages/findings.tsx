@@ -53,7 +53,7 @@ export function FindingsPage({ model }: PageProps) {
 				description={t("page.findings.lead")}
 				actions={<AiButton label={t("ai.explainAll")} onClick={() => model.ask("findings-summary")} busy={busy} />}
 			/>
-			<div className="space-y-3 p-4">
+			<div className="fb-page">
 				<div className="grid grid-cols-2 gap-2 @min-[620px]:grid-cols-4">
 					<StatTile label={t("findings.stat.total")} value={findings.length} />
 					<StatTile

@@ -52,7 +52,7 @@ export function ComparePage({ model }: PageProps) {
 				description={t("page.compare.lead")}
 				actions={<AiButton label={t("ai.compare")} onClick={() => model.ask("compare", { other: right?.target.name })} busy={busy} disabled={!diff} />}
 			/>
-			<div className="space-y-3 p-4">
+			<div className="fb-page">
 				<Card title={t("compare.pick")} bodyClassName="grid gap-2 px-3.5 py-3 @min-[720px]:grid-cols-2">
 					<label className="block min-w-0">
 						<span className="mb-1 block text-[10.5px] text-text-4">{t("compare.left")}</span>

@@ -1,5 +1,6 @@
 import type { TriageReport } from "../../domain/report/report";
 import type { ChatState, TaskStreamEntry } from "./state";
+import { payloadHints } from "./timeline";
 
 /** 侧栏一个状态点的语气：live = 正在发生，alert = 需要看一眼，idle = 无事。 */
 export type LiveTone = "live" | "alert" | "idle";
@@ -39,11 +40,23 @@ export interface InjectStatus {
 	name: string | null;
 }
 
+/** 最近一次工具输出了什么：侧栏要能回答「刚才跑出了什么」，而不只是「跑了几个」。 */
+export interface OutputStatus {
+	tone: LiveTone;
+	toolId: string | null;
+	/** 一行可读摘要。 */
+	summary: string | null;
+	/** 从载荷里挑出的规模量（条数 / 段数 / 格式）。 */
+	hints: string[];
+}
+
 export interface LiveStatus {
 	session: SessionStatus;
 	run: RunStatus;
 	sample: SampleStatus | null;
 	inject: InjectStatus;
+	/** 最近一条工具结果。 */
+	output: OutputStatus;
 }
 
 /**
@@ -79,6 +92,8 @@ export interface LiveStatusInput {
 	stream: { entries: readonly TaskStreamEntry[]; active: boolean };
 	report: TriageReport | null;
 	activePrompt: { name: string } | null;
+	/** 最近一条工具结果（activity.entries[0]）；没有就不传。 */
+	latest?: { toolId: string; summary: string; payload?: Record<string, unknown> } | undefined;
 }
 
 /**
@@ -86,7 +101,7 @@ export interface LiveStatusInput {
  * 纯函数：组件只负责画，判断都在这里，方便直接断言。
  */
 export function deriveLiveStatus(input: LiveStatusInput): LiveStatus {
-	const { chat, stream, report, activePrompt } = input;
+	const { chat, stream, report, activePrompt, latest } = input;
 	const disconnected = chat.status === "disconnected";
 	const streaming = chat.status === "streaming";
 	const turn = countTurnTools(stream.entries);
@@ -112,5 +127,12 @@ export function deriveLiveStatus(input: LiveStatusInput): LiveStatus {
 				}
 			: null,
 		inject: { tone: activePrompt ? "live" : "idle", name: activePrompt?.name ?? null },
+		output: {
+			// 有结果就是 live（刚发生过），没有就 idle；报错信息本来就在 activity 列表里着色。
+			tone: latest ? "live" : "idle",
+			toolId: latest?.toolId ?? null,
+			summary: latest?.summary ?? null,
+			hints: payloadHints(latest?.payload),
+		},
 	};
 }

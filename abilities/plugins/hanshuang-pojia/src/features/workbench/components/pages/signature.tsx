@@ -52,7 +52,7 @@ export function SignaturePage({ model }: PageProps) {
 				description={t("page.signature.lead")}
 				actions={<AiButton label={t("ai.verifySignature")} onClick={() => model.ask("signature")} busy={busy} />}
 			/>
-			<div className="space-y-3 p-4">
+			<div className="fb-page">
 				<Card title={t("signature.schemes")} bodyClassName="divide-y divide-line-subtle">
 					{schemes.map(scheme => (
 						<div key={scheme.id} className="flex items-start gap-2.5 px-3.5 py-2.5">

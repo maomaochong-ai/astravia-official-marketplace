@@ -66,7 +66,7 @@ export function DisasmPage({ model }: PageProps) {
 					body={t(`disasm.unsupported.${disasm.unsupported}.body`)}
 				/>
 			) : (
-				<div className="flex flex-col gap-2.5 p-3">
+				<div className="fb-page gap-2.5">
 					<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
 						<StatTile label={t("disasm.stat.arch")} value={disasm.arch ?? "—"} />
 						<StatTile label={t("disasm.stat.functions")} value={disasm.candidates.length} hint={disasm.indexing ? t("disasm.stat.indexing") : undefined} />

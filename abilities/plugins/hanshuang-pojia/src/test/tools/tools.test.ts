@@ -120,6 +120,7 @@ describe("agent tools", () => {
 			"generate_hook",
 			"ida_status",
 			"init_task",
+			"inject_target",
 			"install_astravia",
 			"install_toolchain",
 			"kb_checklist",

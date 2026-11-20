@@ -3,7 +3,7 @@ import { TOOL_IDS } from "./ids";
 /**
  * 工具表的可见性闸门。
  *
- * 31 个工具全部声明 `scope_use: ["conversation","project"]`，两个主场景都命中，
+ * 32 个工具全部声明 `scope_use: ["conversation","project"]`，两个主场景都命中，
  * 于是每一轮请求都带 56 KB schema。这里把「日常问答会用到」与「只有进实验室才成立」
  * 分开：后者由 kernel 系统提示块按 lab 状态调用 `setToolEnabled` 打开或关上。
  *
@@ -25,6 +25,8 @@ export const CORE_TOOL_IDS: readonly string[] = [
 	// 案例记账：scope 与证据条目是最先要写的东西
 	"init_task",
 	"record_case_note",
+	// 注入计划：装契约与装工具链一样，是「先把环境弄对」，与是否实验无关
+	"inject_target",
 ];
 
 const CORE = new Set(CORE_TOOL_IDS);

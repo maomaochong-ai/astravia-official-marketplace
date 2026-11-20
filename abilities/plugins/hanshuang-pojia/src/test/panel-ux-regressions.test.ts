@@ -44,17 +44,29 @@ describe("the panel does not start itself with every conversation", () => {
 });
 
 describe("the central area fills the panel instead of leaving a gap at the bottom", () => {
-	it("the page container is a stretchable flex column", () => {
+	it("the main column is a scrollable flex column with a single gap and padding", () => {
 		const screen = read("src/features/workbench/components/workbench-screen.tsx");
-		expect(screen).toContain("fb-page-fill");
-		expect(screen).toContain("flex min-h-0 min-w-0 flex-1 flex-col");
+		// 页面骨架由 .fb-main 负责：内边距与间距只在这里声明一次，页面不再各自 p-4。
+		expect(screen).toContain("fb-main");
+		const css = read("src/style.css");
+		expect(css).toMatch(/\.fb-main\s*\{[^}]*display:\s*flex/);
+		expect(css).toMatch(/\.fb-main\s*\{[^}]*overflow-y:\s*auto/);
 	});
 
-	it("the last card takes the remaining height and scrolls inside itself", () => {
+	it("the page column grows, and one card may take the remaining height", () => {
 		const css = read("src/style.css");
-		expect(css).toContain(".fb-page-fill > :last-child");
-		expect(css).toMatch(/flex:\s*1 1 auto/);
-		expect(css).toMatch(/\.fb-page-fill > :last-child > :last-child\s*\{[^}]*overflow:\s*auto/);
+		// .fb-page 撑满：内容短时卡片贴到底部，不再在最后一关下面留一条底色。
+		expect(css).toMatch(/\.fb-page\s*\{[^}]*flex:\s*1 1 auto/);
+		expect(css).toMatch(/\.fb-page\s*\{[^}]*min-height:\s*0/);
+		// .fb-fill 是「吃掉剩余高度」的那张卡；卡体滚动交给 .fb-fill-scroll。
+		expect(css).toMatch(/\.fb-fill\s*\{[^}]*flex:\s*1 1 auto/);
+		expect(css).toMatch(/\.fb-fill-scroll\s*\{[^}]*overflow-y:\s*auto/);
+	});
+
+	it("a card clips its own corners so inner rows cannot square them off", () => {
+		const card = read("src/features/workbench/components/shell/card.tsx");
+		expect(card).toContain("overflow-hidden");
+		expect(card).toContain("rounded-xl");
 	});
 
 	it("narrow panels drop a tier of padding instead of squeezing", () => {
@@ -65,7 +77,7 @@ describe("the central area fills the panel instead of leaving a gap at the botto
 
 	it("no text is allowed to jump out of a page", () => {
 		const css = read("src/style.css");
-		expect(css).toMatch(/\.fb-page-fill > \*\s*\{[^}]*overflow-wrap:\s*anywhere/);
+		expect(css).toMatch(/\.fb-page > \*\s*\{[^}]*overflow-wrap:\s*anywhere/);
 	});
 });
 

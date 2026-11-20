@@ -65,10 +65,14 @@ export const DOC_GROUPS = [
 	{ id: "manual", labelKey: "docs.group.manual" },
 	{ id: "kit-docs", labelKey: "docs.group.kitDocs" },
 	{ id: "cases", labelKey: "docs.group.cases" },
+	{ id: "reference", labelKey: "docs.group.reference" },
 ] as const;
 
 /** 文档目录在包内的相对位置：构建时整棵拷到 dist/docs/，与 dist/assets/ 平级。 */
 const DOC_PREFIX = "src/content/docs/";
+
+/** 文档与提示词包共用同一个读资源实现，三条运行形态的分支只写一遍。 */
+import { readPackageAsset } from "./package-asset";
 
 export interface DocsLibrary {
 	/** 文章索引，340 条；不含附件。 */
@@ -88,31 +92,11 @@ export interface DocsLibrary {
 }
 
 /**
- * 读包内资源。
- *
- * 单元测试跑在 Node 里，`import.meta.url` 是 file: —— 直接读源目录，这样测试看的
- * 就是构建真正会发布的那份字节。运行期 `astravia-plugin://` 直接提供包内文件，
- * 无需经过宿主 fs 授权；开发服务器下回退到直接抓源目录。
- *
- * 拼接必须写成二元表达式：`new URL(\`../../../../${path}\`, …)` 会被 Vite 静态分析成
- * 遍目录根的资源映射，把 CONTEXT.md / package-lock.json / tsconfig.json 等全部
- * 以 base64 data URI 嵌进 bundle。
+ * 读包内资源：实现见 `package-asset.ts`（file: / astravia-plugin: / dev 三条分支）。
+ * 这里的注释保留是为了说清「为什么要按源目录路径拼」：测试看的必须是发布的那份字节。
  */
 async function readPackageText(relativePath: string): Promise<string> {
-	if (import.meta.url.startsWith("file:")) {
-		const specifier = "node:fs/promises";
-		const { readFile } = (await import(/* @vite-ignore */ specifier)) as typeof import("node:fs/promises");
-		const root = "../../../../";
-		return readFile(new URL(root + DOC_PREFIX + relativePath, import.meta.url), "utf8");
-	}
-	const url = new URL(import.meta.url);
-	url.pathname =
-		url.protocol === "astravia-plugin:"
-			? url.pathname.replace(/\/assets\/[^/]*$/, `/assets/docs/${relativePath}`)
-			: `/${DOC_PREFIX}${relativePath}`;
-	const response = await fetch(url.toString());
-	if (!response.ok) throw new Error(`document resource unavailable (${response.status}): ${relativePath}`);
-	return response.text();
+	return readPackageAsset(relativePath, DOC_PREFIX);
 }
 
 /** 条目的 path 是源目录相对路径；资源层只认剥掉前缀之后的相对位置。 */

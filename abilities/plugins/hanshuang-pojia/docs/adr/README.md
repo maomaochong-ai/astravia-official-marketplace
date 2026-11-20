@@ -19,6 +19,7 @@
 | 0007 | [plugin-layout-normalization](./0007-plugin-layout-normalization.md) | 目录归属、命名红线、无 mcp.json / runtime-lock.json 的理由 |
 | 0008 | [refusal-triggered-requestioning](./0008-refusal-triggered-requestioning.md) | 拒答后只查本工作区「我的案例」选档；与跨模型重试划清界线 |
 | 0009 | [startup-and-per-turn-budget](./0009-startup-and-per-turn-budget.md) | 入口分块与每轮预算：语料移出入口、工具表随 lab 收窄 |
+| 0010 | [injection-target-matrix](./0010-injection-target-matrix.md) | 四处资产收成一条注入流水线：目标矩阵、提示词包、清单式还原 |
 
 ## 引用边界
 

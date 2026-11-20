@@ -1,4 +1,5 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
+import { useState } from "react";
 import { AiButton } from "../shell/ai-button";
 import { Card } from "../shell/card";
 import { EmptyState } from "../shell/empty-state";
@@ -23,13 +24,22 @@ function kilobytes(bytes: number): string {
  *
  * 文档随插件发布，正文按篇拆块，点开才加载；检索分标题与全文两档，
  * 全文要读完整个库，所以只在用户显式切换时执行。
+ *
+ * 版面按「容器填到底」组织：两张卡都是 .fb-fill，卡体自己滚。
+ * 以前用 max-h-[520px]/[620px] 封顶，面板比它高时下面就空出一条底色——
+ * 圆角容器停在半空是这类界面最明显的缺陷。
  */
 export function DocsPage({ model }: PageProps) {
 	const { t } = useTranslation();
 	const { docs, chat } = model;
 	const listing = docs.hits;
+	// 分组筛选：文档从 4 类变成 5 类（多了「参考实现」），不再能靠一路滑到底找。
+	const [group, setGroup] = useState<string | null>(null);
 	// 列表与栅格列模板必须同进同退：列模板留在两列时，收起列表会让正文落进 240–300px 的首列。
 	const showList = docs.listOpen || !docs.selected;
+	const groupCounts = docs.groups.map(item => ({ id: item.id, count: item.topics.reduce((sum, topic) => sum + topic.entries.length, 0) }));
+	const total = groupCounts.reduce((sum, item) => sum + item.count, 0);
+	const visibleGroups = group ? docs.groups.filter(item => item.id === group) : docs.groups;
 
 	return (
 		<>
@@ -50,25 +60,47 @@ export function DocsPage({ model }: PageProps) {
 				}
 			/>
 
-			<div className="flex flex-col gap-2.5 p-3">
-				<div className="grid grid-cols-3 gap-2">
+			<div className="fb-page">
+				<div className="grid shrink-0 grid-cols-3 gap-2">
 					<StatTile label={t("docs.stat.documents")} value={docs.totals.documents} />
 					<StatTile label={t("docs.stat.volume")} value={kilobytes(docs.totals.bytes)} />
 					<StatTile label={t("docs.stat.lines")} value={docs.totals.lines} />
 				</div>
 
-				<div className={`grid gap-2.5 ${showList ? "@min-[900px]:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]" : ""}`}>
-					<div data-testid="docs-list" className={`min-w-0 flex-col gap-2.5 ${showList ? "flex" : "hidden"}`}>
-						<div className="flex flex-col gap-1.5">
+				{/* 窄面板：列表吃 38% 高度、正文吃剩下的；宽面板：左右两列各占满一整行。 */}
+				<div
+					className={`fb-fill grid min-h-0 gap-2.5 ${
+						showList
+							? "grid-rows-[minmax(0,38%)_minmax(0,1fr)] @min-[900px]:grid-cols-[minmax(240px,300px)_minmax(0,1fr)] @min-[900px]:grid-rows-[minmax(0,1fr)]"
+							: ""
+					}`}
+				>
+					<div data-testid="docs-list" className={`min-h-0 min-w-0 flex-col gap-2.5 ${showList ? "flex" : "hidden"}`}>
+						<div className="flex shrink-0 flex-col gap-1.5">
 							<input
 								value={docs.query}
 								onChange={event => docs.setQuery(event.target.value)}
 								placeholder={t("docs.search.placeholder")}
-								className="w-full rounded border border-line-subtle bg-surface px-2 py-1 text-[11.5px] text-text outline-none placeholder:text-text-4 focus:border-line-strong"
+								className="w-full rounded-md border border-line-subtle bg-surface px-2 py-1 text-[11.5px] text-text outline-none placeholder:text-text-4 focus:border-line-strong"
 							/>
 							<div className="flex items-center justify-between gap-2">
 								<FilterChips items={MODES.map(mode => ({ id: mode, label: t(`docs.search.${mode}`) }))} value={docs.mode} onChange={mode => docs.setMode(mode)} />
 								<span className="font-mono text-[10px] text-text-4">{listing ? listing.length : ""}</span>
+							</div>
+							{/* 五类语料要能直接跳转：搜索栏解决「已知名字」，分组解决「不知道叫什么」。 */}
+							<div className="flex items-center gap-1 overflow-x-auto pb-0.5">
+								<FilterChips
+									items={[
+										{ id: "all", label: t("docs.group.all"), count: total },
+										...groupCounts.map(item => ({
+											id: item.id,
+											label: t(DOC_GROUPS.find(entry => entry.id === item.id)?.labelKey ?? "docs.group.kb"),
+											count: item.count,
+										})),
+									]}
+									value={group ?? "all"}
+									onChange={next => setGroup(next === "all" ? null : next)}
+								/>
 							</div>
 						</div>
 
@@ -76,8 +108,9 @@ export function DocsPage({ model }: PageProps) {
 							title={listing ? t("docs.search.results") : t("docs.nav.title")}
 							actions={docs.searching ? <Spinner className="size-3" /> : undefined}
 							bodyClassName="p-0"
+							fill
 						>
-							<div className="fb-scroll max-h-[520px] overflow-y-auto">
+							<div className="fb-scroll fb-fill-scroll overflow-y-auto">
 								{listing ? (
 									listing.length === 0 ? (
 										<div className="px-3 py-6 text-center text-[11.5px] text-text-4">{docs.searching ? t("docs.search.running") : t("docs.search.empty")}</div>
@@ -90,7 +123,9 @@ export function DocsPage({ model }: PageProps) {
 													type="button"
 													onClick={() => docs.select(hit.entry.id)}
 													aria-pressed={active}
-													className={`flex w-full flex-col gap-0.5 border-b border-line-subtle px-3 py-1.5 text-left last:border-0 ${active ? "bg-surface-4" : "hover:bg-surface-hover"}`}
+													className={`flex w-full flex-col gap-0.5 border-b border-line-subtle px-3 py-1.5 text-left last:border-0 ${
+														active ? "bg-surface-4" : "hover:bg-surface-hover"
+													}`}
 												>
 													<span className="w-full truncate text-[11.5px] text-text">{hit.entry.title}</span>
 													<span className="w-full truncate font-mono text-[10px] text-text-4">{hit.entry.id}</span>
@@ -103,7 +138,7 @@ export function DocsPage({ model }: PageProps) {
 									// 索引按需读取（ADR 0009 D5）：未到达时说清楚，不要用空目录冒充「没有文档」。
 									<div className="px-3 py-6 text-center text-[11.5px] text-text-4">{t("docs.index.loading")}</div>
 								) : (
-									docs.groups.map(group => (
+									visibleGroups.map(group => (
 										<div key={group.id} className="border-b border-line-subtle last:border-0">
 											<div className="bg-surface-2 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-text-4">
 												{t(DOC_GROUPS.find(item => item.id === group.id)?.labelKey ?? "docs.group.kb")}
@@ -116,7 +151,7 @@ export function DocsPage({ model }: PageProps) {
 														return (
 															<button
 																key={entry.id}
-															data-doc-id={entry.id}
+																data-doc-id={entry.id}
 																type="button"
 																onClick={() => docs.select(entry.id)}
 																aria-pressed={active}
@@ -144,7 +179,7 @@ export function DocsPage({ model }: PageProps) {
 									<button
 										type="button"
 										onClick={docs.showList}
-										className={`inline-flex items-center gap-1 rounded border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text ${showList ? "hidden" : ""}`}
+										className={`inline-flex items-center gap-1 rounded-md border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text ${showList ? "hidden" : ""}`}
 									>
 										<Icon name="chevron" className="size-3 rotate-180" />
 										<span>{t("docs.reader.back")}</span>
@@ -153,7 +188,7 @@ export function DocsPage({ model }: PageProps) {
 									<button
 										type="button"
 										onClick={docs.copyPath}
-										className="inline-flex items-center gap-1 rounded border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover"
+										className="inline-flex items-center gap-1 rounded-md border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover"
 									>
 										<Icon name="copy" className="size-3" />
 										<span className="sr-only">{t("panel.action.copy")}</span>
@@ -161,9 +196,16 @@ export function DocsPage({ model }: PageProps) {
 								</>
 							) : undefined
 						}
+						fill
 					>
 						{docs.selected ? (
-							<div className="border-b border-line-subtle px-3.5 py-1.5 font-mono text-[10px] text-text-4">{docs.selected.path}</div>
+							<div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line-subtle px-3.5 py-1.5">
+								<span className="rounded bg-surface-3 px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide text-text-3">
+									{t(DOC_GROUPS.find(entry => entry.id === docs.selected?.group)?.labelKey ?? "docs.group.kb")}
+								</span>
+								<span className="min-w-0 flex-1 truncate font-mono text-[10px] text-text-4">{docs.selected.path}</span>
+								<span className="shrink-0 font-mono text-[9.5px] text-text-4">{kilobytes(docs.selected.bytes)}</span>
+							</div>
 						) : null}
 
 						{docs.error ? (
@@ -174,7 +216,7 @@ export function DocsPage({ model }: PageProps) {
 								{t("docs.reader.loading")}
 							</div>
 						) : docs.selected && docs.body !== null ? (
-							<div className="fb-scroll max-h-[620px] overflow-y-auto px-3.5 py-3">
+							<div className="fb-scroll fb-fill-scroll overflow-y-auto px-3.5 py-3">
 								<Markdown source={docs.body} />
 							</div>
 						) : (

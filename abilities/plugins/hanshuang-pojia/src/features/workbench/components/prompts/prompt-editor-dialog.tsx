@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { InjectMode, PromptItem } from "../../../../domain/prompt-library";
 import { estimateTokens } from "../../../../domain/prompt-library";
+import { Markdown } from "../shell/markdown";
 import { SegmentedControl } from "../shell/segmented-control";
 
 export interface PromptFormData {
@@ -32,6 +33,8 @@ const EMPTY: PromptFormData = { name: "", description: "", content: "", mode: "a
 export function PromptEditorDialog({ open, editing, onClose, onSubmit }: PromptEditorDialogProps) {
 	const { t } = useTranslation();
 	const [form, setForm] = useState<PromptFormData>(EMPTY);
+	// 编辑默认仍落在原文：改字要看见字符；想看效果再切预览。
+	const [view, setView] = useState<"edit" | "preview">("edit");
 
 	useEffect(() => {
 		if (open) {
@@ -40,6 +43,7 @@ export function PromptEditorDialog({ open, editing, onClose, onSubmit }: PromptE
 					? { name: editing.name, description: editing.description, content: editing.content, mode: editing.mode }
 					: EMPTY,
 			);
+			setView("edit");
 		}
 	}, [open, editing]);
 
@@ -51,7 +55,7 @@ export function PromptEditorDialog({ open, editing, onClose, onSubmit }: PromptE
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
 			<div
-				className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-lg border border-line-subtle bg-surface-2"
+				className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-surface-2 ring-1 ring-line-subtle"
 				onClick={e => e.stopPropagation()}
 			>
 				<div className="flex items-center justify-between border-b border-line-subtle px-4 py-3">
@@ -101,17 +105,36 @@ export function PromptEditorDialog({ open, editing, onClose, onSubmit }: PromptE
 					</div>
 
 					<div>
-						<div className="mb-1 flex items-center justify-between">
+						<div className="mb-1 flex items-center justify-between gap-2">
 							<label className="text-[11.5px] font-medium text-text-2">{t("prompt.editor.content")}</label>
-							<span className="text-[10px] text-text-4">{t("prompt.editor.tokens", { count: tokens })}</span>
+							<div className="flex items-center gap-2">
+								<span className="text-[10px] text-text-4">{t("prompt.editor.tokens", { count: tokens })}</span>
+								<SegmentedControl<"edit" | "preview">
+									size="sm"
+									value={view}
+									onValueChange={setView}
+									ariaLabel={t("prompt.preview.view")}
+									items={[
+										{ value: "edit", label: t("prompt.preview.raw") },
+										{ value: "preview", label: t("prompt.preview.rendered") },
+									]}
+								/>
+							</div>
 						</div>
-						<textarea
-							value={form.content}
-							onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-							placeholder={t("prompt.editor.contentPlaceholder")}
-							rows={12}
-							className="w-full resize-y rounded-md border border-line-subtle bg-surface px-3 py-2 font-mono text-[11.5px] leading-relaxed text-text outline-none focus:border-purple"
-						/>
+						{view === "preview" ? (
+							// 预览高度对齐 textarea 的 12 行：切来切去时弹窗不会跳。
+							<div className="fb-scroll min-h-[17.5rem] overflow-y-auto rounded-md border border-line-subtle bg-surface px-3 py-2">
+								{form.content.trim() ? <Markdown source={form.content} /> : <p className="text-[11.5px] text-text-4">{t("prompt.preview.empty")}</p>}
+							</div>
+						) : (
+							<textarea
+								value={form.content}
+								onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
+								placeholder={t("prompt.editor.contentPlaceholder")}
+								rows={12}
+								className="w-full resize-y rounded-md border border-line-subtle bg-surface px-3 py-2 font-mono text-[11.5px] leading-relaxed text-text outline-none focus:border-purple"
+							/>
+						)}
 					</div>
 				</div>
 

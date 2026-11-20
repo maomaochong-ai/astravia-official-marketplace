@@ -57,7 +57,7 @@ export function EntropyPage({ model }: PageProps) {
 				description={t("page.entropy.lead")}
 				actions={<AiButton label={t("ai.entropy")} onClick={() => model.ask("entropy")} busy={busy} disabled={!model.report} />}
 			/>
-			<div className="space-y-3 p-4">
+			<div className="fb-page">
 				<div className="grid grid-cols-3 gap-2">
 					<StatTile label={t("entropy.average")} value={average.toFixed(2)} tone={average >= SEMI ? "medium" : "low"} />
 					<StatTile label={t("entropy.peak")} value={peak.toFixed(2)} tone={peak >= PACKED ? "high" : "default"} />

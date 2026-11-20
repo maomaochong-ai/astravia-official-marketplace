@@ -75,7 +75,7 @@ export function ManifestPage({ model }: PageProps) {
 					</>
 				}
 			/>
-			<div className="space-y-3 p-4">
+			<div className="fb-page">
 				<Card title={t("manifest.permissions")} bodyClassName="px-1 py-1">
 					<DataTable
 						columns={[t("manifest.col.permission"), t("manifest.col.level"), t("manifest.col.note")]}

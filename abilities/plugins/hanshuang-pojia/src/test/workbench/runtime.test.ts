@@ -101,8 +101,9 @@ describe("buildKernelBlock", () => {
 		// 再到 25（verify_signature / frida_dump），2.9.0+ 到 27（generate_artifact / install_astravia）
 		// ——每轮都多一份工具名清单。
 		// 预算按实际增量上调：数字只在“失控”时才该收紧，而不该因为合理新增就永久钉死。
+		// 2.17.3 到 32（inject_target）—— 注入计划是核心工具，lab 关闭时也在表里。
 		expect(off.length).toBeLessThan(800);
-		expect(on.length).toBeLessThan(1400);
+		expect(on.length).toBeLessThan(1450);
 	});
 
 	it("keeps the block id inside the plugin namespace", () => {
