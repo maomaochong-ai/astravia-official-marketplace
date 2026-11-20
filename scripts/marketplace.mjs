@@ -213,17 +213,34 @@ async function main() {
   const result = await prepareMarketplace({
     root, output, previous: previous && resolve(previous), baseline, sourceSha: git('rev-parse', 'HEAD'), strictSlugs,
     buildPlugin: directory => {
-      const npmCli = join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
-      // 失败的命令得能自己说出来：CI 里只看到 “Process completed with exit code 1”，
-      // 而 npm 的报错已经随 stdio:'inherit' 混在上面几百行里。
-      const npmRun = args => {
-        try {
-          if (process.platform === 'win32') execFileSync(process.execPath, [npmCli, ...args], { cwd: directory, stdio: 'inherit' });
-          else execFileSync('npm', args, { cwd: directory, stdio: 'inherit' });
-        } catch (error) {
-          throw new Error(`npm ${args.join(' ')} failed in ${relative(root, directory)} (exit ${error.status ?? '?'})`);
-        }
-      };
+			// npm 的入口不假设在 dirname(node)/node_modules/npm：发行版 node 可能不带 npm
+			// （本机 22.23.5 就没有），而系统安装或另一个运行时里有。
+			// 顺序：环境变量覆盖 → 当前 node 自带（Windows / POSIX 两种布局）→ 系统安装 → PATH 上的 npm。
+			// 只看「文件在不在」不够：PATH 上的 npm.cmd 也可能是指向缺失文件的壳。
+			const resolveNpm = () => {
+				const override = process.env.MARKETPLACE_NPM_CLI;
+				if (override && existsSync(override)) return { file: process.execPath, args: [override] };
+				if (process.platform !== 'win32') return { file: 'npm', args: [] };
+				const candidates = [
+					join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js'),
+					join(dirname(process.execPath), 'lib/node_modules/npm/bin/npm-cli.js'),
+					process.env.ProgramFiles && join(process.env.ProgramFiles, 'nodejs/node_modules/npm/bin/npm-cli.js'),
+					process.env.APPDATA && join(process.env.APPDATA, 'npm/node_modules/npm/bin/npm-cli.js'),
+				].filter(Boolean);
+				for (const candidate of candidates) if (existsSync(candidate)) return { file: process.execPath, args: [candidate] };
+				// 最后退回 PATH：npm 不一定属于当前 node，但能跑就行。
+				return { file: 'npm', args: [] };
+			};
+			const npm = resolveNpm();
+			// 失败的命令得能自己说出来：CI 里只看到 “Process completed with exit code 1”，
+			// 而 npm 的报错已经同 stdio:'inherit' 混在上面几百行里。
+			const npmRun = args => {
+				try {
+					execFileSync(npm.file, [...npm.args, ...args], { cwd: directory, stdio: 'inherit' });
+				} catch (error) {
+					throw new Error(`npm ${args.join(' ')} failed in ${relative(root, directory)} (exit ${error.status ?? '?'})`);
+				}
+			};
       const toolingDir = resolve(option('--tooling') ?? '.tooling/open-astravia');
       const dev = existsSync(join(toolingDir, 'packages'));
       if (!dev) {
@@ -241,7 +258,11 @@ async function main() {
         ].filter(k => k.startsWith('@astravia-org/')));
         const lockPath = join(directory, 'package-lock.json');
         const lockExisted = existsSync(lockPath);
-        try {
+        // lock 也要留一份原样：dev 路径会把 @astravia-org/* 解析成本地 file: 路径，
+        // 不还原就会跟着下一次 commit 进仓库。
+        const lockOrig = lockExisted ? readFileSync(lockPath, 'utf8') : null;
+		let pkgPatched = false;
+		try {
           if (needed.size > 0) {
             const pkgIndex = walkToolingPkgs(toolingDir);
             // 1. 临时把 @astravia-org/* 改成 file: 路径
@@ -252,21 +273,25 @@ async function main() {
                 }
               }
             }
-            writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
+			writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
+			pkgPatched = true;
             // 2. 生成 lockfile（resolved 指向本地路径）
             // 走同一个 npmRun：它知道 Windows 上要用 npm-cli.js、POSIX 上直接用 npm。
             // 直接拼 `dirname(node)/node_modules/npm/bin/npm-cli.js` 只在 Windows 布局下成立，
             // 在 GitHub runner 上 npm 住在 `<prefix>/lib/node_modules`，那条路径不存在。
             npmRun(['install', '--package-lock-only', '--no-audit', '--no-fund', '--legacy-peer-deps']);
-            // 3. 还原 package.json（semver 声明不变 ✅）
-            writeFileSync(pkgPath, pkgOrig);
+			// 3. 还原 package.json（semver 声明不变 ✅）——真正保底的还原在 finally 里，
           }
           // 4. npm install（宽容模式，lockfile 的 resolved 指向本地就从本地装）
           npmRun(['install', '--no-audit', '--no-fund', '--legacy-peer-deps']);
-        } finally {
-          // 5. 清掉临时 lockfile（git 不被污染）
-          if (!lockExisted) { try { unlinkSync(lockPath); } catch {} }
-        }
+		} finally {
+			// 5. 无论成功还是抛错，都要把 package.json 写回去：npm 在临时改写之后失败时，
+			// 残留的 `file:` 依赖会被下一次 commit 带进仓库（本机踩过）。
+			if (pkgPatched) { try { writeFileSync(pkgPath, pkgOrig); } catch {} }
+			// 6. 还原 lock：有原样就写回去，原来没有就删掉临时生成的那份。
+			if (lockOrig !== null) { try { writeFileSync(lockPath, lockOrig); } catch {} }
+			else { try { unlinkSync(lockPath); } catch {} }
+		}
       }
       for (const args of [['run', 'check', '--if-present'], ['test', '--if-present'], ['run', 'build']]) {
         try { npmRun(args); }
