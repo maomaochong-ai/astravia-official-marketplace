@@ -1,10 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { Card } from "../shell/card";
 import { PageHeader } from "../shell/page-header";
 import { SegmentedControl } from "../shell/segmented-control";
 import { backupsForPrompt, createBackup } from "../../../../domain/prompt-backup";
-import { searchPrompts, sortPrompts } from "../../../../domain/prompt-library";
+import { searchPromptHits, sortPrompts } from "../../../../domain/prompt-library";
 import type { PromptFormData } from "../prompts/prompt-editor-dialog";
 import { PromptEditorDialog } from "../prompts/prompt-editor-dialog";
 import { PromptCard } from "../prompts/prompt-card";
@@ -17,7 +17,7 @@ import { hasSystemTemplate, SYSTEM_PROMPT_TEMPLATE } from "../../../../domain/pr
 import type { PageProps } from "./overview";
 import { InjectPage } from "./inject";
 import { ProbeRefusalCard } from "../prompts/probe-refusal-card";
-import { TemplateLibrary } from "../prompts/template-library";
+import { ImportMenu } from "../prompts/import-menu";
 import { PACKS } from "../../../../domain/inject/packs";
 
 /** 两个视图：库列表 / 注入。它们回答同一个问题——「注入出去的是哪份提示词」。 */
@@ -45,6 +45,15 @@ export function PromptsPage({ model }: PageProps) {
 	// 预览窗只看内容；要改再跳编辑器，两件事不挤在一个弹窗里。
 	const [previewId, setPreviewId] = useState<string | null>(null);
 	const importRef = useRef<HTMLInputElement>(null);
+	// 删除是破坏性动作：点一次只武装那一张卡，5 秒后自动收回。
+	// 原生 confirm() 会阻断渲染进程、样式也跟不了主题，而且和活动页/注入页的确认形态不一致。
+	const [armedDelete, setArmedDelete] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (!armedDelete) return;
+		const timer = window.setTimeout(() => setArmedDelete(null), 5_000);
+		return () => window.clearTimeout(timer);
+	}, [armedDelete]);
 
 	const library = model.promptLibrary;
 	const backups = model.promptBackups;
@@ -54,7 +63,14 @@ export function PromptsPage({ model }: PageProps) {
 	const templatePresent = hasSystemTemplate(library.items);
 
 	// 过滤与排序都在 domain/prompt-library 里，页面只做编排。
-	const filtered = useMemo(() => sortPrompts(searchPrompts(library, query)), [library, query]);
+	// 搜索同时匹配正文，卡片只展示名称与描述：只命中正文时要把那段上下文摊出来，
+	// 否则用户看到一张没有关键词的卡，会以为搜索坏了。
+	const hits = useMemo(() => {
+		const order = new Map(sortPrompts(library.items).map((item, index) => [item.id, index]));
+		return [...searchPromptHits(library, query)].sort(
+			(left, right) => (order.get(left.prompt.id) ?? 0) - (order.get(right.prompt.id) ?? 0),
+		);
+	}, [library, query]);
 
 	const promptBackups = useMemo(
 		() => (backupPromptId ? backupsForPrompt(backups, backupPromptId) : []),
@@ -108,9 +124,13 @@ export function PromptsPage({ model }: PageProps) {
 		setEditingId(null);
 	}
 
-	function handleDelete(id: string) {
-		if (!confirm(t("prompt.deleteConfirm"))) return;
+	function requestDelete(id: string) {
+		if (armedDelete !== id) {
+			setArmedDelete(id);
+			return;
+		}
 		model.deletePrompt(id);
+		setArmedDelete(null);
 	}
 
 	return (
@@ -132,21 +152,13 @@ export function PromptsPage({ model }: PageProps) {
 						/>
 						{view === "inject" ? null : (
 							<>
-								<button
-									type="button"
-									onClick={() => importRef.current?.click()}
-									title={t("prompt.import.hint")}
-									className="flex items-center gap-1 rounded-md border border-line-subtle px-2.5 py-1.5 text-[11.5px] font-medium text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
-								>
-									<Icon name="file" className="size-3.5" />
-									{t("prompt.import.button")}
-								</button>
-								<button
-									type="button"
-									// 一键注入系统契约：内容是 SYSTEM.md 原文（prepend），不再由用户粘贴。
-									disabled={templatePresent}
-									title={templatePresent ? t("prompt.template.present") : t("prompt.template.hint")}
-									onClick={() =>
+								<ImportMenu
+									existing={library.items}
+									onLocal={() => importRef.current?.click()}
+									onTemplate={data => model.createPrompt({ ...data, mode: "append" })}
+									notify={model.notify}
+									systemPresent={templatePresent}
+									onSystemContract={() =>
 										model.createPrompt({
 											name: SYSTEM_PROMPT_TEMPLATE.name,
 											description: SYSTEM_PROMPT_TEMPLATE.description,
@@ -154,11 +166,7 @@ export function PromptsPage({ model }: PageProps) {
 											mode: SYSTEM_PROMPT_TEMPLATE.mode,
 										})
 									}
-									className="flex items-center gap-1 rounded-md border border-line-subtle px-2.5 py-1.5 text-[11.5px] font-medium text-text-2 transition-colors hover:bg-surface-hover hover:text-text disabled:cursor-not-allowed disabled:opacity-45"
-								>
-									<Icon name="shield" className="size-3.5" />
-									{t("prompt.template.button")}
-								</button>
+								/>
 								<button
 									type="button"
 									onClick={() => {
@@ -216,7 +224,7 @@ export function PromptsPage({ model }: PageProps) {
 							bodyClassName="p-0"
 							fill
 							className="min-h-[220px]"
-							actions={<span className="font-mono text-[10px] text-text-4">{filtered.length}</span>}
+							actions={<span className="font-mono text-[10.5px] text-text-4">{hits.length}</span>}
 						>
 							<div className="shrink-0 border-b border-line-subtle p-3">
 								<input
@@ -229,34 +237,31 @@ export function PromptsPage({ model }: PageProps) {
 							</div>
 							{/* 列表自己滚：卡片贴到面板底部，不经 max-h 封顶。 */}
 							<div className="fb-scroll fb-fill-scroll overflow-y-auto p-3">
-								{filtered.length === 0 ? (
+								{hits.length === 0 ? (
 									<div className="py-8 text-center text-[12px] text-text-4">{t("prompt.searchEmpty")}</div>
 								) : (
-									<div className="grid gap-2.5 @min-[640px]:grid-cols-2">
-										{filtered.map(prompt => (
+									<div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-2.5">
+										{hits.map(hit => (
 											<PromptCard
-												key={prompt.id}
-												prompt={prompt}
-												onActivate={() => model.activatePrompt(prompt.id)}
+												key={hit.prompt.id}
+												prompt={hit.prompt}
+												snippet={hit.snippet}
+												deleteArmed={armedDelete === hit.prompt.id}
+												onActivate={() => model.activatePrompt(hit.prompt.id)}
 												onDeactivate={() => model.deactivatePrompt()}
-												onPreview={() => setPreviewId(prompt.id)}
+												onPreview={() => setPreviewId(hit.prompt.id)}
 												onEdit={() => {
-													setEditingId(prompt.id);
+													setEditingId(hit.prompt.id);
 													setEditorOpen(true);
 												}}
-												onDelete={() => handleDelete(prompt.id)}
-												onShowBackups={() => setBackupPromptId(prompt.id)}
+												onDelete={() => requestDelete(hit.prompt.id)}
+												onShowBackups={() => setBackupPromptId(hit.prompt.id)}
 											/>
 										))}
 									</div>
 								)}
 							</div>
 						</Card>
-						<TemplateLibrary
-							existing={library.items}
-							onImport={data => model.createPrompt({ ...data, mode: "append" })}
-							notify={model.notify}
-						/>
 						</>
 					) : (
 						<Card bodyClassName="p-8" fill>
@@ -265,7 +270,7 @@ export function PromptsPage({ model }: PageProps) {
 									<Icon name="nav-prompts" className="size-5" />
 								</div>
 								<h3 className="text-[13px] font-semibold text-text">{t("prompt.emptyTitle")}</h3>
-								<p className="mx-auto mt-1 max-w-sm text-[11px] leading-relaxed text-text-4">{t("prompt.emptyBody")}</p>
+								<p className="mx-auto mt-1 max-w-sm text-[11.5px] leading-relaxed text-text-4">{t("prompt.emptyBody")}</p>
 								<button
 									type="button"
 									onClick={() => setEditorOpen(true)}

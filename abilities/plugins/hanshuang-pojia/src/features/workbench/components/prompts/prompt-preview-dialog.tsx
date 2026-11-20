@@ -11,6 +11,7 @@ import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { NotifyVariant } from "../../bridge";
 import type { PromptItem } from "../../../../domain/prompt-library";
 import { estimateTokens } from "../../../../domain/prompt-library";
+import { useDialogBehavior } from "../../hooks/use-dialog-behavior";
 import { Icon } from "../shell/icon";
 import { Markdown } from "../shell/markdown";
 import { SegmentedControl } from "../shell/segmented-control";
@@ -30,6 +31,8 @@ export function PromptPreviewDialog({ open, prompt, onClose, onEdit, notify }: P
 	// 换一条提示词就回到「预览」：上一条停在原文，不代表这一条也要看原文。
 	const [view, setView] = useState<View>("preview");
 	const [lastId, setLastId] = useState<string | null>(null);
+	const dialog = useDialogBehavior(open, onClose);
+
 	if (prompt && prompt.id !== lastId) {
 		setLastId(prompt.id);
 		setView("preview");
@@ -47,7 +50,12 @@ export function PromptPreviewDialog({ open, prompt, onClose, onEdit, notify }: P
 	return (
 		<div className="fb-overlay" onClick={onClose}>
 			<div
-				className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-surface-2 ring-1 ring-line-subtle"
+				ref={dialog}
+				role="dialog"
+				aria-modal="true"
+				aria-label={prompt.name}
+				tabIndex={-1}
+				className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-surface-2 ring-1 ring-line-subtle outline-none"
 				onClick={event => event.stopPropagation()}
 				data-testid="prompt-preview-dialog"
 			>
@@ -55,16 +63,19 @@ export function PromptPreviewDialog({ open, prompt, onClose, onEdit, notify }: P
 					<div className="min-w-0 flex-1">
 						<div className="flex items-center gap-2">
 							{prompt.active ? (
-								<span className="rounded-full bg-purple/15 px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide text-purple">
+								<span className="shrink-0 rounded-full bg-purple/15 px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide text-purple">
 									{t("prompt.active")}
 								</span>
 							) : null}
-							<h2 className="min-w-0 truncate text-[14px] font-semibold text-text" title={prompt.name}>{prompt.name}</h2>
+							<h2 className="min-w-0 truncate text-[14px] font-semibold text-text" title={prompt.name}>
+								{prompt.name}
+							</h2>
 						</div>
-						<div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-text-4">
+						<div className="mt-1 flex flex-wrap items-center gap-2 text-[10.5px] text-text-4">
 							<span className="rounded bg-surface-3 px-1.5 py-0.5">{t(`prompt.mode.${prompt.mode}`)}</span>
 							<span>{t("prompt.editor.tokens", { count: estimateTokens(prompt.content) })}</span>
-							<span className="font-mono">{prompt.content.length} chars</span>
+							{/* 字数走文案键：中文界面里不该出现英文的 "chars"。 */}
+							<span className="font-mono">{t("prompt.preview.chars", { count: prompt.content.length })}</span>
 						</div>
 					</div>
 					<SegmentedControl<View>

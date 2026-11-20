@@ -1,6 +1,6 @@
 {
   "name": "@astravia-marketplace/hanshuang-pojia",
-  "version": "2.17.28",
+  "version": "2.17.29",
   "private": true,
   "type": "module",
   "scripts": {
@@ -15,13 +15,13 @@
     "sync:precedents": "node scripts/sync-precedents.mjs",
     "sync:packs": "node scripts/sync-packs.mjs",
     "check:cases": "node scripts/check-precedent-package.mjs --all",
-    "verify:generated": "node scripts/sync-docs.mjs --check && node scripts/sync-system-prompt.mjs --check && node scripts/sync-tool-index.mjs --check && node scripts/sync-precedents.mjs --check && node scripts/sync-packs.mjs --check && node scripts/sync-skill-library.mjs --check && node scripts/sync-icons.mjs --check && node scripts/sync-routing-table.mjs --check && node scripts/sync-prompt-templates.mjs --check && node scripts/check-layout.mjs --strict",
+    "verify:generated": "node scripts/sync-docs.mjs --check && node scripts/sync-system-prompt.mjs --check && node scripts/sync-tool-index.mjs --check && node scripts/sync-precedents.mjs --check && node scripts/sync-packs.mjs --check && node scripts/sync-skill-library.mjs --check && node scripts/sync-icons.mjs --check && node scripts/sync-routing-table.mjs --check && node scripts/sync-prompt-templates.mjs --check && node scripts/check-layout.mjs --strict && node scripts/report-unused-locale.mjs zh.json --strict",
     "verify:docs": "node scripts/check-docs-deps.mjs --strict",
     "verify:probe": "node scripts/probe-refusal-selftest.mjs",
     "inject:matrix": "node scripts/inject-matrix.mjs",
     "verify:icon": "node scripts/sync-icons.mjs --check",
     "verify:routes": "node scripts/sync-routing-table.mjs --check",
-    "verify:locale": "node scripts/report-unused-locale.mjs zh.json && node scripts/report-unused-locale.mjs en.json",
+    "verify:locale": "node scripts/report-unused-locale.mjs zh.json --strict && node scripts/report-unused-locale.mjs en.json --strict",
     "report:dead": "node scripts/report-dead-exports.mjs",
     "verify:cases": "node scripts/check-precedent-package.mjs --all",
     "sync:templates": "node scripts/sync-prompt-templates.mjs",

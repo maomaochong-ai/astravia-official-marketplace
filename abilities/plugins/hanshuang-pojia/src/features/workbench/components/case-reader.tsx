@@ -61,7 +61,7 @@ function List({ title, items }: { title: string; items: readonly string[] }) {
 	const { t } = useTranslation();
 	return (
 		<div className="min-w-0">
-			<p className="text-[10px] font-medium uppercase tracking-wider text-text-4">{title}</p>
+			<p className="text-[10.5px] font-medium uppercase tracking-wider text-text-4">{title}</p>
 			{items.length === 0 ? (
 				<p className="mt-1 text-[10.5px] text-text-4">{t("cases.detail.empty")}</p>
 			) : (

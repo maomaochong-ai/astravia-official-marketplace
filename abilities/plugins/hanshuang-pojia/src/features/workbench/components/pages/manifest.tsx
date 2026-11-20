@@ -36,7 +36,23 @@ export function ManifestPage({ model, embedded = false }: PageProps & { embedded
 		return (
 			<>
 				<PageHeader title={t("page.manifest.title")} description={t("page.manifest.lead")} />
-				<EmptyState icon="clipboard" title={t("empty.noReport.title")} body={t("empty.noReport.body")} />
+				{/* 空态必须带下一步：这一页没有载入入口，用户只能自己回去找样本页。 */}
+				<div className="fb-page">
+					<EmptyState
+						icon="clipboard"
+						title={t("empty.noReport.title")}
+						body={t("empty.noReport.body")}
+						action={
+							<button
+								type="button"
+								onClick={() => model.go("samples")}
+								className="rounded-md border border-line-subtle px-2.5 py-1 text-[11.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+							>
+								{t("empty.goSamples")}
+							</button>
+						}
+					/>
+				</div>
 			</>
 		);
 	}
@@ -69,7 +85,7 @@ export function ManifestPage({ model, embedded = false }: PageProps & { embedded
 						<button
 							type="button"
 							onClick={() => model.exportReport("markdown")}
-							className="rounded border border-line-subtle px-2 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+							className="rounded border border-line-subtle px-2 py-1 text-[11.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
 						>
 							{t("manifest.export")}
 						</button>

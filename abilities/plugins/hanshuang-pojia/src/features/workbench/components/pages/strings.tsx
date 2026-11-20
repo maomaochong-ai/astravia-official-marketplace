@@ -19,18 +19,46 @@ const MAX_ROWS = 400;
 export function StringsPage({ model }: PageProps) {
 	const { t } = useTranslation();
 	const [filter, setFilter] = useState<Filter>("all");
+	// 值搜索：字符串页最常见的动作是「找那条带域名的串」，只按类型筛不够。
+	const [query, setQuery] = useState("");
 	const busy = model.chat.sending;
 	const hits = model.strings;
 
 	// 命中项自带 kind，计数直接复用领域层函数，不再在页面里维护第二份循环。
 	const counts = useMemo(() => countKinds((hits ?? []).map(hit => hit.kind)), [hits]);
 
-	const visible = useMemo(() => (hits ?? []).filter(hit => filter === "all" || hit.kind === filter), [filter, hits]);
+	/**
+	 * 统计卡只放「真的有命中的前两类」。
+	 *
+	 * 上一版写死 url / path / identifier：IPv4 与邮箱常是这类样本最值钱的两类，
+	 * 却永远看不到；而没命中时那一格又恒为 0。按数量取前二，剩下的交给筛选 chips
+	 * （chips 里六类都带计数）。
+	 */
+	const topKinds = useMemo(
+		() =>
+			STRING_KINDS.map(kind => ({ kind, count: counts[kind] }))
+				.filter(item => item.count > 0)
+				.sort((left, right) => right.count - left.count)
+				.slice(0, 2),
+		[counts],
+	);
 
-	const rows: DataTableRow[] = visible.slice(0, MAX_ROWS).map(hit => ({
-		key: `${hit.offset}-${hit.value}`,
-		cells: [`0x${hit.offset.toString(16)}`, t(`stringKind.${hit.kind}`), hit.value],
-	}));
+	const visible = useMemo(() => {
+		const needle = query.trim().toLowerCase();
+		return (hits ?? []).filter(
+			hit => (filter === "all" || hit.kind === filter) && (!needle || hit.value.toLowerCase().includes(needle)),
+		);
+	}, [filter, hits, query]);
+
+	const rows: DataTableRow[] = useMemo(
+		() =>
+			visible.slice(0, MAX_ROWS).map(hit => ({
+				key: `${hit.offset}-${hit.value}`,
+				// 补齐到 8 位：不补的话 0x1f 与 0x1f0000 混排，列宽跳动像不同量级。
+				cells: [`0x${hit.offset.toString(16).padStart(8, "0")}`, t(`stringKind.${hit.kind}`), hit.value],
+			})),
+		[visible, t],
+	);
 
 	const chips = [
 		{ id: "all" as Filter, label: t("strings.filter.all"), count: hits?.length ?? 0 },
@@ -49,14 +77,14 @@ export function StringsPage({ model }: PageProps) {
 					<EmptyState icon="type" title={t("strings.null.title")} body={t("strings.null.body")} />
 				) : (
 					<>
-						<div className="grid grid-cols-2 gap-2 @min-[720px]:grid-cols-4">
+						<div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-2">
 							<StatTile label={t("strings.stat.total")} value={hits.length} />
-							<StatTile label={t("stringKind.url")} value={counts.url} />
-							<StatTile label={t("stringKind.path")} value={counts.path} />
-							<StatTile label={t("stringKind.identifier")} value={counts.identifier} />
+							{topKinds.map(item => (
+								<StatTile key={item.kind} label={t(`stringKind.${item.kind}`)} value={item.count} />
+							))}
 						</div>
 
-						<Card title={t("strings.controls")} bodyClassName="divide-y divide-line-subtle">
+						<Card title={t("strings.controls")} bodyClassName="divide-y divide-line-subtle" actions={<span className="text-[10.5px] text-text-4">{t("strings.controls.hint")}</span>}>
 							<NumberField
 								label={t("strings.minLength")}
 								hint={t("strings.minLength.hint")}
@@ -79,8 +107,18 @@ export function StringsPage({ model }: PageProps) {
 						<Card
 							title={t("page.strings.list")}
 							actions={<FilterChips items={chips} value={filter} onChange={value => setFilter(value as Filter)} />}
-							bodyClassName="px-1 pb-1"
+							bodyClassName="p-0"
 						>
+							<div className="border-b border-line-subtle px-3.5 py-2">
+								<input
+									value={query}
+									onChange={event => setQuery(event.target.value)}
+									placeholder={t("strings.search.placeholder")}
+									aria-label={t("strings.search.placeholder")}
+									className="w-full rounded border border-line-subtle bg-surface px-2 py-1 font-mono text-[11.5px] text-text outline-none placeholder:font-sans placeholder:text-text-4 focus:border-accent"
+								/>
+							</div>
+							<div className="px-1 pb-1">
 							<DataTable
 								columns={[t("strings.col.offset"), t("strings.col.kind"), t("strings.col.value")]}
 								rows={rows}
@@ -88,8 +126,9 @@ export function StringsPage({ model }: PageProps) {
 								empty={t("strings.empty")}
 							/>
 							{visible.length > MAX_ROWS ? (
-								<p className="px-3.5 py-2 text-[10px] text-text-4">{t("strings.truncated", { shown: MAX_ROWS, total: visible.length })}</p>
+								<p className="px-3.5 py-2 text-[10.5px] text-text-4">{t("strings.truncated", { shown: MAX_ROWS, total: visible.length })}</p>
 							) : null}
+							</div>
 						</Card>
 					</>
 				)}

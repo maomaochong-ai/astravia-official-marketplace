@@ -33,7 +33,7 @@ export function DocTabs({ items, value, onChange, testId }: DocTabsProps) {
 						title={item.hint ?? item.id}
 						aria-pressed={active}
 						onClick={() => onChange(item.id)}
-						className={`shrink-0 rounded-md border px-1.5 py-0.5 font-mono text-[10px] transition-colors ${
+						className={`shrink-0 rounded-md border px-1.5 py-0.5 font-mono text-[10.5px] transition-colors ${
 							active ? "fb-selected" : "border-transparent text-text-3 hover:bg-surface-hover hover:text-text"
 						}`}
 					>

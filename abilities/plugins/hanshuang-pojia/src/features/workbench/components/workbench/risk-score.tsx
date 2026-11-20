@@ -75,14 +75,14 @@ export function RiskScore({ report, busy, onAsk }: RiskScoreProps) {
 						/>
 					</svg>
 					<div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-						<span className={`font-mono text-[19px] font-semibold ${GRADE_COLOR[report.risk.grade]}`}>{report.risk.score}</span>
+						<span className={`font-mono text-[18px] font-semibold ${GRADE_COLOR[report.risk.grade]}`}>{report.risk.score}</span>
 						<span className="mt-0.5 text-[9.5px] text-text-4">{t("risk.score")}</span>
 					</div>
 				</div>
 
 				<div className="min-w-0 flex-1">
 					<div className="flex items-center gap-2">
-						<span className={`text-[15px] font-semibold ${GRADE_COLOR[report.risk.grade]}`}>{t(`risk.grade.${report.risk.grade}`)}</span>
+						<span className={`text-[14px] font-semibold ${GRADE_COLOR[report.risk.grade]}`}>{t(`risk.grade.${report.risk.grade}`)}</span>
 						<Tag tone={GRADE_TONE[report.risk.grade]}>{t("risk.level")}</Tag>
 						<span className="ml-auto font-mono text-[10.5px] text-text-4">
 							{t("risk.findings", { count: report.findings.length })}
@@ -95,7 +95,7 @@ export function RiskScore({ report, busy, onAsk }: RiskScoreProps) {
 					</div>
 					<div className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-0.5">
 						{counts.map(item => (
-							<span key={item.severity} className={`text-[10px] ${SEVERITY_TEXT[item.severity]}`}>
+							<span key={item.severity} className={`text-[10.5px] ${SEVERITY_TEXT[item.severity]}`}>
 								{t(`severity.${item.severity}`)} {item.count}
 							</span>
 						))}
@@ -103,7 +103,7 @@ export function RiskScore({ report, busy, onAsk }: RiskScoreProps) {
 				</div>
 			</div>
 
-			<p className="mt-3 text-[11px] leading-relaxed text-text-2">{t(`risk.advice.${report.risk.grade}`)}</p>
+			<p className="mt-3 text-[11.5px] leading-relaxed text-text-2">{t(`risk.advice.${report.risk.grade}`)}</p>
 
 			{report.risk.drivers.length > 0 ? (
 				<div className="mt-2 space-y-1">
@@ -117,7 +117,7 @@ export function RiskScore({ report, busy, onAsk }: RiskScoreProps) {
 			) : null}
 
 			<div className="mt-2.5 flex items-center justify-between gap-2 border-t border-line-subtle pt-2.5">
-				<span className="text-[10px] leading-tight text-text-4">{t("risk.note")}</span>
+				<span className="text-[10.5px] leading-tight text-text-4">{t("risk.note")}</span>
 				<AiButton label={t("risk.askAi")} onClick={onAsk} busy={busy} />
 			</div>
 		</div>

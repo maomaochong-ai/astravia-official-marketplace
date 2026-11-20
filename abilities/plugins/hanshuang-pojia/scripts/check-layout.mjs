@@ -9,7 +9,12 @@
  *   1. `truncate` / `line-clamp-*` —— 只允许出现在：带 title 的属性、tabular-nums 的数值列、
  *      固定宽度的计数/时间列、以及明确标注为「预览片段」的 search snippet。
  *   2. 固定高度 `h-6..h-11` 且 `overflow-hidden` —— 一律不允许；承载文字用 min-h。
- *   3. `max-h-[Npx]` + `overflow-hidden` —— 只允许出现在对话框（`flex-col` 且内部有滚动区）。
+ *   3. `max-h-[Npx]` —— 只允许出现在对话框（`flex-col` 且内部有滚动区）。列表/卡片用
+ *      `var(--fb-h-*)` 四档（`min(px, vh)`）：宽屏取 px，矮屏取 vh，两边都看得到底。
+ *   4. 硬列数 `grid-cols-2/3/4` —— 只允许带容器查询前缀（`@min-[...]:grid-cols-2`）
+ *      或 `repeat(auto-fit,minmax(...,1fr))`；否则窄面板上每列被挤成标签宽。
+ *   5. 样式侧契约：`.fb-page > *` 不得收缩、`.fb-main` 是滚动容器、四档高度变量存在
+ *      —— 这三条一旦被改回去，“笔记本底部看不见”就会重现。
  *
  * 用法：
  *   node scripts/check-layout.mjs            列出全部命中
@@ -66,14 +71,28 @@ const walk = dir => {
 				if (/\boverflow-hidden\b/.test(line) && /\bh-(?:6|7|8|9|10|11)\b/.test(line)) {
 					hits.push({ rel, line: index + 1, kind: "fixed-height", text: line.trim().slice(0, 96) });
 				}
-				if (/max-h-\[\d+px\]/.test(line) && /\boverflow-hidden\b/.test(line) && !cappedDialog(line)) {
-					hits.push({ rel, line: index + 1, kind: "max-h", text: line.trim().slice(0, 96) });
+				if (/max-h-\[\d+px\]/.test(line) && !cappedDialog(line)) {
+					hits.push({ rel, line: index + 1, kind: "max-h-px", text: line.trim().slice(0, 96) });
+				}
+				// 硬列数：只有容器查询前缀或 auto-fit 才允许（窄面板自动降列）。
+				if (/\bgrid-cols-[2-9]\b/.test(line) && !/@min-\[|repeat\(auto-fit/.test(line)) {
+					hits.push({ rel, line: index + 1, kind: "fixed-cols", text: line.trim().slice(0, 96) });
 				}
 			});
 		}
 	}
 };
 walk(uiDir);
+
+// 样式侧契约：这三条是「页面底部看不见」的直接原因，改回去必须红。
+const css = readFileSync(join(root, "src/style.css"), "utf8");
+for (const [needle, label] of [
+	[/(\.fb-page\s*>\s*:not\(\.fb-fill\):not\(\.fb-fill-scroll\)\s*\{[^}]*flex:\s*0 0 auto)/s, "page-cards-shrink"],
+	[/(\.fb-main\s*\{[^}]*overflow-y:\s*auto)/s, "main-scrolls"],
+	[/--fb-h-xs:\s*min\(\d+px,\s*\d+vh\)/, "height-ladder"],
+]) {
+	if (!needle.test(css)) hits.push({ rel: "src/style.css", line: 0, kind: "css-contract", text: `missing: ${label}` });
+}
 
 if (hits.length === 0) {
 	console.log("layout: no clipping risk found");

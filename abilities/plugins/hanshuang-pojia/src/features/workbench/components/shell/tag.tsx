@@ -18,5 +18,5 @@ export interface TagProps {
 
 /** 格式、来源、方案之类的小标签。 */
 export function Tag({ tone = "neutral", children, className }: TagProps) {
-	return <span className={`inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${TONE[tone]} ${className ?? ""}`}>{children}</span>;
+	return <span className={`inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10.5px] font-medium ${TONE[tone]} ${className ?? ""}`}>{children}</span>;
 }

@@ -141,7 +141,7 @@ export function InjectPage({ model, embedded = false, packId: packIdProp }: Page
 							{ value: "posix", label: "sh" },
 						]}
 					/>
-					<span className="ms-auto font-mono text-[10px] text-text-4">
+					<span className="ms-auto font-mono text-[10.5px] text-text-4">
 						{body === null ? t("inject.pack.loading") : t("inject.pack.chars", { count: PACKS.find(pack => pack.id === packId)?.chars ?? 0 })}
 					</span>
 				</div>
@@ -165,7 +165,7 @@ export function InjectPage({ model, embedded = false, packId: packIdProp }: Page
 												{t(`inject.form.${item.form}`)}
 											</span>
 										</button>
-										<div className="mt-1 w-full fb-wrap font-mono text-[10px] text-text-4">{item.entry}</div>
+										<div className="mt-1 w-full fb-wrap font-mono text-[10.5px] text-text-4">{item.entry}</div>
 										{/* 操作按可用性出现：不可用目标不给「执行」，否则等于给一个永远失败的按钮。 */}
 										<div className="mt-2 flex flex-wrap items-center gap-1">
 											<button
@@ -177,7 +177,7 @@ export function InjectPage({ model, embedded = false, packId: packIdProp }: Page
 												{t("inject.copy")}
 											</button>
 											{blocked ? (
-												<span className="px-1 text-[10px] text-text-4">{t("inject.unavailableHint")}</span>
+												<span className="px-1 text-[10.5px] text-text-4">{t("inject.unavailableHint")}</span>
 											) : (
 												<button
 													type="button"
@@ -278,12 +278,12 @@ export function InjectPage({ model, embedded = false, packId: packIdProp }: Page
 									<span className="rounded bg-surface-3 px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide text-text-3">
 										{t(`inject.layer.${plan.layer}`)}
 									</span>
-									{target.note ? <span className="text-[10px] text-text-4">{target.note}</span> : null}
+									{target.note ? <span className="text-[10.5px] text-text-4">{target.note}</span> : null}
 								</div>
 
 								<div className="mb-1 text-[10.5px] font-medium uppercase tracking-wide text-text-4">{t("inject.writes")}</div>
 								<div className="mb-3 overflow-hidden rounded-lg ring-1 ring-line-subtle">
-										<table className="w-full border-collapse text-left text-[11px]">
+										<table className="w-full border-collapse text-left text-[11.5px]">
 									<thead className="bg-surface-3">
 										<tr>
 											<th className="border-b border-line-subtle px-2 py-1 font-semibold text-text">path</th>
@@ -336,7 +336,7 @@ export function InjectPage({ model, embedded = false, packId: packIdProp }: Page
 								) : (
 									<details className="mt-2">
 										<summary className="cursor-pointer text-[10.5px] text-text-3">{t("inject.previewScript")}</summary>
-										<pre className="fb-scroll mt-1.5 max-h-64 overflow-auto rounded-md border border-line-subtle bg-surface p-2.5 font-mono text-[10px] leading-relaxed text-text-2">
+										<pre className="fb-scroll mt-1.5 max-h-[var(--fb-h-md)] overflow-auto rounded-md border border-line-subtle bg-surface p-2.5 font-mono text-[10.5px] leading-relaxed text-text-2">
 											{renderInstaller(plan, shell)}
 										</pre>
 									</details>

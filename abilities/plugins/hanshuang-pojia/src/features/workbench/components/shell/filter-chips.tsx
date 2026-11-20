@@ -27,7 +27,7 @@ export function FilterChips<T extends string>({ items, value, onChange }: Filter
 						}`}
 					>
 						{item.label}
-						{typeof item.count === "number" ? <span className="ml-1 font-mono text-[10px] opacity-70">{item.count}</span> : null}
+						{typeof item.count === "number" ? <span className="ml-1 font-mono text-[10.5px] opacity-70">{item.count}</span> : null}
 					</button>
 				);
 			})}

@@ -93,8 +93,9 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 	const [pending, setPending] = useState<string | null>(null);
 	const { t } = useTranslation();
 
+	// data-panel-root：浮层钳位用 —— 右键菜单要在面板内收边，不能拿 viewport 当边界。
 	return (
-		<div className="fb-root @container flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface text-text">
+		<div data-panel-root className="fb-root @container flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface text-text">
 			<TopBar
 				page={model.page}
 				chat={model.chat.state}
@@ -124,6 +125,7 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 				{/* 面板里的分区由用户决定谁占多宽：收起时没有可拖的对象。 */}
 				{rail ? null : (
 					<SplitHandle
+						// 侧栏在把手左侧：往右拖变宽。
 						side="left"
 						value={sidebarWidth}
 						min={SIDEBAR_MIN}

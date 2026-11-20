@@ -1,6 +1,6 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { Finding } from "../../../../domain/audit/findings";
-import { SEVERITY_DOT, SEVERITY_TEXT } from "../../severity";
+import { SEVERITY_DOT } from "../../severity";
 import { AiButton } from "../shell/ai-button";
 import { Tag } from "../shell/tag";
 
@@ -18,21 +18,25 @@ export function FindingRow({ finding, busy, onAsk }: FindingRowProps) {
 		<div className="group flex items-start gap-2.5 border-b border-line-subtle px-3.5 py-2.5 last:border-0 hover:bg-surface-hover">
 			<span className={`mt-1.5 size-1.5 shrink-0 rounded-full ${SEVERITY_DOT[finding.severity]}`} />
 			<div className="min-w-0 flex-1">
+				{/*
+				 * 级别只出现一次，且是译文。
+				 * 上一版同一条发现既印原始枚举（critical/high）又印标签（严重/高危），
+				 * 两行字说同一件事，还让中文界面里露出英文枚举。
+				 */}
 				<div className="flex min-w-0 flex-wrap items-center gap-1.5">
-					<span className={`font-mono text-[10px] ${SEVERITY_TEXT[finding.severity]}`}>{finding.severity}</span>
-					<span className="fb-wrap font-mono text-[10px] leading-snug text-text-4">{finding.ruleId}</span>
 					<Tag>{t(`severity.${finding.severity}`)}</Tag>
+					<span className="fb-wrap font-mono text-[10.5px] leading-snug text-text-4">{finding.ruleId}</span>
 				</div>
-				<div className="mt-0.5 text-[12.5px] font-medium leading-snug text-text">{finding.title}</div>
-				<div className="mt-0.5 break-words text-[11px] leading-relaxed text-text-3">{finding.detail}</div>
+				<div className="mt-0.5 text-[12px] font-medium leading-snug text-text">{finding.title}</div>
+				<div className="mt-0.5 break-words text-[11.5px] leading-relaxed text-text-3">{finding.detail}</div>
 				{finding.evidence.length > 0 ? (
 					<ul className="mt-1 space-y-0.5">
 						{finding.evidence.slice(0, 3).map(item => (
-							<li key={item} className="truncate font-mono text-[10px] text-text-4" title={item}>
+							<li key={item} className="truncate font-mono text-[10.5px] text-text-4" title={item}>
 								{item}
 							</li>
 						))}
-						{finding.evidence.length > 3 ? <li className="font-mono text-[10px] text-text-4">{t("findings.moreEvidence", { count: finding.evidence.length - 3 })}</li> : null}
+						{finding.evidence.length > 3 ? <li className="font-mono text-[10.5px] text-text-4">{t("findings.moreEvidence", { count: finding.evidence.length - 3 })}</li> : null}
 					</ul>
 				) : null}
 			</div>

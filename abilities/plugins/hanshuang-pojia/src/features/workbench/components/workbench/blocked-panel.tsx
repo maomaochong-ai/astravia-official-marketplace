@@ -51,11 +51,11 @@ export function BlockedPanel({ failure, root, busy, onHandOff, onClear }: Blocke
 						<button
 							type="button"
 							onClick={onClear}
-							className="rounded border border-line-subtle px-2 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+							className="rounded border border-line-subtle px-2 py-1 text-[11.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
 						>
 							{t("blocked.retry")}
 						</button>
-						{tooLarge ? <span className="text-[10px] text-text-4">{t("blocked.tooLarge.note")}</span> : null}
+						{tooLarge ? <span className="text-[10.5px] text-text-4">{t("blocked.tooLarge.note")}</span> : null}
 					</div>
 				</div>
 			</div>

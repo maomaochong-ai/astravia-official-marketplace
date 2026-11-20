@@ -34,13 +34,13 @@ export function SampleMeta({ report }: SampleMetaProps) {
 				const value = fact.label === "File size" ? formatBytes(report.target.size) : fact.value;
 				return (
 					<div key={fact.label} className="flex gap-3 px-3.5 py-1.5">
-						<dt className="w-[38%] shrink-0 truncate text-[11px] text-text-4">{label}</dt>
+						<dt className="w-[38%] shrink-0 truncate text-[11.5px] text-text-4">{label}</dt>
 						<dd className="min-w-0 flex-1 break-words font-mono text-[11.5px] text-text-2">{value}</dd>
 					</div>
 				);
 			})}
 			<div className="flex gap-3 px-3.5 py-1.5">
-				<dt className="w-[38%] shrink-0 truncate text-[11px] text-text-4">{t("meta.sha256")}</dt>
+				<dt className="w-[38%] shrink-0 truncate text-[11.5px] text-text-4">{t("meta.sha256")}</dt>
 				<dd className="min-w-0 flex-1 break-all font-mono text-[11.5px] text-text-2">{report.target.sha256}</dd>
 			</div>
 		</dl>

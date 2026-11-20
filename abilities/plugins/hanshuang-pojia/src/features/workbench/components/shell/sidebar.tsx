@@ -70,8 +70,8 @@ export function Sidebar({ page, onNavigate, status, timeline, rail, collapsed, o
 				</div>
 				{rail ? null : (
 					<div className="min-w-0 flex-1 leading-tight">
-						<div className="truncate text-[12.5px] font-semibold text-text" title={t("plugin.name")}>{t("plugin.name")}</div>
-						<div className="truncate text-[10px] text-text-4" title={t("panel.tagline")}>{t("panel.tagline")}</div>
+						<div className="truncate text-[12px] font-semibold text-text" title={t("plugin.name")}>{t("plugin.name")}</div>
+						<div className="truncate text-[10.5px] text-text-4" title={t("panel.tagline")}>{t("panel.tagline")}</div>
 					</div>
 				)}
 				<button
@@ -118,7 +118,7 @@ export function Sidebar({ page, onNavigate, status, timeline, rail, collapsed, o
 												? `relative mx-auto flex size-8 items-center justify-center rounded-md transition-colors ${
 														active ? "bg-surface-4 text-text" : "text-text-2 hover:bg-surface-hover hover:text-text"
 													}`
-												: `relative flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none ${
+												: `relative flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none ${
 														active ? "bg-surface-4 font-medium text-text" : "text-text-2 hover:bg-surface-hover hover:text-text"
 													}`
 										}
@@ -143,7 +143,7 @@ export function Sidebar({ page, onNavigate, status, timeline, rail, collapsed, o
 			</nav>
 			{rail ? (
 				<div className="border-t border-line-subtle px-2 py-2">
-					<SidebarStatus status={status} rail />
+					<SidebarStatus status={status} rail onNavigate={onNavigate} />
 				</div>
 			) : (
 				<div className="shrink-0 border-t border-line-subtle">
@@ -152,10 +152,15 @@ export function Sidebar({ page, onNavigate, status, timeline, rail, collapsed, o
 						<summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-[10.5px] text-text-3 transition-colors hover:bg-surface-hover hover:text-text" title={t("status.title")}>
 							<Icon name="chevron" className="size-3 shrink-0 text-text-4" />
 							<span className="min-w-0 flex-1 truncate">{t("status.title")}</span>
-							{liveCount > 0 ? <span className="shrink-0 font-mono text-[9.5px] tabular-nums text-accent">{liveCount}</span> : null}
+							{/* 数字要有单位：单独一个 3 没人知道在数什么。 */}
+							{liveCount > 0 ? (
+								<span className="shrink-0 font-mono text-[9.5px] tabular-nums text-accent">
+									{t("status.liveCount", { count: liveCount })}
+								</span>
+							) : null}
 						</summary>
 						<div className="px-2 pb-1.5">
-							<SidebarStatus status={status} rail={false} />
+							<SidebarStatus status={status} rail={false} onNavigate={onNavigate} />
 						</div>
 					</details>
 

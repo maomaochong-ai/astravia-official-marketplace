@@ -36,7 +36,8 @@ export function TopBar({ page, chat, sending, onSend, canSend }: TopBarProps) {
 				<Icon name="folder" className="size-3.5 shrink-0 text-text-4" />
 				<span className="hidden shrink-0 text-text-4 @min-[560px]:inline">{t("nav.workspace")}</span>
 				<span className="hidden shrink-0 text-text-4 @min-[560px]:inline">/</span>
-				<span className="min-w-0 truncate font-medium text-text-2" title={t(`nav.${page}`)}>{t(`nav.${page}`)}</span>
+				{/* 页头不再重复标题后，这里是全页唯一可见的标题，所以它得担起标题的分量。 */}
+				<span className="min-w-0 truncate text-[13px] font-semibold text-text" title={t(`nav.${page}`)}>{t(`nav.${page}`)}</span>
 			</div>
 
 			<div

@@ -63,7 +63,7 @@ export function HandoffDialog({ open, target, busy, onClose, onSend }: HandoffDi
 						onChange={event => setPrompt(event.target.value)}
 						rows={12}
 						aria-label={t("handoff.promptLabel")}
-						className="w-full resize-y rounded-md border border-line-subtle bg-surface px-3 py-2 text-[12px] leading-relaxed text-text outline-none focus:border-purple"
+						className="w-full resize-y rounded-md border border-line-subtle bg-surface px-3 py-2 text-[12px] leading-relaxed text-text outline-none focus:border-accent"
 					/>
 					<p className="text-[10.5px] leading-relaxed text-text-4">{t("handoff.note")}</p>
 				</div>

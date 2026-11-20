@@ -14,6 +14,7 @@ import { EmptyState } from "../shell/empty-state";
 import { FilterChips } from "../shell/filter-chips";
 import { PageHeader } from "../shell/page-header";
 import { StatTile } from "../shell/stat-tile";
+import { Tag } from "../shell/tag";
 import { FindingList } from "../workbench/finding-list";
 import type { PageProps } from "./overview";
 
@@ -30,19 +31,40 @@ export function FindingsPage({ model }: PageProps) {
 		return (
 			<>
 				<PageHeader title={t("page.findings.title")} description={t("page.findings.lead")} />
-				<EmptyState icon="scan" title={t("empty.noReport.title")} body={t("empty.noReport.body")} />
+				{/* 空态必须给出下一步：这一页没有入口，用户只能自己回去找样本页。 */}
+				<div className="fb-page">
+					<EmptyState
+						icon="scan"
+						title={t("empty.noReport.title")}
+						body={t("empty.noReport.body")}
+						action={
+							<button
+								type="button"
+								onClick={() => model.go("samples")}
+								className="rounded-md border border-line-subtle px-2.5 py-1 text-[11.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+							>
+								{t("findings.empty.action")}
+							</button>
+						}
+					/>
+				</div>
 			</>
 		);
 	}
 
 	const findings = [...report.findings].sort((left, right) => severityRank(left.severity) - severityRank(right.severity));
 	const visible = filter === "all" ? findings : findings.filter(finding => finding.severity === filter);
+	// 一次分桶：统计卡与筛选 chips 都从这里取数，避免同一份数据算两遍、更避免两处不一致。
+	const bySeverity = new Map<string, number>();
+	for (const finding of findings) bySeverity.set(finding.severity, (bySeverity.get(finding.severity) ?? 0) + 1);
+	const countOf = (severity: Severity) => bySeverity.get(severity) ?? 0;
+
 	const chips = [
 		{ id: "all" as Filter, label: t("findings.filter.all"), count: findings.length },
 		...SEVERITY_ORDER.map(severity => ({
 			id: severity as Filter,
 			label: t(`severity.${severity}`),
-			count: findings.filter(finding => finding.severity === severity).length,
+			count: countOf(severity),
 		})),
 	];
 
@@ -54,18 +76,36 @@ export function FindingsPage({ model }: PageProps) {
 				actions={<AiButton label={t("ai.explainAll")} onClick={() => model.ask("findings-summary")} busy={busy} />}
 			/>
 			<div className="fb-page">
-				<div className="grid grid-cols-2 gap-2 @min-[620px]:grid-cols-4">
+				{/*
+				 * 统计卡与筛选 chips 用同一组档位：卡片三格、chips 五档时，用户读到的两个数对不上。
+				 * 零值不上色 —— 0 条高危把格子染红，等于把「没有」画成「有事」。
+				 */}
+				<div className="grid shrink-0 grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-2">
 					<StatTile label={t("findings.stat.total")} value={findings.length} />
-					<StatTile
-						label={t("severity.high")}
-						value={findings.filter(finding => finding.severity === "critical" || finding.severity === "high").length}
-						tone="high"
-					/>
-					<StatTile label={t("severity.medium")} value={findings.filter(finding => finding.severity === "medium").length} tone="medium" />
-					<StatTile label={t("findings.stat.clean")} value={findings.length === 0 ? 1 : 0} tone={findings.length === 0 ? "low" : "default"} hint={t("findings.stat.cleanHint")} />
+					{SEVERITY_ORDER.map(severity => {
+						const count = countOf(severity);
+						return (
+							<StatTile
+								key={severity}
+								label={t(`severity.${severity}`)}
+								value={count}
+								tone={count === 0 ? "default" : severity === "critical" || severity === "high" ? "high" : severity === "medium" ? "medium" : "low"}
+							/>
+						);
+					})}
 				</div>
 
-				<Card title={t("page.findings.list")} actions={<FilterChips items={chips} value={filter} onChange={value => setFilter(value as Filter)} />} bodyClassName="pt-1">
+				<Card
+					title={t("page.findings.list")}
+					actions={
+						<>
+							{/* 全清（零发现）是一个结论，用标签说，不用一格 0/1 的统计卡。 */}
+							{findings.length === 0 ? <Tag tone="low">{t("findings.stat.clean")}</Tag> : null}
+							<FilterChips items={chips} value={filter} onChange={value => setFilter(value as Filter)} />
+						</>
+					}
+					bodyClassName="p-0"
+				>
 					<FindingList findings={visible} busy={busy} onAsk={finding => model.ask("finding", { ruleId: finding.ruleId })} />
 				</Card>
 			</div>

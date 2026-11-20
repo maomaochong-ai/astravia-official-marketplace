@@ -23,7 +23,7 @@ export function AiButton({ label, onClick, busy, disabled, compact }: AiButtonPr
 			aria-busy={busy || undefined}
 			title={label}
 			className={`inline-flex items-center gap-1.5 rounded-md border border-purple/40 bg-purple/10 font-medium text-purple transition-colors hover:bg-purple/20 disabled:opacity-50 ${
-				compact ? "px-1.5 py-1 text-[10px]" : "px-2.5 py-1 text-[11px]"
+				compact ? "px-1.5 py-1 text-[10.5px]" : "px-2.5 py-1 text-[11.5px]"
 			}`}
 		>
 			<Icon name={busy ? "refresh" : "sparkle"} className={`size-3 ${busy ? "motion-safe:animate-spin" : ""}`} />

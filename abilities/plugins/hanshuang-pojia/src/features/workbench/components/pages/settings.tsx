@@ -52,6 +52,23 @@ export function SettingsPage({ model }: PageProps) {
 
 	// 清理结果只留一行提示：删文件是副作用，不需要弹窗打断。
 	const [clearState, setClearState] = useState<string | null>(null);
+	// 破坏性动作统一用「点一次武装、5 秒收回」，与活动页清空、提示词删除同一套形态。
+	// 原生 confirm 会阻断渲染进程，样式也跟不了主题。
+	const [armed, setArmed] = useState<string | null>(null);
+	useEffect(() => {
+		if (!armed) return;
+		const timer = window.setTimeout(() => setArmed(null), 5_000);
+		return () => window.clearTimeout(timer);
+	}, [armed]);
+	/** 需要确认的动作：第一次调用只武装，第二次才执行。 */
+	const confirmThen = (key: string, run: () => void) => {
+		if (armed !== key) {
+			setArmed(key);
+			return;
+		}
+		setArmed(null);
+		run();
+	};
 	// 占用逐项问宿主，不估算：用户看到的是真实文件数与字节数。
 	const [usage, setUsage] = useState<StorageUsageRow[] | null>(null);
 	const loadUsage = () => {
@@ -74,22 +91,29 @@ export function SettingsPage({ model }: PageProps) {
 				actions={
 					<button
 						type="button"
-						onClick={reset}
-						className="rounded-md border border-line-subtle px-2 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+						aria-pressed={armed === "reset"}
+						onClick={() => confirmThen("reset", reset)}
+						className={`rounded-md border px-2 py-1 text-[11.5px] transition-colors ${armed === "reset" ? "border-risk-high/40 bg-risk-high/10 text-risk-high" : "border-line-subtle text-text-2 hover:bg-surface-hover hover:text-text"}`}
 					>
-						{t("settings.reset")}
+						{armed === "reset" ? t("settings.resetArmed") : t("settings.reset")}
 					</button>
 				}
 			/>
 			<div className="fb-page grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 @min-[760px]:grid-cols-[144px_minmax(0,1fr)] @min-[760px]:grid-rows-[minmax(0,1fr)]">
 				{/* 左：分组菜单。窄面板变成一行横向标签，不用另做一套交互。 */}
-				<nav className="flex shrink-0 flex-row gap-1 overflow-x-auto rounded-xl bg-surface-2 p-1 ring-1 ring-line-subtle @min-[760px]:flex-col @min-[760px]:overflow-visible">
+				<nav
+					role="tablist"
+					aria-orientation="vertical"
+					aria-label={t("page.settings.title")}
+					className="flex shrink-0 flex-row gap-1 overflow-x-auto rounded-xl bg-surface-2 p-1 ring-1 ring-line-subtle @min-[760px]:flex-col @min-[760px]:overflow-visible"
+				>
 					{TABS.map(item => (
 						<button
 							key={item}
 							type="button"
 							onClick={() => setTab(item)}
-							aria-current={tab === item ? "page" : undefined}
+							role="tab"
+							aria-selected={tab === item}
 							data-testid={`settings-tab-${item}`}
 							className={`shrink-0 rounded-md px-2.5 py-1.5 text-left text-[11.5px] transition-colors ${
 								tab === item ? "bg-accent-soft font-medium text-accent" : "text-text-2 hover:bg-surface-hover hover:text-text"
@@ -101,7 +125,11 @@ export function SettingsPage({ model }: PageProps) {
 				</nav>
 
 				{/* 右：当前分组的卡；自己滚，卡不被挤压。 */}
-				<div className="fb-scroll flex min-h-0 flex-col gap-2.5 overflow-y-auto">
+				<div
+					role="tabpanel"
+					aria-label={t(`settings.group.${tab}`)}
+					className="fb-scroll flex min-h-0 flex-col gap-2.5 overflow-y-auto"
+				>
 					{tab === "runtime" ? (
 						<>
 							<Card title={t("settings.lab.title")} bodyClassName="flex flex-col gap-2 p-3.5">
@@ -109,7 +137,7 @@ export function SettingsPage({ model }: PageProps) {
 									<div className="min-w-0 flex-1">
 										<div className="text-[11.5px] font-medium text-text">{t("settings.lab.label")}</div>
 										<p className="mt-0.5 text-[10.5px] leading-relaxed text-text-3">{t("settings.lab.hint")}</p>
-										<p className="mt-1 font-mono text-[10px] text-text-4">
+										<p className="mt-1 font-mono text-[10.5px] text-text-4">
 											{lab.state.since ? t("settings.lab.since", { at: lab.state.since.slice(0, 19).replace("T", " ") }) : t("settings.lab.never")}
 										</p>
 									</div>
@@ -155,7 +183,7 @@ export function SettingsPage({ model }: PageProps) {
 										);
 									})}
 								</div>
-								<p className="mt-2 text-[10px] leading-relaxed text-text-4">{t("settings.mode.note")}</p>
+								<p className="mt-2 text-[10.5px] leading-relaxed text-text-4">{t("settings.mode.note")}</p>
 							</Card>
 
 							<Card
@@ -179,7 +207,7 @@ export function SettingsPage({ model }: PageProps) {
 														<span className="min-w-0 text-[11.5px] leading-snug text-text">{t(`rule.${rule.id}.title`)}</span>
 														<span className={`shrink-0 font-mono text-[9.5px] ${SEVERITY_TEXT[rule.severity]}`}>{rule.severity}</span>
 													</div>
-													<div className="truncate font-mono text-[9.5px] text-text-4">{rule.id}</div>
+													<div className="fb-wrap font-mono text-[9.5px] text-text-4">{rule.id}</div>
 												</div>
 												<Toggle checked={enabled} onChange={() => toggleRule(rule.id)} label={t(`rule.${rule.id}.title`)} hideLabel />
 											</div>
@@ -234,7 +262,7 @@ export function SettingsPage({ model }: PageProps) {
 									{model.persisted ? t("settings.storage.granted") : t("settings.storage.missing")}
 								</p>
 							</div>
-							<p className="px-3.5 py-2.5 text-[10px] leading-relaxed text-text-4">{t("settings.about")}</p>
+							<p className="px-3.5 py-2.5 text-[10.5px] leading-relaxed text-text-4">{t("settings.about")}</p>
 						</Card>
 					) : null}
 
@@ -245,21 +273,21 @@ export function SettingsPage({ model }: PageProps) {
 							</div>
 							{(usage ?? []).map(row => (
 								<div key={row.key} className="flex items-baseline gap-2 px-3.5 py-1.5">
-									<span className="w-20 shrink-0 text-[10px] text-text-4">{t(`settings.data.scope.${row.scope}`)}</span>
+									<span className="w-20 shrink-0 text-[10.5px] text-text-4">{t(`settings.data.scope.${row.scope}`)}</span>
 									<span className="min-w-0 flex-1 break-all font-mono text-[10.5px] leading-snug text-text-2" title={row.path}>
 										{row.path}
 									</span>
-									<span className="shrink-0 tabular-nums text-[10px] text-text-4">
+									<span className="shrink-0 tabular-nums text-[10.5px] text-text-4">
 										{row.unavailable ? t("settings.data.unavailable") : t("settings.data.usage", { files: row.files, size: formatBytes(row.bytes) })}
 									</span>
 								</div>
 							))}
-							{usage === null ? <div className="px-3.5 py-1.5 text-[10px] text-text-4">{t("settings.data.loading")}</div> : null}
+							{usage === null ? <div className="px-3.5 py-1.5 text-[10.5px] text-text-4">{t("settings.data.loading")}</div> : null}
 							{/* usage 为空但模型已经返回：只可能是存储整体不可用，按 storageEntries 的路径列出来更诚实。 */}
 							{(usage ?? []).length === 0
 								? storageEntries(model.cwd, model.sessionId).map(entry => (
 										<div key={entry.key} className="flex items-baseline gap-2 px-3.5 py-1.5">
-											<span className="w-20 shrink-0 text-[10px] text-text-4">{t(`settings.data.scope.${entry.scope}`)}</span>
+											<span className="w-20 shrink-0 text-[10.5px] text-text-4">{t(`settings.data.scope.${entry.scope}`)}</span>
 											<span className="min-w-0 flex-1 break-all font-mono text-[10.5px] leading-snug text-text-2" title={entry.path}>
 												{entry.path}
 											</span>
@@ -267,26 +295,30 @@ export function SettingsPage({ model }: PageProps) {
 									))
 								: null}
 							<div className="flex flex-wrap items-center gap-2 px-3.5 py-2.5">
+								{/* 清理会删文件：三档都先武装，再执行。 */}
 								<button
 									type="button"
-									onClick={() => void clear("session")}
-									className="rounded-md border border-line-subtle px-2.5 py-1.5 text-[11px] font-medium text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+									aria-pressed={armed === "session"}
+									onClick={() => confirmThen("session", () => void clear("session"))}
+									className={`rounded-md border px-2.5 py-1.5 text-[11.5px] font-medium transition-colors ${armed === "session" ? "border-risk-high/40 bg-risk-high/10 text-risk-high" : "border-line-subtle text-text-2 hover:bg-surface-hover hover:text-text"}`}
 								>
-									{t("settings.data.clearSession")}
+									{armed === "session" ? t("settings.data.armed") : t("settings.data.clearSession")}
 								</button>
 								<button
 									type="button"
-									onClick={() => void clear("workspace")}
-									className="rounded-md border border-line-subtle px-2.5 py-1.5 text-[11px] font-medium text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+									aria-pressed={armed === "workspace"}
+									onClick={() => confirmThen("workspace", () => void clear("workspace"))}
+									className={`rounded-md border px-2.5 py-1.5 text-[11.5px] font-medium transition-colors ${armed === "workspace" ? "border-risk-high/40 bg-risk-high/10 text-risk-high" : "border-line-subtle text-text-2 hover:bg-surface-hover hover:text-text"}`}
 								>
-									{t("settings.data.clearProducts")}
+									{armed === "workspace" ? t("settings.data.armed") : t("settings.data.clearProducts")}
 								</button>
 								<button
 									type="button"
-									onClick={() => void clear("all")}
-									className="rounded-md border border-risk-high/40 bg-risk-high/10 px-2.5 py-1.5 text-[11px] font-medium text-risk-high transition-colors hover:bg-risk-high/15"
+									aria-pressed={armed === "all"}
+									onClick={() => confirmThen("all", () => void clear("all"))}
+									className={`rounded-md border px-2.5 py-1.5 text-[11.5px] font-medium transition-colors ${armed === "all" ? "border-risk-high bg-risk-high text-surface" : "border-risk-high/40 bg-risk-high/10 text-risk-high hover:bg-risk-high/15"}`}
 								>
-									{t("settings.data.clearAll")}
+									{armed === "all" ? t("settings.data.armedAll") : t("settings.data.clearAll")}
 								</button>
 								{clearState ? <span className="text-[10.5px] text-text-4">{t(clearState)}</span> : null}
 							</div>

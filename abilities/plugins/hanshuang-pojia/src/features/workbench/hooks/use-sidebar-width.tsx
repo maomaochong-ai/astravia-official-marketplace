@@ -56,6 +56,20 @@ export function useSidebarWidth(): [number, (next: number) => void, () => void] 
 	return useStoredWidth({ storageKey: "hanshuang-pojia:sidebar-width", fallback: SIDEBAR_DEFAULT, min: SIDEBAR_MIN, max: SIDEBAR_MAX });
 }
 
+/**
+ * 一次拖拽之后的新宽度。
+ *
+ * `side` 指的是**被拖的那一栏在把手的哪一边**，它决定拖拽方向：
+ *   - `left`  ：栏在左（把手在它右侧），往右拖 = 变宽；
+ *   - `right` ：栏在右（把手在它左侧），往右拖 = 变窄。
+ * 上一版把这个符号写反了（栏在左侧却按「往左才变宽」算），于是侧栏越拖越窄 ——
+ * 抽成纯函数就是因为这个错只能靠算一遍发现，靠肉眼拖会以为是自己手抖。
+ */
+export function nextWidth(startValue: number, deltaX: number, side: "left" | "right", min: number, max: number): number {
+	const raw = side === "left" ? startValue + deltaX : startValue - deltaX;
+	return Math.min(max, Math.max(min, Math.round(raw)));
+}
+
 export interface SplitHandleProps {
 	/** 当前宽度，用于键盘微调与 `aria-valuenow`。 */
 	value: number;
@@ -87,9 +101,7 @@ export function SplitHandle({ value, min, max, onChange, onReset, side = "left",
 	const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
 		const state = dragging.current;
 		if (!state) return;
-		const delta = event.clientX - state.startX;
-		// 手柄在左意味着「往左拖变宽」，方向要反过来。
-		onChange(side === "left" ? state.startValue - delta : state.startValue + delta);
+		onChange(nextWidth(state.startValue, event.clientX - state.startX, side, min, max));
 	};
 
 	const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -98,8 +110,9 @@ export function SplitHandle({ value, min, max, onChange, onReset, side = "left",
 	};
 
 	const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+		// 与拖拽同一套方向：栏在左侧时向右键变宽，栏在右侧时向右键变窄。
 		const step = 12;
-		const grow = side === "left" ? -step : step;
+		const grow = side === "left" ? step : -step;
 		if (event.key === "ArrowRight") {
 			event.preventDefault();
 			onChange(value + grow);

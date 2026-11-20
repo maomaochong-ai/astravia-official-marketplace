@@ -25,7 +25,22 @@ export function SignaturePage({ model, embedded = false }: PageProps & { embedde
 		return (
 			<>
 				<PageHeader title={t("page.signature.title")} description={t("page.signature.lead")} />
-				<EmptyState icon="shield" title={t("empty.noReport.title")} body={t("empty.noReport.body")} />
+				<div className="fb-page">
+					<EmptyState
+						icon="shield"
+						title={t("empty.noReport.title")}
+						body={t("empty.noReport.body")}
+						action={
+							<button
+								type="button"
+								onClick={() => model.go("samples")}
+								className="rounded-md border border-line-subtle px-2.5 py-1 text-[11.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+							>
+								{t("empty.goSamples")}
+							</button>
+						}
+					/>
+				</div>
 			</>
 		);
 	}
@@ -34,7 +49,9 @@ export function SignaturePage({ model, embedded = false }: PageProps & { embedde
 		return (
 			<>
 				{embedded ? null : <PageHeader title={t("page.signature.title")} description={t("page.signature.lead")} />}
-				<EmptyState icon="shield" title={t("signature.none.title")} body={t("signature.none.body")} />
+				<div className="fb-page">
+					<EmptyState icon="shield" title={t("signature.none.title")} body={t("signature.none.body")} />
+				</div>
 			</>
 		);
 	}
@@ -75,7 +92,7 @@ export function SignaturePage({ model, embedded = false }: PageProps & { embedde
 
 				<Card title={t("signature.schemeNames")} bodyClassName="px-3.5 py-2.5">
 					{signature.schemes.length === 0 ? (
-						<p className="text-[11px] text-text-4">{t("signature.noScheme")}</p>
+						<p className="text-[11.5px] text-text-4">{t("signature.noScheme")}</p>
 					) : (
 						<div className="flex flex-wrap gap-1.5">
 							{signature.schemes.map(scheme => (

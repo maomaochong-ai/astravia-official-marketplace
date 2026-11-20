@@ -58,6 +58,20 @@ export interface StringHit {
 	kind: StringKind;
 }
 
+/** 静态详情的三张视图。与页面内的三段内容一一对应。 */
+export type StaticView = "manifest" | "entropy" | "signature";
+
+/** 知识侧栏的阅读位置。`group` / `topic` / `slug` 为 null 表示没筛、没选。 */
+export interface KnowledgeState {
+	view: "docs" | "cases";
+	/** 语料组（第一级筛选）。 */
+	group: string | null;
+	/** 子目录（第二级筛选）；只在选了组时有意义。 */
+	topic: string | null;
+	/** 正在读的随包先例。 */
+	slug: string | null;
+}
+
 export interface WorkbenchModel {
 	cwd: string | null;
 	page: PageId;
@@ -118,6 +132,21 @@ export interface WorkbenchModel {
 	entropy: EntropyBucket[] | null;
 	disasm: DisasmModel;
 	docs: DocsModel;
+	/**
+	 * 知识侧栏的阅读位置：看文档还是先例、筛的是哪个语料组、正在读哪份先例。
+	 *
+	 * 放在 model 而不是页面里，是因为切换视图会卸载子页；放本地 state 就会在
+	 * 「从先例跳到战例研究，再回到案例」这条路上丢掉正在读的那一份。
+	 */
+	knowledge: KnowledgeState;
+	patchKnowledge(patch: Partial<KnowledgeState>): void;
+	/**
+	 * 静态详情当前看哪一张视图（清单 / 熵 / 签名）。
+	 *
+	 * 与知识页的 `knowledge.view` 同理：存在 model 里，切到别的页再回来不会又回到第一张。
+	 */
+	staticView: StaticView;
+	setStaticView(view: StaticView): void;
 	cases: CasesModel;
 	caseDocs: CaseDocsModel;
 	/** 面板自己沉淀的案例库：按工作区隔离，与 cases/ 扫描结果并列展示。 */
@@ -193,7 +222,16 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 	const [fromAgent, setFromAgent] = useState(false);
 	const [compareA, setCompareA] = useState<string | null>(null);
 	const [compareB, setCompareB] = useState<string | null>(null);
-
+	// 知识侧栏的阅读位置。
+	//
+	// 为什么不留在页面组件里：知识页用三元渲染切换文档/案例，子页会被整棵卸载，
+	// 局部 state 随之清零 —— 后果是「正在读的先例」没了，而从先例跳到「战例研究」
+	// 再回来时再也找不到那一份。三个字段一起提到 model，切页、切视图都不丢。
+	const [knowledge, setKnowledge] = useState<KnowledgeState>({ view: "docs", group: null, topic: null, slug: null });
+	const [staticView, setStaticView] = useState<StaticView>("manifest");
+	const patchKnowledge = useCallback((patch: Partial<KnowledgeState>) => {
+		setKnowledge(previous => ({ ...previous, ...patch }));
+	}, []);
 	const requestId = useRef(0);
 	const { settings, remember } = library;
 	const activity = useActivity(bridge, active);
@@ -673,6 +711,10 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		disasm,
 		docs,
 		cases,
+		knowledge,
+		staticView,
+		setStaticView,
+		patchKnowledge,
 		myCases,
 		probe: { record: probeRecord, refresh: refreshProbe },
 		saveInjectScript: (name, content) => bridge.saveInjectScript(name, content),

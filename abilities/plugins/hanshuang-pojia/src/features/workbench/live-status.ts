@@ -132,7 +132,9 @@ export function deriveLiveStatus(input: LiveStatusInput): LiveStatus {
 			tone: latest ? "live" : "idle",
 			toolId: latest?.toolId ?? null,
 			summary: latest?.summary ?? null,
-			hints: payloadHints(latest?.payload),
+			// 侧栏只要一行纯文本，译名在这里不做：它展示的是工具字段原名，
+			// 本地化词表属于活动页（那里有上下文解释这是什么）。
+			hints: payloadHints(latest?.payload).map(hint => `${hint.key} ${hint.value}`),
 		},
 	};
 }

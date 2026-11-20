@@ -102,15 +102,64 @@ export function getActivePrompt(library: PromptLibrary): PromptItem | null {
 	return library.items.find(item => item.id === library.activeId) ?? null;
 }
 
-/** 搜索提示词：名称、描述、正文都匹配。 */
-export function searchPrompts(library: PromptLibrary, query: string): PromptItem[] {
+/**
+ * 让 `activeId` 成为唯一真相。
+ *
+ * `PromptItem.active` 曾经是第二份真相：它和 `activeId` 各自持久化、加载时各自归一化。
+ * 一旦两者分叉（旧版本写入、导入别人的备份文件），卡片会显示「已激活」而注入块
+ * 已经回落到默认契约 —— 界面无法把这个组合读出来。所以加载后统一走这里校正：
+ * 以 `activeId` 为准；它丢了但有条目自称激活，就采信那一条；指向不存在的条目就清空。
+ */
+export function reconcileActive(library: PromptLibrary): PromptLibrary {
+	const declared = library.activeId && library.items.some(item => item.id === library.activeId) ? library.activeId : null;
+	const activeId = declared ?? library.items.find(item => item.active)?.id ?? null;
+	return {
+		activeId,
+		items: library.items.map(item => ({ ...item, active: item.id === activeId })),
+	};
+}
+
+/** 搜索命中：提示词本身 + 一段可展示的上下文。 */
+export interface PromptHit {
+	prompt: PromptItem;
+	/** 只在正文命中时非空：名称/描述里已经写着关键词，不必再截一段。 */
+	snippet: string | null;
+}
+
+/** 卡片上 snippet 的长度：够看清上下文，又不至于把卡片撑成一段文章。 */
+const SNIPPET_RADIUS = 42;
+
+function snippetAround(content: string, needle: string): string {
+	const flat = content.replace(/\s+/g, " ").trim();
+	const index = flat.toLowerCase().indexOf(needle);
+	if (index < 0) return flat.slice(0, SNIPPET_RADIUS * 2);
+	const start = Math.max(0, index - SNIPPET_RADIUS);
+	const end = Math.min(flat.length, index + needle.length + SNIPPET_RADIUS);
+	return `${start > 0 ? "…" : ""}${flat.slice(start, end)}${end < flat.length ? "…" : ""}`;
+}
+
+/**
+ * 搜索提示词并说明「为什么它被列出来」。
+ *
+ * `searchPrompts` 同时匹配正文，但卡片只展示名称与描述：只命中正文时，用户看到的是一张
+ * 没有关键词的卡，会以为搜索坏了。这里补上命中位置，命中在名称/描述时为 null。
+ */
+export function searchPromptHits(library: PromptLibrary, query: string): PromptHit[] {
 	const q = query.trim().toLowerCase();
-	if (!q) return library.items;
-	return library.items.filter(item =>
-		item.name.toLowerCase().includes(q) ||
-		item.description.toLowerCase().includes(q) ||
-		item.content.toLowerCase().includes(q),
-	);
+	if (!q) return library.items.map(prompt => ({ prompt, snippet: null }));
+	const hits: PromptHit[] = [];
+	for (const prompt of library.items) {
+		const named = prompt.name.toLowerCase().includes(q) || prompt.description.toLowerCase().includes(q);
+		const inBody = prompt.content.toLowerCase().includes(q);
+		if (!named && !inBody) continue;
+		hits.push({ prompt, snippet: named ? null : snippetAround(prompt.content, q) });
+	}
+	return hits;
+}
+
+/** 搜索提示词：名称、描述、正文都匹配（只要 id 列表，用 searchPromptHits 拿命中位置）。 */
+export function searchPrompts(library: PromptLibrary, query: string): PromptItem[] {
+	return searchPromptHits(library, query).map(hit => hit.prompt);
 }
 
 /** 排序：激活的排最前，其余按更新时间倒序。 */

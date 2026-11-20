@@ -20,6 +20,8 @@ function toEntry(event: PanelToolResultEvent): ActivityEntry {
 		target: event.target,
 		summary: event.summary,
 		payload: event.payload,
+		// 工具不推失败结果，所以这里通常是 undefined；有就带上，没就留空。
+		isError: event.isError,
 		at,
 	};
 }

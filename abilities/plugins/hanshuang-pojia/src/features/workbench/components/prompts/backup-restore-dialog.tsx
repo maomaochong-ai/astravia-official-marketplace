@@ -7,6 +7,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { PromptBackup } from "../../../../domain/prompt-backup";
+import { useDialogBehavior } from "../../hooks/use-dialog-behavior";
 
 export interface BackupRestoreDialogProps {
 	open: boolean;
@@ -25,18 +26,24 @@ function formatTime(ts: number): string {
 export function BackupRestoreDialog({ open, backups, onClose, onRestore, onDelete }: BackupRestoreDialogProps) {
 	const { t } = useTranslation();
 	const sorted = useMemo(() => [...backups].sort((a, b) => b.createdAt - a.createdAt), [backups]);
+	const dialog = useDialogBehavior(open, onClose);
 
 	if (!open) return null;
 
 	return (
 		<div className="fb-overlay" onClick={onClose}>
 			<div
-				className="flex max-h-[70vh] w-full max-w-xl flex-col overflow-hidden rounded-xl bg-surface-2 ring-1 ring-line-subtle"
+				ref={dialog}
+				role="dialog"
+				aria-modal="true"
+				aria-label={t("prompt.backup.title")}
+				tabIndex={-1}
+				className="flex max-h-[70vh] w-full max-w-xl flex-col overflow-hidden rounded-xl bg-surface-2 ring-1 ring-line-subtle outline-none"
 				onClick={e => e.stopPropagation()}
 			>
 				<div className="flex items-center justify-between border-b border-line-subtle px-4 py-3">
 					<h2 className="text-[14px] font-semibold text-text">{t("prompt.backup.title")}</h2>
-					<button type="button" onClick={onClose} className="text-text-4 hover:text-text" aria-label="close">
+					<button type="button" onClick={onClose} className="text-text-4 hover:text-text" aria-label={t("common.close")}>
 						✕
 					</button>
 				</div>
@@ -55,14 +62,15 @@ export function BackupRestoreDialog({ open, backups, onClose, onRestore, onDelet
 									<button
 										type="button"
 										onClick={() => onRestore(backup)}
-										className="rounded-md bg-text px-2.5 py-1 text-[11px] font-medium text-surface hover:opacity-90"
+										className="rounded-md bg-text px-2.5 py-1 text-[11.5px] font-medium text-surface hover:opacity-90"
 									>
 										{t("prompt.backup.restore")}
 									</button>
 									<button
 										type="button"
 										onClick={() => onDelete(backup.id)}
-										className="rounded-md px-2 py-1 text-[11px] text-text-4 hover:text-risk-low"
+										// 删除备份是破坏性动作：悬停给风险色，不是「安全绿」。
+										className="rounded-md px-2 py-1 text-[11.5px] text-text-4 hover:text-risk-high"
 									>
 										{t("common.delete")}
 									</button>
@@ -73,11 +81,7 @@ export function BackupRestoreDialog({ open, backups, onClose, onRestore, onDelet
 				</div>
 
 				<div className="flex items-center justify-end border-t border-line-subtle px-4 py-3">
-					<button
-						type="button"
-						onClick={onClose}
-						className="rounded-md px-3 py-1.5 text-[12px] text-text-3 hover:text-text"
-					>
+					<button type="button" onClick={onClose} className="rounded-md px-3 py-1.5 text-[12px] text-text-3 hover:text-text">
 						{t("common.close")}
 					</button>
 				</div>

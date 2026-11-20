@@ -32,15 +32,20 @@ export function CasesPage({ model, embedded = false }: PageProps & { embedded?: 
 	const cases = model.cases;
 	const docs = model.caseDocs;
 	const [query, setQuery] = useState("");
-	const [slug, setSlug] = useState<string | null>(null);
+	// 「正在读哪份先例」存 model：切视图会卸载本页，放本地 state 就会丢，
+	// 而从先例跳到「战例研究」再切回案例时，那一份正是要回到的地方。
+	const { slug } = model.knowledge;
+	const setSlug = (next: string | null) => model.patchKnowledge({ slug: next });
 	const [category, setCategory] = useState<string>("all");
 	const [source, setSource] = useState<Source>("precedent");
-	const [listOpen, setListOpen] = useState(true);
+	const [listOpen, setListOpen] = useState(false);
 
 	const precedent = slug ? (findPrecedent(slug) ?? null) : null;
 	const record = cases.selected;
 	const reading = record !== null || precedent !== null;
-	const showList = listOpen || !reading;
+	// 没选中东西时一定看列表；选中之后由 listOpen 决定（窄面板下列表与正文互斥）。
+	// 这样重挂载时不会出现「明明选着一份先例，却只显示列表」。
+	const showList = !reading || listOpen;
 
 	const found = useMemo(() => rankCases(cases.cases, query, { limit: LIMIT }).map(hit => hit.record), [cases.cases, query]);
 
@@ -79,7 +84,7 @@ export function CasesPage({ model, embedded = false }: PageProps & { embedded?: 
 							<button
 								type="button"
 								onClick={cases.refresh}
-								className="flex items-center gap-1 rounded-md border border-line-subtle px-2 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+								className="flex items-center gap-1 rounded-md border border-line-subtle px-2 py-1 text-[11.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
 							>
 								<Icon name="refresh" className="size-3" />
 								{t("cases.refresh")}
@@ -119,7 +124,7 @@ export function CasesPage({ model, embedded = false }: PageProps & { embedded?: 
 							onChange={setCategory}
 						/>
 					) : null}
-					<span className="ms-auto shrink-0 font-mono text-[10px] text-text-4">
+					<span className="ms-auto shrink-0 font-mono text-[10.5px] text-text-4">
 						{source === "precedent" ? precedents.length : found.length}
 					</span>
 				</div>
@@ -163,21 +168,36 @@ export function CasesPage({ model, embedded = false }: PageProps & { embedded?: 
 														active ? "fb-selected" : "hover:bg-surface-hover"
 													}`}
 												>
-													<div className="min-w-0 flex-1">
-														<div className="fb-wrap text-[11.5px] text-text">{item.title}</div>
-														<div className="fb-wrap font-mono text-[10px] text-text-4">{`cases/${item.slug}/`}</div>
-														<div className="truncate font-mono text-[9.5px] text-text-4">
-															{t("cases.precedent.counts", { signals: item.signals.length, docs: item.docs.length })}
-														</div>
+												<div className="min-w-0 flex-1">
+													<div className="fb-wrap text-[11.5px] text-text">{item.title}</div>
+													{/* 一行副标题：slug 与两个计数并排 —— 第二条信息不该再占一行高度。 */}
+													<div className="fb-wrap font-mono text-[9.5px] text-text-4">
+														{`cases/${item.slug}/ · ${t("cases.precedent.counts", { signals: item.signals.length, docs: item.docs.length })}`}
 													</div>
-													<Tag tone="neutral">{t(`cases.category.${item.category}`)}</Tag>
-													<Tag tone={item.completeness === "worked" ? "low" : "neutral"}>{t(`cases.completeness.${item.completeness}`)}</Tag>
+												</div>
+												{active ? (
+													// 标签是「选中之后才要看的信息」；19 行都挂两枚，扫读时全是噪音。
+													<span className="flex shrink-0 flex-col items-end gap-0.5">
+														<Tag tone="neutral">{t(`cases.category.${item.category}`)}</Tag>
+														<Tag tone="neutral">{t(`cases.completeness.${item.completeness}`)}</Tag>
+													</span>
+												) : null}
 												</button>
 											);
 										})
 									)
 								) : cases.cases.length === 0 ? (
-									<p className="px-3 py-3 text-[10.5px] leading-relaxed text-text-4">{t("cases.empty.body")}</p>
+									<div className="flex flex-col items-start gap-2 px-3 py-3">
+										<p className="text-[10.5px] leading-relaxed text-text-4">{t("cases.empty.body")}</p>
+										<button
+											type="button"
+											onClick={cases.refresh}
+											className="inline-flex items-center gap-1 rounded-md border border-line-subtle px-2 py-1 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+										>
+											<Icon name="refresh" className="size-3" />
+											{t("cases.refresh")}
+										</button>
+									</div>
 								) : found.length === 0 ? (
 									<p className="px-3 py-3 text-[10.5px] text-text-4">{t("cases.search.empty")}</p>
 								) : (
@@ -205,7 +225,7 @@ export function CasesPage({ model, embedded = false }: PageProps & { embedded?: 
 							</div>
 
 							{/* 扫描状态是脚注，不占一整张卡。 */}
-							<div className="flex shrink-0 items-center gap-1.5 border-t border-line-subtle px-3 py-1.5 text-[10px] text-text-4">
+							<div className="flex shrink-0 items-center gap-1.5 border-t border-line-subtle px-3 py-1.5 text-[10.5px] text-text-4">
 								<Icon name={cases.scanning ? "refresh" : "check"} className={`size-3 shrink-0 ${cases.scanning ? "animate-spin" : ""}`} />
 								<span className="min-w-0 flex-1 fb-wrap">
 									{cases.scanning ? t("cases.scanning") : t("cases.count", { total: cases.cases.length })}
@@ -254,7 +274,7 @@ export function CasesPage({ model, embedded = false }: PageProps & { embedded?: 
 								<div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 py-6 text-center">
 									<Icon name="library" className="size-5 text-text-4" />
 									<p className="text-[12px] font-medium text-text-2">{t("cases.reader.empty.title")}</p>
-									<p className="max-w-sm text-[11px] leading-relaxed text-text-4">{t("cases.reader.empty.body")}</p>
+									<p className="max-w-sm text-[11.5px] leading-relaxed text-text-4">{t("cases.reader.empty.body")}</p>
 								</div>
 							)}
 						</div>

@@ -13,6 +13,7 @@ import {
 	activatePrompt as doActivate,
 	createPrompt as doCreate,
 	deactivateAll,
+	reconcileActive,
 	deletePrompt as doDelete,
 	EMPTY_LIBRARY,
 	updatePrompt as doUpdate,
@@ -57,10 +58,15 @@ export function usePromptLibrary(bridge: WorkbenchBridge): PromptLibraryModel {
 			.then(stored => (stored ? stored : LIBRARY_ENTRY.legacyPath ? bridge.readState<PromptLibrary>(LIBRARY_ENTRY.legacyPath) : null))
 			.then(stored => {
 				if (stored && Array.isArray(stored.items)) {
-					setLibrary({
-						items: stored.items.map(normalizeItem),
-						activeId: typeof stored.activeId === "string" ? stored.activeId : null,
-					});
+					// 两份真相（activeId / item.active）在这里收成一份：以 activeId 为准。
+					// 不这样收，旧版本写入或导入别人的备份文件后会出现
+					// 「卡片写已激活、注入块用默认契约」—— 界面读不出这个组合。
+					setLibrary(
+						reconcileActive({
+							items: stored.items.map(normalizeItem),
+							activeId: typeof stored.activeId === "string" ? stored.activeId : null,
+						}),
+					);
 				}
 			})
 			.catch(() => undefined)

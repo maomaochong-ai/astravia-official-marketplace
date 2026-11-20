@@ -20,6 +20,12 @@
 | 0008 | [refusal-triggered-requestioning](./0008-refusal-triggered-requestioning.md) | 拒答后只查本工作区「我的案例」选档；与跨模型重试划清界线 |
 | 0009 | [startup-and-per-turn-budget](./0009-startup-and-per-turn-budget.md) | 入口分块与每轮预算：语料移出入口、工具表随 lab 收窄 |
 | 0011 | [field-precedent-and-hit-rate](./0011-field-precedent-and-hit-rate.md) | field 级先例的落成条件；判断层命中率的度量口径 |
+| 0012 | [layout-scroll-and-height-contract](./0012-layout-scroll-and-height-contract.md) | 谁滚、谁不缩、上限多高：三条布局硬契约与对应门禁 |
+| 0013 | [activity-stream-correctness](./0013-activity-stream-correctness.md) | 一次调用一行；轮次用分组；状态不上工具名 |
+| 0014 | [prompt-library-single-truth](./0014-prompt-library-single-truth.md) | activeId 唯一真相；破坏性动作只留行内武装 |
+| 0015 | [selfcheck-settings-reports-audit](./0015-selfcheck-settings-reports-audit.md) | 状态过 t()、索引先建、删除要武装、图标语义一致 |
+| 0016 | [forensics-pages-readability](./0016-forensics-pages-readability.md) | 容器性质决定可用属性；统计卡跟着数据走；两种空态 |
+| 0017 | [cross-sidebar-consistency](./0017-cross-sidebar-consistency.md) | 七档字号、一种统计列宽、一种焦点色；超长正文只截渲染 |
 
 ## 引用边界
 

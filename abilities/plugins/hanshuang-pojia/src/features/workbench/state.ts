@@ -130,6 +130,13 @@ export interface ActivityEntry {
 	summary: string;
 	/** 结构化载荷，面板按 kind 决定渲染方式。 */
 	payload?: Record<string, unknown>;
+	/**
+	 * 这次工具调用是否失败。
+	 *
+	 * 现有工具在失败时是抛错而不是推结果，所以这里通常是 undefined —— 留空不猜。
+	 * 合并视图里如果这条结果配上了一段有结论的调用生命周期，状态取那一段的。
+	 */
+	isError?: boolean;
 	/** 触发时间。 */
 	at: string;
 }

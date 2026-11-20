@@ -16,7 +16,7 @@ function BoundaryFallback({ message }: { message: string }): ReactElement {
 			<div className="w-full max-w-lg rounded-xl border border-line-subtle bg-surface p-5">
 				<p className="text-sm font-semibold">{t("panel.crash.title")}</p>
 				<p className="mt-2 text-xs leading-relaxed text-text-3">{t("panel.crash.body")}</p>
-				<pre className="fb-scroll mt-3 max-h-40 overflow-auto rounded-lg bg-surface-3 p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-risk-high">
+				<pre className="fb-scroll mt-3 max-h-[var(--fb-h-xs)] overflow-auto rounded-lg bg-surface-3 p-3 font-mono text-[11.5px] leading-relaxed whitespace-pre-wrap text-risk-high">
 					{message}
 				</pre>
 			</div>

@@ -49,7 +49,7 @@ export function SendPromptDialog({ open, initial, label, onClose, onSend, onSave
 			<div className="flex max-h-[80vh] w-full max-w-[640px] flex-col overflow-hidden rounded-xl bg-surface-2 ring-1 ring-line-subtle">
 				<header className="flex shrink-0 items-center gap-2 border-b border-line-subtle px-4 py-2.5">
 					<h2 className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text" title={t("chat.preview.title")}>{t("chat.preview.title")}</h2>
-					{label ? <span className="shrink-0 text-[11px] text-text-4">{label}</span> : null}
+					{label ? <span className="shrink-0 text-[11.5px] text-text-4">{label}</span> : null}
 				</header>
 
 				<div className="min-h-0 flex-1 p-4">
@@ -62,9 +62,9 @@ export function SendPromptDialog({ open, initial, label, onClose, onSend, onSave
 						spellCheck={false}
 						rows={10}
 						aria-label={t("chat.preview.title")}
-						className="fb-scroll h-full min-h-[8rem] w-full resize-y rounded-lg border border-line-subtle bg-surface px-3 py-2 font-mono text-[12px] leading-relaxed text-text outline-none focus:border-purple"
+						className="fb-scroll h-full min-h-[8rem] w-full resize-y rounded-lg border border-line-subtle bg-surface px-3 py-2 font-mono text-[12px] leading-relaxed text-text outline-none focus:border-accent"
 					/>
-					<p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-[11px] text-text-4">
+					<p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-[11.5px] text-text-4">
 						<span>{t(dirty ? "chat.preview.edited" : "chat.preview.verbatim")}</span>
 						<span className="tabular-nums">{t("chat.preview.size", { count: trimmed.length })}</span>
 						{saved ? <span className="text-risk-low">{t("chat.preview.draftSaved")}</span> : null}

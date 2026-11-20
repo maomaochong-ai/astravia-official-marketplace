@@ -36,7 +36,22 @@ export function EntropyPage({ model, embedded = false }: PageProps & { embedded?
 		return (
 			<>
 				{embedded ? null : <PageHeader title={t("page.entropy.title")} description={t("page.entropy.lead")} />}
-				<EmptyState icon="activity" title={t("entropy.null.title")} body={t("entropy.null.body")} />
+				<div className="fb-page">
+					<EmptyState
+						icon="activity"
+						title={t("entropy.null.title")}
+						body={t("entropy.null.body")}
+						action={
+							<button
+								type="button"
+								onClick={() => model.go("samples")}
+								className="rounded-md border border-line-subtle px-2.5 py-1 text-[11.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+							>
+								{t("empty.goSamples")}
+							</button>
+						}
+					/>
+				</div>
 			</>
 		);
 	}
@@ -60,7 +75,7 @@ export function EntropyPage({ model, embedded = false }: PageProps & { embedded?
 				/>
 			)}
 			<div className="fb-page">
-				<div className="grid grid-cols-3 gap-2">
+				<div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-2">
 					<StatTile label={t("entropy.average")} value={average.toFixed(2)} tone={average >= SEMI ? "medium" : "low"} />
 					<StatTile label={t("entropy.peak")} value={peak.toFixed(2)} tone={peak >= PACKED ? "high" : "default"} />
 					<StatTile label={t("entropy.packed")} value={packed} hint={t("entropy.packedHint", { buckets: buckets.length })} tone={packed > 0 ? "high" : "low"} />

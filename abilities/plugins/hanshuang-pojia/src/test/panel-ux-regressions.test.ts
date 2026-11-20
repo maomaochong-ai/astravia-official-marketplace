@@ -27,11 +27,15 @@ describe("the system prompt ships as a one-click template", () => {
 		expect(hasSystemTemplate([])).toBe(false);
 	});
 
-	it("is wired into the prompts page as a button that disables itself once added", () => {
+	it("is wired into the prompts page and disables itself once added", () => {
 		const page = read("src/features/workbench/components/pages/prompts.tsx");
 		expect(page).toContain("SYSTEM_PROMPT_TEMPLATE");
 		expect(page).toContain("hasSystemTemplate(library.items)");
-		expect(page).toContain("disabled={templatePresent}");
+		// 入口从页头按钮并进了导入菜单：同一类动作（往库里加一条只读条目）只留一个入口，
+		// 页头因此从四个控件降回三个，窄面板不再把文字挤成两行。
+		expect(page).toContain("systemPresent={templatePresent}");
+		const menu = read("src/features/workbench/components/prompts/import-menu.tsx");
+		expect(menu).toContain("disabled={systemPresent}");
 	});
 });
 
@@ -168,5 +172,62 @@ describe("skills are listed where the host collects them, without flooding the s
 		// 它必须把这件事说出来，否则关掉实验环境后模型不知道该读哪本。
 		const kernel = read("src/domain/kernel.ts");
 		expect(kernel).toContain("agent/skills/memory/SKILL.md");
+	});
+});
+
+/**
+ * 破坏性动作只有一种确认形态：行内武装（点一次变确认，超时收回）。
+ *
+ * 同一产品里曾经存在四种：原生 confirm、完全没确认、一键直删、行内武装。
+ * 原生 confirm 会阻断渲染进程、样式也跟不了主题；完全没确认则是真的会丢数据。
+ */
+/**
+ * 取证页的「统计卡」必须跟着数据走。
+ *
+ * 字符串页曾经写死 url / path / identifier 三格：IPv4 与邮箱是这类样本最值钱的两类，
+ * 却永远看不到；没命中时那格又恒为 0。现在按命中数取前二，其余交给筛选 chips。
+ */
+describe("forensics counters follow the data", () => {
+	it("does not hardcode which string kinds deserve a tile", () => {
+		const page = read("src/features/workbench/components/pages/strings.tsx");
+		for (const kind of ["counts.url", "counts.path", "counts.identifier"]) {
+			expect(page, kind).not.toContain(kind);
+		}
+		expect(page).toContain("topKinds");
+	});
+
+	it("does not fake a count for 'no findings'", () => {
+		const page = read("src/features/workbench/components/pages/findings.tsx");
+		// 用 0/1 的统计卡表达「无发现」：数字看起来是计数，实际是布尔。
+		expect(page).not.toContain("=== 0 ? 1 : 0");
+	});
+});
+
+describe("destructive actions share one confirmation shape", () => {
+	const SITES = [
+		"src/features/workbench/components/pages/settings.tsx",
+		"src/features/workbench/components/pages/prompts.tsx",
+		"src/features/workbench/components/pages/activity.tsx",
+	];
+
+	it("never reaches for the native confirm", () => {
+		for (const path of SITES) {
+			// `confirm(` 与 `window.confirm(` 都不用；出现即视为回退。
+			// 注释里提到它不算（代码里解释了为什么不用原生 confirm）。
+			const code = read(path)
+				.split("\n")
+				.filter(line => !line.trim().startsWith("//") && !line.trim().startsWith("*"))
+				.join("\n");
+			expect(code, path).not.toMatch(/\bconfirm\(/);
+		}
+	});
+
+	it("arms the button instead, with a timeout that disarms it", () => {
+		for (const path of SITES) {
+			const source = read(path);
+			expect(source, path).toMatch(/armed/);
+			// 自动收回：没有超时的武装状态会一直等在那里。
+			expect(source, path).toMatch(/setTimeout/);
+		}
 	});
 });

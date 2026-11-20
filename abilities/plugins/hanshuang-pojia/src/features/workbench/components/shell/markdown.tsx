@@ -14,7 +14,7 @@ function Inlines({ nodes }: { nodes: MdInline[] }) {
 				switch (node.kind) {
 					case "code":
 						return (
-							<code key={index} className="rounded border border-line-subtle bg-surface-3 px-1 py-[1px] font-mono text-[11px] text-text">
+							<code key={index} className="rounded border border-line-subtle bg-surface-3 px-1 py-[1px] font-mono text-[11.5px] text-text">
 								{node.text}
 							</code>
 						);
@@ -44,7 +44,7 @@ function Inlines({ nodes }: { nodes: MdInline[] }) {
 	);
 }
 
-const HEADING_CLASS = ["text-[15px] font-semibold text-text", "text-[13.5px] font-semibold text-text", "text-[12.5px] font-semibold text-text", "text-[11.5px] font-semibold uppercase tracking-wide text-text-2", "text-[11px] font-semibold uppercase tracking-wide text-text-2", "text-[11px] text-text-2"];
+const HEADING_CLASS = ["text-[14px] font-semibold text-text", "text-[13px] font-semibold text-text", "text-[12px] font-semibold text-text", "text-[11.5px] font-semibold uppercase tracking-wide text-text-2", "text-[11.5px] font-semibold uppercase tracking-wide text-text-2", "text-[11.5px] text-text-2"];
 
 function Block({ block }: { block: MdBlock }) {
 	switch (block.kind) {
@@ -65,7 +65,7 @@ function Block({ block }: { block: MdBlock }) {
 			return (
 				<div className="overflow-hidden rounded-lg border border-line-subtle bg-surface">
 					{block.lang ? <div className="border-b border-line-subtle px-2.5 py-1 font-mono text-[9.5px] uppercase tracking-wide text-text-4">{block.lang}</div> : null}
-					<pre className="fb-scroll overflow-x-auto px-2.5 py-2 font-mono text-[11px] leading-[1.6] text-text-2">{block.text}</pre>
+					<pre className="fb-scroll overflow-x-auto px-2.5 py-2 font-mono text-[11.5px] leading-[1.6] text-text-2">{block.text}</pre>
 				</div>
 			);
 		case "list":

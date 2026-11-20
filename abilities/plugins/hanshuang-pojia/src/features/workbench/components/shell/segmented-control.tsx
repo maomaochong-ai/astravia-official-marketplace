@@ -27,7 +27,7 @@ export function SegmentedControl<T extends string>({
 	size = "md",
 }: SegmentedControlProps<T>) {
 	const id = useId();
-	const padding = size === "sm" ? "px-2.5 py-1 text-[11px]" : "px-3 py-1.5 text-[12px]";
+	const padding = size === "sm" ? "px-2.5 py-1 text-[11.5px]" : "px-3 py-1.5 text-[12px]";
 	return (
 		// shrink-0：它常与标题、关闭按钮同处一行，被挤压时宽度会归零——
 		// 表现为「切换按钮消失」，看起来像功能坏了。

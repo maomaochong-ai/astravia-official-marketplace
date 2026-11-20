@@ -268,7 +268,8 @@ describe("workbench shell", () => {
 		expect(await within(reader).findByText(/the stub jumps to a computed address/)).toBeTruthy();
 		// 两份清单同页但不同源：切回先例清单才会列出随包包名。
 		fireEvent.click(screen.getByText("cases.tab.precedent"));
-		expect(screen.getByText("cases/elf-packed-loader/")).toBeTruthy();
+		// 副标题是「slug · 篇数/信号数」一行，所以用正则匹配前半段。
+		expect(screen.getByText(/^cases\/elf-packed-loader\//)).toBeTruthy();
 	});
 
 	it("reads a shipped precedent in place, without touching the disk", async () => {
@@ -300,7 +301,8 @@ describe("workbench handoff", () => {
 		const api = makeBridge();
 		await open(api);
 		await go("guide");
-		expect(await screen.findByText("guide.stage.intake.title")).toBeTruthy();
+		// 段名会出现两处：工序图上的入口 + 工件卡的标题（master-detail），所以用 findAll。
+		expect((await screen.findAllByText("guide.stage.intake.title")).length).toBeGreaterThan(0);
 		fireEvent.click(await screen.findByTitle("ai.workflow"));
 		await waitFor(() => expect(api.chat).toHaveBeenCalled());
 		expect(api.notify).toHaveBeenCalledWith("chat.sent", "success");
@@ -516,5 +518,219 @@ describe("workbench state", () => {
 
 		act(() => publishPanelEvent({ type: "report", report: REPORT, source: "agent" }));
 		await waitFor(() => expect(status.querySelector('[data-row="sample"]')?.textContent).toContain("demo.apk"));
+	});
+});
+
+/**
+ * 知识侧栏：文档与案例合并成一页之后，只有实测才会暴露的四个问题。
+ *
+ *   1. 合并后子页页头被让出，`ai.docs` / `cases.open` / `cases.refresh` 一起消失；
+ *   2. 切视图会卸载子页，局部 state 把「正在读哪份先例」丢掉；
+ *   3. 一级导航与二级筛选长得一样，读不出哪一级在管什么；
+ *   4. 文档筛选只有组一级，而指南页承诺「语料组与子目录两级」。
+ */
+describe("knowledge sidebar", () => {
+	it("keeps the docs action reachable and swaps it with the tab", async () => {
+		await open(makeBridge());
+		await go("knowledge");
+
+		// 合并前它住在 DocsPage 自己的页头里，embedded 时整块被摘掉。
+		expect(await screen.findByText("ai.docs")).toBeTruthy();
+
+		fireEvent.click(screen.getByRole("tab", { name: /page\.knowledge\.cases/ }));
+		expect(await screen.findByText("cases.open")).toBeTruthy();
+		expect(screen.getByText("cases.refresh")).toBeTruthy();
+		expect(screen.queryByText("ai.docs")).toBeNull();
+	});
+
+	it("separates the outer switch from the inner one by role", async () => {
+		await open(makeBridge());
+		await go("knowledge");
+
+		// 一级是 tab（导航），二级是 radiogroup（局部视图）。
+		const tabs = screen.getAllByRole("tab");
+		expect(tabs).toHaveLength(2);
+		expect(tabs[0].getAttribute("aria-selected")).toBe("true");
+
+		fireEvent.click(tabs[1]);
+		expect(await screen.findByRole("radiogroup")).toBeTruthy();
+	});
+
+	it("remembers the precedent being read across a view switch", async () => {
+		await open(makeBridge());
+		await go("knowledge");
+		fireEvent.click(screen.getByRole("tab", { name: /page\.knowledge\.cases/ }));
+
+		fireEvent.click(await screen.findByTitle("cases/elf-packed-loader/"));
+		expect(await screen.findByTestId("precedent-doc-tabs")).toBeTruthy();
+
+		// 切到文档再切回：子页会被卸载，位置只能靠 model 记住。
+		fireEvent.click(screen.getByRole("tab", { name: /page\.knowledge\.docs/ }));
+		await act(async () => {});
+		fireEvent.click(screen.getByRole("tab", { name: /page\.knowledge\.cases/ }));
+
+		expect(await screen.findByTestId("precedent-doc-tabs")).toBeTruthy();
+	});
+
+	it("exposes the sub-topic level the guide page promises", async () => {
+		await open(makeBridge());
+		await go("knowledge");
+
+		const filter = document.querySelector(".fb-menu summary") as HTMLElement;
+		fireEvent.click(filter);
+		// 分组名在列表的组头上也出现一次，所以限定在菜单里点。
+		const menu = document.querySelector(".fb-menu") as HTMLElement;
+		fireEvent.click(await within(menu).findByText("docs.group.kb"));
+
+		// 选了组之后，同一份菜单里出现子目录（缩进一层，带 ps-6）。
+		expect(document.querySelectorAll(".fb-menu [class*='ps-6']").length).toBeGreaterThan(0);
+	});
+});
+
+/**
+ * 活动侧栏：五条只有实测才会暴露的契约。
+ *
+ *   1. 一次工具调用只出一行（宿主推调用生命周期，工具推结果，两路必须在 UI 上合一）；
+ *   2. 轮次用分组标题表达，不再每行重复「前 N 轮」；
+ *   3. 筛选为空与「从未有过活动」是两种空态；
+ *   4. 清空要二次确认（点一次只是变文字）；
+ *   5. 有载荷的结果可点开，Esc 关闭。
+ */
+describe("activity sidebar", () => {
+	/** 一轮、一次调用、一份结果 —— 最能暴露「重复两行」的最小场景。 */
+	async function seedOneCall(api: WorkbenchBridge) {
+		await open(api);
+		act(() => {
+			publishTaskEvent({ phase: "turn-start", sessionId: "s1" });
+			publishTaskEvent({ phase: "tool-start", sessionId: "s1", toolName: "scan_strings" });
+			publishTaskEvent({ phase: "tool-end", sessionId: "s1", toolName: "scan_strings" });
+			publishPanelEvent({
+				type: "tool-result",
+				toolId: "scan_strings",
+				kind: "strings",
+				summary: "312 strings, 41 urls",
+				payload: { entries: [1, 2, 3] },
+				source: "agent",
+			});
+		});
+		await go("activity");
+	}
+
+	it("shows one row per call, not one per event", async () => {
+		await seedOneCall(makeBridge());
+
+		const log = await screen.findByTestId("activity-log");
+		// 两路事件（调用 + 结果）在 UI 上是同一行。
+		expect(log.querySelectorAll(".fb-log")).toHaveLength(1);
+		expect(within(log).getByText("scan_strings")).toBeTruthy();
+		expect(within(log).getByText("312 strings, 41 urls")).toBeTruthy();
+	});
+
+	it("groups the log by turn instead of repeating the turn on every row", async () => {
+		await seedOneCall(makeBridge());
+
+		const log = await screen.findByTestId("activity-log");
+		expect(within(log).getByText(/activity\.turn\.header/)).toBeTruthy();
+		// 旧版每行一句「前 N 轮」；现在轮次只在分组标题里出现一次。
+		expect(within(log).queryByText(/activity\.turnBehind/)).toBeNull();
+	});
+
+	it("tells an empty result filter apart from having no activity at all", async () => {
+		await seedOneCall(makeBridge());
+
+		// 只有调用、没有未配对的独立结果 → 「结果」筛选必然是空的。
+		fireEvent.click(screen.getByText("activity.filter.results"));
+
+		expect(await screen.findByText(/activity\.filter\.empty/)).toBeTruthy();
+		expect(screen.getByText("activity.filter.reset")).toBeTruthy();
+		// 引导语属于「从未有过活动」，不该在这里出现。
+		expect(screen.queryByText("page.activity.empty.title")).toBeNull();
+
+		fireEvent.click(screen.getByText("activity.filter.reset"));
+		expect(await screen.findByTestId("activity-log")).toBeTruthy();
+	});
+
+	it("asks before wiping the log", async () => {
+		await seedOneCall(makeBridge());
+
+		fireEvent.click(screen.getByText("page.activity.clear"));
+		// 第一次点击只是把按钮变成确认，日志还在。
+		expect(screen.getByText(/activity\.clear\.armed/)).toBeTruthy();
+		expect(screen.getByTestId("activity-log")).toBeTruthy();
+
+		fireEvent.click(screen.getByText(/activity\.clear\.armed/));
+		expect(await screen.findByText("page.activity.empty.title")).toBeTruthy();
+	});
+
+	it("opens the structured payload and closes on Escape", async () => {
+		await seedOneCall(makeBridge());
+
+		fireEvent.click(screen.getByText("312 strings, 41 urls"));
+		const dialog = await screen.findByTestId("activity-detail");
+		expect(dialog.getAttribute("role")).toBe("dialog");
+		expect(within(dialog).getByText(/"entries"/)).toBeTruthy();
+
+		act(() => {
+			document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+		});
+		expect(screen.queryByTestId("activity-detail")).toBeNull();
+	});
+});
+
+/**
+ * 自检 / 设置 / 报告：三处“看起来能用、实际上会打降级”的问题。
+ *
+ *   1. 报告页的副作用依赖是 `[model]`，而 `useWorkbench` 每帧返回新对象 → 请求死循环；
+ *   2. 设置页的三档清理与「重置全部」都是一键生效，与产品其他破坏性动作不一致；
+ *   3. 自检页把 `entry.status` 原样当文字输出（中文界面里出现 pass / warn / fail）。
+ */
+describe("selfcheck / settings / reports sidebars", () => {
+	it("does not re-read the workspace reports when the panel re-renders", async () => {
+		const api = makeBridge();
+		await open(api);
+		await go("reports");
+		await act(async () => {});
+
+		// 依赖写成 [model] 时，每次父级重渲染（流式输出、活动事件、时间线 tick）都会重发一次。
+		// 这里用一条任务事件把父级推重渲染，再断言请求次数没有涨。
+		act(() => publishTaskEvent({ phase: "tool-end", sessionId: "s1", toolName: "triage_binary" }));
+		await act(async () => {});
+
+		expect(vi.mocked(api.listReports).mock.calls.length).toBe(1);
+	});
+
+	it("asks before clearing storage", async () => {
+		const api = makeBridge();
+		await open(api);
+		await go("settings");
+		fireEvent.click(screen.getByTestId("settings-tab-data"));
+
+		fireEvent.click(await screen.findByText("settings.data.clearAll"));
+		// 第一次只是武装：没有删任何东西。
+		expect(api.removeState).not.toHaveBeenCalled();
+		expect(screen.getByText("settings.data.armedAll")).toBeTruthy();
+
+		fireEvent.click(screen.getByText("settings.data.armedAll"));
+		await waitFor(() => expect(api.removeState).toHaveBeenCalled());
+	});
+
+	it("asks before resetting every setting", async () => {
+		const api = makeBridge();
+		await open(api);
+		await go("settings");
+
+		fireEvent.click(await screen.findByText("settings.reset"));
+		expect(screen.getByText("settings.resetArmed")).toBeTruthy();
+		// 武装阶段不写盘：写盘意味着设置已经变了。
+		expect(api.saveSettings).not.toHaveBeenCalled();
+	});
+
+	it("localises the health status instead of leaking pass/warn/fail", async () => {
+		await open(makeBridge());
+		await go("selfcheck");
+
+		// 每一项都带一枚状态徽标，文案走 locales。
+		expect((await screen.findAllByText("selfcheck.status.pass")).length).toBeGreaterThan(0);
+		expect(screen.queryByText("pass")).toBeNull();
 	});
 });

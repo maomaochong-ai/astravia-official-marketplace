@@ -61,7 +61,7 @@ export function SampleDropzone({ report, busy, fromAgent, onClear, onReanalyse, 
 					</div>
 					<div className="min-w-0 flex-1">
 						<div className="text-[13px] font-medium text-text">{t("dropzone.empty.title")}</div>
-						<div className="mt-1 text-[11px] leading-relaxed text-text-3">{t("dropzone.empty.body")}</div>
+						<div className="mt-1 text-[11.5px] leading-relaxed text-text-3">{t("dropzone.empty.body")}</div>
 					</div>
 				</div>
 				{importProgress !== null ? (

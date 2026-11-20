@@ -31,6 +31,13 @@ const VERDICT_KEY: Record<HealthVerdict, string> = {
 	blocked: "selfcheck.summary.blocked",
 };
 
+/** 调用时刻。原本对 ISO 串直接 slice(11,19)，那是 UTC —— 跨时区会显示错的时间。 */
+function clock(at: string): string {
+	const date = new Date(at);
+	if (Number.isNaN(date.getTime())) return at.slice(11, 19);
+	return date.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
 const ICON: Record<HealthStatus, string> = {
 	pass: "check",
 	warn: "alert",
@@ -89,6 +96,16 @@ export function SelfCheckPage({ model }: PageProps) {
 		[load, model.cwd, model.persisted, model.chat.state.status, lab],
 	);
 
+	// 工具清单的「本次调用时间」：先建一次 Map，再逐行查。
+	// 每行都去 activity.entries 里 find 的话，35 个工具 × 200 条 = 7000 次比较/帧。
+	// 必须放在早退之前：hook 数量不能随分支变化。
+	const calledAt = useMemo(() => {
+		const map = new Map<string, string>();
+		// entries 是 newest-first：先写入的就是最近一次，后者不覆盖。
+		for (const entry of model.activity.entries) if (!map.has(entry.toolId)) map.set(entry.toolId, entry.at);
+		return map;
+	}, [model.activity.entries]);
+
 	if (load.phase === "loading") {
 		return (
 			<>
@@ -119,17 +136,14 @@ export function SelfCheckPage({ model }: PageProps) {
 				title={t("page.selfcheck.title")}
 				description={t("page.selfcheck.lead")}
 				actions={
-					<>
-						<button
-							type="button"
-							onClick={() => run()}
-							className="inline-flex items-center gap-1 rounded-md border border-line-subtle px-2 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
-						>
-							<Icon name="refresh" className="size-3" />
-							{t("selfcheck.failed.retry")}
-						</button>
-						<AiButton label={t("ai.toolchain")} onClick={() => model.ask("toolchain")} busy={model.chat.sending} />
-					</>
+					<button
+						type="button"
+						onClick={() => run()}
+						className="inline-flex items-center gap-1 rounded-md border border-line-subtle px-2 py-1 text-[11.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+					>
+						<Icon name="refresh" className="size-3" />
+						{t("selfcheck.rerun")}
+					</button>
 				}
 			/>
 			<div className="fb-page">
@@ -138,7 +152,7 @@ export function SelfCheckPage({ model }: PageProps) {
 					<span className="font-mono text-[10.5px] text-text-3">{t("selfcheck.summary.groups", { passed: groupsPassing, total: report.groups.length })}</span>
 					<span className="text-[10.5px] text-text-3">{t("selfcheck.summary.optional", { count: report.optional })}</span>
 					{report.failed > 0 ? <span className="text-[10.5px] text-risk-high">{t("selfcheck.summary.failed", { count: report.failed })}</span> : null}
-					<span className="ml-auto font-mono text-[10px] text-text-4">{t("selfcheck.summary.basis")}</span>
+					<span className="ml-auto font-mono text-[10.5px] text-text-4">{t("selfcheck.summary.basis")}</span>
 				</div>
 
 				{report.groups.map(group => {
@@ -162,25 +176,25 @@ export function SelfCheckPage({ model }: PageProps) {
 					<div className="mt-2 flex flex-wrap items-center gap-2">
 						<AiButton label={t("ai.toolchain")} onClick={() => model.ask("toolchain")} busy={model.chat.sending} />
 						<AiButton label={t("selfcheck.tools.installAll")} onClick={() => model.ask("install")} busy={model.chat.sending} />
-						<span className="text-[10px] text-text-4">{model.chat.sending ? t("selfcheck.tools.running") : t("selfcheck.tools.hint")}</span>
+						<span className="text-[10.5px] text-text-4">{model.chat.sending ? t("selfcheck.tools.running") : t("selfcheck.tools.hint")}</span>
 					</div>
 				</Card>
 
 				{/* 工具清单：每项标明闸门等级与本次会话是否真的被调用过。 */}
-				<Card title={t("selfcheck.tools.table")} bodyClassName="p-0" actions={<span className="font-mono text-[10px] text-text-4">{TOOL_IDS.length}</span>}>
-					<div className="fb-scroll max-h-[280px] divide-y divide-line-subtle overflow-y-auto">
+				<Card title={t("selfcheck.tools.table")} bodyClassName="p-0" actions={<span className="font-mono text-[10.5px] text-text-4">{TOOL_IDS.length}</span>}>
+					<div className="fb-scroll max-h-[var(--fb-h-md)] divide-y divide-line-subtle overflow-y-auto">
 						{TOOL_IDS.map(id => {
-							const called = model.activity.entries.find(entry => entry.toolId === id);
+							const at = calledAt.get(id) ?? null;
 							const core = CORE_TOOL_IDS.includes(id);
 							return (
 								<div key={id} className="flex items-center gap-2 px-3.5 py-1.5">
-									<span className={`size-1.5 shrink-0 rounded-full ${called ? "bg-accent" : "bg-text-4"}`} />
+									<span className={`size-1.5 shrink-0 rounded-full ${at ? "bg-accent" : "bg-text-4"}`} />
 									<span className="min-w-0 flex-1 fb-wrap font-mono text-[10.5px] text-text-2">{id}</span>
-									<span className="shrink-0 rounded bg-surface-3 px-1.5 py-0.5 text-[9px] text-text-3">
+									<span className="shrink-0 rounded bg-surface-3 px-1.5 py-0.5 text-[9.5px] text-text-3">
 										{t(core ? "selfcheck.tools.core" : "selfcheck.tools.labOnly")}
 									</span>
-									<span className={`shrink-0 font-mono text-[9.5px] ${called ? "text-text-3" : "text-text-4"}`}>
-										{called ? called.at.slice(11, 19) : t("selfcheck.tools.uncalled")}
+									<span className={`shrink-0 font-mono tabular-nums text-[9.5px] ${at ? "text-text-3" : "text-text-4"}`}>
+										{at ? clock(at) : t("selfcheck.tools.uncalled")}
 									</span>
 								</div>
 							);
@@ -193,6 +207,7 @@ export function SelfCheckPage({ model }: PageProps) {
 }
 
 function HealthRow({ entry, label }: { entry: HealthItem; label: string }) {
+	const { t } = useTranslation();
 	// 表单式两列：值那一列可换行，长路径不再被裁掉。
 	return (
 		<div className="flex items-start gap-2.5 px-3.5 py-2">
@@ -200,9 +215,11 @@ function HealthRow({ entry, label }: { entry: HealthItem; label: string }) {
 			<dl className="fb-field min-w-0 flex-1">
 				<dt className="flex items-center gap-1.5">
 					{label}
-					<span className={`font-mono text-[9.5px] uppercase tracking-wide ${TONE[entry.status]}`}>{entry.status}</span>
+					<span className={`font-mono text-[9.5px] uppercase tracking-wide ${TONE[entry.status]}`}>
+						{t(`selfcheck.status.${entry.status}`)}
+					</span>
 				</dt>
-				<dd className="font-mono text-[10px] leading-relaxed text-text-4">{entry.detail}</dd>
+				<dd className="font-mono text-[10.5px] leading-relaxed text-text-4">{entry.detail}</dd>
 			</dl>
 		</div>
 	);

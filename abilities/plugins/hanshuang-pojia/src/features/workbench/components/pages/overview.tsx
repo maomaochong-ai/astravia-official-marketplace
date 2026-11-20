@@ -87,7 +87,7 @@ export function OverviewPage({ model }: PageProps) {
 						<ol className="space-y-2">
 							{STEPS.map((step, index) => (
 								<li key={step} className="flex items-start gap-2.5">
-									<span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-4 font-mono text-[10px] text-text-2">{index + 1}</span>
+									<span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-4 font-mono text-[10.5px] text-text-2">{index + 1}</span>
 									<div className="min-w-0">
 										<div className="text-[12px] font-medium text-text">{t(`guide.${step}.title`)}</div>
 										<div className="text-[10.5px] leading-relaxed text-text-4">{t(`guide.${step}.body`)}</div>

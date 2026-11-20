@@ -63,10 +63,10 @@ export function PrecedentReader({ precedent, onOpenStudy, onScaffold, busy }: Pr
 				<Tag tone="neutral">{t("cases.precedent.runnable", { count: precedent.tools.tools.length, runtime: precedent.tools.runtime })}</Tag>
 			</div>
 
-			<p className="mt-2 shrink-0 px-3.5 text-[11px] leading-relaxed text-text-3">{precedent.summary}</p>
+			<p className="mt-2 shrink-0 px-3.5 text-[11.5px] leading-relaxed text-text-3">{precedent.summary}</p>
 
 			<div className="mt-2 flex shrink-0 min-w-0 flex-wrap items-center gap-1.5 px-3.5">
-				<span className="text-[10px] font-medium uppercase tracking-wider text-text-4">{t("cases.precedent.col.signals")}</span>
+				<span className="text-[10.5px] font-medium uppercase tracking-wider text-text-4">{t("cases.precedent.col.signals")}</span>
 				{precedent.signals.map(signal => (
 					<Tag key={signal} tone="neutral" className="font-mono">
 						{signal}
@@ -94,7 +94,7 @@ export function PrecedentReader({ precedent, onOpenStudy, onScaffold, busy }: Pr
 			</div>
 
 			{precedent.fieldNotes.length > 0 ? (
-				<p className="px-3.5 pb-2 text-[10px] leading-relaxed text-text-4">{t("cases.precedent.notes", { notes: precedent.fieldNotes.join(", ") })}</p>
+				<p className="px-3.5 pb-2 text-[10.5px] leading-relaxed text-text-4">{t("cases.precedent.notes", { notes: precedent.fieldNotes.join(", ") })}</p>
 			) : null}
 
 			<div className="shrink-0">

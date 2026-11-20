@@ -113,7 +113,7 @@ export function InjectBlockCard({ library, notify, packId, onPackChange }: Injec
 									type="button"
 									onClick={() => onPackChange(packId === pack.id ? "" : pack.id)}
 									aria-pressed={packId === pack.id}
-									className={`rounded-md px-1.5 py-0.5 text-[10px] transition-colors ${
+									className={`rounded-md px-1.5 py-0.5 text-[10.5px] transition-colors ${
 										packId === pack.id ? "fb-selected" : "text-text-3 hover:bg-surface-hover hover:text-text"
 									}`}
 								>
@@ -122,7 +122,7 @@ export function InjectBlockCard({ library, notify, packId, onPackChange }: Injec
 							))}
 						</div>
 					) : null}
-					<span className="fb-wrap ms-auto font-mono text-[10px] text-text-4">~/.astravia/agent/{ASTRAVIA_AGENTS_FILE}</span>
+					<span className="fb-wrap ms-auto font-mono text-[10.5px] text-text-4">~/.astravia/agent/{ASTRAVIA_AGENTS_FILE}</span>
 					<button
 						type="button"
 						onClick={copy}
@@ -166,8 +166,8 @@ export function InjectBlockCard({ library, notify, packId, onPackChange }: Injec
 				/>
 
 				<div className="flex flex-col gap-0.5">
-					<p className="break-words text-[10px] leading-relaxed text-text-4">{t("prompt.inject.howTo")}</p>
-					<p className="break-words text-[10px] leading-relaxed text-text-4">{restoreNote.split("\n")[0]}</p>
+					<p className="break-words text-[10.5px] leading-relaxed text-text-4">{t("prompt.inject.howTo")}</p>
+					<p className="break-words text-[10.5px] leading-relaxed text-text-4">{restoreNote.split("\n")[0]}</p>
 				</div>
 			</div>
 		</Card>

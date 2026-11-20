@@ -72,6 +72,8 @@ export interface PanelToolResultEvent {
 	summary: string;
 	/** 结构化载荷（随各工具而异），面板可按 kind 决定怎么渲染。 */
 	payload?: Record<string, unknown>;
+	/** 这次结果是否来自一次失败的调用；工具一般不推失败结果，缺省留空。 */
+	isError?: boolean;
 	/** 来源，目前恒为 agent。 */
 	source: "agent";
 	/** 结果触发时间（ISO）。缺省由面板在收到时补。 */

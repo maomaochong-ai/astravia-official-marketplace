@@ -52,4 +52,26 @@ describe("layout contract across OS and screen sizes", () => {
 		const bodyLine = page.split("\n").find(line => line.includes("fb-log-body"));
 		expect(bodyLine ?? "").not.toContain("truncate");
 	});
+
+	// 笔记本矮屏上「底部的卡片看不见」不是滚动没开，是卡片被压扁了：
+	// .fb-main 是滚动容器，而 .fb-page 及其子项默认 flex-shrink: 1，
+	// 内容高于面板时它们先缩再滚，于是卡片高度被吃到正文以外，滚到底也只是空白。
+	// 契约：只有 .fb-fill / .fb-fill-scroll 允许伸缩，其余子项保持自然高度，由 .fb-main 滚。
+	it("never squeezes page cards to fit the panel — the main column scrolls instead", () => {
+		const css = read("src/style.css");
+		expect(css).toMatch(/\.fb-page\s*>\s*:not\(\.fb-fill\):not\(\.fb-fill-scroll\)\s*\{[^}]*flex:\s*0 0 auto/);
+		expect(css).toMatch(/\.fb-main\s*\{[^}]*overflow-y:\s*auto/);
+	});
+
+	// 活动页的日志行曾经是三列 grid（`62px 14px 1fr`），对应「时间｜符号｜正文」的单行旧结构。
+	// 改成两行（head + body）后没同步 grid，head 被塞进 62px、body 塞进 14px，
+	// 于是摘要只剩一列字 —— 用户看到的就是「文字被圆角容器遮住」。
+	it("keeps the activity log rows out of the legacy three-column grid", () => {
+		const css = read("src/style.css");
+		expect(css).not.toMatch(/\.fb-terminal\s+\.fb-log\s*\{[^}]*grid-template-columns/);
+		const page = read("src/features/workbench/components/pages/activity.tsx");
+		// 两行结构：head 装标量，body 装可换行的内容。
+		expect(page).toContain("fb-log-head");
+		expect(page).toContain("fb-log-body");
+	});
 });

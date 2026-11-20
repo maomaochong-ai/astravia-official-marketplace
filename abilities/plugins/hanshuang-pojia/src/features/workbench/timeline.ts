@@ -9,7 +9,7 @@
  * `finishedAt: null`，一律不拿「现在」去补一个看起来合理的时长。
  */
 
-import type { TaskStreamEntry } from "./state";
+import type { ActivityEntry, TaskStreamEntry } from "./state";
 
 export type SpanStatus = "running" | "ok" | "error";
 
@@ -95,7 +95,6 @@ export function buildTimeline(entries: readonly TaskStreamEntry[]): Timeline {
 		turnOrders.set(summary, turnStart.seq);
 		turns.push(summary);
 		turnStart = null;
-		turnStart = null;
 	};
 
 	for (const entry of chronological) {
@@ -175,6 +174,119 @@ export function buildTimeline(entries: readonly TaskStreamEntry[]): Timeline {
 
 	return { turns: [...turns].reverse(), spans: [...spans].reverse(), current };
 }
+/**
+ * 一条活动行。
+ *
+ * 合并视图把「调用生命周期」与「工具结果」并成一条 —— 它们描述的是同一次调用。
+ * 配不上时就分开显示：宁可多一行，不猜它们是一回事。
+ */
+export interface ActivityRow {
+	key: string;
+	/** call = 有调用生命周期；result = 只有结果、没配上调用。 */
+	kind: "call" | "result";
+	/** 用于排序与时间列：有调用用开始时间，纯结果用结果时间。 */
+	at: string;
+	/** 轮次序号，-1 表示落在任何 turn 窗口之外（例如面板中途挂载的重放）。 */
+	turn: number;
+	toolId: string;
+	/** 只有配上调用才有；纯结果行为 null，不假定成功。 */
+	status: SpanStatus | null;
+	ms: number | null;
+	summary: string | null;
+	hints: PayloadHint[];
+	payload?: Record<string, unknown>;
+	isError: boolean;
+}
+
+/** 结果与调用相隔多久还算同一次：宿主推 tool-end 与 tool-result 是相邻的两个事件。 */
+const MATCH_WINDOW_MS = 5_000;
+
+/**
+ * 把两路事件合成一串可读的行。
+ *
+ * 为什么必须合：一次工具调用在面板上会收到两个事件 —— 宿主方向的 `tool-start/tool-end`
+ * （有时长、有成败）与工具自己 publish 的 `tool-result`（有摘要、有载荷）。不合并时
+ * 20 次调用会显示成 40 行，读者会把「一次调用」读成「两次」。
+ *
+ * 配对判据：工具名相同 + 结果时间落在该调用的结束时间前后 5 秒内 + 每个调用只用一次。
+ * 同名工具并发时按「时间最接近的未配对调用」——比按名字取最后一个更像真实调用栈。
+ */
+export function mergeActivity(
+	spans: readonly ToolSpan[],
+	entries: readonly ActivityEntry[],
+	turns: readonly TurnSummary[],
+): ActivityRow[] {
+	const claimed = new Map<string, ActivityEntry>();
+
+	// 结果按时间正序配对：先到的结果配先结束的调用。
+	const ordered = [...entries].sort((left, right) => at(left.at) - at(right.at));
+	for (const item of ordered) {
+		const hitAt = at(item.at);
+		let best: ToolSpan | null = null;
+		let bestGap = Number.POSITIVE_INFINITY;
+		for (const span of spans) {
+			if (span.toolName !== item.toolId || claimed.has(span.id)) continue;
+			const anchor = span.finishedAt ? at(span.finishedAt) : at(span.startedAt);
+			if (anchor === 0) continue;
+			// 结果不该早于调用开始；早于就当配不上。
+			if (hitAt < at(span.startedAt)) continue;
+			const gap = Math.abs(hitAt - anchor);
+			if (gap > MATCH_WINDOW_MS || gap >= bestGap) continue;
+			best = span;
+			bestGap = gap;
+		}
+		if (best) claimed.set(best.id, item);
+	}
+
+	/** 结果落在哪一轮：按 turn 的时间窗判定，判不出来就不归属。 */
+	const turnOf = (value: string): number => {
+		const point = at(value);
+		if (point === 0) return -1;
+		for (const turn of turns) {
+			const start = turn.startedAt ? at(turn.startedAt) : 0;
+			const end = turn.finishedAt ? at(turn.finishedAt) : Number.MAX_SAFE_INTEGER;
+			if (start !== 0 && point >= start && point <= end) return turn.index;
+		}
+		return -1;
+	};
+
+	const rows: ActivityRow[] = spans.map(span => {
+		const entry = claimed.get(span.id);
+		return {
+			key: `call-${span.id}`,
+			kind: "call" as const,
+			at: span.startedAt,
+			turn: span.turn,
+			toolId: span.toolName,
+			status: span.status,
+			ms: span.ms,
+			summary: entry?.summary ?? null,
+			hints: payloadHints(entry?.payload),
+			payload: entry?.payload,
+			isError: entry?.isError ?? span.status === "error",
+		};
+	});
+
+	for (const item of entries) {
+		if ([...claimed.values()].includes(item)) continue;
+		rows.push({
+			key: `result-${item.id}`,
+			kind: "result",
+			at: item.at,
+			turn: turnOf(item.at),
+			toolId: item.toolId,
+			status: null,
+			ms: null,
+			summary: item.summary,
+			hints: payloadHints(item.payload),
+			payload: item.payload,
+			// 没有调用生命周期就没资格说成功：只循工具自己报的 isError。
+			isError: item.isError === true,
+		});
+	}
+
+	return rows.sort((left, right) => at(right.at) - at(left.at));
+}
 
 /** 0.4s / 1.2s / 12s / 1m05s —— 小数值保留一位小数，取整只在真的过了秒级之后。 */
 export function formatDuration(ms: number | null): string {
@@ -195,20 +307,29 @@ const NOISE_KEYS = new Set(["id", "sha256", "at", "timestamp", "path", "sessionI
  * 不是把对象倒出来：`{ entries: [...156], sections: [...12] }` 对读者有用的是
  * 「156 条 / 12 段」，`{ format: "apk" }` 有用的就是那个值。嵌套对象一律略过——
  * 展开一个对象的名字不会让人更清楚发生了什么。
+ *
+ * 返回值是 `{ key, value }` 而不是拼好的字符串：这些 key 是工具的参数名（`entries`、
+ * `sections`…），中文界面里直接显示就是英文内部字段溢出到 UI。译名交给界面层，
+ * 域层不持有词表。
  */
-export function payloadHints(payload: Record<string, unknown> | undefined, limit = 4): string[] {
+export interface PayloadHint {
+	key: string;
+	value: string;
+}
+
+export function payloadHints(payload: Record<string, unknown> | undefined, limit = 4): PayloadHint[] {
 	if (!payload) return [];
-	const hints: string[] = [];
+	const hints: PayloadHint[] = [];
 	for (const [key, value] of Object.entries(payload)) {
 		if (NOISE_KEYS.has(key)) continue;
 		if (Array.isArray(value)) {
-			hints.push(`${key} ${value.length}`);
+			hints.push({ key, value: String(value.length) });
 		} else if (typeof value === "number") {
-			hints.push(`${key} ${value}`);
+			hints.push({ key, value: String(value) });
 		} else if (typeof value === "boolean") {
-			hints.push(`${key} ${value ? "yes" : "no"}`);
+			hints.push({ key, value: value ? "yes" : "no" });
 		} else if (typeof value === "string" && value.trim().length > 0 && value.length <= 48) {
-			hints.push(`${key} ${value}`);
+			hints.push({ key, value });
 		}
 		if (hints.length >= limit) break;
 	}

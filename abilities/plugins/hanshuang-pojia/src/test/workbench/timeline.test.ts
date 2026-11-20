@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildTimeline, formatDuration, payloadHints } from "../../features/workbench/timeline";
-import type { TaskStreamEntry } from "../../features/workbench/state";
+import { buildTimeline, formatDuration, mergeActivity, payloadHints } from "../../features/workbench/timeline";
+import type { ActivityEntry, TaskStreamEntry } from "../../features/workbench/state";
 
 /** 事件流由宿主按 newest-first 推来；构造器也按这个顺序返回，避免测试里再反转一次。 */
 function entry(phase: TaskStreamEntry["phase"], at: string, extra: Partial<TaskStreamEntry> = {}): TaskStreamEntry {
@@ -107,15 +107,105 @@ describe("payloadHints", () => {
 			score: 92,
 		});
 
-		expect(hints).toEqual(["format apk", "entries 3", "sections 12", "score 92"]);
+		expect(hints).toEqual([
+			{ key: "format", value: "apk" },
+			{ key: "entries", value: "3" },
+			{ key: "sections", value: "12" },
+			{ key: "score", value: "92" },
+		]);
 	});
 
 	it("caps the number of hints", () => {
 		const hints = payloadHints({ a: 1, b: 2, c: 3, d: 4, e: 5 }, 2);
-		expect(hints).toEqual(["a 1", "b 2"]);
+		expect(hints).toEqual([
+			{ key: "a", value: "1" },
+			{ key: "b", value: "2" },
+		]);
 	});
 
 	it("returns nothing for a missing payload", () => {
 		expect(payloadHints(undefined)).toEqual([]);
+	});
+});
+
+describe("mergeActivity", () => {
+	/** 造一条工具结果；活动流同样是 newest-first。 */
+	function result(at: string, toolId: string, extra: Partial<ActivityEntry> = {}): ActivityEntry {
+		return { id: `${toolId}-${at}`, toolId, kind: "other", summary: `${toolId} done`, at, ...extra };
+	}
+
+	it("folds a tool-result into the call it belongs to", () => {
+		const timeline = buildTimeline(
+			stream([
+				entry("turn-start", "2026-01-01T00:00:00.000Z"),
+				entry("tool-start", "2026-01-01T00:00:01.000Z", { toolName: "scan_strings" }),
+				entry("tool-end", "2026-01-01T00:00:02.000Z", { toolName: "scan_strings" }),
+				entry("turn-end", "2026-01-01T00:00:03.000Z"),
+			]),
+		);
+		const rows = mergeActivity(
+			timeline.spans,
+			[result("2026-01-01T00:00:02.100Z", "scan_strings", { payload: { entries: [1, 2] } })],
+			timeline.turns,
+		);
+
+		// 一次调用只出一行：调用提供时长与状态，结果提供摘要与载荷。
+		expect(rows).toHaveLength(1);
+		expect(rows[0]).toMatchObject({ kind: "call", toolId: "scan_strings", status: "ok", ms: 1000, summary: "scan_strings done" });
+		expect(rows[0].hints).toEqual([{ key: "entries", value: "2" }]);
+	});
+
+	it("keeps a result with no matching call as its own row, without claiming success", () => {
+		const rows = mergeActivity([], [result("2026-01-01T00:00:02.000Z", "run_radare")], buildTimeline([]).turns);
+
+		expect(rows).toHaveLength(1);
+		expect(rows[0]).toMatchObject({ kind: "result", status: null, isError: false });
+	});
+
+	it("does not pair a result that arrived long after the call finished", () => {
+		const timeline = buildTimeline(
+			stream([
+				entry("turn-start", "2026-01-01T00:00:00.000Z"),
+				entry("tool-start", "2026-01-01T00:00:01.000Z", { toolName: "run_radare" }),
+				entry("tool-end", "2026-01-01T00:00:02.000Z", { toolName: "run_radare" }),
+			]),
+		);
+		// 60 秒之后的结果不是同一件事：宁可两行，不猜。
+		const rows = mergeActivity(timeline.spans, [result("2026-01-01T00:01:02.000Z", "run_radare")], timeline.turns);
+
+		expect(rows.map(row => row.kind).sort()).toEqual(["call", "result"]);
+	});
+
+	it("carries the failure of the call onto the merged row", () => {
+		const timeline = buildTimeline(
+			stream([
+				entry("turn-start", "2026-01-01T00:00:00.000Z"),
+				entry("tool-start", "2026-01-01T00:00:01.000Z", { toolName: "decompile_function" }),
+				entry("tool-end", "2026-01-01T00:00:02.000Z", { toolName: "decompile_function", isError: true }),
+			]),
+		);
+		const rows = mergeActivity(timeline.spans, [], timeline.turns);
+
+		expect(rows[0]).toMatchObject({ kind: "call", status: "error", isError: true });
+	});
+
+	it("sorts newest first and groups by the turn the call belongs to", () => {
+		const timeline = buildTimeline(
+			stream([
+				entry("turn-start", "2026-01-01T00:00:00.000Z"),
+				entry("tool-start", "2026-01-01T00:00:01.000Z", { toolName: "old-tool" }),
+				entry("tool-end", "2026-01-01T00:00:02.000Z", { toolName: "old-tool" }),
+				entry("turn-end", "2026-01-01T00:00:03.000Z"),
+				entry("turn-start", "2026-01-01T00:01:00.000Z"),
+				entry("tool-start", "2026-01-01T00:01:01.000Z", { toolName: "new-tool" }),
+				entry("tool-end", "2026-01-01T00:01:02.000Z", { toolName: "new-tool" }),
+			]),
+		);
+		const rows = mergeActivity(timeline.spans, [], timeline.turns);
+
+		expect(rows.map(row => [row.toolId, row.turn])).toEqual([
+			["new-tool", 0],
+			["old-tool", 1],
+		]);
 	});
 });

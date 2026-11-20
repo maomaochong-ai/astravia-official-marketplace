@@ -54,13 +54,13 @@ export function WorkflowBar({ model }: WorkflowBarProps) {
 						}`}
 					>
 						<span
-							className={`flex size-5 shrink-0 items-center justify-center rounded-full font-mono text-[10px] ${
+							className={`flex size-5 shrink-0 items-center justify-center rounded-full font-mono text-[10.5px] ${
 								active ? "bg-purple text-white" : step.ready ? "bg-surface-4 text-text-2" : "bg-surface-3 text-text-4"
 							}`}
 						>
 							{index + 1}
 						</span>
-						<span className="truncate text-[11px] font-medium" title={t(`workflow.${step.id}.title`)}>{t(`workflow.${step.id}.title`)}</span>
+						<span className="truncate text-[11.5px] font-medium" title={t(`workflow.${step.id}.title`)}>{t(`workflow.${step.id}.title`)}</span>
 					</button>
 				);
 			})}

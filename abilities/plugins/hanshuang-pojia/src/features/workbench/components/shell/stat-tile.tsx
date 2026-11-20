@@ -18,7 +18,7 @@ export interface StatTileProps {
 export function StatTile({ label, value, hint, tone = "default" }: StatTileProps) {
 	return (
 		<div className="min-w-0 rounded-xl bg-surface-3 px-3.5 py-3">
-			<div className="fb-wrap text-[11px] text-text-4">{label}</div>
+			<div className="fb-wrap text-[11.5px] text-text-4">{label}</div>
 			<div className={`mt-1 truncate font-mono text-[18px] font-semibold leading-none ${TONE_VALUE[tone]}`} title={String(value)}>{value}</div>
 			{hint ? <div className="fb-wrap mt-1.5 text-[10.5px] leading-snug text-text-4">{hint}</div> : null}
 		</div>
