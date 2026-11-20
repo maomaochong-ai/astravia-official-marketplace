@@ -712,7 +712,6 @@
   "docs.search.results": "检索结果",
   "docs.search.empty": "没有匹配的文档。",
   "docs.search.running": "正在检索全部文档…",
-  "docs.reader.back": "返回目录",
   "docs.reader.loading": "正文加载中…",
   "docs.index.loading": "正在载入文档索引…",
   "blocked.tooLarge.title": "超出插件可读范围",
@@ -932,5 +931,15 @@
   "guide.flow.note": "点任一段看它交付什么、下一步拿到什么。段与段之间不是「做完再走」，而是「有工件才算过」。",
   "guide.artifacts.title": "工件",
   "guide.artifacts.out": "这一段产出",
-  "guide.artifacts.next": "下一步拿它干什么"
+  "guide.artifacts.next": "下一步拿它干什么",
+  "tool.planNextStep.label": "生成下一步计划",
+  "guide.next.title": "下一步（来自当前报告）",
+  "guide.next.confidence.strong": "强",
+  "guide.next.confidence.weak": "弱",
+  "guide.next.confidence.fallback": "兜底",
+  "guide.next.disproof": "否证：",
+  "guide.next.else": "若不成立：",
+  "cases.completeness.sketch": "形状",
+  "cases.completeness.worked": "可照做",
+  "cases.completeness.field": "现场"
 }
