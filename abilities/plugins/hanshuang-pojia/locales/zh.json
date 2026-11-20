@@ -579,7 +579,6 @@
   "settings.group.analysis": "分析",
   "settings.group.storage": "存储",
   "settings.runtime.title": "当前状态",
-  "settings.runtime.lab": "实验环境",
   "settings.runtime.prompt": "注入提示词",
   "settings.runtime.workspace": "工作区",
   "settings.runtime.none": "未设置",
@@ -739,9 +738,7 @@
   "meta.sha256": "SHA-256",
   "panel.crash.title": "面板出错了",
   "panel.crash.body": "工作台已经拦住这次异常，标签页仍然可用。把下面的信息贴进对话框，就能让它继续排查。",
-  "lab.on": "实验",
   "lab.onHint": "实验环境已开启：提示块会带上交付口径（定位 → patch 表 → 可运行产物 → 验证 → 回滚）。点击关闭。",
-  "lab.offHint": "实验环境未开启：只做普通回答。点击开启，或在对话里发 `lab：`。",
   "status.title": "实时状态",
   "status.session": "会话",
   "status.session.streaming": "正在生成",
@@ -929,5 +926,7 @@
   "inject.clearAll.yes": "确定清除",
   "inject.clearAll.cancel": "取消",
   "inject.clearAll.hint": "生成摘除 {{count}} 个目标标记块的脚本（会先让你确认）",
-  "inject.copiedTo": "脚本已复制，并保存到 {{path}}"
+  "inject.copiedTo": "脚本已复制，并保存到 {{path}}",
+  "docs.filter": "筛选",
+  "settings.group.data": "数据"
 }
