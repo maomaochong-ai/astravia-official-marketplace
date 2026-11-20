@@ -116,12 +116,17 @@ describe("shipped precedent packages", () => {
 
 	it("cites only field-journal documents that exist", () => {
 		// 生成器已经拦了一次；测试再拦一次，因为「凭记忆写文档 id」是本仓库最常见的假引用。
+		// 有些包本来就没引任何 field journal（例如 `payload-chain` 是按上游链条重写的形状，
+		// 不是某次真实评估的产物）—— 这时不要求它拥有引用，但引了的都必须能打开。
+		let cited = 0;
 		for (const precedent of SHIPPED_PRECEDENTS) {
-			expect(precedent.fieldNotes.length).toBeGreaterThan(0);
 			for (const id of precedent.fieldNotes) {
+				cited += 1;
 				expect(existsSync(join(docsDir, `${id}.md`)), `${precedent.slug} cites ${id}`).toBe(true);
 			}
 		}
+		// 这条防的是「整个库都不再引用任何原始 journal」这种退化。
+		expect(cited).toBeGreaterThan(0);
 	});
 
 	it("starts from a real preset and an unclaimed authorisation", async () => {

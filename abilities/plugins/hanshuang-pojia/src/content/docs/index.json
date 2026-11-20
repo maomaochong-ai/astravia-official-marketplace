@@ -220,6 +220,16 @@
 		"sha256": "e76badaba4a0cce4"
 	},
 	{
+		"id": "cases/payload-chain/chain-shape",
+		"group": "cases",
+		"topic": "payload-chain",
+		"title": "Payload chain — the shape of an injection job",
+		"path": "src/content/docs/cases/payload-chain/chain-shape.md",
+		"bytes": 7288,
+		"lines": 121,
+		"sha256": "8537d3faed28546e"
+	},
+	{
 		"id": "cases/proxy-dll-license-state-machine/authorisation-state-machine",
 		"group": "cases",
 		"topic": "proxy-dll-license-state-machine",

@@ -34,6 +34,7 @@ The reader-facing narrative for each case lives in the document library under
 | [ed25519-offline-keygen](ed25519-offline-keygen/README.md) | activation is a signed blob and the verifying public key is stored inside the binary |
 | [rsa-blob-machine-code-keygen](rsa-blob-machine-code-keygen/README.md) | activation is an RSA signature over a machine-derived string |
 | [java-agent-dll-hijack](java-agent-dll-hijack/README.md) | the gate is a Java null check and the launcher imports native libraries from a writable directory |
+| [payload-chain](payload-chain/README.md) | the job needs a full carrier / mapper / injector chain, not a single patch |
 
 ## How to use one
 

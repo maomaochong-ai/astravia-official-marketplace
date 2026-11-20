@@ -1,0 +1,28 @@
+{
+	"schemaVersion": 1,
+	"slug": "payload-chain",
+	"title": "Three-stage payload chain",
+	"summary": "Blob, loader, injector: generate the shape of an injection job with every target-specific number left as a named placeholder, so the offsets come from the sample and never from a guess.",
+	"signals": [
+		"payload",
+		"loader",
+		"injector",
+		"shellcode",
+		"code cave",
+		"process injection",
+		"staged",
+		"patch"
+	],
+	"preset": "offline-sample",
+	"category": "native-loader",
+	"fieldNotes": [],
+	"caseDocs": [
+		"cases/payload-chain/chain-shape"
+	],
+	"docs": [
+		"README.md",
+		"scope.md",
+		"docs/method.md",
+		"docs/defense.md"
+	]
+}

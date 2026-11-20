@@ -177,9 +177,30 @@ export function checkSharedKit(casesDir) {
  * 跑一个工具的 --self-test。这是「能跑」唯一的硬证据：
  * 没有它，几个月后没人知道这些脚本还能不能用。
  */
+/**
+ * 找一条能真跑的解释器。
+ *
+ * Windows 上 `python3` 常是 Microsoft Store 的占位壳：`spawnSync` 能启动但立即以
+ * 9009（command not found）退出，看上去像「工具的 self-test 失败了」。先试 `python`，
+ * 再试 `python3`；两个都不行就报成「没有解释器」，而不是报成工具坏了。
+ */
+function pythonInterpreter() {
+	const override = process.env.ASTRAVIA_PYTHON;
+	if (override) return override;
+	for (const candidate of ["python", "python3"]) {
+		const probe = spawnSync(candidate, ["--version"], { encoding: "utf8", timeout: 10_000 });
+		if (probe.status === 0) return candidate;
+	}
+	return null;
+}
+
 export function runToolSelfTest({ dirPath, manifest, tool, timeout = 60000 }) {
 	const toolsDir = join(dirPath, "tools");
-	const interpreter = manifest.runtime === "python" ? process.env.ASTRAVIA_PYTHON ?? "python3" : manifest.runtime === "node" ? process.execPath : "pwsh";
+	const interpreter =
+		manifest.runtime === "python" ? pythonInterpreter() : manifest.runtime === "node" ? process.execPath : "pwsh";
+	if (interpreter === null) {
+		return { ok: false, status: null, output: "no python interpreter on PATH (tried python, python3; set ASTRAVIA_PYTHON to override)", error: null };
+	}
 	const result = spawnSync(interpreter, [join(toolsDir, tool.entry), "--self-test"], {
 		cwd: toolsDir,
 		encoding: "utf8",

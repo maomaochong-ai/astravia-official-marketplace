@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "slug": "payload-chain",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "payload_chain",
+      "entry": "payload_chain.py",
+      "purpose": "Generate the three stages of an injection chain (blob, loader, injector) with every target-specific number left as a named placeholder, so offsets come from the sample instead of from memory.",
+      "args": ["--platform <win|linux>", "--out <dir>", "--target-name <name>"],
+      "expect": "four files under --out: payload.bin with a self-checking header, loader.py, injector.py and chain.md listing the placeholders still to fill",
+      "selfTest": "python3 payload_chain.py --self-test"
+    }
+  ],
+  "notes": "Generated, not executed: the blob body is inert (win: zeros, linux: a nop sled plus ret) and both scripts only print their plan. Four of the five placeholders can only be filled after triage_binary and disasm, which is the point — a chain whose holes are unnamed is a chain somebody fills with a guess."
+}

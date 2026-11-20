@@ -979,6 +979,60 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		]
 	},
 	{
+		"slug": "payload-chain",
+		"title": "Three-stage payload chain",
+		"summary": "Blob, loader, injector: generate the shape of an injection job with every target-specific number left as a named placeholder, so the offsets come from the sample and never from a guess.",
+		"signals": [
+			"payload",
+			"loader",
+			"injector",
+			"shellcode",
+			"code cave",
+			"process injection",
+			"staged",
+			"patch"
+		],
+		"preset": "offline-sample",
+		"category": "native-loader",
+		"fieldNotes": [],
+		"caseDocs": [
+			"cases/payload-chain/chain-shape"
+		],
+		"tools": {
+			"runtime": "python",
+			"platforms": [
+				"any"
+			],
+			"tools": [
+				{
+					"id": "payload_chain",
+					"entry": "payload_chain.py",
+					"purpose": "Generate the three stages of an injection chain (blob, loader, injector) with every target-specific number left as a named placeholder, so offsets come from the sample instead of from memory.",
+					"args": [
+						"--platform <win|linux>",
+						"--out <dir>",
+						"--target-name <name>"
+					],
+					"expect": "four files under --out: payload.bin with a self-checking header, loader.py, injector.py and chain.md listing the placeholders still to fill"
+				}
+			]
+		},
+		"docs": [
+			{
+				"id": "README.md"
+			},
+			{
+				"id": "scope.md"
+			},
+			{
+				"id": "docs/method.md"
+			},
+			{
+				"id": "docs/defense.md"
+			}
+		]
+	},
+	{
 		"slug": "proxy-dll-license-state-machine",
 		"title": "The trial banner was never the gate: an activation state word behind it",
 		"summary": "A twinBASIC x64 desktop tool with no network stack decides everything from one 16-bit word in .data. Five earlier cosmetic patches looked successful and changed nothing, because they edited what the UI reads instead of what the startup path writes.",
