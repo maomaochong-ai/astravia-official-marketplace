@@ -84,6 +84,7 @@ function makeBridge(overrides: Partial<WorkbenchBridge> = {}): WorkbenchBridge {
 		labMode: vi.fn(async () => null),
 		saveLabMode: vi.fn(async () => true),
 		probeRecord: vi.fn(async () => null),
+		saveInjectScript: vi.fn(async () => ".hanshuang/inject/x.ps1"),
 		...overrides,
 	};
 }

@@ -121,6 +121,8 @@ export interface WorkbenchModel {
 	myCases: MyCasesModel;
 	/** 上一次 `probe_refusal` 的落盘记录（工具写、面板读）。 */
 	probe: { record: ProbeRecord | null; refresh(): void };
+	/** 把注入/卸载脚本落到工作区 `.hanshuang/inject/`；返回相对路径或 null。 */
+	saveInjectScript(name: string, content: string): Promise<string | null>;
 	/** 当前会话 id；存储的会话作用域靠它分区，null = 还没有活跃会话。 */
 	sessionId: string | null;
 
@@ -666,6 +668,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		cases,
 		myCases,
 		probe: { record: probeRecord, refresh: refreshProbe },
+		saveInjectScript: (name, content) => bridge.saveInjectScript(name, content),
 		caseDocs,
 		exportReport,
 		copyReport,

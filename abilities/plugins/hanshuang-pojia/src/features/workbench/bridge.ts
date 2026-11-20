@@ -37,6 +37,8 @@ export interface WorkbenchBridge {
 	/** 上一次 `probe_refusal` 的落盘记录；没有就是 null。 */
 	probeRecord(): Promise<ProbeRecord | null>;
 	saveReport(report: TriageReport, mode: ReportMode, format: "markdown" | "json"): Promise<string | null>;
+	/** 把注入/卸载脚本落到工作区 `.hanshuang/inject/`，返回相对路径；失败返回 null。 */
+	saveInjectScript(name: string, content: string): Promise<string | null>;
 	/** 把一句英文指令送进对话：有活跃会话就直接发，没有就新开一个。 */
 	chat(prompt: string, cwd: string | null): Promise<ChatOutcome>;
 	/** 订阅宿主对话状态；返回退订函数。 */

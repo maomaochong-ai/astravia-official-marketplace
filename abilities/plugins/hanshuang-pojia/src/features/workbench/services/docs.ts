@@ -73,6 +73,7 @@ const DOC_PREFIX = "src/content/docs/";
 
 /** 文档与提示词包共用同一个读资源实现，三条运行形态的分支只写一遍。 */
 import { readPackageAsset } from "./package-asset";
+import { readDocBody } from "./docs-bodies";
 
 export interface DocsLibrary {
 	/** 文章索引，340 条；不含附件。 */
@@ -145,7 +146,8 @@ function buildLibrary(rawEntries: DocEntry[], rawAssets: AssetEntry[]): DocsLibr
 		if (cached !== undefined) return cached;
 		const entry = byId(id);
 		if (!entry) throw new Error(`unknown document: ${id}`);
-		const text = await readPackageText(resourceOf(entry));
+		// 正文走 gzip 包（见 docs-bodies.ts）：逐篇 .md 落盘会被杀毒拦，整包安装才稳。
+		const text = await readDocBody(resourceOf(entry));
 		bodyCache.set(id, text);
 		return text;
 	};

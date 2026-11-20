@@ -134,6 +134,17 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 			return target;
 		},
 		analyse: (sample, options) => triage(sample, { mode: options.mode, disabledRules: options.disabledRules }),
+		// 脚本落到工作区而不是主目录：宿主只放行项目内写盘，而用户执行前正好可以先看一遍。
+		saveInjectScript: async (name, content) => {
+			const safe = name.replace(/[^a-zA-Z0-9._-]/g, "-");
+			const target = `.hanshuang/inject/${safe}`;
+			try {
+				await ctx.fs.writeFile(target, content, "utf8");
+				return target;
+			} catch {
+				return null;
+			}
+		},
 		saveReport: async (report, mode, format) => {
 			const stem = report.target.name.replace(/\.[^.]+$/, "") || "sample";
 			const isJson = format === "json";

@@ -96,9 +96,16 @@ export function InjectPage({ model, embedded = false }: PageProps & { embedded?:
 							</span>
 							<button
 								type="button"
-								onClick={() => {
+								onClick={async () => {
 									setClearArmed(false);
-									copy(renderBatchRemoval(markerTargets.map(item => planFor(item, { packLabel: packId, body: body ?? "" })), shell), t("inject.copied"));
+									const script = renderBatchRemoval(
+										markerTargets.map(item => planFor(item, { packLabel: packId, body: body ?? "" })),
+										shell,
+									);
+									// 除了复制，还落一份到工作区：用户问的「脚本在哪个目录下」得有答案。
+									const name = shell === "powershell" ? "uninstall-all.ps1" : "uninstall-all.sh";
+									const saved = await model.saveInjectScript(name, script);
+									copy(script, saved ? t("inject.copiedTo", { path: saved }) : t("inject.copied"));
 								}}
 								className="shrink-0 rounded bg-risk-high px-1.5 py-0.5 font-medium text-surface"
 							>

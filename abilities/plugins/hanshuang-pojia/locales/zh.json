@@ -928,5 +928,6 @@
   "inject.clearAll.confirm": "将生成一份摘除 {{count}} 个目标的脚本（只动标记块，块外内容不碰）。确定？",
   "inject.clearAll.yes": "确定清除",
   "inject.clearAll.cancel": "取消",
-  "inject.clearAll.hint": "生成摘除 {{count}} 个目标标记块的脚本（会先让你确认）"
+  "inject.clearAll.hint": "生成摘除 {{count}} 个目标标记块的脚本（会先让你确认）",
+  "inject.copiedTo": "脚本已复制，并保存到 {{path}}"
 }

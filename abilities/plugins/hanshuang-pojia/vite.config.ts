@@ -4,6 +4,7 @@
 import tailwindcss from "@tailwindcss/vite";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { relative } from "node:path";
+import { gzipSync } from "node:zlib";
 import { defineConfig } from "vite";
 import { astraviaPluginFederation } from "@astravia-org/plugin-vite";
 
@@ -34,13 +35,24 @@ export default defineConfig({
 						source: readFileSync(new URL(source, import.meta.url)),
 					});
 				}
+				// 2a. 文档正文打成**一份 gzip**（bodies.json.gz），不逐篇落盘。
+				//     原因：宿主安装时逐个 copyfile，而语料里有注入 payload 清单这类文本，
+				//     单文件躺在磁盘上会被杀毒拦（copyfile 返回 Windows UNKNOWN），整个安装失败。
+				//     打包后磁盘上只有一个二进制文件，正文内容一个字节不改。
 				const root = new URL("src/content/docs/", import.meta.url);
-				for (const file of walk(root)) {
-					this.emitFile({
-						type: "asset",
-						fileName: `assets/docs/${file}`,
-						source: readFileSync(new URL(file, root)),
-					});
+				const bodies: Record<string, string> = {};
+				for (const file of walk(root)) bodies[file] = readFileSync(new URL(file, root), "utf8");
+				this.emitFile({
+					type: "asset",
+					fileName: "assets/docs/bodies.json.gz",
+					source: gzipSync(Buffer.from(JSON.stringify(bodies), "utf8"), { level: 9 }),
+				});
+
+				// 2b. 索引与附件清单仍是明文：它们是元数据（标题 / 字节数 / sha256），
+				//     不含载荷，且启动时就要读。
+				for (const file of ["index.json", "assets.json"]) {
+					if (!existsSync(new URL(file, root))) continue;
+					this.emitFile({ type: "asset", fileName: `assets/docs/${file}`, source: readFileSync(new URL(file, root)) });
 				}
 
 				// 3. 先例包以真实文件随包发布。工具必须落盘才能被解释器执行；正文必须落盘，
