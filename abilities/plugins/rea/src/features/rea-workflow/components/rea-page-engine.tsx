@@ -12,6 +12,7 @@ import type { DoctorCheck } from "../live/doctor-readiness";
 import type { DoctorSummary } from "../live/doctor-summary";
 import type { DoctorStatus } from "../hooks/use-doctor-report";
 import { providerLabelKey, providerTone, type ProviderStatusState } from "../hooks/use-provider-status";
+import { looksLikeMissingNpm } from "../live/engine-bridge";
 import { Panel, PanelHeader } from "../../../shared/components/panel";
 import { StatusChip } from "../../../shared/components/status-chip";
 import { StatusDot } from "../../../shared/components/status-dot";
@@ -66,6 +67,12 @@ export function EnginePage({
 		.filter((line) => line.length > 0)
 		.slice(-40);
 	const parsedError = tryParseReaError(provider.status?.recentOutput);
+	// provider 失败时先分清「npm 组件缺失」与「REA 自身问题」：两者的修复动作完全不同。
+	const npmBroken = provider.phase === "failed" && looksLikeMissingNpm({
+		exitCode: 1,
+		stdout: "",
+		stderr: `${provider.status?.recentOutput ?? ""}${provider.status?.message ?? ""}`,
+	});
 
 	return (
 		<ReaPage active={active}>
@@ -115,7 +122,14 @@ export function EnginePage({
 					{provider.phase === "failed" ? (
 						<div className="rounded-md border border-risk-medium/40 bg-risk-medium/10 px-2.5 py-1.5 text-micro leading-relaxed text-risk-medium">
 							<span className="font-medium">{t("setup.failed.hintTitle")}</span>{" "}
-							<code className="font-mono text-micro-up">npx rea-agents doctor --json</code>
+							{npmBroken ? (
+								// 运行时自带的 npm 被剥掉时，`npx …` 这条建议本身就跑不起来，
+								// 所以改给 node + 系统安装的 npm-cli 路径，用户能直接粘。
+								<code className="font-mono text-micro-up">node "$env:ProgramFiles\nodejs\node_modules\npm\bin\npx-cli.js" rea-agents doctor --json</code>
+							) : (
+								<code className="font-mono text-micro-up">npx rea-agents doctor --json</code>
+							)}
+							{npmBroken ? <div className="mt-1 text-text-3">{t("setup.failed.npmMissing")}</div> : null}
 						</div>
 					) : null}
 

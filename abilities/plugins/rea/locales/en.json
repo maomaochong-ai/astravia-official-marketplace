@@ -26,6 +26,7 @@
   "setup.log.toggle": "Install log ({{count}} lines)",
   "setup.doctorHint": "Run `npx rea-agents doctor --json` from a terminal for a structured diagnostic report.",
   "setup.failed.hintTitle": "The probe failed. Try this:",
+  "setup.failed.npmMissing": "The runtime no longer bundles npm (Node 22.23.5 dropped it), so the npx on PATH points at a missing npm-cli.js. The plugin already retried through the system node_modules/npm; if the probe still fails, re-fetch Node from the host settings.",
   "skill.name": "REA",
   "skill.description": "Reverse engineer native binaries, .NET assemblies, Electron/JavaScript, firmware and browser targets: find the real entry point and the check that matters, recover the algorithm, protocol and data structures, then prove it with a runnable reimplementation or patch — each step citing evidence and its limits.",
   "tab.label": "REA",

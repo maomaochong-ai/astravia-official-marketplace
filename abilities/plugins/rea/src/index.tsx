@@ -25,7 +25,8 @@ import {
 	type ReaProviderBridge,
 } from "./features/rea-workflow";
 import { activateLiveWatch } from "./features/rea-workflow/live/activate-live-watch";
-import { createReaProviderBridge } from "./features/rea-workflow/live/engine-bridge";
+import { createReaProviderBridge, REA_PACKAGE_ARGS, type ReaNpmFallback } from "./features/rea-workflow/live/engine-bridge";
+import { npmRuntimeOnce, type NpmProbe } from "./features/rea-workflow/live/npm-runtime";
 import { activateReaAgentIntegration } from "./features/rea-workflow/live/agent-integration";
 import { activateProviderRecovery } from "./features/rea-workflow/live/provider-recovery";
 import { ReaLiveStore } from "./features/rea-workflow/live/session-store";
@@ -42,7 +43,35 @@ const REA_ACTION_ID = "rea.openTab";
 // 参数前缀（`-y rea-agents@latest`）在桥接层统一补齐：provider 命令是 `npx`，
 // 宿主只做 command + args，调用方只写子命令。见 live/engine-bridge.ts 的说明。
 function createProviderBridge(ctx: PluginContext): ReaProviderBridge {
-	return createReaProviderBridge(ctx.cliProviders, REA_PROVIDER_ID);
+	// 宿主升级到 Node 22.23.5 后不再自带 npm，而 PATH 上的 npx 仍指向缺失的 npm-cli.js。
+	// provider 声明的命令换不了，但插件有直接命令通道：探测到 npx 坏了就用
+	// `node <npm-cli.js> exec …` 走同一条 CLI，不让「装不上」看起来像「REA 坏了」。
+	const probe: NpmProbe = async (file, args) => {
+		try {
+			const result = await ctx.command.run(file, [...args], { timeoutMs: 20_000 });
+			return { exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr };
+		} catch (error) {
+			return { exitCode: null, stdout: "", stderr: error instanceof Error ? error.message : String(error) };
+		}
+	};
+	const fallback: ReaNpmFallback = {
+		run: async (args, options) => {
+			const runtime = await npmRuntimeOnce(probe);
+			if (!runtime.node) throw new Error(runtime.diagnostics.join("；") || "没有可用的 npm 运行时");
+			// `npm exec` 的包名参数与 npx 同形：`-y rea-agents@6.7.0 <子命令>`。
+			return ctx.command.run(runtime.node.command, [runtime.node.cli, "exec", ...REA_PACKAGE_ARGS, ...args], {
+				timeoutMs: options?.timeoutMs ?? 600_000,
+			});
+		},
+		// 一键安装走长驻进程：同样绕开坏掉的 npx shim。
+		spawn: async (args, options) => {
+			const runtime = await npmRuntimeOnce(probe);
+			if (!runtime.node) throw new Error(runtime.diagnostics.join("；") || "没有可用的 npm 运行时");
+			return ctx.command.spawn(runtime.node.command, [runtime.node.cli, "exec", ...REA_PACKAGE_ARGS, ...args], options?.cwd ? { cwd: options.cwd } : {});
+		},
+		diagnostics: async () => (await npmRuntimeOnce(probe)).diagnostics,
+	};
+	return createReaProviderBridge(ctx.cliProviders, REA_PROVIDER_ID, fallback);
 }
 
 /**

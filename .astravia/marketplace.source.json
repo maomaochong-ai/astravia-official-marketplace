@@ -853,7 +853,7 @@
       "slug": "rea",
       "name": "REA",
       "description": "Connect Astravia to REA so the agent can take apart native binaries, .NET assemblies, Electron/JavaScript apps, firmware and browser targets with real debuggers and disassemblers: gather byte-level evidence first, recover the algorithm or protocol next, then prove the conclusion with a runnable reimplementation or patch. Every claim carries its evidence and its limits.",
-      "version": "0.4.16",
+      "version": "0.4.17",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",

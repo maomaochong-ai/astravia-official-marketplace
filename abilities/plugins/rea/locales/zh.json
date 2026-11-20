@@ -26,6 +26,7 @@
   "setup.log.toggle": "安装日志（{{count}} 行）",
   "setup.doctorHint": "在终端运行 `npx rea-agents doctor --json` 获取结构化诊断报告。",
   "setup.failed.hintTitle": "探测失败。建议先：",
+  "setup.failed.npmMissing": "运行时自带的 npm 已被移除（Node 22.23.5 不再随附），PATH 上的 npx 因此指向一个不存在的 npm-cli.js。插件已自动改用系统的 node_modules/npm 继续执行；若上面仍失败，请在宿主设置里把 Node 重新获取一次。",
   "skill.name": "REA",
   "skill.description": "逆向原生二进制、.NET 程序集、Electron/JavaScript、固件与浏览器目标：先定位真实入口与校验点，再还原算法、协议与数据结构，最后用可运行的重实现或补丁证明结论——每步都带证据位置与边界。",
   "tab.label": "REA",
