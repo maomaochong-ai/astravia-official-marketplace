@@ -1384,8 +1384,9 @@ principle → mechanism → general procedure → **concrete parameters and code
 document disagree on a path, a script name or a tool name, the packaged file wins — re-read it.
 > This part adds execution plumbing only. The delivery shape (§0.5), tri-state evidence (§5.1) and the
 authorization rule (§1.3) stay in force — never trade an artifact for a protocol note.
-> Full matrices — host installers, the four MCP services with their tool counts, the manual index,
-> relay and memory mechanics — live in `references/plugin-handbook.md` beside this file. Read it before deploying.
+> Capability and degradation matrices — what the panel does alone, what needs a local binary, what only the
+> kit's MCP servers add — live in `references/plugin-handbook.md` beside this file. Read it before planning
+> around a missing engine.
 
 ## V.1 Lab Mode Protocol（实验环境开关 · state lives on disk）
 
@@ -1549,4 +1550,4 @@ paths because the upstream frontmatter would have to be edited; routing stays by
 | Setup / repair | `seep-kit/setup/` — 15 scripts: `install`, `update`, `uninstall`, `verify`, `repair-tools`, `install-ida`, `install-python`, `install-pi`, `generate-configs`, `extract-deps` (`.ps1`) plus `clean-format.py` and the `.sh` twins |
 | Memory prompt | `memory/破甲记忆.md` — the body of this document |
 
-The host install matrix (pi, Claude Code, Cursor, Doubao, DeepSeek Harness, OpenCode, WorkBuddy, ZCode, portable), the verified kit layout, and the per-file manual index are in `references/plugin-handbook.md`.
+What the kit adds over the panel (the four MCP servers, the manual set, and how each need degrades when IDA is absent) is mapped in `references/plugin-handbook.md`; the per-file manifest of the bundled skills is a repository fact in `docs/reference/skill-library.md`.
