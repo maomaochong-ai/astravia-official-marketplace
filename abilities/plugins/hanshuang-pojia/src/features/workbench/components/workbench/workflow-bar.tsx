@@ -34,7 +34,8 @@ export function WorkflowBar({ model }: WorkflowBarProps) {
 	];
 
 	return (
-		<div className="flex items-center gap-0.5 border-b border-line-subtle bg-surface-2 px-3 py-2">
+		// 通栏直角带与面板里的圆角卡片不是一套语言：改成同形的圆角带（无下边框）。
+		<div className="mb-1 flex items-center gap-0.5 rounded-xl bg-surface-2 px-1.5 py-1.5 ring-1 ring-line-subtle">
 			{steps.map((step, index) => {
 				const active = model.page === step.page;
 				return (

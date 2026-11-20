@@ -43,7 +43,7 @@ export function PipelineBar({ model }: PipelineBarProps) {
 		model.page === "findings" ? "controlflow" : model.page === "knowledge" ? "knowledge" : model.page === "selfcheck" ? "verify" : "profile";
 
 	return (
-		<div className="flex items-center gap-2 bg-surface-2 px-3 py-1.5">
+		<div className="flex items-center gap-2 rounded-xl bg-surface-2 px-2.5 py-1.5 ring-1 ring-line-subtle">
 			<div className="flex min-w-0 flex-1 items-center gap-0.5">
 				{stages.map((stage, index) => {
 					const now = active === stage.id;

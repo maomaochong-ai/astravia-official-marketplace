@@ -267,7 +267,8 @@ export function InjectPage({ model, embedded = false, packId: packIdProp }: Page
 								</div>
 
 								<div className="mb-1 text-[10.5px] font-medium uppercase tracking-wide text-text-4">{t("inject.writes")}</div>
-								<table className="mb-3 w-full border-collapse text-left text-[11px]">
+								<div className="mb-3 overflow-hidden rounded-lg ring-1 ring-line-subtle">
+										<table className="w-full border-collapse text-left text-[11px]">
 									<thead className="bg-surface-3">
 										<tr>
 											<th className="border-b border-line-subtle px-2 py-1 font-semibold text-text">path</th>
@@ -283,6 +284,7 @@ export function InjectPage({ model, embedded = false, packId: packIdProp }: Page
 										))}
 									</tbody>
 								</table>
+										</div>
 
 								<div className="mb-1 text-[10.5px] font-medium uppercase tracking-wide text-text-4">{t("inject.steps")}</div>
 								<ol className="mb-3 flex list-decimal flex-col gap-1 pl-5 text-text-2">

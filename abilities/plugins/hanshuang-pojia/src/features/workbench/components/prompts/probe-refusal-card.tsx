@@ -76,7 +76,7 @@ export function ProbeRefusalCard({ record, onRun, onDiscuss, refresh }: ProbeRef
 						<span className="ml-auto min-w-0 truncate text-text-2">{record.summary.headline}</span>
 					</div>
 
-					<div className="fb-scroll overflow-x-auto">
+					<div className="fb-scroll m-2 overflow-x-auto rounded-lg ring-1 ring-line-subtle">
 						<table className="w-full border-collapse text-left text-[11px]">
 							<thead className="bg-surface-3">
 								<tr>
