@@ -1,6 +1,6 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { lazy, Suspense, useState } from "react";
-import type { ComponentType, LazyExoticComponent } from "react";
+import { useState } from "react";
+import type { ReactElement } from "react";
 import type { WorkbenchBridge } from "../bridge";
 import { useWorkbench } from "../hooks/use-workbench";
 import { getActivePrompt } from "../../../domain/prompt-library";
@@ -8,29 +8,35 @@ import { deriveLiveStatus } from "../live-status";
 import { Sidebar } from "./shell/sidebar";
 import { TopBar } from "./shell/top-bar";
 import { InjectStatusBar } from "./shell/inject-status-bar";
+import { ActivityPage } from "./pages/activity";
+import { ComparePage } from "./pages/compare";
+import { DisasmPage } from "./pages/disasm";
+import { DocsPage } from "./pages/docs";
+import { EntropyPage } from "./pages/entropy";
+import { FindingsPage } from "./pages/findings";
+import { GuidePage } from "./pages/guide";
+import { ManifestPage } from "./pages/manifest";
 import { OverviewPage, type PageProps } from "./pages/overview";
+import { ReportsPage } from "./pages/reports";
+import { CasesPage } from "./pages/cases";
+import { SamplesPage } from "./pages/samples";
+import { SelfCheckPage } from "./pages/selfcheck";
+import { SettingsPage } from "./pages/settings";
+import { SignaturePage } from "./pages/signature";
+import { StringsPage } from "./pages/strings";
+import { PromptsPage } from "./pages/prompts";
 import { HandoffDialog } from "./workbench/handoff-dialog";
 import { SendPromptDialog } from "./workbench/send-prompt-dialog";
-// 页面按需加载：入口分块只留 shell 与首屏，其余 16 页第一次导航时才拉。
-// overview 仍静态：它是默认页，且测试与首屏都直接断言它同步可见。
-const ActivityPage = lazy(() => import("./pages/activity").then(module => ({ default: module.ActivityPage })));
-const ComparePage = lazy(() => import("./pages/compare").then(module => ({ default: module.ComparePage })));
-const DisasmPage = lazy(() => import("./pages/disasm").then(module => ({ default: module.DisasmPage })));
-const DocsPage = lazy(() => import("./pages/docs").then(module => ({ default: module.DocsPage })));
-const EntropyPage = lazy(() => import("./pages/entropy").then(module => ({ default: module.EntropyPage })));
-const FindingsPage = lazy(() => import("./pages/findings").then(module => ({ default: module.FindingsPage })));
-const GuidePage = lazy(() => import("./pages/guide").then(module => ({ default: module.GuidePage })));
-const ManifestPage = lazy(() => import("./pages/manifest").then(module => ({ default: module.ManifestPage })));
-const ReportsPage = lazy(() => import("./pages/reports").then(module => ({ default: module.ReportsPage })));
-const CasesPage = lazy(() => import("./pages/cases").then(module => ({ default: module.CasesPage })));
-const SamplesPage = lazy(() => import("./pages/samples").then(module => ({ default: module.SamplesPage })));
-const SelfCheckPage = lazy(() => import("./pages/selfcheck").then(module => ({ default: module.SelfCheckPage })));
-const SettingsPage = lazy(() => import("./pages/settings").then(module => ({ default: module.SettingsPage })));
-const SignaturePage = lazy(() => import("./pages/signature").then(module => ({ default: module.SignaturePage })));
-const StringsPage = lazy(() => import("./pages/strings").then(module => ({ default: module.StringsPage })));
-const PromptsPage = lazy(() => import("./pages/prompts").then(module => ({ default: module.PromptsPage })));
 
-type PageComponent = ComponentType<PageProps> | LazyExoticComponent<ComponentType<PageProps>>;
+/**
+ * 页面必须静态导入，不能用 React.lazy（ADR 0009 D2 已回滚，见 2.17.2）。
+ *
+ * 插件是 Module Federation 远程，expose 只有入口一个模块；entry 之外的 chunk 靠
+ * Vite 的 dynamic import 加载，而 plugin-vite 没有配 modulePreload，分块 URL 会在
+ * 宿主页面下解析 —— 结果是面板拉不到页面、点了「工作台」什么都不出现。
+ * 要减启动体积就减数据（语料、索引），不切代码。
+ */
+type PageComponent = (props: PageProps) => ReactElement;
 
 const PAGES: Record<string, PageComponent> = {
 	overview: OverviewPage,
@@ -91,9 +97,7 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 			<div className="flex min-h-0 flex-1">
 				<Sidebar page={model.page} onNavigate={model.go} lab={model.lab.state} status={live} />
 				<main className="fb-page-fill fb-scroll flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
-					<Suspense fallback={<p className="text-[11.5px] text-text-4">{t("panel.rail.loading")}</p>}>
-						<Page {...props} />
-					</Suspense>
+					<Page {...props} />
 				</main>
 			</div>
 			<HandoffDialog

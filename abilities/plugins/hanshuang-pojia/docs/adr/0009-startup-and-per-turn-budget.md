@@ -53,11 +53,23 @@
 判定：索引（slug/title/summary/signals/preset/fieldNotes/caseDocs/tools 元数据）约 15 KB 常驻，
 正文 444 KB 按需取——与 D5 的文档索引外置是同一条边界：只有「启动时非有不可」的进分块。
 
-**D2：面板页面按需加载，入口只留装配。**
+**D2：面板页面按需加载 —— 已回滚（2.17.2）。**
 
-`workbench-screen.tsx` 的 17 个页面静态 import 改为 `React.lazy` + `Suspense`。
-入口分块只保留 shell（顶栏 / 侧栏 / 对话框）与 `useWorkbench` 的依赖图；页面在第一次导航到它时才拉。
-`domain/native/*` 的反汇编与编码表仍随页面走，但不再随启动走。
+2.17.0 / 2.17.1 把 `workbench-screen.tsx` 的 16 个页面改成 `React.lazy` + `Suspense`，
+入口分块因此从 619.8 KB 降到 523.0 KB。但宿主反馈：从能力页添加/更新后，
+输入框「+」里选插件**无法把面板加到对话**，点了什么都没出现。
+
+原因在加载机制，不在面板代码：插件是 Module Federation 远程，`expose` 只有入口一个模块；
+entry 之外的 chunk 靠 Vite 的 dynamic import 加载，而 `plugin-vite` 没有配 `modulePreload`、
+也没有把 async chunk 写进 `mf-manifest` 的 `exposes[].assets.js.async`（实测恒为 `[]`）。
+于是分块 URL 落到宿主页面下解析，页面组件拉不到 —— `Suspense` 永远停在 fallback。
+
+处置：页面改回静态 import（2.17.2），回滚后主分块 523.0 → 619.8 KB，功能恢复。
+结论：**要减启动体积就减数据（语料、索引），不切代码**。同一时期的 D1/D5 都是减数据，
+没有这个风险；D2 是唯一一个曾经切代码的决定，也是唯一一个被回滚的。
+
+如果要重新做代码分割，前提是先在 `plugin-vite` 里把 async chunk 声明进 `mf-manifest`
+并配好 `modulePreload`，且至少有一个插件实测通过 —— 在那之前不要在本插件里再试。
 
 **D3：工具表按 lab 状态收窄，核心 9 个常驻。**
 
@@ -134,7 +146,7 @@
 
 | 项 | 之前 | 之后 |
 |---|---|---|
-| 入口主分块 | 1118.5 KB（单文件） | 523.0 KB（单文件） + 16 个页面分块 2–14 KB |
+| 入口主分块 | 1118.5 KB（单文件） | 619.8 KB（单文件）；不切代码，省下来的全是数据 |
 | 文档索引 | 110 KB + 1.5 KB 内联在主分块 | 0；`dist/assets/docs/{index,assets}.json`，首次使用时读取 |
 | 先例正文 | 444 KB 内联在主分块 | 0；95 篇纯文本在 `dist/assets/cases/` |
 | lab 关闭时的工具 schema | 56,147 字符 | 15,651 字符（核心 9 个） |

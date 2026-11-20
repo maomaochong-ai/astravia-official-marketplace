@@ -111,10 +111,8 @@ describe("workbench shell", () => {
 		await open(api);
 		await go("docs");
 		expect(await screen.findByText("page.docs.title")).toBeTruthy();
-		// 默认选中知识库根文档；正文经 import.meta.glob 惰性加载后才出现。
-		// 页面按需加载（ADR 0019 D2）：标题与正文都是异步到的，用 findAll 让它不必猜谁先到。
-		expect((await screen.findAllByRole("heading", { level: 1 }, { timeout: 4000 })).length).toBeGreaterThan(0);
-		expect(screen.getAllByText(/Knowledge Base/).length).toBeGreaterThan(0);
+		// 默认选中知识库根文档；正文经包内资源按需加载后才出现，所以等它，不同步断言。
+		expect(await screen.findAllByText(/Knowledge Base/)).toBeTruthy();
 	}, 15_000);
 
 	it("hands the pane to the reader after a pick, and gives the list back", async () => {
