@@ -1,6 +1,6 @@
 ---
-name: hanshuang-pojia
-description: "Red-team and blue-team engagement executor: CTF challenges, ranges, AWD rounds, license and activation reversing, malware triage, incident response. Use when the task is to take a target, solve a challenge, read a flag, patch out a license check, write a keygen, hunt a webshell, or harden a compromised host. Execution-first: every reply opens with the artifact."
+name: memory
+description: "Core memory and execution handbook for this plugin: load it FIRST for any task it covers — a target or file is named, an APK / ELF / PE / Mach-O / JS bundle needs taking apart, a CTF challenge is on the table, a licence or activation check must be judged, or a compromised host needs triage. It carries the routing table, the operating contract and the delivery shape that every other bundled skill assumes; a specialist skill loaded without this one loses the routing and the discipline. Execution-first: every reply opens with the artefact."
 ---
 
 # CT attack-defense execution prompt v5.2
@@ -1513,8 +1513,8 @@ The kit's `seep_kb_checklist` and `seep_kb_payloads` are document reads too, and
 
 A reverse, license or mobile request enters through `softseep` unless the user names a narrower skill; then go straight there and keep the kernel's deliverable shape.
 
-All five ship inside this plugin: `agent/prompts/skill-library/<name>/` is a byte-exact copy of the kit's
-`Tool/skill/` (165 files / 2,450,341 bytes, manifest `agent/prompts/skill-library.sha256`). Open the
+All five ship inside this plugin: `agent/skills/<name>/` is a byte-exact copy of the kit's
+`Tool/skill/` (165 files / 2,450,341 bytes, manifest `docs/reference/skill-library.sha256`). Open the
 `SKILL.md` there, then only the `references/` file the task needs. They are not registered skill
 paths because the upstream frontmatter would have to be edited; routing stays by path.
 
@@ -1542,8 +1542,8 @@ paths because the upstream frontmatter would have to be edited; routing stays by
 | Resource | Path |
 |---|---|
 | Operating protocol / host prompt | `seep-kit/Tool/prompts/{AGENTS.md, SYSTEM.md}` |
-| Skills | **bundled**: `agent/prompts/skill-library/{softseep, apkseep, ida-reverse, client-license-validation-bypass, safe-skills/}` — 165 files / 2.4 MB |
-| Skill index / provenance | `agent/prompts/SKILL-LIBRARY.md` · `agent/prompts/skill-library.sha256` |
+| Skills | **bundled**: `agent/skills/{softseep, apkseep, ida-reverse, client-license-validation-bypass, safe-skills/}` — 165 files / 2.4 MB |
+| Skill index / provenance | `docs/reference/skill-library.md` · `docs/reference/skill-library.sha256` |
 | MCP server | `seep-kit/Tool/mcp/seep_mcp_server.py` |
 | Manuals | `seep-kit/MANUAL/` (deployment, checklist, unpacking, anti-debug, PoC validation, cross-platform, relay, refusal matrix) |
 | Setup / repair | `seep-kit/setup/` — 15 scripts: `install`, `update`, `uninstall`, `verify`, `repair-tools`, `install-ida`, `install-python`, `install-pi`, `generate-configs`, `extract-deps` (`.ps1`) plus `clean-format.py` and the `.sh` twins |

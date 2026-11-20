@@ -32,7 +32,7 @@ abilities/plugins/hanshuang-pojia/
 │  │  ├─ SKILL-LIBRARY.md        # provenance + inventory of the vendored upstream skills
 │  │  ├─ skill-library.sha256    # one hash per vendored file
 │  │  └─ skill-library/          # verified copy of the kit's Tool/skill/, not registered as skills
-│  └─ skills/hanshuang-pojia/
+│  └─ skills/memory/
 │     ├─ SKILL.md                # PART I–V: routing, per-track delivery templates, JIT stages
 │     └─ references/
 │        └─ plugin-handbook.md    # this file
@@ -118,7 +118,7 @@ demand, not in an always-on file.
 | dynamic block | `src/domain/kernel.ts` via `registerSystemPromptProvider` | a few hundred bytes, and only when relevant | lab mode state, current panel page, registered tool names, delivery shape while lab is on |
 | lab hook | `src/runtime/contributions.ts` via `registerHook("UserPromptSubmit")` | one line of context | flips the switch when the prompt starts with `lab：`, adds one sentence of confirmation |
 | skill index | `plugin.json` `skillPaths` → host skill table | `name` + `description` only, a few hundred characters | the index entry that lets the agent decide whether to invoke the skill |
-| skill body | `agent/skills/hanshuang-pojia/SKILL.md` | read on demand via `invoke_skill` | PART I–V, this file, the vendored upstream skills |
+| skill body | `agent/skills/memory/SKILL.md` | read on demand via `invoke_skill` | PART I–V, this file, the vendored upstream skills |
 
 The block id must sit in the plugin namespace (`plugin.hanshuang-pojia.kernel`) or the host refuses
 the write; the write permission is `agent.systemPrompt.write`. Hooks need `agent.hooks.register`
@@ -401,9 +401,9 @@ there is nothing to copy into `<agentDir>/AGENTS.md` and `scripts/sync-agent-doc
 | `client-license-validation-bypass` | 1 file / 30 KB | license / activation playbook: where the authority lives, whether local forgery suffices |
 | `safe-skills/*` | 42 files / 419 KB, MIT | upstream packs: `apk-reverse`, `ida-reverse`, `mcp-js-reverse-playbook`, `radare2`, `reverse-engineering` |
 
-The whole library — **165 files / 2,450,341 bytes** — ships at `agent/prompts/skill-library/`,
+The whole library — **165 files / 2,450,341 bytes** — ships at `agent/skills/`,
 byte-for-byte identical to the kit's `Tool/skill/`. Inventory, provenance and per-file hashes live
-in `agent/prompts/SKILL-LIBRARY.md` and `agent/prompts/skill-library.sha256`;
+in `docs/reference/skill-library.md` and `docs/reference/skill-library.sha256`;
 `src/test/skill-library.test.ts` recomputes the manifest so the tree cannot drift silently.
 
 It is deliberately **not** registered in `plugin.json` `agent.skillPaths`: the upstream frontmatter

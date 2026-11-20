@@ -73,4 +73,4 @@ Linux/macOS 用 `build.sh` + `sha256sum`（darwin 回退 `shasum -a 256`）。�
 
 - 契约：[`../contract/case-library.md`](../../contract/case-library.md)、[`../contract/case-corpus.md`](../../contract/case-corpus.md)
 - 测试：`src/test/case/{case-contract,case-journal,case-library,case-precedents,case-scaffold,case-tools,case-projects}.test.ts、src/test/report/assessment.test.ts`
-- 技能侧：`agent/skills/softseep/`（判型与路由）、`agent/skills/hanshuang-pojia/`（五段交付）
+- 技能侧：`agent/skills/softseep/`（判型与路由）、`agent/skills/memory/`（五段交付）

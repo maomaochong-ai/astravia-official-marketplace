@@ -17,7 +17,7 @@ import sys
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
-RUNTIME_FILES = {"plugin.json", "package.json", "README.md", "LICENSE", "runtime-lock.json", "upstream.json"}
+RUNTIME_FILES = {"plugin.json", "package.json", "README.md", "AGENTS.md", "LICENSE", "runtime-lock.json", "upstream.json"}
 # `web` is the static site a craft plugin ships: upstream's own web build, staged by that
 # plugin's own scripts/build-craft-web.mjs while the package is assembled. It is gitignored
 # and only exists at packaging time.

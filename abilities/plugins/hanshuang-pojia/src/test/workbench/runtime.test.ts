@@ -72,7 +72,10 @@ describe("buildKernelBlock", () => {
 		expect(text).toContain("Lab mode: OFF");
 		expect(text).toContain("do not expand shorthand");
 		expect(text).not.toContain("Patch table");
-		expect(text.split("\n")).toHaveLength(1);
+		// 关闭态只有两行：状态行 + 「先读核心技能 memory」。后者不随 lab 开关变，
+		// 否则关掉实验环境后模型只知道有个插件，不知道该读哪本手册。
+		expect(text.split("\n")).toHaveLength(2);
+		expect(text).toContain("agent/skills/memory/SKILL.md");
 	});
 
 	it("adds the delivery shape, tool list and page hint when lab mode is on", () => {
@@ -102,8 +105,9 @@ describe("buildKernelBlock", () => {
 		// ——每轮都多一份工具名清单。
 		// 预算按实际增量上调：数字只在“失控”时才该收紧，而不该因为合理新增就永久钉死。
 		// 2.17.3 到 32（inject_target）—— 注入计划是核心工具，lab 关闭时也在表里。
-		expect(off.length).toBeLessThan(800);
-		expect(on.length).toBeLessThan(1450);
+		// 2.17.5 增一行「先读核心技能 memory」：这一行在 lab 关闭时也在，所以两边都上调。
+		expect(off.length).toBeLessThan(1100);
+		expect(on.length).toBeLessThan(1750);
 	});
 
 	it("keeps the block id inside the plugin namespace", () => {

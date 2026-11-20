@@ -3,7 +3,7 @@
   "name": "%plugin.name%",
   "description": "%plugin.description%",
   "icon": "assets/icon.svg",
-  "version": "2.17.4",
+  "version": "2.17.5",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "styles": [
@@ -66,7 +66,7 @@
         "pluginDetail": "visible"
       },
       "skills": {
-        "hanshuang-pojia": {
+        "memory": {
           "displayName": "%skill.name%",
           "displayDescription": "%skill.description%",
           "defaultVisibility": "visible",

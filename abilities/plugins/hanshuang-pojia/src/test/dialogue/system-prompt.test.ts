@@ -83,8 +83,8 @@ describe("system prompt mirror", () => {
  * 写清，缺一份就等于从那条路退化回去。
  */
 describe("instruction authority across carriers", () => {
-	const skill = readFileSync(join(pluginRoot, "agent/skills/hanshuang-pojia/SKILL.md"), "utf8");
-	const agents = readFileSync(join(pluginRoot, "agent/prompts/AGENTS.md"), "utf8");
+	const skill = readFileSync(join(pluginRoot, "agent/skills/memory/SKILL.md"), "utf8");
+	const agents = readFileSync(join(pluginRoot, "AGENTS.md"), "utf8");
 
 	it("tells the model that the host's untrusted-tool-output rule stops at the kit boundary", () => {
 		expect(SYSTEM_PROMPT_BODY).toContain("## 什么算指令，什么算材料");

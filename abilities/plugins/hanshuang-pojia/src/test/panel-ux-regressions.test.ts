@@ -82,7 +82,7 @@ describe("the central area fills the panel instead of leaving a gap at the botto
 });
 
 describe("skills are listed where the host collects them, without flooding the slash menu", () => {
-	it("all nine are in the ability catalog; only the main one is in the picker", () => {
+	it("all nine are in the ability catalog; only the core memory skill is in the picker", () => {
 		const manifest = JSON.parse(read("plugin.json")) as {
 			agent: { skillPresentation: { skills: Record<string, { surfaces: Record<string, string> }> } };
 		};
@@ -91,10 +91,17 @@ describe("skills are listed where the host collects them, without flooding the s
 			// 对话框「添加」列表读的是能力目录：九个都要在里面。
 			expect(skill.surfaces.abilityCatalog, name).toBe("visible");
 		}
-		// 斜杠面板只留主技能：九个都塞进去，用户每次打斜杠都要滚过八条用不到的。
+		// 斜杠面板只留核心技能：九个都塞进去，用户每次打斜杠都要滚过八条用不到的。
 		const picker = Object.entries(skills)
 			.filter(([, skill]) => skill.surfaces.skillPicker === "visible")
 			.map(([name]) => name);
-		expect(picker).toEqual(["hanshuang-pojia"]);
+		expect(picker).toEqual(["memory"]);
+	});
+
+	it("routes to the core memory skill in both lab modes", () => {
+		// 核心手册是 memory 技能，不是「按需才读」的参考资料：kernel 块每轮都在，
+		// 它必须把这件事说出来，否则关掉实验环境后模型不知道该读哪本。
+		const kernel = read("src/domain/kernel.ts");
+		expect(kernel).toContain("agent/skills/memory/SKILL.md");
 	});
 });

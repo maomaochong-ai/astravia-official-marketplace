@@ -155,8 +155,8 @@ install_toolchain
 | 逆向知识库 | 通过 `search_docs` / `read_doc` 访问（340 篇文档） |
 | 常驻提示词母本 | `agent/prompts/SYSTEM.md` |
 | 跨 Agent 协议（本文件） | `agent/prompts/AGENTS.md` |
-| 完整作战手册 | `agent/skills/hanshuang-pojia/SKILL.md` |
-| 技能库清单与哈希 | `agent/prompts/SKILL-LIBRARY.md` / `agent/prompts/skill-library.sha256` |
+| 完整作战手册 | `agent/skills/memory/SKILL.md` |
+| 技能库清单与哈希 | `docs/reference/skill-library.md` / `docs/reference/skill-library.sha256` |
 
 ---
 

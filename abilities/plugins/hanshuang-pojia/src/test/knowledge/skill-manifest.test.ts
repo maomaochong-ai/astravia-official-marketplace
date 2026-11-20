@@ -145,7 +145,7 @@ describe("plugin skills", () => {
 
 		// 对话里的技能/场景列表只留一个入口：其余技能仍落在 agent/skills 下，由 Agent 按需读取，
 		// 不该在每个用户的技能选择器里各占一行。
-		expect(visibleInPicker).toEqual(["hanshuang-pojia"]);
+		expect(visibleInPicker).toEqual(["memory"]);
 		expect(provider.defaultVisibility).toBe("hidden");
 		// 插件详情页仍然要把全部技能列出来，否则用户看不到插件到底带什么。
 		expect(provider.surfaces?.pluginDetail).toBe("visible");

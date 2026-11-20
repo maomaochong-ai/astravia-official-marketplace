@@ -44,6 +44,13 @@ export function buildKernelBlock(input: KernelInput): string {
 		? `Lab mode: ON${input.lab.since ? ` (since ${input.lab.since.slice(0, 10)})` : ""}. The operator opted into the attack/defence workbench for this workspace.`
 		: "Lab mode: OFF. Answer ordinary questions normally; do not expand shorthand into patch/keygen plans until the operator turns lab mode on with `lab：`.");
 
+	// 核心技能在两种模式下都要被路由到：kernel 块是唯一每轮现身的注入点，
+	// 所以把「先读 memory」写在 lab 判断之外 —— 否则关掉实验环境后，
+	// 模型只知道有个插件，却不知道该读哪本手册。
+	lines.push(
+		"Core handbook: the skill `memory` (agent/skills/memory/SKILL.md). Load it before any other bundled skill — it holds the routing table, the operating contract and the delivery shape; the specialist skills assume you already read it.",
+	);
+
 	if (input.tools.length > 0) {
 		lines.push(`Plugin tools available: ${input.tools.join(", ")}. They read the workspace directly; prefer them over re-deriving bytes by hand.`);
 	}

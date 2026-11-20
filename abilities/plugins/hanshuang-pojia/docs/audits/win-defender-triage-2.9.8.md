@@ -61,7 +61,7 @@ Start-Process -WindowStyle Hidden -FilePath $ServerPath -ArgumentList "--host 12
 | 持久化与回连通道 | 7 个 `.ps1`、7 个 `.sh`、50 个 `.py`、5 个 `.mjs`、14 个 `.js` 以**可执行文件**形式随包（`agent/skills/**/scripts/`） | 未改，见下方选项 B |
 | 已阻止威胁 | 同上的组合 + `permissions` 里 `agent.command.run` / `network.fetch` | 权限本身是能力声明，不属于可删项 |
 
-`agent/skills/hanshuang-pojia/SKILL.md` 里有一行 `schtasks /query /fo LIST | findstr /i "task"`
+`agent/skills/memory/SKILL.md` 里有一行 `schtasks /query /fo LIST | findstr /i "task"`
 ——那是**排查目标机器持久化项**的知识库条目，是文本不是可执行脚本，保留。
 
 ## 四、还能怎么做（需要用户拍板，因为都动交付形态）

@@ -4,7 +4,7 @@
 
 插件只回答一个问题：**这是什么文件，评审应该先看哪里？**
 
-从 2.0 起，插件还带一层 **工作台工具包协议**——实验模式开关、部署与校验看板、先查知识库的侦察顺序，以及 `seep` / `ida` 的 MCP 工具矩阵。这份内容现在放在技能里（`agent/skills/hanshuang-pojia/SKILL.md`），由宿主按需加载，不占用每轮注入的那段系统提示。它是指挥智能体配合桌面工具包干活的文档。
+从 2.0 起，插件还带一层 **工作台工具包协议**——实验模式开关、部署与校验看板、先查知识库的侦察顺序，以及 `seep` / `ida` 的 MCP 工具矩阵。这份内容现在放在技能里（`agent/skills/memory/SKILL.md`），由宿主按需加载，不占用每轮注入的那段系统提示。它是指挥智能体配合桌面工具包干活的文档。
 
 不装工具包也有两层能跑：面板自己的 TypeScript 引擎，只要一个文件就能出结果；以及四个通过宿主命令通道调用本机 `r2` / `rabin2` / `radiff2` / `rasm2` / `jadx` / `apktool` / `java` 的工具。两者都不执行样本；二进制缺失或被宿主拒绝，都会如实报出来，不会伪造结果。
 
@@ -138,7 +138,7 @@ node scripts/analyze.mjs asm x86-64 "mov rax, rbx" "ret" --address 0x1000
 所以运行时读不到包内文件，只能构建期内联。`npm run verify:generated` 在两边漂移时失败，
 `src/test/system-prompt.test.ts` 逐字节比对。
 
-完整技法仍住在技能里（`agent/skills/hanshuang-pojia/SKILL.md`）：宿主的技能索引只付 `name` 加
+完整技法仍住在技能里（`agent/skills/memory/SKILL.md`）：宿主的技能索引只付 `name` 加
 `description` 约 380 字符，97 KB 正文只在真正调用它时才进上下文。
 
 `agent/prompts/AGENTS.md` 是同一份协议给 Astravia 以外的 agent 读的版本：工具路由、范围记录（事实，不是闸门）、交付形状，
@@ -189,14 +189,14 @@ node scripts/analyze.mjs asm x86-64 "mov rax, rbx" "ret" --address 0x1000
 2.1 起，工具包的**技能库直接随包发出**：`agent/skills/` 是 `seep-kit/Tool/skill/` 的移植版 ——
 171 个文件、2.48 MB，含 `softseep`（总控）、`apkseep`、`ida-reverse`、`client-license-validation-bypass`，
 以及五个 `safe-skills/*` 技术包，另有 `hanshuang-pojia` 主手册与三个带跨平台脚本的技能包。
-清单与来源在 `agent/prompts/SKILL-LIBRARY.md`，逐文件哈希在 `agent/prompts/skill-library.sha256`，
+清单与来源在 `docs/reference/skill-library.md`，逐文件哈希在 `docs/reference/skill-library.sha256`，
 `src/test/skill-library.test.ts` 会重算清单，防止构建时静默丢失。
 
 它们通过 `plugin.json#agent.skillPaths = ["agent/skills"]` 注册，`skillPresentation.defaultVisibility`
 为 `visible`、五个 surface 全开，所以装好即可在技能选择器里看到，不需要额外配置。
 相对上游并非逐字节一致，且有四处是刻意的（见 `SKILL-LIBRARY.md` 的同名一节）。
 
-提示词本体不该背的细节放在 `agent/skills/hanshuang-pojia/references/plugin-handbook.md`：实测的工具包目录结构、
+提示词本体不该背的细节放在 `agent/skills/memory/references/plugin-handbook.md`：实测的工具包目录结构、
 MCP 工具全表、十篇手册索引、宿主安装矩阵、校验基线、中继与记忆机制。每轮付费的只有技能索引项，
 所以正文可以写全。
 

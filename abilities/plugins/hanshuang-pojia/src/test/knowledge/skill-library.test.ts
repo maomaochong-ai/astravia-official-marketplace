@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 const pluginRoot = fileURLToPath(new URL("../../../", import.meta.url));
 const libraryRoot = join(pluginRoot, "agent/skills");
-const manifestPath = join(pluginRoot, "agent/prompts/skill-library.sha256");
+const manifestPath = join(pluginRoot, "docs/reference/skill-library.sha256");
 
 /**
  * 上游 seep-kit 1.6.0 的 Tool/skill 树，加上 7 个跨平台 .sh 兄弟脚本。
@@ -14,7 +14,7 @@ const manifestPath = join(pluginRoot, "agent/prompts/skill-library.sha256");
  */
 const EXPECTED_FILES = 171;
 const EXPECTED_BYTES = 2480612;
-/** `shasum -a 256 agent/prompts/skill-library.sha256` */
+/** `shasum -a 256 docs/reference/skill-library.sha256` */
 const EXPECTED_MANIFEST_SHA256 = "7377480c0f202cf038c0014d58065946b81c7d0a3287c4df36c4609dd2d184d7";
 
 /**
@@ -33,7 +33,7 @@ const LIBRARY_SKILLS = [
 ];
 
 /** 宿主要能加载到的全部技能目录（宿主对 skillPaths 递归扫描），含本插件自己写的主技能。 */
-const ALL_SKILLS = ["hanshuang-pojia", ...LIBRARY_SKILLS];
+const ALL_SKILLS = ["memory", ...LIBRARY_SKILLS];
 
 function walk(directory: string): string[] {
 	const found: string[] = [];
