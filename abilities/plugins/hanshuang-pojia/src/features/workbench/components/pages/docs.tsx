@@ -1,5 +1,5 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AiButton } from "../shell/ai-button";
 import { Card } from "../shell/card";
 import { Icon } from "../shell/icon";
@@ -57,6 +57,17 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 	const flat = useMemo(() => visibleGroups.flatMap(item => item.topics.flatMap(topic => topic.entries)), [visibleGroups]);
 	const openEntry = openId ? docs.byId(openId) : null;
 	const openIndex = openId ? flat.findIndex(entry => entry.id === openId) : -1;
+
+	// 外部 select（例如先例页的「战例研究」）之后要能直接看到正文：
+	// 只看「选中项变了」这一次，不对「openId 为空」做出反应 —— 否则关掉弹窗会立即被重开。
+	const openedFor = useRef<string | null>(null);
+	useEffect(() => {
+		const id = docs.selected?.id ?? null;
+		if (id && openedFor.current !== id) {
+			openedFor.current = id;
+			setOpenId(id);
+		}
+	}, [docs.selected]);
 
 	const filterOpen = group !== null;
 

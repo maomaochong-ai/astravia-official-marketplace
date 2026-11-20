@@ -103,6 +103,16 @@ export function ReportsPage({ model }: PageProps) {
 							<Icon name="save" className="size-3" />
 							{t("reports.export")}
 						</button>
+						{/* 清理只清当前评估，不动 reports/ 里的文件：文件是交付物，不是缓存。 */}
+						<button
+							type="button"
+							onClick={() => model.clearReport()}
+							disabled={!hasReport}
+							className="flex items-center gap-1 rounded-md border border-line-subtle px-2 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-risk-high disabled:opacity-40"
+						>
+							<Icon name="close" className="size-3" />
+							{t("reports.clearCurrent")}
+						</button>
 					</>
 				}
 			/>
@@ -234,7 +244,7 @@ export function ReportsPage({ model }: PageProps) {
 					) : workspaceReports.length === 0 ? (
 						<p className="px-3.5 py-2 text-[10.5px] leading-relaxed text-text-4">{t("reports.workspace.empty")}</p>
 					) : (
-						<div className="fb-scroll max-h-[220px] divide-y divide-line-subtle overflow-y-auto">
+						<div className="fb-scroll max-h-[180px] divide-y divide-line-subtle overflow-y-auto">
 							{workspaceReports.map(file => (
 								<button
 									key={file.path}

@@ -17,6 +17,7 @@ import { hasSystemTemplate, SYSTEM_PROMPT_TEMPLATE } from "../../../../domain/pr
 import type { PageProps } from "./overview";
 import { InjectPage } from "./inject";
 import { ProbeRefusalCard } from "../prompts/probe-refusal-card";
+import { TemplateLibrary } from "../prompts/template-library";
 import { PACKS } from "../../../../domain/inject/packs";
 
 /** 两个视图：库列表 / 注入。它们回答同一个问题——「注入出去的是哪份提示词」。 */
@@ -209,6 +210,7 @@ export function PromptsPage({ model }: PageProps) {
 			) : (
 				<div className="fb-page">
 					{library.items.length > 0 ? (
+						<>
 						<Card
 							title={t("prompt.libraryTitle")}
 							bodyClassName="p-0"
@@ -250,6 +252,12 @@ export function PromptsPage({ model }: PageProps) {
 								)}
 							</div>
 						</Card>
+						<TemplateLibrary
+							existing={library.items}
+							onImport={data => model.createPrompt({ ...data, mode: "append" })}
+							notify={model.notify}
+						/>
+						</>
 					) : (
 						<Card bodyClassName="p-8" fill>
 							<div className="text-center">

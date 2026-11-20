@@ -941,5 +941,16 @@
   "docs.menu.export": "导出 .md",
   "docs.menu.explain": "交给对话解读",
   "docs.menu.apply": "按此实施",
-  "inject.resize": "拖动调整正文高度（↑↓ 也可）"
+  "inject.resize": "拖动调整正文高度（↑↓ 也可）",
+  "inject.check": "检查状态",
+  "inject.copiedInstall": "安装脚本已复制。它是文本，执行后才会写入。",
+  "inject.copiedRemove": "卸载脚本已复制。执行后才会从 {{path}} 摘除标记块，块外内容不动。",
+  "template.title": "预置模板",
+  "template.lead": "随工具分发的现成词表，只读。导入后成为提示词库里的普通条目，可编辑、可备份、可激活。",
+  "template.import": "导入",
+  "template.importing": "读取中…",
+  "template.imported": "已导入 {{name}}，可在库里继续编辑",
+  "template.alreadyImported": "库里已有同正文的条目：{{name}}",
+  "reports.clearCurrent": "清理",
+  "inject.copiedRestore": "还原脚本已复制。执行后会用最新备份覆盖目标文件（系统层目标）。"
 }

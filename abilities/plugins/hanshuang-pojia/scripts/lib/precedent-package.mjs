@@ -27,6 +27,14 @@ export const CASE_CATEGORIES = ["android", "client-auth", "dotnet", "native-load
  */
 export const CASE_COMPLETENESS = ["sketch", "worked", "field"];
 
+/*
+ * field 级要求的三份材料（ADR 0011 D1）。field 意味着「动过真目标」，
+ * 所以这里要求的是可复核的证据而不是叙述：时间线要带日期与动作、
+ * 证据要带偏移与字节、结案要带回滚验证。少于 1200 字符通常只有五条概括，不算材料。
+ */
+export const FIELD_DOCS = ["docs/timeline.md", "docs/evidence.md", "docs/closing.md"];
+export const FIELD_DOC_MIN_CHARS = 1200;
+
 /**
  * 每份先例都必须能被人按顺序读完的四份文档。
  * `README.md` / `scope.md` 说这个包打过什么仗，`docs/method.md` 是做法，
@@ -234,6 +242,22 @@ export function checkPackage({ casesDir, docsDir, dir, runTools = false }) {
 	}
 	if (!Array.isArray(meta.signals) || meta.signals.length === 0) problems.push("signals must be a non-empty array");
 	if (!CASE_PRESETS.includes(meta.preset)) problems.push(`preset "${meta.preset}" is not one of ${CASE_PRESETS.join(", ")}`);
+	if (meta.completeness === "field") {
+		for (const rel of FIELD_DOCS) {
+			const full = join(dirPath, rel);
+			if (!existsSync(full)) {
+				problems.push(`field package needs ${rel} (ADR 0011 D1)`);
+				continue;
+			}
+			const chars = readFileSync(full, "utf8").trim().length;
+			if (chars < FIELD_DOC_MIN_CHARS) {
+				problems.push(`${rel} is too thin for a field package: ${chars} chars, need >= ${FIELD_DOC_MIN_CHARS}`);
+			}
+		}
+		if (String(meta.auth?.status ?? "") !== "granted" || !String(meta.auth?.evidence_of_auth ?? "").trim()) {
+			problems.push("a field package must record auth.status=granted and evidence_of_auth (ADR 0011 D1)");
+		}
+	}
 	if (!CASE_COMPLETENESS.includes(meta.completeness)) {
 		problems.push(`completeness "${meta.completeness}" is not one of ${CASE_COMPLETENESS.join(", ")}`);
 	}

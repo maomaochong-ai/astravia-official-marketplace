@@ -91,6 +91,8 @@ export interface WorkbenchModel {
 	reports: Record<string, TriageReport>;
 	openEntry(id: string): void;
 	clearLibrary(): void;
+	/** 清掉当前评估（只清面板状态；reports/ 里的文件是交付物，不动）。 */
+	clearReport(): void;
 
 	compareA: string | null;
 	compareB: string | null;
@@ -648,6 +650,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		reports: library.reports,
 		openEntry,
 		clearLibrary: library.clearLibrary,
+		clearReport: () => setReport(null),
 		compareA,
 		compareB,
 		setCompare,

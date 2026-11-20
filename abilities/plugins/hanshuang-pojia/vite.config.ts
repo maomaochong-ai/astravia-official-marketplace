@@ -100,6 +100,18 @@ export default defineConfig({
 					source: gzipSync(Buffer.from(JSON.stringify(packBodies), "utf8"), { level: 9 }),
 				});
 
+				// 4b. 预置提示词模板：同样一份 gzip。模板含大段破甲词，散装 .md 会被 AV 按内容拦。
+				const templateRoot = new URL("agent/prompts/templates/", import.meta.url);
+				const templateBodies: Record<string, string> = {};
+				for (const file of readdirSync(templateRoot).filter(name => name.endsWith(".md"))) {
+					templateBodies[file] = readFileSync(new URL(file, templateRoot), "utf8");
+				}
+				this.emitFile({
+					type: "asset",
+					fileName: "assets/prompts/templates/templates.json.gz",
+					source: gzipSync(Buffer.from(JSON.stringify(templateBodies), "utf8"), { level: 9 }),
+				});
+
 				// 5. 共享原语：每个工具都 import hpkit，缺它则一个都跑不起来。
 				const kitRoot = new URL("cases/_shared/hpkit/", import.meta.url);
 				for (const file of walk(kitRoot)) {

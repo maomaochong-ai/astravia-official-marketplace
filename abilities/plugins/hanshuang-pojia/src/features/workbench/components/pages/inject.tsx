@@ -170,7 +170,7 @@ export function InjectPage({ model, embedded = false, packId: packIdProp }: Page
 										<div className="mt-2 flex flex-wrap items-center gap-1">
 											<button
 												type="button"
-												onClick={() => copy(renderInstaller(planFor(item, { packLabel: packId, body: body ?? "" }), shell), t("inject.copied"))}
+												onClick={() => copy(renderInstaller(planFor(item, { packLabel: packId, body: body ?? "" }), shell), t("inject.copiedInstall"))}
 												className="inline-flex items-center gap-1 rounded-md border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 hover:bg-surface-hover hover:text-text"
 											>
 												<Icon name="copy" className="size-3" />
@@ -193,12 +193,27 @@ export function InjectPage({ model, embedded = false, packId: packIdProp }: Page
 												<button
 													type="button"
 													onClick={() =>
-														copy(renderRemovalScript(planFor(item, { packLabel: packId, body: body ?? "" }), shell), t("inject.copied"))
+												copy(renderRemovalScript(planFor(item, { packLabel: packId, body: body ?? "" }), shell), t("inject.copiedRemove", { path: item.entry }))
 													}
 													className="inline-flex items-center gap-1 rounded-md border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-3 hover:bg-surface-hover hover:text-risk-high"
 												>
 													<Icon name="ban" className="size-3" />
 													{t("inject.remove")}
+												</button>
+											)}
+											{/* 注入状态不在插件侧：目标文件在用户主目录，只有宿主能读，所以交给对话。 */}
+											{blocked ? null : (
+												<button
+													type="button"
+													onClick={() =>
+														model.askText(
+															`检查 ${item.label} 当前是否已注入：读 ${item.entry}，报告三件事 —— (1) 文件是否存在；(2) 是否有标记块「寒霜破甲注入开始 … 结束」或旧标记 HANSHUANG-INJECT；(3) 块外内容还有几行。没有标记就直说未注入。`,
+														)
+													}
+													className="inline-flex items-center gap-1 rounded-md border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-3 hover:bg-surface-hover hover:text-text"
+												>
+													<Icon name="search" className="size-3" />
+													{t("inject.check")}
 												</button>
 											)}
 										</div>
@@ -215,7 +230,7 @@ export function InjectPage({ model, embedded = false, packId: packIdProp }: Page
 								<>
 									<button
 										type="button"
-										onClick={() => copy(renderInstaller(plan, shell), t("inject.copied"))}
+										onClick={() => copy(renderInstaller(plan, shell), t("inject.copiedInstall"))}
 										className="inline-flex items-center gap-1 rounded-md border border-line-subtle px-2 py-0.5 text-[10.5px] text-text-2 hover:bg-surface-hover hover:text-text"
 									>
 										<Icon name="copy" className="size-3" />
@@ -233,7 +248,7 @@ export function InjectPage({ model, embedded = false, packId: packIdProp }: Page
 									</button>
 									<button
 										type="button"
-										onClick={() => copy(renderRestoreScript(plan, shell), t("inject.copied"))}
+										onClick={() => copy(renderRestoreScript(plan, shell), t("inject.copiedRestore"))}
 										className="inline-flex items-center gap-1 rounded-md border border-line-subtle px-2 py-0.5 text-[10.5px] text-text-2 hover:bg-surface-hover hover:text-text"
 									>
 										<Icon name="refresh" className="size-3" />
