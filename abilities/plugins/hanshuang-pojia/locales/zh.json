@@ -463,6 +463,8 @@
   "cases.detail.inScope": "范围内",
   "cases.detail.deliverables": "交付物",
   "cases.detail.empty": "未提供",
+  "page.static.title": "静态详情",
+  "page.static.lead": "同一份体检结果的三个视角：清单、熵分布、签名。切换不清空数据。",
   "cases.reader.browse": "打开文档库",
   "cases.detail.evidence": "{{count}} 条证据",
   "cases.contract.title": "案例是怎么运作的",
