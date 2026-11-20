@@ -113,7 +113,7 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 					style={{ "--docs-list": `${listWidth}px` } as Record<string, string>}
 					className={`fb-fill grid min-h-0 gap-2.5 ${
 						showList
-							? "grid-rows-[minmax(0,38%)_minmax(0,1fr)] @min-[900px]:grid-cols-[var(--docs-list)_9px_minmax(0,1fr)] @min-[900px]:grid-rows-[minmax(0,1fr)] @min-[900px]:gap-0"
+							? "grid-rows-[minmax(0,38%)_minmax(0,1fr)] @min-[900px]:grid-cols-[var(--docs-list)_5px_minmax(0,1fr)] @min-[900px]:grid-rows-[minmax(0,1fr)] @min-[900px]:gap-0"
 							: ""
 					}`}
 				>

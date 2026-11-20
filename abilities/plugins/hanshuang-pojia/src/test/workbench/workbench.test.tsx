@@ -83,6 +83,7 @@ function makeBridge(overrides: Partial<WorkbenchBridge> = {}): WorkbenchBridge {
 		saveMyCases: vi.fn(async () => true),
 		labMode: vi.fn(async () => null),
 		saveLabMode: vi.fn(async () => true),
+		probeRecord: vi.fn(async () => null),
 		...overrides,
 	};
 }
@@ -297,7 +298,7 @@ describe("workbench handoff", () => {
 		const api = makeBridge();
 		await open(api);
 		await go("guide");
-		expect(await screen.findByText("guide.step.pick.title")).toBeTruthy();
+		expect(await screen.findByText("guide.stage.intake.title")).toBeTruthy();
 		fireEvent.click(await screen.findByTitle("ai.workflow"));
 		await waitFor(() => expect(api.chat).toHaveBeenCalled());
 		expect(api.notify).toHaveBeenCalledWith("chat.sent", "success");
@@ -373,7 +374,8 @@ describe("workbench state", () => {
 		await go("settings");
 		expect(await screen.findByText("settings.mode.title")).toBeTruthy();
 		await go("prompts");
-		// 注入块预览不依赖已保存的提示词：没有激活的就展示默认契约。
+		// 注入块现在是提示词页的第二个视图：没有激活提示词时展示默认契约。
+		fireEvent.click(await screen.findByText("prompt.view.inject"));
 		expect(await screen.findByText("prompt.inject.title")).toBeTruthy();
 		expect(screen.getByText("prompt.inject.sourceDefault")).toBeTruthy();
 	});
@@ -424,8 +426,11 @@ describe("workbench state", () => {
 		const api = makeBridge();
 		await open(api);
 		await go("settings");
-		// 顶栏的 lab 开关也是 role=switch，且 DOM 更靠前；这里要的是设置页的规则开关。
-		fireEvent.click(screen.getAllByRole("switch").filter(node => node.getAttribute("data-testid") !== "lab-switch")[0]!);
+		// 设置页里现在有两个开关族：实验环境与规则。这里要的是规则开关（aria-label 以 rule. 开头）。
+		const ruleSwitch = screen
+			.getAllByRole("switch")
+			.find(node => (node.getAttribute("aria-label") ?? "").startsWith("rule."));
+		fireEvent.click(ruleSwitch!);
 		await analyseDemo(api);
 		await waitFor(() => expect(api.analyse).toHaveBeenLastCalledWith(SAMPLE, { mode: "summary", disabledRules: [expect.any(String)] }));
 	});

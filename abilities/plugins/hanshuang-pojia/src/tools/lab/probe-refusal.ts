@@ -1,5 +1,5 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
-import { maskSecret, probesFor, renderTable, summarise, toResult, type ProbeLang, type ProbeResult } from "../../domain/refusal-probe";
+import { maskSecret, probesFor, PROBE_STATE_PATH, renderTable, summarise, toRecord, toResult, type ProbeLang, type ProbeResult } from "../../domain/refusal-probe";
 
 interface ProbeRefusalInput {
 	/** OpenAI 兼容的 base，例如 `https://api.example.com/v1`。不写 `/chat/completions`。 */
@@ -133,6 +133,18 @@ export function registerProbeRefusalTool(ctx: PluginContext): Disposable {
 			}
 
 			const summary = summarise(results);
+
+			// 落盘给面板用：工具写、面板读同一份，面板不猜、不解析 Markdown。
+			// 写失败不影响本次输出：结论已经在下面这份文本里了。
+			try {
+				await ctx.storage.writeFile(
+					PROBE_STATE_PATH,
+					JSON.stringify(toRecord({ at: new Date().toISOString(), model, host: new URL(base).host, lang }, results)),
+					"utf8",
+				);
+			} catch {
+				/* 只读存储或配额满：面板看不到历史，但本次结论仍然成立。 */
+			}
 			const lines = [
 				`# 拒答梯度探测 · ${model}`,
 				"",

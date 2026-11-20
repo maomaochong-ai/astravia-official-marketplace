@@ -27,7 +27,7 @@ const FORM_TONE: Record<InjectForm, string> = {
  * 「在对话里执行」不是装饰：面板不能调用 agent 工具，但它能把一句话交给对话，
  * 由那里的 Agent 调 `inject_target { apply: true }` 走命令通道真执行，再把证据带回来。
  */
-export function InjectPage({ model }: PageProps) {
+export function InjectPage({ model, embedded = false }: PageProps & { embedded?: boolean }) {
 	const { t } = useTranslation();
 	const [targetId, setTargetId] = useState<string>(INJECT_TARGETS[0]?.id ?? "");
 	const [packId, setPackId] = useState<string>(PACKS[0]?.id ?? "");
@@ -77,7 +77,7 @@ export function InjectPage({ model }: PageProps) {
 
 	return (
 		<>
-			<PageHeader title={t("page.inject.title")} description={t("page.inject.lead")} />
+			{embedded ? null : <PageHeader title={t("page.inject.title")} description={t("page.inject.lead")} />}
 
 			<div className="fb-page">
 				<div className="flex shrink-0 flex-wrap items-center gap-2">

@@ -1,5 +1,5 @@
 /**
- * 由 scripts/sync-icons.mjs 从 scripts/icon-manifest.json 生成，请勿手改。
+ * 由 scripts/sync-icons.mjs 从 assets-manifests/icon-manifest.json 生成，请勿手改。
  * 数据来源：@iconify-json/solar 1.2.13、@iconify-json/lucide 1.2.147。
  *
  * 导航图标取 solar bold（实心，小尺寸下比细线更立得住），

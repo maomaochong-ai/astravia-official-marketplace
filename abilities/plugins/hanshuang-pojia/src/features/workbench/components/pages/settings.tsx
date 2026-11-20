@@ -92,6 +92,20 @@ export function SettingsPage({ model }: PageProps) {
 			/>
 			<div className="fb-page">
 				<div className="px-1 text-[9.5px] font-medium uppercase tracking-wider text-text-4">{t("settings.group.runtime")}</div>
+				{/* 实验环境开关的完整控制在这里；顶栏只留一个快捷开关。 */}
+				<Card title={t("settings.lab.title")} bodyClassName="flex flex-col gap-2 p-3.5">
+					<div className="flex items-start gap-2.5">
+						<div className="min-w-0 flex-1">
+							<div className="text-[11.5px] font-medium text-text">{t("settings.lab.label")}</div>
+							<p className="mt-0.5 text-[10.5px] leading-relaxed text-text-3">{t("settings.lab.hint")}</p>
+							<p className="mt-1 font-mono text-[10px] text-text-4">
+								{lab.state.since ? t("settings.lab.since", { at: lab.state.since.slice(0, 19).replace("T", " ") }) : t("settings.lab.never")}
+							</p>
+						</div>
+						<Toggle checked={lab.state.enabled} onChange={value => lab.set(value)} label={t("settings.lab.label")} hideLabel />
+					</div>
+				</Card>
+
 				<Card title={t("settings.runtime.title")} bodyClassName="divide-y divide-line-subtle">
 					{runtimeRows.map(row => (
 						<div key={row.key} className="flex items-baseline gap-2 px-3.5 py-2">

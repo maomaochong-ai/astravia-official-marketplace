@@ -131,7 +131,7 @@ export function SplitHandle({ value, min, max, onChange, onReset, side = "left",
 			onPointerCancel={onPointerUp}
 			onDoubleClick={onReset}
 			onKeyDown={onKeyDown}
-			className="group relative flex w-[9px] shrink-0 cursor-col-resize touch-none items-center justify-center outline-none"
+			className="group relative flex w-[5px] shrink-0 cursor-col-resize touch-none items-center justify-center outline-none"
 		>
 			<span aria-hidden className="h-full w-px bg-line-subtle transition-colors group-hover:bg-line-strong group-focus-visible:bg-purple" />
 		</div>

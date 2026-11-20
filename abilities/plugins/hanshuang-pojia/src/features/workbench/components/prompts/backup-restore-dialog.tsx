@@ -29,7 +29,7 @@ export function BackupRestoreDialog({ open, backups, onClose, onRestore, onDelet
 	if (!open) return null;
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+		<div className="fb-overlay" onClick={onClose}>
 			<div
 				className="flex max-h-[70vh] w-full max-w-xl flex-col overflow-hidden rounded-xl bg-surface-2 ring-1 ring-line-subtle"
 				onClick={e => e.stopPropagation()}

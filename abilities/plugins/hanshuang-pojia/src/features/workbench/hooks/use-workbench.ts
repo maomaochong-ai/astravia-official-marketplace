@@ -6,6 +6,7 @@ import { entropyProfile, type EntropyBucket } from "../../../domain/entropy";
 import { stringKind, type StringKind } from "../../../domain/string-kinds";
 import { renderMarkdown, reportToJson, type TriageReport } from "../../../domain/report/report";
 import { scopeForSample } from "../../../domain/sample-scope";
+import type { ProbeRecord } from "../../../domain/refusal-probe";
 import { resolveSamplePath } from "../../../domain/sample-path";
 import { readNativeFacts } from "../../../domain/native/detect";
 import { addressMapFor } from "../../../domain/native/image";
@@ -118,6 +119,8 @@ export interface WorkbenchModel {
 	caseDocs: CaseDocsModel;
 	/** 面板自己沉淀的案例库：按工作区隔离，与 cases/ 扫描结果并列展示。 */
 	myCases: MyCasesModel;
+	/** 上一次 `probe_refusal` 的落盘记录（工具写、面板读）。 */
+	probe: { record: ProbeRecord | null; refresh(): void };
 	/** 当前会话 id；存储的会话作用域靠它分区，null = 还没有活跃会话。 */
 	sessionId: string | null;
 
@@ -371,6 +374,15 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 	const cases = useCases(bridge, cwd, page === "knowledge");
 	// 面板自己的案例库：不随页面开关，因为分析完成后不管停在哪一页都要沉淀。
 	const myCases = useMyCases(bridge, cwd);
+
+	// 探测记录：工具跑完就落盘，面板进提示词页时读一次；不轮询。
+	const [probeRecord, setProbeRecord] = useState<ProbeRecord | null>(null);
+	const refreshProbe = useCallback(() => {
+		void bridge.probeRecord().then(setProbeRecord);
+	}, [bridge]);
+	useEffect(() => {
+		if (page === "prompts") refreshProbe();
+	}, [page, refreshProbe]);
 
 	// 沉淀时机：一份报告出现就记一条。
 	// 用 effect 而不是塞进 run()：run 在 myCases 之前定义，且面板从 agent 工具收到报告时
@@ -653,6 +665,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		docs,
 		cases,
 		myCases,
+		probe: { record: probeRecord, refresh: refreshProbe },
 		caseDocs,
 		exportReport,
 		copyReport,

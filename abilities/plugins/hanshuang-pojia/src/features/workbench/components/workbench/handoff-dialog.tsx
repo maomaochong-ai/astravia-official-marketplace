@@ -31,7 +31,7 @@ export function HandoffDialog({ open, target, busy, onClose, onSend }: HandoffDi
 	const canSend = prompt.trim().length > 0 && !busy;
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+		<div className="fb-overlay" onClick={onClose}>
 			<div
 				className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-surface-2 ring-1 ring-line-subtle"
 				onClick={event => event.stopPropagation()}

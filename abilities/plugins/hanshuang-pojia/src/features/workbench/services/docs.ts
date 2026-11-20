@@ -96,7 +96,8 @@ export interface DocsLibrary {
  * 这里的注释保留是为了说清「为什么要按源目录路径拼」：测试看的必须是发布的那份字节。
  */
 async function readPackageText(relativePath: string): Promise<string> {
-	return readPackageAsset(relativePath, DOC_PREFIX);
+	// 源码在 src/content/docs/，构建后平铺到 assets/docs/ —— 两个前缀必须分开给。
+	return readPackageAsset(relativePath, { sourcePrefix: DOC_PREFIX, assetDir: "docs" });
 }
 
 /** 条目的 path 是源目录相对路径；资源层只认剥掉前缀之后的相对位置。 */

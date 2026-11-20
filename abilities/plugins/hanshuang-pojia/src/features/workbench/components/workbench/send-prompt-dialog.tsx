@@ -45,7 +45,7 @@ export function SendPromptDialog({ open, initial, label, onClose, onSend, onSave
 	if (!open) return null;
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
+		<div className="fb-overlay" role="dialog" aria-modal="true">
 			<div className="flex max-h-[80vh] w-full max-w-[640px] flex-col overflow-hidden rounded-xl bg-surface-2 ring-1 ring-line-subtle">
 				<header className="flex shrink-0 items-center gap-2 border-b border-line-subtle px-4 py-2.5">
 					<h2 className="min-w-0 flex-1 truncate text-[13px] font-semibold text-text">{t("chat.preview.title")}</h2>

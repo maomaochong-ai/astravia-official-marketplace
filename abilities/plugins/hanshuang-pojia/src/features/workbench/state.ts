@@ -5,7 +5,7 @@
 
 import type { ReportMode, TriageReport } from "../../domain/report/report";
 
-export type PageId = "overview" | "guide" | "knowledge" | "samples" | "findings" | "strings" | "disasm" | "static" | "compare" | "selfcheck" | "reports" | "settings" | "activity" | "prompts" | "inject";
+export type PageId = "overview" | "guide" | "knowledge" | "samples" | "findings" | "strings" | "disasm" | "static" | "compare" | "selfcheck" | "reports" | "settings" | "activity" | "prompts";
 
 export interface NavItem {
 	id: PageId;
@@ -20,7 +20,7 @@ export interface NavGroup {
 }
 
 export const NAV: readonly NavGroup[] = [
-	{ id: "workflow", items: [{ id: "overview", icon: "nav-overview" }, { id: "guide", icon: "nav-guide" }, { id: "knowledge", icon: "nav-docs" }, { id: "activity", icon: "nav-activity" }, { id: "prompts", icon: "nav-prompts" }, { id: "inject", icon: "shield" }] },
+	{ id: "workflow", items: [{ id: "overview", icon: "nav-overview" }, { id: "guide", icon: "nav-guide" }, { id: "knowledge", icon: "nav-docs" }, { id: "activity", icon: "nav-activity" }, { id: "prompts", icon: "nav-prompts" }] },
 	{ id: "analysis", items: [{ id: "samples", icon: "nav-samples" }, { id: "findings", icon: "nav-findings" }, { id: "strings", icon: "nav-strings" }, { id: "disasm", icon: "nav-disasm" }] },
 	{
 		id: "forensics",

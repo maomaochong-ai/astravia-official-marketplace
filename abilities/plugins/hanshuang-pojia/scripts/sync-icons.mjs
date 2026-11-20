@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 把 scripts/icon-manifest.json 里点名的图标，从 @iconify-json 的数据包解析成
+ * 把 assets-manifests/icon-manifest.json 里点名的图标，从 @iconify-json 的数据包解析成
  * 面板直接渲染的静态节点树（src/features/workbench/components/shell/icon-paths.ts）。
  *
  * 生成而不是运行时读 JSON：插件产物只需要几十个图标，不该背 10 MB 图标库；
@@ -13,7 +13,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const MANIFEST = join(ROOT, "scripts/icon-manifest.json");
+const MANIFEST = join(ROOT, "assets-manifests/icon-manifest.json");
 const OUT = join(ROOT, "src/features/workbench/components/shell/icon-paths.ts");
 
 /** HTML 属性是 kebab-case，React 要 camelCase。 */
@@ -85,7 +85,7 @@ function render() {
 	}
 	const header = [
 		"/**",
-		" * 由 scripts/sync-icons.mjs 从 scripts/icon-manifest.json 生成，请勿手改。",
+		" * 由 scripts/sync-icons.mjs 从 assets-manifests/icon-manifest.json 生成，请勿手改。",
 		` * 数据来源：@iconify-json/solar ${sets.solar.version}、@iconify-json/lucide ${sets.lucide.version}。`,
 		" *",
 		" * 导航图标取 solar bold（实心，小尺寸下比细线更立得住），",

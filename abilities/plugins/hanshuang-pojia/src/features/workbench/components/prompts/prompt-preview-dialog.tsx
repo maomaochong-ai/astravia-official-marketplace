@@ -45,7 +45,7 @@ export function PromptPreviewDialog({ open, prompt, onClose, onEdit, notify }: P
 	};
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+		<div className="fb-overlay" onClick={onClose}>
 			<div
 				className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-surface-2 ring-1 ring-line-subtle"
 				onClick={event => event.stopPropagation()}

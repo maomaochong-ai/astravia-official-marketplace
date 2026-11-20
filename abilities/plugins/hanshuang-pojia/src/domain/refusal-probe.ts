@@ -169,6 +169,58 @@ export function renderTable(results: readonly ProbeResult[]): string {
 	return lines.join("\n");
 }
 
+/** 面板与工具共用的落盘位置：工具写、面板读。 */
+export const PROBE_STATE_PATH = "workbench/probe-refusal.json";
+
+export interface ProbeRecord {
+	/** ISO 时间戳：面板需要显示「上次跑是什么时候」。 */
+	at: string;
+	model: string;
+	/** 端点主机，不含路径与密钥。 */
+	host: string;
+	lang: ProbeLang;
+	summary: ProbeSummary;
+	rows: ProbeResult[];
+}
+
+/** 把一次探测压成可落盘的记录：不写密钥、不写 base 路径。 */
+export function toRecord(
+	meta: { at: string; model: string; host: string; lang: ProbeLang },
+	results: readonly ProbeResult[],
+): ProbeRecord {
+	return { ...meta, summary: summarise(results), rows: [...results] };
+}
+
+/**
+ * 按档位给出改写措施。
+ *
+ * 只对 **refused** 给改写建议：那是模型自己拒绝，换写法有意义。
+ * **empty** 不给——服务端把正文丢了，改提示词不会让它回来。
+ */
+export interface ProbeAdvice {
+	level: number;
+	verdict: ProbeVerdict;
+	kind: RefusalKind | null;
+	/** 可依次尝试的改写档位（与 `reshaping.ts` 的 `RESHAPE_TIERS` 同一组标识）。 */
+	tiers: readonly string[];
+	note: string;
+}
+
+export function adviceFor(results: readonly ProbeResult[]): ProbeAdvice[] {
+	return results.map(item => {
+		if (item.verdict === "refused") {
+			const tiers =
+				item.kind === "policy" || item.kind === "deflection"
+					? ["review-checklist", "review-framed", "review-en"]
+					: ["review-framed", "review-en"];
+			return { level: item.probe.level, verdict: item.verdict, kind: item.kind, tiers, note: "模型自己拒绝：换写法能过，同一写法重发无效" };
+		}
+		if (item.verdict === "empty") {
+			return { level: item.probe.level, verdict: item.verdict, kind: null, tiers: [], note: "服务端丢掉了正文：换端点或换中转，改提示词无效" };
+		}
+		return { level: item.probe.level, verdict: item.verdict, kind: null, tiers: [], note: "正常回答：这一档不需要改写" };
+	});
+}
 /**
  * 密钥打码：输出里永远不出现完整密钥。
  * 只保留前 3 位与后 2 位，够用来核对「是不是同一个 key」，不够用来复用它。

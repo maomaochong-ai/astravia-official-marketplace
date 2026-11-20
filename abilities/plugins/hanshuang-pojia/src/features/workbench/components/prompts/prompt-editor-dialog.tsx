@@ -53,7 +53,7 @@ export function PromptEditorDialog({ open, editing, onClose, onSubmit }: PromptE
 	const canSubmit = form.name.trim().length > 0 && form.content.trim().length > 0;
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+		<div className="fb-overlay" onClick={onClose}>
 			<div
 				className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-surface-2 ring-1 ring-line-subtle"
 				onClick={e => e.stopPropagation()}

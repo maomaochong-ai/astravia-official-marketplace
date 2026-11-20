@@ -20,6 +20,39 @@
  * 未分层 + 元素选择器优先于 @layer utilities，所以不依赖每个调用点各写一遍；
  * 需要圆胶囊或直角的按钮用 rounded-full / rounded-none 显式退出。
  */
+/*
+ * 面板内弹窗的定位基准与遮罩层。
+ * 插件渲染在活动栏里：`fixed` 以整个窗口为参照，宽窗口下弹窗会落到面板外面，
+ * 所以弹窗一律用 `absolute` + 一个 `position: relative` 的根节点。
+ */
+.fb-root {
+	position: relative;
+	isolation: isolate;
+}
+
+.fb-overlay {
+	position: absolute;
+	inset: 0;
+	z-index: 40;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 16px;
+	background: color-mix(in srgb, #000 42%, transparent);
+}
+
+/*
+ * 分隔线只在块之间画。卡内再套一层带 border-b 的列表时，两条线会贴成 2px，
+ * 在纵横交接处看起来像“断了一截”。这条规则收掉列表首尾的外边线。
+ */
+.fb-card-body .divide-y > :first-child {
+	border-top-width: 0;
+}
+
+.fb-card-body .divide-y > :last-child {
+	border-bottom-width: 0;
+}
+
 .fb-root :is(button, input, select, textarea, summary) {
 	border-radius: 6px;
 }

@@ -19,7 +19,7 @@ export async function loadPackBody(id: string): Promise<string> {
 	const cached = bodyCache.get(id);
 	if (cached !== undefined) return cached;
 	if (!packById(id)) throw new Error(`unknown prompt pack: ${id}`);
-	const text = await readPackageAsset(`${id}.md`, PACK_PREFIX);
+	const text = await readPackageAsset(`${id}.md`, { sourcePrefix: PACK_PREFIX, assetDir: "packs" });
 	// 正文进缓存时不带 front matter：注入时放进去的应当是正文，不是元数据。
 	const body = stripFrontMatter(text);
 	bodyCache.set(id, body);
