@@ -66,7 +66,7 @@ const STEP_TONE: Record<"strong" | "weak" | "fallback", string> = {
 										<span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-surface-4 font-mono text-[9.5px] text-text-2">
 											{index + 1}
 										</span>
-										<span className={`truncate text-[11.5px] font-medium ${active === stage ? "text-accent" : "text-text"}`}>
+										<span className={`truncate text-[11.5px] font-medium ${active === stage ? "text-accent" : "text-text"}`} title={t(`guide.stage.${stage}.title`)}>
 											{t(`guide.stage.${stage}.title`)}
 										</span>
 									</span>

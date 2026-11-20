@@ -108,7 +108,7 @@ export function RiskScore({ report, busy, onAsk }: RiskScoreProps) {
 			{report.risk.drivers.length > 0 ? (
 				<div className="mt-2 space-y-1">
 					{report.risk.drivers.slice(0, 3).map(driver => (
-						<div key={driver.ruleId} className="truncate text-[10.5px] text-text-4">
+						<div key={driver.ruleId} className="fb-wrap text-[10.5px] leading-snug text-text-4">
 							<span className={`mr-1.5 font-mono ${SEVERITY_TEXT[driver.severity]}`}>{driver.severity}</span>
 							{driver.title}
 						</div>

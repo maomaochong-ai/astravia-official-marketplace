@@ -161,7 +161,7 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 									>
 										<span className="w-full fb-wrap text-[11.5px] text-text">{hit.entry.title}</span>
 										<span className="w-full fb-wrap font-mono text-[10px] text-text-4">{hit.entry.id}</span>
-										{hit.snippet ? <span className="line-clamp-2 w-full text-[10.5px] leading-snug text-text-3">{hit.snippet}</span> : null}
+										{hit.snippet ? <span className="line-clamp-3 w-full text-[10.5px] leading-snug text-text-3" title={hit.snippet}>{hit.snippet}</span> : null}
 									</button>
 								))
 							)

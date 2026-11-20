@@ -59,7 +59,7 @@ export function PipelineBar({ model }: PipelineBarProps) {
 								}`}
 							>
 								<span className={`size-1.5 shrink-0 rounded-full ${now ? "bg-purple" : hasSample && stage.lit ? "bg-surface-4" : "bg-surface-3"}`} />
-								<span className="truncate text-[10px] font-medium">{t(`pipeline.${stage.id}.title`)}</span>
+								<span className="truncate text-[10px] font-medium" title={t(`pipeline.${stage.id}.title`)}>{t(`pipeline.${stage.id}.title`)}</span>
 							</button>
 							{index < stages.length - 1 && <span className="shrink-0 text-text-4">·</span>}
 						</div>

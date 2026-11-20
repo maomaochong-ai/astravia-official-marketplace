@@ -50,13 +50,12 @@ export function PromptCard({ prompt, onActivate, onDeactivate, onPreview, onEdit
 						<button
 							type="button"
 							onClick={onPreview}
-							title={t("prompt.card.openHint")}
-							className="min-w-0 truncate text-left text-[13px] font-semibold text-text hover:text-purple"
+							title={`${prompt.name} · ${t("prompt.card.openHint")}`}
 						>
 							{prompt.name}
 						</button>
 					</div>
-					{prompt.description ? <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-text-3">{prompt.description}</p> : null}
+					{prompt.description ? <p className="mt-1 line-clamp-3 text-[11px] leading-relaxed text-text-3" title={prompt.description}>{prompt.description}</p> : null}
 				</div>
 				<button
 					type="button"

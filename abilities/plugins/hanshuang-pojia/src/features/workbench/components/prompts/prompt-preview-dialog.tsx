@@ -59,7 +59,7 @@ export function PromptPreviewDialog({ open, prompt, onClose, onEdit, notify }: P
 									{t("prompt.active")}
 								</span>
 							) : null}
-							<h2 className="min-w-0 truncate text-[14px] font-semibold text-text">{prompt.name}</h2>
+							<h2 className="min-w-0 truncate text-[14px] font-semibold text-text" title={prompt.name}>{prompt.name}</h2>
 						</div>
 						<div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-text-4">
 							<span className="rounded bg-surface-3 px-1.5 py-0.5">{t(`prompt.mode.${prompt.mode}`)}</span>

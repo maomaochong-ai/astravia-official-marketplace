@@ -23,7 +23,7 @@ export function InjectStatusBar({ library }: InjectStatusBarProps) {
 		<div className="flex min-h-7 shrink-0 items-center gap-2 border-b border-line-subtle bg-surface-3/40 px-4 text-[10.5px]">
 			<span className="flex min-w-0 items-center gap-1.5 text-text-2">
 				<span className="size-1.5 shrink-0 rounded-full bg-accent" />
-				<span className="max-w-[200px] truncate font-medium">{active.name}</span>
+				<span className="max-w-[240px] fb-wrap font-medium" title={active.name}>{active.name}</span>
 				<span className="text-text-4">·</span>
 				<span className="shrink-0 text-text-3">{t(`prompt.mode.${active.mode}`)}</span>
 				<span className="text-text-4">·</span>

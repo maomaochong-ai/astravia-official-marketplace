@@ -127,7 +127,7 @@ export function SamplePicker({ cwd, files, loading, busy, selectedPath, onRefres
 							} disabled:opacity-50`}
 						>
 							<Icon name="file" className="size-3 shrink-0 text-text-4" />
-							<span className="min-w-0 flex-1 truncate font-mono text-[11px]">{entry.name}</span>
+							<span className="min-w-0 flex-1 fb-wrap font-mono text-[11px]">{entry.name}</span>
 							<span className="shrink-0 font-mono text-[9.5px] text-text-4">{formatBytes(entry.size)}</span>
 						</button>
 					);

@@ -20,7 +20,7 @@ export function FindingRow({ finding, busy, onAsk }: FindingRowProps) {
 			<div className="min-w-0 flex-1">
 				<div className="flex min-w-0 flex-wrap items-center gap-1.5">
 					<span className={`font-mono text-[10px] ${SEVERITY_TEXT[finding.severity]}`}>{finding.severity}</span>
-					<span className="truncate font-mono text-[10px] text-text-4">{finding.ruleId}</span>
+					<span className="fb-wrap font-mono text-[10px] leading-snug text-text-4">{finding.ruleId}</span>
 					<Tag>{t(`severity.${finding.severity}`)}</Tag>
 				</div>
 				<div className="mt-0.5 text-[12.5px] font-medium leading-snug text-text">{finding.title}</div>

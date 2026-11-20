@@ -149,7 +149,7 @@ export function Sidebar({ page, onNavigate, status, timeline, rail, collapsed, o
 				<div className="shrink-0 border-t border-line-subtle">
 					{/* 实时区折叠成一行摘要：默认收起，面板矮的时候导航才有空间。 */}
 					<details className="fb-collapse" data-testid="sidebar-status">
-						<summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-[10.5px] text-text-3 transition-colors hover:bg-surface-hover hover:text-text">
+						<summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-[10.5px] text-text-3 transition-colors hover:bg-surface-hover hover:text-text" title={t("status.title")}>
 							<Icon name="chevron" className="size-3 shrink-0 text-text-4" />
 							<span className="min-w-0 flex-1 truncate">{t("status.title")}</span>
 							{liveCount > 0 ? <span className="shrink-0 font-mono text-[9.5px] tabular-nums text-accent">{liveCount}</span> : null}
@@ -163,7 +163,7 @@ export function Sidebar({ page, onNavigate, status, timeline, rail, collapsed, o
 						<details className="fb-collapse border-t border-line-subtle">
 							<summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-[10.5px] text-text-3 transition-colors hover:bg-surface-hover hover:text-text">
 								<Icon name="chevron" className="size-3 shrink-0 text-text-4" />
-								<span className="min-w-0 flex-1 truncate">{t("status.timeline")}</span>
+								<span className="min-w-0 flex-1 truncate" title={t("status.timeline")}>{t("status.timeline")}</span>
 								<span className="shrink-0 font-mono text-[9.5px] tabular-nums text-text-4">{recent.length}</span>
 							</summary>
 							<ul className="px-1.5 pb-1.5">

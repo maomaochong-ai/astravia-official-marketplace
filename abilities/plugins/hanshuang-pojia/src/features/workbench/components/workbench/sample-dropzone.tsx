@@ -89,14 +89,14 @@ export function SampleDropzone({ report, busy, fromAgent, onClear, onReanalyse, 
 				</div>
 				<div className="min-w-0 flex-1">
 					<div className="flex min-w-0 items-center gap-2">
-						<span className="truncate text-[13px] font-medium text-text">{report.target.name}</span>
+						<span className="fb-wrap text-[13px] font-medium text-text" title={report.target.name}>{report.target.name}</span>
 						<Tag>{report.target.format.toUpperCase()}</Tag>
 						{fromAgent ? <Tag tone="purple">{t("dropzone.fromAgent")}</Tag> : null}
 					</div>
 					<div className="mt-1 flex flex-wrap items-center gap-1.5 font-mono text-[10.5px] text-text-4">
 						<span>{formatBytes(report.target.size)}</span>
 						{arch ? <span>· {arch}</span> : null}
-						<span className="min-w-0 truncate">· SHA-256 {report.target.sha256.slice(0, 8)}…{report.target.sha256.slice(-6)}</span>
+						<span className="min-w-0 fb-wrap">· SHA-256 {report.target.sha256.slice(0, 8)}…{report.target.sha256.slice(-6)}</span>
 					</div>
 					{busy ? (
 						<>
@@ -106,7 +106,7 @@ export function SampleDropzone({ report, busy, fromAgent, onClear, onReanalyse, 
 							<div className="mt-1 text-[10.5px] text-text-3">{t("dropzone.busy")}</div>
 						</>
 					) : (
-						<div className="mt-1.5 truncate font-mono text-[10.5px] text-text-4">{report.target.path}</div>
+						<div className="fb-wrap mt-1.5 font-mono text-[10.5px] leading-snug text-text-4">{report.target.path}</div>
 					)}
 				</div>
 				<div className="flex shrink-0 items-center gap-0.5">

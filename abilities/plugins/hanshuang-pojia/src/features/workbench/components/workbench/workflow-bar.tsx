@@ -60,7 +60,7 @@ export function WorkflowBar({ model }: WorkflowBarProps) {
 						>
 							{index + 1}
 						</span>
-						<span className="truncate text-[11px] font-medium">{t(`workflow.${step.id}.title`)}</span>
+						<span className="truncate text-[11px] font-medium" title={t(`workflow.${step.id}.title`)}>{t(`workflow.${step.id}.title`)}</span>
 					</button>
 				);
 			})}

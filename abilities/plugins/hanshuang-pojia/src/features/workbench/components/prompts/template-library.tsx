@@ -61,7 +61,7 @@ export function TemplateLibrary({ existing, onImport, notify }: TemplateLibraryP
 							<div className="fb-wrap text-[11.5px] text-text" title={entry.id}>
 								{entry.title}
 							</div>
-							<div className="line-clamp-2 text-[10px] leading-relaxed text-text-4">{entry.summary}</div>
+							<div className="line-clamp-3 text-[10px] leading-relaxed text-text-4" title={entry.summary}>{entry.summary}</div>
 							<div className="mt-0.5 font-mono text-[9.5px] text-text-4">{entry.chars} chars</div>
 						</div>
 						<button

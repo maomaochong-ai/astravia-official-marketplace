@@ -40,7 +40,7 @@ export function HandoffDialog({ open, target, busy, onClose, onSend }: HandoffDi
 				<div className="flex items-center justify-between border-b border-line-subtle px-4 py-3">
 					<div className="min-w-0">
 						<h2 className="text-[14px] font-semibold text-text">{t("handoff.title")}</h2>
-						<p className="mt-0.5 truncate font-mono text-[10.5px] text-text-4">{target.path}</p>
+						<p className="fb-wrap mt-0.5 font-mono text-[10.5px] leading-snug text-text-4">{target.path}</p>
 					</div>
 					<button type="button" onClick={onClose} className="text-text-4 hover:text-text" aria-label="close">
 						✕
