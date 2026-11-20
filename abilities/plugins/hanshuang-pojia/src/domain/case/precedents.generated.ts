@@ -42,6 +42,8 @@ export interface ShippedPrecedent {
 	readonly preset: string;
 	/** Capability family, used by the panel's category filter. */
 	readonly category: string;
+	/** How far this package goes: sketch / worked / field. */
+	readonly completeness: string;
 	/** Field-journal documents this precedent is derived from. */
 	readonly fieldNotes: readonly string[];
 	/** Document-library ids holding the full case study, read with read_doc. */
@@ -69,6 +71,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "android",
+		"completeness": "worked",
 		"fieldNotes": [
 			"kb/field_journal_seed-008_apk-okhttp-ssl-pin-bypass",
 			"kb/field_journal_2026-08-01_pentest-encryption-oracle-public-template-sql-admin-takeover"
@@ -127,6 +130,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "native-loader",
+		"completeness": "worked",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -201,6 +205,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "android",
+		"completeness": "worked",
 		"fieldNotes": [
 			"kb/field_journal_2026-07-14_android-arm64-self-extract-source-recovery",
 			"kb/field_journal_2026-08-20_apk-flutter-banner-ad-removal"
@@ -261,6 +266,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "client-auth",
+		"completeness": "worked",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -330,6 +336,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "client-auth",
+		"completeness": "worked",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -390,6 +397,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "dotnet",
+		"completeness": "worked",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -460,6 +468,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "dotnet",
+		"completeness": "worked",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -529,6 +538,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "crypto-keygen",
+		"completeness": "worked",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -596,6 +606,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "native-loader",
+		"completeness": "worked",
 		"fieldNotes": [
 			"kb/field_journal_seed-001_elf-packed-loader",
 			"kb/re_pattern_elf-analysis"
@@ -655,6 +666,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "native-loader",
+		"completeness": "worked",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -725,6 +737,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "native-loader",
+		"completeness": "worked",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -788,6 +801,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "web-js",
+		"completeness": "worked",
 		"fieldNotes": [
 			"kb/field_journal_seed-004_js-sign-webpack",
 			"kb/js_reverse_SKILL"
@@ -860,6 +874,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "native-loader",
+		"completeness": "worked",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -930,6 +945,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "client-auth",
+		"completeness": "worked",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -994,6 +1010,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "native-loader",
+		"completeness": "sketch",
 		"fieldNotes": [],
 		"caseDocs": [
 			"cases/payload-chain/chain-shape"
@@ -1052,6 +1069,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "client-auth",
+		"completeness": "worked",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -1122,6 +1140,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "client-auth",
+		"completeness": "worked",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -1190,6 +1209,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "crypto-keygen",
+		"completeness": "worked",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -1262,6 +1282,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "dotnet",
+		"completeness": "worked",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"
@@ -1328,6 +1349,7 @@ export const SHIPPED_PRECEDENTS: readonly ShippedPrecedent[] = [
 		],
 		"preset": "offline-sample",
 		"category": "client-auth",
+		"completeness": "worked",
 		"fieldNotes": [
 			"kb/field_journal_precedent-auth",
 			"kb/field_journal_precedent-reverse"

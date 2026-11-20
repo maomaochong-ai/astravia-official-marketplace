@@ -14,6 +14,7 @@
 	],
 	"preset": "offline-sample",
 	"category": "native-loader",
+	"completeness": "worked",
 	"fieldNotes": [
 		"kb/field_journal_seed-001_elf-packed-loader",
 		"kb/re_pattern_elf-analysis"

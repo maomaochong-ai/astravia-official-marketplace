@@ -106,8 +106,8 @@ describe("buildKernelBlock", () => {
 		// 预算按实际增量上调：数字只在“失控”时才该收紧，而不该因为合理新增就永久钉死。
 		// 2.17.3 到 32（inject_target）—— 注入计划是核心工具，lab 关闭时也在表里。
 		// 2.17.5 增一行「先读核心技能 memory」：这一行在 lab 关闭时也在，所以两边都上调。
-		expect(off.length).toBeLessThan(1100);
-		expect(on.length).toBeLessThan(1750);
+		expect(off.length).toBeLessThan(1350);
+		expect(on.length).toBeLessThan(2000);
 	});
 
 	it("keeps the block id inside the plugin namespace", () => {

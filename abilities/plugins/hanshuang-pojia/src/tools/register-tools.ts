@@ -31,6 +31,7 @@ import { registerSearchCasesTool } from "./case/search-cases";
 import { registerRecordCaseNoteTool } from "./case/record-case-note";
 import { registerScaffoldCaseTool } from "./case/scaffold-case";
 import { registerRunCaseTool } from "./case/run-case-tool";
+import { registerPlanNextStepTool } from "./case/plan-next-step";
 import { registerInjectTargetTool } from "./inject/inject-target";
 import { registerProbeRefusalTool } from "./lab/probe-refusal";
 
@@ -74,6 +75,7 @@ export function registerTools(ctx: PluginContext): Disposable[] {
 		registerRecordCaseNoteTool,
 		registerScaffoldCaseTool,
 		registerRunCaseTool,
+		registerPlanNextStepTool,
 		registerInjectTargetTool,
 		registerProbeRefusalTool,
 	]) {

@@ -84,6 +84,8 @@ export interface ShippedPrecedent {
 	readonly preset: string;
 	/** Capability family, used by the panel's category filter. */
 	readonly category: string;
+	/** How far this package goes: sketch / worked / field. */
+	readonly completeness: string;
 \t/** Field-journal documents this precedent is derived from. */
 \treadonly fieldNotes: readonly string[];
 \t/** Document-library ids holding the full case study, read with read_doc. */

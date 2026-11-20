@@ -15,6 +15,7 @@
 	],
 	"preset": "offline-sample",
 	"category": "web-js",
+	"completeness": "worked",
 	"fieldNotes": [
 		"kb/field_journal_seed-004_js-sign-webpack",
 		"kb/js_reverse_SKILL"

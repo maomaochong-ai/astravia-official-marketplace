@@ -126,6 +126,7 @@ describe("agent tools", () => {
 			"kb_checklist",
 			"kb_payloads",
 			"list_code_symbols",
+			"plan_next_step",
 			"probe_environment",
 			"probe_refusal",
 			"read_doc",

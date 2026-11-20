@@ -17,6 +17,7 @@
 	],
 	"preset": "offline-sample",
 	"category": "native-loader",
+	"completeness": "worked",
 	"fieldNotes": [
 		"kb/field_journal_precedent-auth",
 		"kb/field_journal_precedent-reverse"

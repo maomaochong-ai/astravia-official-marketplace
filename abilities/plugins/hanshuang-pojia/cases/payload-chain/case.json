@@ -15,6 +15,7 @@
 	],
 	"preset": "offline-sample",
 	"category": "native-loader",
+	"completeness": "sketch",
 	"fieldNotes": [],
 	"caseDocs": [
 		"cases/payload-chain/chain-shape"

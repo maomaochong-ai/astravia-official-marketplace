@@ -18,6 +18,15 @@ export const CASE_PRESETS = ["offline-sample", "ctf-public", "own-system"];
  */
 export const CASE_CATEGORIES = ["android", "client-auth", "dotnet", "native-loader", "crypto-keygen", "web-js"];
 
+/*
+ * 先例的完成度，区分「读得懂」与「照着做得出来」：
+ *   sketch - 只有形状（可生成、可对照），没有真实目标的证据；
+ *   worked - 有方法、有工具、有防御，能照着走一遍；
+ *   field  - 有真实目标的过程记录与结案证据。
+ * field 目前一个都没有：那需要真实评估的书面证据，不能人造。
+ */
+export const CASE_COMPLETENESS = ["sketch", "worked", "field"];
+
 /**
  * 每份先例都必须能被人按顺序读完的四份文档。
  * `README.md` / `scope.md` 说这个包打过什么仗，`docs/method.md` 是做法，
@@ -225,6 +234,9 @@ export function checkPackage({ casesDir, docsDir, dir, runTools = false }) {
 	}
 	if (!Array.isArray(meta.signals) || meta.signals.length === 0) problems.push("signals must be a non-empty array");
 	if (!CASE_PRESETS.includes(meta.preset)) problems.push(`preset "${meta.preset}" is not one of ${CASE_PRESETS.join(", ")}`);
+	if (!CASE_COMPLETENESS.includes(meta.completeness)) {
+		problems.push(`completeness "${meta.completeness}" is not one of ${CASE_COMPLETENESS.join(", ")}`);
+	}
 	if (!CASE_CATEGORIES.includes(meta.category)) {
 		problems.push(`category "${meta.category}" is not one of ${CASE_CATEGORIES.join(", ")}`);
 	}
@@ -323,6 +335,7 @@ export function readPackage({ casesDir, docsDir, dir }) {
 		signals: meta.signals,
 		preset: meta.preset,
 		category: meta.category,
+		completeness: meta.completeness,
 		fieldNotes: meta.fieldNotes,
 		caseDocs: meta.caseDocs ?? [],
 		...(meta.source ? { source: meta.source } : {}),

@@ -171,6 +171,7 @@ export function CasesPage({ model, embedded = false }: PageProps & { embedded?: 
 														</div>
 													</div>
 													<Tag tone="neutral">{t(`cases.category.${item.category}`)}</Tag>
+													<Tag tone={item.completeness === "worked" ? "low" : "neutral"}>{t(`cases.completeness.${item.completeness}`)}</Tag>
 												</button>
 											);
 										})

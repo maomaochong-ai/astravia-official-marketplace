@@ -55,6 +55,14 @@ export function buildKernelBlock(input: KernelInput): string {
 		lines.push(`Plugin tools available: ${input.tools.join(", ")}. They read the workspace directly; prefer them over re-deriving bytes by hand.`);
 	}
 
+	// 计划层：报告一出，下一步不该凭经验猜，而是先要一份带否证条件的计划。
+	// 只在 `plan_next_step` 真的可用时提 —— 否则模型会去调一个不存在的工具。
+	if (input.tools.includes("plan_next_step")) {
+		lines.push(
+			"Before acting on a triage result, call `plan_next_step` with the format and the rule ids: every step it returns carries the result that would disprove it.",
+		);
+	}
+
 	const hint = input.page ? PAGE_HINT[input.page] : undefined;
 	if (hint) lines.push(`Current panel page: ${hint}.`);
 

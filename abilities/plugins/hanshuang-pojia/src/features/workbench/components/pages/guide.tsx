@@ -4,6 +4,7 @@ import { Icon } from "../shell/icon";
 import { PageHeader } from "../shell/page-header";
 import { AiButton } from "../shell/ai-button";
 import { useState } from "react";
+import { planNextSteps } from "../../../../domain/case/next-step";
 import type { PageProps } from "./overview";
 
 /**
@@ -27,6 +28,14 @@ const ARTIFACTS: Record<(typeof FLOW)[number], { where: string; out: string; nex
 };
 
 export function GuidePage({ model }: PageProps) {
+
+/** 置信度 → 徽标配色。写死映射，禁止在 JSX 里拼条件类名（拼错了 tailwind 会直接丢掉）。 */
+const STEP_TONE: Record<"strong" | "weak" | "fallback", string> = {
+	strong: "bg-accent-soft text-accent",
+	weak: "bg-surface-3 text-text-3",
+	fallback: "bg-surface-3 text-text-4",
+};
+
 	const { t } = useTranslation();
 	const busy = model.chat.sending;
 	const [active, setActive] = useState<(typeof FLOW)[number]>("intake");
@@ -92,6 +101,36 @@ export function GuidePage({ model }: PageProps) {
 					</div>
 					<div className="px-3.5 py-2 text-[10.5px] leading-relaxed text-text-3">{t(`guide.stage.${active}.body`)}</div>
 				</Card>
+
+				{/* 下一步：与 `plan_next_step` 工具同一份实现，面板与对话给出的计划因此不会分叉。 */}
+				{model.report ? (
+					<Card
+						title={t("guide.next.title")}
+						actions={<span className="font-mono text-[10px] text-text-4">{model.report.findings.length}</span>}
+						bodyClassName="divide-y divide-line-subtle"
+					>
+						{planNextSteps({
+							format: model.report.target.format,
+							ruleIds: model.report.findings.map(item => item.ruleId),
+						}).map(step => (
+							<div key={step.id} className="flex flex-col gap-1 px-3.5 py-2">
+								<div className="flex items-center gap-1.5">
+									<span className={`shrink-0 rounded px-1.5 py-0.5 text-[9.5px] ${STEP_TONE[step.confidence]}`}>
+										{t(`guide.next.confidence.${step.confidence}`)}
+									</span>
+									<span className="min-w-0 flex-1 text-[11.5px] leading-relaxed text-text">{step.hypothesis}</span>
+								</div>
+								<code className="truncate font-mono text-[10px] text-text-2">{`${step.action.tool} ${step.action.args}`}</code>
+								<span className="text-[10.5px] leading-relaxed text-text-3">
+									{t("guide.next.disproof")} {step.disproof}
+								</span>
+								<span className="text-[10.5px] leading-relaxed text-text-4">
+									{t("guide.next.else")} {step.elseDo}
+								</span>
+							</div>
+						))}
+					</Card>
+				) : null}
 
 				<Card title={t("guide.limit.title")} bodyClassName="divide-y divide-line-subtle">
 					{(["execute", "network", "size", "scope", "tools"] as const).map(item => (

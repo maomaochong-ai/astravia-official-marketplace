@@ -712,7 +712,6 @@
   "docs.search.results": "Results",
   "docs.search.empty": "Nothing matches that search.",
   "docs.search.running": "Searching every document…",
-  "docs.reader.back": "Back to list",
   "docs.reader.loading": "Loading the document…",
   "docs.index.loading": "Loading the document index…",
   "blocked.tooLarge.title": "Larger than the plugin can read",
@@ -932,5 +931,15 @@
   "guide.flow.note": "Click a stage to see what it delivers and what the next stage consumes. Stages advance on artefacts, not on time spent.",
   "guide.artifacts.title": "Artefacts",
   "guide.artifacts.out": "This stage produces",
-  "guide.artifacts.next": "What the next stage does with it"
+  "guide.artifacts.next": "What the next stage does with it",
+  "tool.planNextStep.label": "Plan the next step",
+  "guide.next.title": "Next step (from the current report)",
+  "guide.next.confidence.strong": "strong",
+  "guide.next.confidence.weak": "weak",
+  "guide.next.confidence.fallback": "fallback",
+  "guide.next.disproof": "Disproof:",
+  "guide.next.else": "If it fails:",
+  "cases.completeness.sketch": "shape",
+  "cases.completeness.worked": "worked",
+  "cases.completeness.field": "field"
 }
