@@ -81,6 +81,67 @@ describe("the central area fills the panel instead of leaving a gap at the botto
 	});
 });
 
+describe("the sidebar draws one palette, not five", () => {
+	it("has no decorative left bars: rows carry a tone dot instead", () => {
+		const sidebar = read("src/features/workbench/components/shell/sidebar.tsx");
+		const status = read("src/features/workbench/components/shell/sidebar-status.tsx");
+		const css = read("src/style.css");
+		// 侧栏与状态区都不再引用带左边饰条的类。
+		expect(sidebar).not.toContain("fb-step");
+		expect(status).not.toContain("fb-step");
+		// 饰条类本身也已删除，否则它是没人用的僵尸样式。
+		expect(css).not.toMatch(/\.fb-step\s*\{/);
+		// 中性行 + 折叠区存在，且行样式没有 border-left。
+		expect(css).toMatch(/\.fb-row\s*\{[^}]*display:\s*flex/);
+		expect(css).not.toMatch(/\.fb-row\s*\{[^}]*border-left/);
+		expect(css).toMatch(/\.fb-collapse\s*>\s*summary/);
+	});
+
+	it("keeps the live status behind a disclosure instead of eating the nav", () => {
+		const sidebar = read("src/features/workbench/components/shell/sidebar.tsx");
+		// 实时区与迷你时间线都是 <details>：面板矮时导航才不会把它们顶掉。
+		expect(sidebar.match(/<details/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+	});
+
+	it("does not repeat the lab state at the bottom of the sidebar", () => {
+		const sidebar = read("src/features/workbench/components/shell/sidebar.tsx");
+		const statusBar = read("src/features/workbench/components/shell/inject-status-bar.tsx");
+		// lab 只在顶栏那个开关上：侧栏底部与注入状态条都不再出现它。
+		expect(sidebar).not.toContain("lab.onHint");
+		expect(statusBar).not.toContain("LAB");
+	});
+});
+
+describe("lab mode is a switch, on by default", () => {
+	it("renders a real switch with a stable test id", () => {
+		const topBar = read("src/features/workbench/components/shell/top-bar.tsx");
+		expect(topBar).toContain('role="switch"');
+		expect(topBar).toContain('data-testid="lab-switch"');
+		expect(topBar).toContain("aria-checked={lab.enabled}");
+	});
+
+	it("defaults to enabled when nothing was ever stored", () => {
+		const lab = read("src/domain/lab-mode.ts");
+		expect(lab).toMatch(/LAB_DEFAULT: LabState = \{ enabled: true/);
+		// kernel 侧与 UI 侧必须同一口径，否则开关显示开、注入却说关。
+		expect(read("src/runtime/contributions.ts")).toContain("LAB_DEFAULT");
+		expect(read("src/features/workbench/hooks/use-lab.ts")).toContain("LAB_DEFAULT");
+	});
+});
+
+describe("controls cannot be squeezed out of view", () => {
+	it("the segmented control refuses to shrink", () => {
+		// 它经常和标题、关闭按钮同处一行；被挤压时宽度会归零，表现为「切换按钮消失」。
+		expect(read("src/features/workbench/components/shell/segmented-control.tsx")).toContain("shrink-0");
+	});
+
+	it("the injection block scrolls inside a bounded height", () => {
+		const card = read("src/features/workbench/components/prompts/inject-block-card.tsx");
+		expect(card).toContain("max-h-[40vh]");
+		expect(card).toContain("overflow-auto");
+	});
+});
+
 describe("skills are listed where the host collects them, without flooding the slash menu", () => {
 	it("all nine are in the ability catalog; only the core memory skill is in the picker", () => {
 		const manifest = JSON.parse(read("plugin.json")) as {

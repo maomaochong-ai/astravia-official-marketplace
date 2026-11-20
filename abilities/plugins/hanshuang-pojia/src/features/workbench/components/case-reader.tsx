@@ -49,7 +49,7 @@ export function CaseReader({ record, docs }: CaseReaderProps) {
 					{t("cases.reader.loading")}
 				</div>
 			) : docs.body !== null ? (
-				<div className="fb-scroll max-h-[560px] overflow-y-auto px-3.5 py-3">
+				<div className="fb-scroll fb-fill-scroll min-h-0 overflow-y-auto px-3.5 py-3">
 					<Markdown source={docs.body} />
 				</div>
 			) : null}

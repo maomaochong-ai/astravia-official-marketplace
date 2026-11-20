@@ -196,38 +196,23 @@
 }
 
 /*
- * 上游工作流示意图（seep-kit docs/images/render_workflow.html）的视觉语言，落到面板里：
- *   · 步骤盒：左侧 3px 强调条 + 底色，代替「一整块卡片里堆五行字」；
- *   · 指标 chip：值用强调色、标签用灰，宽高固定，不会随数字长短跳动；
- *   · 勾选行：等宽对勾 + 一行证据，不用项目符号。
- * 颜色一律从宿主 token 取（accent / purple / risk-*），不写死十六进制——
- * 浅色主题下同一套类名仍然可读。
+ * 侧栏与状态区只保留两种容器：
+ *   · `.fb-row`   —— 一行状态 / 一条时间线，**没有左边饰条**；语气靠一颗圆点，
+ *                    因为一屏五种颜色的竖边和导航选中态互相抢。
+ *   · `.fb-chip`  —— 固定内边距的小标签，字重与数字宽度固定，不随内容跳动。
+ * 两者都只用中性色 + 一个强调色（accent）；风险三色只在圆点上出现。
  */
-.fb-step {
-	border-left: 3px solid var(--color-accent, #38bdf8);
-	border-radius: 0 8px 8px 0;
-	background: var(--color-surface-2, #141c2e);
-	padding: 8px 11px;
+.fb-row {
 	display: flex;
-	flex-direction: column;
-	gap: 3px;
+	align-items: flex-start;
+	gap: 6px;
+	padding: 4px 8px;
+	border-radius: 6px;
+	transition: background-color 120ms ease;
 }
 
-/* 语气变体：只换强调条，不换底，否则一屏三色会抢注意力。 */
-.fb-step[data-tone="ok"] {
-	border-left-color: var(--color-risk-low, #4ade80);
-}
-.fb-step[data-tone="warn"] {
-	border-left-color: var(--color-risk-medium, #fb923c);
-}
-.fb-step[data-tone="alert"] {
-	border-left-color: var(--color-risk-high, #fb7185);
-}
-.fb-step[data-tone="violet"] {
-	border-left-color: var(--color-purple, #c084fc);
-}
-.fb-step[data-tone="idle"] {
-	border-left-color: var(--color-line-strong, #334155);
+.fb-row:hover {
+	background: var(--color-surface-hover, #1a2334);
 }
 
 .fb-chip {
@@ -248,14 +233,32 @@
 }
 
 /*
- * 正文阅读：上游把长文本限在 ~78ch（可读上限），这里同样。
- * 不限宽时光标行会拉到 900px 以上，眼球每行回扫两次，读起来像在扫表格。
- * max-width 用 ch 而不是 px：字号跟着面板变时，行宽保持不变。
+ * 折叠区：`<details>` + `<summary>` 自带的三角隐藏，改用 chevron 旋转。
+ * 不用 JS 状态 —— 折叠是纯呈现，存下来反而会在换面板宽度时错位。
+ */
+.fb-collapse > summary::-webkit-details-marker {
+	display: none;
+}
+
+.fb-collapse > summary > svg {
+	transition: transform 120ms ease;
+	flex-shrink: 0;
+}
+
+.fb-collapse[open] > summary > svg {
+	transform: rotate(90deg);
+}
+
+/*
+ * 正文阅读宽度：
+ *   · 限 72ch（可读上限）但**左对齐**——居中会在宽面板里左右各出一条空白，
+ *     看起来像没排完版；
+ *   · max-width 用 ch 而不是 px：字号跟着面板变时，行宽保持不变。
  */
 .fb-prose {
-	max-width: 78ch;
-	margin-inline: auto;
+	max-width: 72ch;
 }
+
 
 @container (max-width: 620px) {
 	.fb-main {

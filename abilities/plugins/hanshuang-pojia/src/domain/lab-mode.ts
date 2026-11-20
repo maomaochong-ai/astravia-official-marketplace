@@ -57,6 +57,14 @@ export interface LabState {
 export const LAB_OFF: LabState = { enabled: false, since: null };
 
 /**
+ * 默认开启。
+ *
+ * 装完插件就该按作战手册干活；关掉是用户的选择，不是默认。
+ * `since: null` 表示「从未显式开启过」——时间戳只在用户真的拨过开关后才有意义。
+ */
+export const LAB_DEFAULT: LabState = { enabled: true, since: null };
+
+/**
  * 开关状态机。重复进入保留第一次的时间戳——「什么时候开的」是可追溯的事实，
  * 不能被后面每句 `lab：` 冲掉；没有口令时状态原样返回，不写盘。
  */

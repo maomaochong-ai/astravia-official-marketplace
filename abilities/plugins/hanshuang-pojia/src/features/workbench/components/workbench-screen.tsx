@@ -104,7 +104,7 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 				lab={model.lab.state}
 				onToggleLab={() => model.lab.set(!model.lab.state.enabled)}
 			/>
-			<InjectStatusBar lab={model.lab.state} library={model.promptLibrary} />
+			<InjectStatusBar library={model.promptLibrary} />
 			<div className="flex min-h-0 flex-1">
 				<Sidebar
 					page={model.page}

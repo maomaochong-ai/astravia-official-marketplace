@@ -7,15 +7,8 @@ export interface SidebarStatusProps {
 	rail: boolean;
 }
 
-/** 语气到步骤盒强调条：与侧栏导航的分组色同一套语义。 */
-const TONE: Record<LiveTone, "ok" | "warn" | "alert" | "idle"> = {
-	live: "ok",
-	alert: "alert",
-	idle: "idle",
-};
-
 const DOT: Record<LiveTone, string> = {
-	live: "bg-risk-low",
+	live: "bg-accent",
 	alert: "bg-risk-high",
 	idle: "bg-text-4",
 };
@@ -23,9 +16,9 @@ const DOT: Record<LiveTone, string> = {
 /**
  * 侧栏实时区：会话 / 本轮 / 最近输出 / 当前样本 / 注入五个点。
  *
- * 用步骤盒而不是「标签 + 值」两行：这五个点回答的是「刚才发生了什么」，
- * 一行状态 + 一行细节的结构跟上游工作流里的步骤盒同形，扫一眼就能定位哪一步不对。
- * 规模量（条数 / 段数 / 格式）从工具载荷里挑，不铺开整个对象——侧栏只有一行的宽度。
+ * 只画一颗圆点 + 三行文字，**不画左边那条强调竖线**：五个点的颜色本来就不同，
+ * 再给每行一条竖边就成了五种配色，和导航的选中态冲突。
+ * 语气只用圆点表达：live = 强调色，alert = 风险红，idle = 灰。
  */
 export function SidebarStatus({ status, rail }: SidebarStatusProps) {
 	const { t } = useTranslation();
@@ -75,33 +68,40 @@ export function SidebarStatus({ status, rail }: SidebarStatusProps) {
 		},
 	];
 
-	return (
-		<div className={`shrink-0 border-t border-line-subtle ${rail ? "px-2 pb-2 pt-2" : "px-2 pb-1.5 pt-2"}`} data-testid="sidebar-status">
-			{rail ? null : <div className="px-1 pb-1 text-[9.5px] font-medium uppercase tracking-wider text-text-4">{t("status.title")}</div>}
-			<div className={rail ? "space-y-1.5" : "space-y-1"}>
+	if (rail) {
+		return (
+			<div className="flex flex-col items-center gap-1.5">
 				{rows.map(row => (
-					<div
+					<span
 						key={row.id}
 						title={`${row.label} · ${row.value}${row.detail ? ` · ${row.detail}` : ""}`}
-						data-tone={TONE[row.tone]}
 						data-row={row.id}
-						className={rail ? "mx-auto flex size-4 items-center justify-center" : "fb-step !gap-0.5 !py-1 !pl-2.5"}
-					>
-						{rail ? (
-							<span className={`size-1.5 rounded-full ${DOT[row.tone]}`} />
-						) : (
-							<>
-								<span className="flex items-center gap-1.5">
-									<span className={`size-1.5 shrink-0 rounded-full ${DOT[row.tone]}`} />
-									<span className="truncate text-[10px] text-text-3">{row.label}</span>
-								</span>
-								<span className="truncate text-[11px] text-text">{row.value}</span>
-								{row.detail ? <span className="truncate text-[9.5px] text-text-4">{row.detail}</span> : null}
-							</>
-						)}
-					</div>
+						data-tone={row.tone}
+						className={`size-1.5 rounded-full ${DOT[row.tone]}`}
+					/>
 				))}
 			</div>
+		);
+	}
+
+	return (
+		<div className="space-y-0.5">
+			{rows.map(row => (
+				<div
+					key={row.id}
+					title={`${row.label} · ${row.value}${row.detail ? ` · ${row.detail}` : ""}`}
+					data-row={row.id}
+					data-tone={row.tone}
+					className="fb-row"
+				>
+					<span aria-hidden className={`mt-1 size-1.5 shrink-0 rounded-full ${DOT[row.tone]}`} />
+					<div className="min-w-0 flex-1 leading-tight">
+						<span className="truncate text-[10px] text-text-4">{row.label}</span>
+						<span className="block truncate text-[11px] text-text">{row.value}</span>
+						{row.detail ? <span className="block truncate text-[9.5px] text-text-4">{row.detail}</span> : null}
+					</div>
+				</div>
+			))}
 		</div>
 	);
 }

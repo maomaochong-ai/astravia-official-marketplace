@@ -168,6 +168,7 @@ export function PromptsPage({ model }: PageProps) {
 						title={t("prompt.libraryTitle")}
 						bodyClassName="p-0"
 						fill
+						className="min-h-[220px]"
 						actions={<span className="font-mono text-[10px] text-text-4">{filtered.length}</span>}
 					>
 						<div className="shrink-0 border-b border-line-subtle p-3">

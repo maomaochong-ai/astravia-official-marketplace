@@ -27,7 +27,13 @@ type View = "preview" | "raw";
 
 export function PromptPreviewDialog({ open, prompt, onClose, onEdit, notify }: PromptPreviewDialogProps) {
 	const { t } = useTranslation();
+	// 换一条提示词就回到「预览」：上一条停在原文，不代表这一条也要看原文。
 	const [view, setView] = useState<View>("preview");
+	const [lastId, setLastId] = useState<string | null>(null);
+	if (prompt && prompt.id !== lastId) {
+		setLastId(prompt.id);
+		setView("preview");
+	}
 
 	if (!open || !prompt) return null;
 
@@ -45,7 +51,7 @@ export function PromptPreviewDialog({ open, prompt, onClose, onEdit, notify }: P
 				onClick={event => event.stopPropagation()}
 				data-testid="prompt-preview-dialog"
 			>
-				<div className="flex shrink-0 items-start gap-3 border-b border-line-subtle px-4 py-3">
+				<div className="flex shrink-0 flex-wrap items-start gap-3 border-b border-line-subtle px-4 py-3">
 					<div className="min-w-0 flex-1">
 						<div className="flex items-center gap-2">
 							{prompt.active ? (

@@ -424,7 +424,8 @@ describe("workbench state", () => {
 		const api = makeBridge();
 		await open(api);
 		await go("settings");
-		fireEvent.click(screen.getAllByRole("switch")[0]!);
+		// 顶栏的 lab 开关也是 role=switch，且 DOM 更靠前；这里要的是设置页的规则开关。
+		fireEvent.click(screen.getAllByRole("switch").filter(node => node.getAttribute("data-testid") !== "lab-switch")[0]!);
 		await analyseDemo(api);
 		await waitFor(() => expect(api.analyse).toHaveBeenLastCalledWith(SAMPLE, { mode: "summary", disabledRules: [expect.any(String)] }));
 	});

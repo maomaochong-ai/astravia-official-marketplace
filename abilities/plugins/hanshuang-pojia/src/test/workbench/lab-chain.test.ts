@@ -86,8 +86,9 @@ describe("lab chain survives storage failures", () => {
 		registerRuntimeContributions(harness.ctx);
 		harness.breakRead(true);
 
-		// 读失败 + 从未开过：只能是关闭，不能凭空打开。
-		expect(await blockIds(harness)).toHaveLength(1);
+		// 读失败 + 从未存过：2.17.13 起默认开启，所以这里**应该有**契约块。
+		// 与旧策略（读失败即关闭）相反，是有意改的：装完就能干活，关掉是用户的选择。
+		expect(await blockIds(harness)).toHaveLength(2);
 
 		// 用户说了一次 lab：即使是写失败也要让本会话记住。
 		harness.breakWrite(true);
@@ -131,7 +132,8 @@ describe("lab chain survives storage failures", () => {
 
 		const second = makeHarness();
 		registerRuntimeContributions(second.ctx);
-		// 缓存按 storage 实例隔离：一个会话开的环境不得漏到另一个。
-		expect(await blockIds(second)).toHaveLength(1);
+		// 缓存按 storage 实例隔离：第二个 harness 是全新存储，走默认开启（2 块）；
+		// 关键是它不能受第一个 harness 的影响 —— 两边都是 2 块，且各自独立读自己的文件。
+		expect(await blockIds(second)).toHaveLength(2);
 	});
 });

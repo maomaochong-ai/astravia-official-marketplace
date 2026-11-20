@@ -14,9 +14,15 @@ interface Harness {
 }
 
 /** 宿主 surface 的最小替身：只要能读能写状态文件、能收下注册的贡献就够。 */
-function makeHarness(lab?: { enabled: boolean; since: string | null }): Harness {
+/**
+ * 默认写一份**显式关闭**的状态：2.17.13 起「没有存储记录」等于默认开启，
+ * 所以「测 lab 关闭的行为」必须写出 `enabled:false`，不能靠文件不存在来表达。
+ */
+const LAB_OFF_STATE = { enabled: false, since: null };
+
+function makeHarness(lab: { enabled: boolean; since: string | null } = LAB_OFF_STATE): Harness {
 	const files = new Map<string, string>();
-	if (lab) files.set(LAB_STATE_PATH, JSON.stringify(lab));
+	files.set(LAB_STATE_PATH, JSON.stringify(lab));
 	const providers: Harness["providers"] = [];
 	const hooks: Harness["hooks"] = [];
 	const storage = {
@@ -74,6 +80,19 @@ describe("registerRuntimeContributions", () => {
 		expect(onBlocks).toHaveLength(2);
 		expect(onBlocks[1].block?.id).toBe(SYSTEM_PROMPT_BLOCK_ID);
 		expect(gatesOf(onOps).every(op => op.enabled === true)).toBe(true);
+	});
+
+	it("defaults to lab on when nothing was ever stored", async () => {
+		// 2.17.13 起的策略：装完就能干活。没有存储记录 = 默认开启；
+		// 存过 `enabled:false` 才是真的关（上面那些用例覆盖那条路）。
+		const harness = makeHarness();
+		harness.files.clear();
+		registerRuntimeContributions(harness.ctx);
+		type Operation = { type?: string; block?: { id: string } };
+		const ops = (await harness.providers[0].handler({})) as Operation[];
+		const blocks = ops.filter(op => op.type === "addBlock");
+		expect(blocks).toHaveLength(2);
+		expect(blocks[1].block?.id).toBe(SYSTEM_PROMPT_BLOCK_ID);
 	});
 });
 

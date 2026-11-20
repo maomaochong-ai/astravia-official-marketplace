@@ -1,7 +1,7 @@
 import { readJsonFile, writeJsonFile } from "@astravia-org/plugin-sdk";
 import type { ConversationScenario, Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { KERNEL_BLOCK_ID, KERNEL_PRIORITY, buildKernelBlock } from "../domain/kernel";
-import { LAB_OFF, parseLabCommand, type LabState } from "../domain/lab-mode";
+import { LAB_DEFAULT, LAB_OFF, parseLabCommand, type LabState } from "../domain/lab-mode";
 import { LAB_STATE_PATH } from "../features/workbench/hooks/use-lab";
 import { SYSTEM_PROMPT_BLOCK_ID, SYSTEM_PROMPT_BODY, SYSTEM_PROMPT_PRIORITY } from "../domain/system-prompt.generated";
 import { type RefusalSignal, planRecovery } from "../domain/refusal";
@@ -66,11 +66,18 @@ async function readLab(ctx: PluginContext): Promise<LabState> {
 	if (cached) return cached;
 	try {
 		const stored = await readJsonFile<LabState>(ctx.storage, LAB_STATE_PATH);
-		const next: LabState = stored?.enabled ? { enabled: true, since: stored.since ?? null } : LAB_OFF;
+		// 没有存储记录 = 首次运行，按默认开启；存过 false 才真的是关。
+		const next: LabState =
+			stored === null || stored === undefined
+				? LAB_DEFAULT
+				: stored.enabled
+					? { enabled: true, since: stored.since ?? null }
+					: LAB_OFF;
 		rememberLab(ctx, next);
 		return next;
 	} catch {
-		return LAB_OFF;
+		// 读盘失败也不能当成「用户关了」：默认开启的语义就是「没明确关过就是开」。
+		return LAB_DEFAULT;
 	}
 }
 

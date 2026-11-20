@@ -42,6 +42,31 @@
   正文与母本 byte-for-byte 相等、长度 < 16000、block id 以 `plugin.hanshuang-pojia.` 开头、priority ∈ (0,1000)。
 - `--check` 模式用于 CI：母本与生成物漂移就红。
 
+## 拒答探测（`probe_refusal`）
+
+对齐上游 `Tool/scripts/probe-refusal.py`：四档递进强度的授权审计提示词，逐档发一次，出一张对照表。
+与上游的差别是**对齐而非简化**：判定复用 `domain/refusal.ts`（五类 + 交付物豁免），上游的 `sorry`
+关键词表会把正常回答误判；空正文单列为 `empty`（服务端拦截，修法不同）；密钥由调用方传入并全程打码。
+
+两条入口，用法不同：
+
+| 目标 | 入口 | 第一条命令 |
+|---|---|---|
+| 本地验证探测链路（无密钥、无白名单） | `npm run verify:probe` | `node scripts/probe-refusal-selftest.mjs` |
+| 测一个真实端点 | 对话里调 `probe_refusal` | `probe_refusal baseUrl=http://127.0.0.1:8788/v1 model=<id> level=4` |
+
+网络要么在本机、要么先在 `plugin.json` 的 `network.allowedHosts` 里加主机：
+
+```json
+"network": { "allowedHosts": ["127.0.0.1", "api.example.com"] }
+```
+
+不加白名单时工具不会报错成「探测失败」，而是明确说是白名单拦的（错误文本带 `allowedHosts`）。
+
+`scripts/probe-refusal-selftest.mjs` 起一个 127.0.0.1 的 OpenAI 兼容桩，按档位回放
+正常回答 / 政策拒绝 / 空正文四种形态，把梯度、判定、汇总、表格串起来跑一遍 ——
+它验的是真实 HTTP 往返，不是 mock 分类器。
+
 ## 边界
 
 - 判定目前是**正则 + 词表级**，不是语义级；已知有漏判形态（X3）。修法是补高特异度模式。

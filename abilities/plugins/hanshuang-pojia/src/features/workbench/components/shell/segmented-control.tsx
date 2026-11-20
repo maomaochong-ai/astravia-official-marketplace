@@ -29,10 +29,12 @@ export function SegmentedControl<T extends string>({
 	const id = useId();
 	const padding = size === "sm" ? "px-2.5 py-1 text-[11px]" : "px-3 py-1.5 text-[12px]";
 	return (
+		// shrink-0：它常与标题、关闭按钮同处一行，被挤压时宽度会归零——
+		// 表现为「切换按钮消失」，看起来像功能坏了。
 		<div
 			role="radiogroup"
 			aria-label={ariaLabel}
-			className="inline-flex items-center rounded-lg bg-surface-3 p-0.5"
+			className="inline-flex max-w-full shrink-0 flex-wrap items-center rounded-lg bg-surface-3 p-0.5"
 		>
 			{items.map(item => {
 				const active = item.value === value;

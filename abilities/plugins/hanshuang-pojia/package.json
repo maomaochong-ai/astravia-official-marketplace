@@ -1,6 +1,6 @@
 {
   "name": "@astravia-marketplace/hanshuang-pojia",
-  "version": "2.17.12",
+  "version": "2.17.13",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,7 +16,8 @@
     "sync:packs": "node scripts/sync-packs.mjs",
     "check:cases": "node scripts/check-precedent-package.mjs --all",
     "verify:generated": "node scripts/sync-docs.mjs --check && node scripts/sync-system-prompt.mjs --check && node scripts/sync-tool-index.mjs --check && node scripts/sync-precedents.mjs --check && node scripts/sync-packs.mjs --check && node scripts/sync-skill-library.mjs --check",
-    "verify:docs": "node scripts/check-docs-deps.mjs --strict"
+    "verify:docs": "node scripts/check-docs-deps.mjs --strict",
+    "verify:probe": "node scripts/probe-refusal-selftest.mjs"
   },
   "devDependencies": {
     "@astravia-org/plugin-sdk": "^0.3.10",

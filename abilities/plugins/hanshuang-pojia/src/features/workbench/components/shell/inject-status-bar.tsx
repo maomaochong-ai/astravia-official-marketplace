@@ -1,43 +1,34 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import type { LabState } from "../../../../domain/lab-mode";
 import type { PromptLibrary } from "../../../../domain/prompt-library";
 import { estimateTokens, getActivePrompt } from "../../../../domain/prompt-library";
 
 export interface InjectStatusBarProps {
-	lab: LabState;
 	library: PromptLibrary;
 }
 
 /**
- * 注入状态条：显示当前激活的提示词、注入模式、token 数，以及 Lab 状态。
- * 等价于寒霜注入工具的 RoleCardStrip。
+ * 注入状态条：只回答「当前注入的是哪份提示词」。
+ *
+ * lab 状态不在这里 —— 它只在顶栏那个开关上显示。同一个事实在两处出现，
+ * 一处是开关、一处是徽标，颜色还不一样，读起来像两件事。
+ * 没有激活提示词时整条不渲染，省下 28px 高度。
  */
-export function InjectStatusBar({ lab, library }: InjectStatusBarProps) {
+export function InjectStatusBar({ library }: InjectStatusBarProps) {
 	const { t } = useTranslation();
 	const active = getActivePrompt(library);
 
-	if (!active && !lab.enabled) return null;
+	if (!active) return null;
 
 	return (
-		<div className="flex h-7 shrink-0 items-center gap-2 overflow-hidden border-b border-line-subtle bg-surface-3/50 px-4 text-[10.5px]">
-			{lab.enabled ? (
-				<span className="flex items-center gap-1 rounded-full bg-risk-low/10 px-2 py-0.5 font-medium text-risk-low">
-					<span className="size-1.5 rounded-full bg-risk-low" />
-					LAB
-				</span>
-			) : null}
-			{active ? (
-				<span className="flex items-center gap-1.5 rounded-full bg-purple/10 px-2 py-0.5 font-medium text-purple">
-					<span className="truncate max-w-[160px]">{active.name}</span>
-					<span className="text-text-4">·</span>
-					<span className="text-text-3">{t(`prompt.mode.${active.mode}`)}</span>
-					<span className="text-text-4">·</span>
-					<span className="text-text-3">{t("prompt.editor.tokens", { count: estimateTokens(active.content) })}</span>
-				</span>
-			) : null}
-			{!active && lab.enabled ? (
-				<span className="text-text-4">{t("inject.noActivePrompt")}</span>
-			) : null}
+		<div className="flex h-7 shrink-0 items-center gap-2 overflow-hidden border-b border-line-subtle bg-surface-3/40 px-4 text-[10.5px]">
+			<span className="flex min-w-0 items-center gap-1.5 text-text-2">
+				<span className="size-1.5 shrink-0 rounded-full bg-accent" />
+				<span className="max-w-[200px] truncate font-medium">{active.name}</span>
+				<span className="text-text-4">·</span>
+				<span className="shrink-0 text-text-3">{t(`prompt.mode.${active.mode}`)}</span>
+				<span className="text-text-4">·</span>
+				<span className="shrink-0 text-text-3">{t("prompt.editor.tokens", { count: estimateTokens(active.content) })}</span>
+			</span>
 		</div>
 	);
 }
