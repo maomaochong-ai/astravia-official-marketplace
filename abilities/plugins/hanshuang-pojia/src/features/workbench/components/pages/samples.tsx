@@ -34,6 +34,20 @@ export function SamplesPage({ model }: PageProps) {
 			 * 换成 flex：宽屏横排、窄屏竖排，两者都能拿到有界高度。
 			 */}
 			<div className="fb-page fb-fill @min-[880px]:flex-row">
+				{/* 当前样本：滚出 picker 视野后仍要知道「正在看哪一份」。 */}
+				{model.selectedPath ? (
+					<div className="flex shrink-0 flex-wrap items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 ring-1 ring-line-subtle">
+						<span className="shrink-0 text-[9.5px] uppercase tracking-wider text-text-4">{t("samples.current")}</span>
+						<span className="min-w-0 flex-1 fb-wrap font-mono text-[11.5px] text-text-2" title={model.selectedPath}>
+							{model.selectedPath}
+						</span>
+						{model.report ? (
+							<span className="shrink-0 font-mono text-[10.5px] tabular-nums text-text-3">
+								{model.report.risk.score} · {model.report.risk.grade}
+							</span>
+						) : null}
+					</div>
+				) : null}
 				<Card
 					title={t("page.samples.picker")}
 					className="min-h-[180px] max-h-[46vh] @min-[880px]:max-h-none @min-[880px]:w-[260px] @min-[880px]:shrink-0"

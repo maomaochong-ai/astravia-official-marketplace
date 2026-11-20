@@ -33,6 +33,19 @@ const STAGE_PAGES: Record<Stage, readonly PageId[]> = {
 	review: ["selfcheck", "activity"],
 };
 
+/**
+ * 三条任务线。
+ *
+ * 这一页原来的问题是「按工序讲」，而人来这里问的是「我要做 X，从哪开始」。
+ * 工序线回答的是「整体长什么样」，任务线回答的是「我现在该点哪」。两者都要，但顺序反过来：
+ * 先任务，后全貌。
+ */
+const TRACKS = [
+	{ id: "assess", steps: ["intake", "static", "knowledge", "deliver"] as const },
+	{ id: "prompt", steps: ["knowledge", "dynamic"] as const },
+	{ id: "harden", steps: ["deliver", "review"] as const },
+] as const;
+
 /** 边界：反向清单。折叠起来是因为它不推进任何事，但要能随时查。 */
 const LIMITS = ["execute", "network", "size", "scope", "tools"] as const;
 
@@ -57,16 +70,43 @@ export function GuidePage({ model }: PageProps) {
 			<PageHeader
 				title={t("page.guide.title")}
 				description={t("page.guide.lead")}
-				actions={
-					<>
-						<AiButton label={t("ai.workflow")} onClick={() => model.ask("continue")} busy={busy} />
-						<AiButton label={t("ai.report")} onClick={() => model.ask("report")} busy={busy} disabled={!model.report} />
-						<AiButton label={t("ai.toolchain")} onClick={() => model.ask("toolchain")} busy={busy} />
-					</>
-				}
+				// 页头只留一个：三个按钮在 420px 面板下会挤成三行，而它们讲的是同一件事
+				// ——「把这条流程交给对话」。另外两个挪进「下一步」卡底，与计划放在一起。
+				actions={<AiButton label={t("ai.workflow")} onClick={() => model.ask("continue")} busy={busy} />}
 			/>
 
 			<div className="fb-page">
+				{/* 任务线：先回答「我要做哪件事、从哪开始」。 */}
+				<div className="grid shrink-0 gap-2 @min-[620px]:grid-cols-3">
+					{TRACKS.map(track => (
+						<Card key={track.id} title={t(`guide.track.${track.id}.title`)} bodyClassName="flex flex-col gap-1.5 p-3">
+							<p className="text-[10.5px] leading-relaxed text-text-3">{t(`guide.track.${track.id}.body`)}</p>
+							<ol className="flex flex-col gap-0.5">
+								{track.steps.map((step, order) => (
+									<li key={step} className="flex items-baseline gap-1.5 text-[10.5px] text-text-2">
+										<span className="shrink-0 font-mono text-[9.5px] tabular-nums text-text-4">{order + 1}</span>
+										<button
+											type="button"
+											onClick={() => setActive(step)}
+											className="min-w-0 flex-1 fb-wrap text-left transition-colors hover:text-accent"
+										>
+											{t(`guide.stage.${step}.title`)}
+										</button>
+									</li>
+								))}
+							</ol>
+							<button
+								type="button"
+								onClick={() => model.go(STAGE_PAGES[track.steps[0]][0] ?? "samples")}
+								className="mt-auto inline-flex items-center gap-1 self-start rounded-md bg-surface-3 px-2 py-1 text-[10.5px] text-text-2 transition-colors hover:bg-accent-soft hover:text-accent"
+							>
+								{t("guide.track.start")}
+								<Icon name="chevron" className="size-3" />
+							</button>
+						</Card>
+					))}
+				</div>
+
 				{/* 工序线：一行到底，横向滚。箭头始终贴在段后，不折到下一行行尾。 */}
 				<Card title={t("guide.flow.title")} bodyClassName="p-3">
 					<div className="fb-scroll -mx-3 overflow-x-auto px-3">
@@ -92,7 +132,9 @@ export function GuidePage({ model }: PageProps) {
 													{t(`guide.stage.${stage}.title`)}
 												</span>
 											</span>
-											<span className="truncate text-[10.5px] text-text-4">{STAGE_PAGES[stage].map(pageLabel).join(" / ")}</span>
+											<span className="line-clamp-2 text-[10.5px] leading-snug text-text-4">
+												{STAGE_PAGES[stage].map(pageLabel).join(" / ")}
+											</span>
 										</button>
 										{index < FLOW.length - 1 ? (
 											<span aria-hidden className="flex shrink-0 items-center px-0.5 text-text-4">
@@ -184,6 +226,11 @@ export function GuidePage({ model }: PageProps) {
 							</div>
 						))
 					)}
+					{/* 另外两个入口：与计划同处一卡 —— 它们都是「让对话接着干」。 */}
+					<div className="flex flex-wrap items-center gap-1.5 px-3.5 py-2">
+						<AiButton label={t("ai.report")} onClick={() => model.ask("report")} busy={busy} disabled={!model.report} />
+						<AiButton label={t("ai.toolchain")} onClick={() => model.ask("toolchain")} busy={busy} />
+					</div>
 				</Card>
 
 				{/* 边界：反向清单折叠收起。它不推进任何事，但随时可查；主操作留在页头。 */}

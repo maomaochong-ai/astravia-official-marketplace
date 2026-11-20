@@ -1,4 +1,5 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
+import { memo } from "react";
 import type { LabState } from "../../../../domain/lab-mode";
 import type { LiveStatus } from "../../live-status";
 import { NAV, type PageId } from "../../state";
@@ -52,7 +53,7 @@ const DOT_TONE: Record<"live" | "alert", string> = {
  *
  * 配色只剩两级：中性（surface / text 阶）与一个强调色（accent）+ 风险三色（只用于圆点）。
  */
-export function Sidebar({ page, onNavigate, status, timeline, rail, collapsed, onToggle, width, counts }: SidebarProps) {
+function SidebarView({ page, onNavigate, status, timeline, rail, collapsed, onToggle, width, counts }: SidebarProps) {
 	const { t } = useTranslation();
 	const recent = timeline.spans.slice(0, rail ? 0 : 3);
 	const liveCount = [status.session, status.run, status.output, status.sample, status.inject].filter(item => item?.tone !== "idle").length;
@@ -95,7 +96,7 @@ export function Sidebar({ page, onNavigate, status, timeline, rail, collapsed, o
 						{rail ? (
 							groupIndex > 0 ? <div aria-hidden className="mx-auto my-1.5 h-px w-5 bg-line-subtle" /> : null
 						) : (
-							<div className="px-2 pb-1 text-[9.5px] font-medium uppercase tracking-wider text-text-4">{t(`nav.group.${group.id}`)}</div>
+							<div className="px-2 pb-1 text-[9.5px] font-medium tracking-wide text-text-4">{t(`nav.group.${group.id}`)}</div>
 						)}
 						<div className={rail ? "space-y-1" : "space-y-0.5"}>
 							{group.items.map(item => {
@@ -115,7 +116,7 @@ export function Sidebar({ page, onNavigate, status, timeline, rail, collapsed, o
 										data-nav-id={item.id}
 										className={
 											rail
-												? `relative mx-auto flex size-8 items-center justify-center rounded-md transition-colors ${
+												? `fb-rail relative mx-auto flex size-8 items-center justify-center rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none ${
 														active ? "bg-surface-4 text-text" : "text-text-2 hover:bg-surface-hover hover:text-text"
 													}`
 												: `relative flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none ${
@@ -199,3 +200,9 @@ export function Sidebar({ page, onNavigate, status, timeline, rail, collapsed, o
 		</aside>
 	);
 }
+
+/**
+ * memo：侧栏有 20+ 个导航按钮 + 两个折叠区，而它的输入（page / status / timeline / width / counts）
+ * 大部分时候不变。不 memo 的话，一次筛选或一次拖宽都会把它整棵重渲染。
+ */
+export const Sidebar = memo(SidebarView);

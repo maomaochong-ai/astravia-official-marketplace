@@ -6,7 +6,7 @@ import { entropyProfile, type EntropyBucket } from "../../../domain/entropy";
 import { stringKind, type StringKind } from "../../../domain/string-kinds";
 import { renderMarkdown, reportToJson, type TriageReport } from "../../../domain/report/report";
 import { scopeForSample } from "../../../domain/sample-scope";
-import type { ProbeRecord } from "../../../domain/refusal-probe";
+import { EMPTY_PROFILE, PROBE_PROFILE_PATH, type ProbeProfile, type ProbeRecord } from "../../../domain/refusal-probe";
 import type { ReportFile } from "../bridge";
 import { resolveSamplePath } from "../../../domain/sample-path";
 import { readNativeFacts } from "../../../domain/native/detect";
@@ -152,7 +152,13 @@ export interface WorkbenchModel {
 	/** 面板自己沉淀的案例库：按工作区隔离，与 cases/ 扫描结果并列展示。 */
 	myCases: MyCasesModel;
 	/** 上一次 `probe_refusal` 的落盘记录（工具写、面板读）。 */
-	probe: { record: ProbeRecord | null; refresh(): void };
+	probe: {
+		record: ProbeRecord | null;
+		refresh(): void;
+		/** 要测谁：端点 / 模型 / 风格 / 语言 / 档数。非机密，插件作用域持久化。 */
+		profile: ProbeProfile;
+		patchProfile(patch: Partial<ProbeProfile>): void;
+	};
 	/** 把注入/卸载脚本落到工作区 `.hanshuang/inject/`；返回相对路径或 null。 */
 	saveInjectScript(name: string, content: string): Promise<string | null>;
 	/** 工作区 reports/ 下的报告（对话里产出的）。 */
@@ -423,6 +429,50 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 
 	// 探测记录：工具跑完就落盘，面板进提示词页时读一次；不轮询。
 	const [probeRecord, setProbeRecord] = useState<ProbeRecord | null>(null);
+	/**
+	 * 探测档案：端点与模型这类**非机密**信息。
+	 *
+	 * 存在插件作用域（不跟会话、不跟工作区）：同一个端点在不同会话里要测的还是同一个。
+	 * 密钥不在这里 —— 见 domain/refusal-probe.ts 的 PROBE_PROFILE_PATH 注释。
+	 */
+	const [probeProfile, setProbeProfile] = useState<ProbeProfile>(EMPTY_PROFILE);
+	const probeProfileLoaded = useRef(false);
+	useEffect(() => {
+		let alive = true;
+		void bridge
+			.readState<ProbeProfile>(PROBE_PROFILE_PATH)
+			.then(stored => {
+				if (!alive) return;
+				if (stored && typeof stored === "object") {
+					// 只合并已知字段：旧版本多写的键不该被带进表单。
+					setProbeProfile({
+						baseUrl: typeof stored.baseUrl === "string" ? stored.baseUrl : "",
+						model: typeof stored.model === "string" ? stored.model : "",
+						apiStyle: stored.apiStyle === "anthropic" ? "anthropic" : "openai",
+						authHeader: typeof stored.authHeader === "string" ? stored.authHeader : "Authorization",
+						lang: stored.lang === "en" ? "en" : "zh",
+						level: typeof stored.level === "number" ? stored.level : 4,
+					});
+				}
+			})
+			.catch(() => undefined)
+			.finally(() => {
+				probeProfileLoaded.current = true;
+			});
+		return () => {
+			alive = false;
+		};
+	}, [bridge]);
+
+	const patchProfile = useCallback((patch: Partial<ProbeProfile>) => {
+		setProbeProfile(previous => ({ ...previous, ...patch }));
+	}, []);
+
+	// 写回：只在读过之后写，否则首次挂载会用空档案覆盖已存的端点。
+	useEffect(() => {
+		if (!probeProfileLoaded.current) return;
+		void bridge.writeState(PROBE_PROFILE_PATH, probeProfile).catch(() => undefined);
+	}, [bridge, probeProfile]);
 	const refreshProbe = useCallback(() => {
 		void bridge.probeRecord().then(setProbeRecord);
 	}, [bridge]);
@@ -482,6 +532,37 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 	);
 
 	const askText = useCallback((text: string) => chat.ask(text), [chat]);
+
+	/**
+	 * 会话隔离。
+	 *
+	 * 宿主的「新建会话」会推来新的 sessionId，但面板是同一个组件实例：内存里的
+	 * report / sample / phase 不会自己清。结果是新会话里第一屏还挂着上一个会话的样本与评分
+	 * —— 用户以为那是新会话扫出来的。
+	 *
+	 * 复位边界按存储作用域划，和 storage-layout 一一对应：
+	 *   · 会话级（drafts）        → 随会话走，天然隔离；
+	 *   · 工作区级（library/cases）→ 保留：同一目录下的历史不该因为换会话就消失；
+	 *   · 插件级（settings/lab/prompts/probe profile）→ 保留：它们是「这台机器怎么配的」。
+	 * 内存里只有 report 这一族属于「这一次分析」，所以只清它。
+	 */
+	const lastSession = useRef<string | null | undefined>(undefined);
+	useEffect(() => {
+		// 首帧不动作：挂载时 sessionId 常是 null，之后才被 replay 补上；
+		// 那不是「切了会话」，清一次等于把刚恢复的报告抹掉。
+		if (lastSession.current === undefined) {
+			lastSession.current = sessionId;
+			return;
+		}
+		if (lastSession.current === sessionId) return;
+		lastSession.current = sessionId;
+		setReport(null);
+		setSample(null);
+		setSelectedPath(null);
+		setPhase("idle");
+		setError(null);
+		setFromAgent(false);
+	}, [sessionId]);
 
 	// 清理：只删插件自己写的文件，路径由 storage-layout 统一给出（含旧位置）。
 	const clearStorage = useCallback(
@@ -716,7 +797,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		setStaticView,
 		patchKnowledge,
 		myCases,
-		probe: { record: probeRecord, refresh: refreshProbe },
+		probe: { record: probeRecord, refresh: refreshProbe, profile: probeProfile, patchProfile },
 		saveInjectScript: (name, content) => bridge.saveInjectScript(name, content),
 		listReports: () => bridge.listReports(),
 		readReport: path => bridge.readReport(path),

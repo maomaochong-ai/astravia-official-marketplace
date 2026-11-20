@@ -23,7 +23,7 @@ const MAX_LISTED = 200;
  * （每个 div 都要参与布局）。渲染截断，但**复制与交给对话用的仍是全文** ——
  * 截断只影响「屏幕上画多少」，不影响读者能拿走什么。
  */
-const MAX_RENDERED_LINES = 2000;
+const MAX_RENDERED_LINES = 800;
 
 /**
  * 偏移。补齐到 8 位：不补时 0x100 与 0x10000 混排，列宽跳动会让读者误以为量级不同。
@@ -144,6 +144,8 @@ export function DisasmPage({ model }: PageProps) {
 						</div>
 					</Card>
 					<Card
+						fill
+						bodyClassName="flex min-h-0 flex-1 flex-col"
 						title={result ? `${result.name ?? t("disasm.functions.unnamed")} · ${hex(result.start)}` : t("disasm.output.title")}
 						actions={
 							<>
@@ -151,6 +153,8 @@ export function DisasmPage({ model }: PageProps) {
 								<button
 									type="button"
 									onClick={disasm.copy}
+									title={t("panel.action.copy")}
+									aria-label={t("panel.action.copy")}
 									disabled={!result}
 									className="inline-flex items-center gap-1 rounded border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover disabled:opacity-50"
 								>
@@ -160,7 +164,7 @@ export function DisasmPage({ model }: PageProps) {
 							</>
 						}
 					>
-						<div className="border-b border-line-subtle">
+						<div className="shrink-0 border-b border-line-subtle">
 							<NumberField
 								label={t("disasm.budget.label")}
 								hint={t("disasm.budget.hint")}
@@ -172,7 +176,7 @@ export function DisasmPage({ model }: PageProps) {
 							/>
 						</div>
 						{result ? (
-							<pre className="fb-scroll max-h-[var(--fb-h-lg)] overflow-auto px-3.5 py-2.5 font-mono text-[11.5px] leading-[1.55] text-text-2">
+							<pre className="fb-scroll fb-fill-scroll min-h-0 overflow-auto px-3.5 py-2.5 font-mono text-[11.5px] leading-[1.55] text-text-2">
 								{rendered.map((line, index) => (
 									<div key={index} className={line.startsWith(";") ? "text-text-4" : undefined}>
 										{line === "" ? "\u00a0" : line}

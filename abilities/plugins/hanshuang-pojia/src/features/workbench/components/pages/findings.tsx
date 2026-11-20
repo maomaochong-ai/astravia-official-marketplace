@@ -6,7 +6,7 @@
  */
 
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { SEVERITY_ORDER, severityRank, type Severity } from "../../../../domain/audit/rules";
 import { AiButton } from "../shell/ai-button";
 import { Card } from "../shell/card";
@@ -52,21 +52,30 @@ export function FindingsPage({ model }: PageProps) {
 		);
 	}
 
-	const findings = [...report.findings].sort((left, right) => severityRank(left.severity) - severityRank(right.severity));
+	const findings = useMemo(
+		() => [...report.findings].sort((left, right) => severityRank(left.severity) - severityRank(right.severity)),
+		[report.findings],
+	);
 	const visible = filter === "all" ? findings : findings.filter(finding => finding.severity === filter);
 	// 一次分桶：统计卡与筛选 chips 都从这里取数，避免同一份数据算两遍、更避免两处不一致。
-	const bySeverity = new Map<string, number>();
-	for (const finding of findings) bySeverity.set(finding.severity, (bySeverity.get(finding.severity) ?? 0) + 1);
+	const bySeverity = useMemo(() => {
+		const map = new Map<string, number>();
+		for (const finding of findings) map.set(finding.severity, (map.get(finding.severity) ?? 0) + 1);
+		return map;
+	}, [findings]);
 	const countOf = (severity: Severity) => bySeverity.get(severity) ?? 0;
 
-	const chips = [
-		{ id: "all" as Filter, label: t("findings.filter.all"), count: findings.length },
-		...SEVERITY_ORDER.map(severity => ({
-			id: severity as Filter,
-			label: t(`severity.${severity}`),
-			count: countOf(severity),
-		})),
-	];
+	const chips = useMemo(
+		() => [
+			{ id: "all" as Filter, label: t("findings.filter.all"), count: findings.length },
+			...SEVERITY_ORDER.map(severity => ({
+				id: severity as Filter,
+				label: t(`severity.${severity}`),
+				count: bySeverity.get(severity) ?? 0,
+			})),
+		],
+		[findings, bySeverity, t],
+	);
 
 	return (
 		<>

@@ -1,5 +1,18 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
-import { maskSecret, probesFor, PROBE_STATE_PATH, renderTable, summarise, toRecord, toResult, type ProbeLang, type ProbeResult } from "../../domain/refusal-probe";
+import {
+	maskSecret,
+	probesFor,
+	PROBE_STATE_PATH,
+	renderTable,
+	summarise,
+	toRecord,
+	toResult,
+	type ProbeLang,
+	type ProbeApiStyle,
+	type ProbeRecord,
+	type ProbeResult,
+	type ProbeSummary,
+} from "../../domain/refusal-probe";
 
 interface ProbeRefusalInput {
 	/** OpenAI 兼容的 base，例如 `https://api.example.com/v1`。不写 `/chat/completions`。 */
@@ -14,10 +27,64 @@ interface ProbeRefusalInput {
 	apiKey?: string;
 	/** 认证头名，缺省 Authorization；有的中转用 x-api-key。 */
 	authHeader?: string;
+	/**
+	 * 请求风格：openai → POST /chat/completions；anthropic → POST /v1/messages。
+	 * 中转多数是前者，但直连 Anthropic 兼容端点时路径与认证头都不一样。
+	 */
+	apiStyle?: ProbeApiStyle;
+	/** 自定义梯度：多个提示词，一行一档。给了就替代标准四档。 */
+	gradient?: string[];
 }
 
 const TIMEOUT_MS = 60_000;
 const DEFAULT_HEADER = "Authorization";
+
+/**
+ * 从三种响应形状里取正文（与上游 `extract_text` 对齐）。
+ *
+ * 关键一条：推理模型有时把内容全放在 `reasoning_content` 里，`content` 是空串。
+ * 只看 `content` 会把这类正常回答判成「空正文」—— 那是把模型正常干活读成链路故障。
+ */
+function extractText(payload: unknown): { text: string; finishReason: string | null } {
+	const data = payload as {
+		choices?: {
+			message?: { content?: string | null; reasoning_content?: string | null; reasoning?: string | null };
+			finish_reason?: string;
+		}[];
+		content?: { type?: string; text?: string }[] | string;
+		stop_reason?: string;
+	} | null;
+	if (!data) return { text: "", finishReason: null };
+
+	const choice = data.choices?.[0];
+	if (choice) {
+		const message = choice.message ?? {};
+		const content = message.content;
+		if (typeof content === "string" && content.trim().length > 0) {
+			return { text: content, finishReason: choice.finish_reason ?? null };
+		}
+		// 部分兼容层把 content 给成数组（多段）。
+		if (Array.isArray(content)) {
+			const joined = content.map(part => (typeof part === "string" ? part : "")).join("");
+			if (joined.trim().length > 0) return { text: joined, finishReason: choice.finish_reason ?? null };
+		}
+		const reasoning = message.reasoning_content ?? message.reasoning;
+		if (typeof reasoning === "string" && reasoning.trim().length > 0) {
+			return { text: reasoning, finishReason: choice.finish_reason ?? null };
+		}
+		return { text: "", finishReason: choice.finish_reason ?? null };
+	}
+
+	// Anthropic：content 是块数组，stop_reason 在顶层。
+	if (Array.isArray(data.content)) {
+		const joined = data.content
+			.map(block => (block && block.type !== "thinking" ? (block.text ?? "") : ""))
+			.join("");
+		return { text: joined, finishReason: data.stop_reason ?? null };
+	}
+	if (typeof data.content === "string") return { text: data.content, finishReason: data.stop_reason ?? null };
+	return { text: "", finishReason: data.stop_reason ?? null };
+}
 
 
 /**
@@ -45,8 +112,8 @@ export function registerProbeRefusalTool(ctx: PluginContext): Disposable {
 			"not by a keyword list, so a normal answer containing the word `sorry` is not misread as a refusal.",
 			"",
 			"Give `baseUrl` + `model` + `apiKey` (masked in the output), optionally `level` to stop early, `lang`,",
-			"or `prompt` to send one custom message instead of the ladder. At most four requests per call;",
-			"nothing is written to disk and no configuration is changed.",
+			"`apiStyle` (openai / anthropic), `prompt` to send one custom message, or `gradient` to send your own ladder.",
+			"At most six requests per call; the only thing written is the probe record the panel reads.",
 			"",
 			"Use it to separate two failures that look alike: the model refusing (change the phrasing) versus the",
 			"endpoint returning an empty body (the server dropped it — change the endpoint or relay).",
@@ -60,7 +127,17 @@ export function registerProbeRefusalTool(ctx: PluginContext): Disposable {
 				lang: { type: "string", enum: ["zh", "en"], description: "Probe language. Default: zh." },
 				prompt: { type: "string", description: "Send this single prompt instead of the ladder." },
 				apiKey: { type: "string", description: "Bearer token. Masked in every line of the output." },
-				authHeader: { type: "string", description: "Header carrying the key. Default: Authorization." },
+				authHeader: { type: "string", description: "Header carrying the key. Default: Authorization (x-api-key when apiStyle=anthropic)." },
+				apiStyle: {
+					type: "string",
+					enum: ["openai", "anthropic"],
+					description: "Request flavour. openai → POST /chat/completions; anthropic → POST /messages (at /v1). Default: openai.",
+				},
+				gradient: {
+					type: "array",
+					items: { type: "string" },
+					description: "Custom ladder: one prompt per rung (max 6), each sent as its own request. Replaces the standard four.",
+				},
 			},
 			required: ["baseUrl", "model"],
 			additionalProperties: false,
@@ -86,14 +163,21 @@ export function registerProbeRefusalTool(ctx: PluginContext): Disposable {
 
 			const lang: ProbeLang = input.lang === "en" ? "en" : "zh";
 			const custom = input.prompt?.trim();
+			const extra = (input.gradient ?? []).map(item => item.trim()).filter(item => item.length > 0);
 			const ladder = custom
 				? [{ level: 1, name: "自定义提示词", expect: "answer" as const, text: custom }]
-				: probesFor(lang, input.level);
+				: extra.length > 0
+					? // 自定义梯度：保留用户给的顺序，档号即次序。
+						extra.slice(0, 6).map((text, index) => ({ level: index + 1, name: `自定义 ${index + 1}`, expect: "risky" as const, text }))
+					: probesFor(lang, input.level);
 
-			const header = (input.authHeader ?? DEFAULT_HEADER).trim() || DEFAULT_HEADER;
+			const style: ProbeApiStyle = input.apiStyle === "anthropic" ? "anthropic" : "openai";
+			const header = (input.authHeader ?? (style === "anthropic" ? "x-api-key" : DEFAULT_HEADER)).trim() || DEFAULT_HEADER;
 			const key = input.apiKey?.trim();
 			const headers: Record<string, string> = { "Content-Type": "application/json" };
+			if (style === "anthropic") headers["anthropic-version"] = "2023-06-01";
 			if (key) headers[header] = header.toLowerCase() === "authorization" ? `Bearer ${key}` : key;
+			const endpoint = style === "anthropic" ? `${base}/messages` : `${base}/chat/completions`;
 
 			const results: ProbeResult[] = [];
 			const failures: string[] = [];
@@ -101,24 +185,38 @@ export function registerProbeRefusalTool(ctx: PluginContext): Disposable {
 			for (const probe of ladder) {
 				try {
 					const response = await network.request({
-						url: `${base}/chat/completions`,
+						url: endpoint,
 						method: "POST",
 						headers,
 						// 宿主网络层要求显式声明 body 类型；`json` 下 value 就是那个对象。
-						body: { type: "json", value: { model, messages: [{ role: "user", content: probe.text }], temperature: 0, max_tokens: 800 } },
+						body: {
+							type: "json",
+							value:
+								style === "anthropic"
+									? { model, max_tokens: 1200, messages: [{ role: "user", content: probe.text }] }
+									: { model, messages: [{ role: "user", content: probe.text }], temperature: 0, max_tokens: 1200 },
+						},
 						timeoutMs: TIMEOUT_MS,
 						responseType: "json",
 					});
 					const payload = response.body as
-						| { choices?: { message?: { content?: string | null }; finish_reason?: string }[]; error?: { message?: string } }
+						| {
+								choices?: {
+									message?: { content?: string | null; reasoning_content?: string | null; reasoning?: string | null };
+									finish_reason?: string;
+								}[];
+								content?: { type?: string; text?: string }[] | string;
+								stop_reason?: string;
+								error?: { message?: string };
+						  }
 						| undefined;
-					const text = payload?.choices?.[0]?.message?.content ?? "";
 					if (response.status >= 400) {
 						// 4xx/5xx 不是模型的回答，单独记一行，不混进拒答统计。
 						failures.push(`level ${probe.level}: HTTP ${response.status} ${payload?.error?.message ?? ""}`.trim());
 						continue;
 					}
-					results.push(toResult(probe, text));
+					const { text, finishReason } = extractText(payload);
+					results.push(toResult(probe, text, finishReason));
 				} catch (error) {
 					const message = error instanceof Error ? error.message : String(error);
 					// 宿主网络层只放行 `network.allowedHosts` 里声明过的主机；未声明时错误里带 host 字样。
@@ -134,12 +232,25 @@ export function registerProbeRefusalTool(ctx: PluginContext): Disposable {
 
 			const summary = summarise(results);
 
+			const host = new URL(base).host;
+
+			// 先读上一份：同一模型 + 同一端点时，把它的结论带进新记录。
+			// 「改了写法有没有用」只能跟上一份比 —— 只留最后一次等于永远测不出改进。
+			let previous: ProbeSummary | undefined;
+			try {
+				const raw = await ctx.storage.readFile(PROBE_STATE_PATH, "utf8");
+				const prior = raw ? (JSON.parse(raw) as ProbeRecord) : null;
+				if (prior && prior.model === model && prior.host === host && prior.summary) previous = prior.summary;
+			} catch {
+				/* 没有旧记录或读不动：当作第一次探测。 */
+			}
+
 			// 落盘给面板用：工具写、面板读同一份，面板不猜、不解析 Markdown。
 			// 写失败不影响本次输出：结论已经在下面这份文本里了。
 			try {
 				await ctx.storage.writeFile(
 					PROBE_STATE_PATH,
-					JSON.stringify(toRecord({ at: new Date().toISOString(), model, host: new URL(base).host, lang }, results)),
+					JSON.stringify(toRecord({ at: new Date().toISOString(), model, host, lang, previous }, results)),
 					"utf8",
 				);
 			} catch {
@@ -152,6 +263,13 @@ export function registerProbeRefusalTool(ctx: PluginContext): Disposable {
 				key ? `- 密钥：\`${maskSecret(key)}\`（写进 ${header}，输出里始终打码）` : "- 密钥：未提供（端点必须是免认证的）",
 				`- 档位：${custom ? "自定义单条" : `1–${Math.max(...ladder.map(item => item.level))}`} · 语言 ${lang}`,
 				`- 结论：**${summary.headline}**`,
+				...(previous
+					? [
+							`- 与上次对比：之前 ${previous.firstRefusal === null ? "全部回答" : `从第 ${previous.firstRefusal} 档起被拦`} → 本次 ${
+								summary.firstRefusal === null ? "全部回答" : `从第 ${summary.firstRefusal} 档起被拦`
+							}`,
+						]
+					: []),
 				"",
 				results.length > 0 ? renderTable(results) : "_没有任何一条拿到可判定的回复。_",
 			];

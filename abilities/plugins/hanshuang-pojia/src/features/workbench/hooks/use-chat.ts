@@ -41,7 +41,14 @@ export function useChat(bridge: WorkbenchBridge, cwd: string | null, enabled = t
 			unsubscribe = bridgeRef.current.subscribeChat(next => {
 				if (!alive.current) return;
 				const previous = latest.current;
-				if (previous.status === next.status && previous.tool === next.tool && previous.cwd === next.cwd) return;
+				// 去重必须包含 sessionId：新建会话时 status / tool / cwd 往往一模一样，
+				// 只比这三个字段就等于「换会话了但面板不知道」，上一个会话的样本会留在新会话首屏。
+				const same =
+					previous.status === next.status &&
+					previous.tool === next.tool &&
+					previous.cwd === next.cwd &&
+					previous.sessionId === next.sessionId;
+				if (same) return;
 				latest.current = next;
 				setState(next);
 			});

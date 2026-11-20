@@ -1,5 +1,5 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactElement } from "react";
 import type { WorkbenchBridge } from "../bridge";
 import { useWorkbench } from "../hooks/use-workbench";
@@ -71,16 +71,33 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 	const Page = PAGES[model.page] ?? OverviewPage;
 	const props: PageProps = { model };
 	// 侧栏实时区的状态点全部由已有模型推导，不额外订阅宿主事件。
-	const live = deriveLiveStatus({
-		chat: model.chat.state,
-		stream: { entries: model.stream.entries, active: model.stream.active },
-		report: model.report,
-		activePrompt: getActivePrompt(model.promptLibrary),
-		latest: model.activity.entries[0],
-	});
+	// 派生数据按输入身份缓存：
+	// 面板每次状态变化（页面切换、筛选、拖宽）都会重渲染这层，而实测 buildTimeline 每次 0.08ms、
+	// deriveLiveStatus 要分配 5 个行对象。量不大，但它们是「外壳」的输入 —— 不缓存就等于
+	// 每帧把侧栏的 props 换成新对象，React.memo 一点用没有。
+	const live = useMemo(
+		() =>
+			deriveLiveStatus({
+				chat: model.chat.state,
+				stream: { entries: model.stream.entries, active: model.stream.active },
+				report: model.report,
+				activePrompt: getActivePrompt(model.promptLibrary),
+				latest: model.activity.entries[0],
+			}),
+		[model.chat.state, model.stream.entries, model.stream.active, model.report, model.promptLibrary, model.activity.entries],
+	);
 
 	// 会话信息链：事件流在组件外压成「一轮几次、各用多久、谁报错」，侧栏与活动页共用。
-	const timeline = buildTimeline(model.stream.entries);
+	const timeline = useMemo(() => buildTimeline(model.stream.entries), [model.stream.entries]);
+
+	// 侧栏徽标：新鲜对象会让 Sidebar 的 memo 失效。
+	const counts = useMemo(
+		() => ({
+			knowledge: model.docs.totals.documents + model.cases.cases.length + SHIPPED_PRECEDENTS.length,
+			prompts: model.promptLibrary.items.length,
+		}),
+		[model.docs.totals.documents, model.cases.cases.length, model.promptLibrary.items.length],
+	);
 
 	// 侧栏宽度由用户拖出来（默认 240，范围 200–360），收起是另一件事。
 	// 不按面板宽度自动收起：面板常驻 400–500px，自动收会把中文标签全藏起来，
@@ -115,12 +132,9 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 					collapsed={collapsed}
 					onToggle={() => setCollapsed(!collapsed)}
 					width={sidebarWidth}
-					counts={{
-						// 徽标回答「这里有多少东西可读」：知识库与案例库是主入口，没有数字时看不出空不空。
-						// 文档与案例同属一页：徽标给的是这两个来源的总量。
-						knowledge: model.docs.totals.documents + model.cases.cases.length + SHIPPED_PRECEDENTS.length,
-						prompts: model.promptLibrary.items.length,
-					}}
+					// 徽标回答「这里有多少东西可读」：知识库与案例库是主入口，没有数字时看不出空不空。
+					// 文档与案例同属一页：徽标给的是这两个来源的总量。
+					counts={counts}
 				/>
 				{/* 面板里的分区由用户决定谁占多宽：收起时没有可拖的对象。 */}
 				{rail ? null : (

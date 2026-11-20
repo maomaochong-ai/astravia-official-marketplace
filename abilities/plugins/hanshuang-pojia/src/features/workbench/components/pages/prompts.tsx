@@ -203,12 +203,15 @@ export function PromptsPage({ model }: PageProps) {
 				<div className="fb-page">
 					{/* 上：最终写进 AGENTS.md 的块；中：拒答梯度对照；下：目标矩阵与安装脚本。 */}
 					<InjectBlockCard library={library} notify={model.notify} packId={packId} onPackChange={setPackId} />
+					{/* 拒答梯度：面板负责「要测谁 + 选梯度」，执行交给宿主 AI（面板没有凭据）。 */}
 					<ProbeRefusalCard
 						record={model.probe.record}
+						profile={model.probe.profile}
+						patchProfile={model.probe.patchProfile}
 						refresh={model.probe.refresh}
-						onRun={() =>
-							model.askText("用 probe_refusal 测一次当前模型在四档提示下的拒答情况：默认 level=4，跑完把对照表和哪一档需要换写法告诉我。")
-						}
+						// 简报由 domain 生成：参数、要看哪些字段、结果要什么形状都在里面，
+						// 所以宿主不必追问，也不会把密钥回显到对话里。
+						onBrief={brief => model.askText(brief)}
 						onDiscuss={() =>
 							model.askText("按面板里的拒答梯度对照表，告诉我每一档为什么被拦，并按对应改写档位给出可直接发出的改写版本。")
 						}

@@ -26,6 +26,8 @@
 | 0015 | [selfcheck-settings-reports-audit](./0015-selfcheck-settings-reports-audit.md) | 状态过 t()、索引先建、删除要武装、图标语义一致 |
 | 0016 | [forensics-pages-readability](./0016-forensics-pages-readability.md) | 容器性质决定可用属性；统计卡跟着数据走；两种空态 |
 | 0017 | [cross-sidebar-consistency](./0017-cross-sidebar-consistency.md) | 七档字号、一种统计列宽、一种焦点色；超长正文只截渲染 |
+| 0018 | [probe-actionability](./0018-probe-actionability.md) | 建议必须可执行；重测要能对比；页头只留一个主动作 |
+| 0019 | [probe-first-class-and-real-cost](./0019-probe-first-class-and-real-cost.md) | 拒答梯度升为一等公民；卡顿的真实成本在工具表 schema |
 
 ## 引用边界
 

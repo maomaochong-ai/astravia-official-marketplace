@@ -43,6 +43,8 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 		if (filterRef.current) filterRef.current.open = false;
 	};
 	const [openId, setOpenId] = useState<string | null>(null);
+	// 连读：把本段拼成一份正文。null = 未开启（单篇模式）。
+	const [reading, setReading] = useState<{ ids: string[]; text: string } | null>(null);
 	// 右键菜单：只存坐标与目标 id，动作都在渲染时决定。
 	const [menu, setMenu] = useState<{ left: number; top: number; id: string } | null>(null);
 	/**
@@ -94,6 +96,18 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 	const flat = useMemo(() => visibleGroups.flatMap(item => item.topics.flatMap(topic => topic.entries)), [visibleGroups]);
 	const openEntry = openId ? docs.byId(openId) : null;
 	const openIndex = openId ? flat.findIndex(entry => entry.id === openId) : -1;
+
+	/**
+	 * 同段条目：优先「同一子目录」，没有子目录时才用整组。
+	 *
+	 * 这是「层级很深」的解法：读者点开一篇之后，同一节里还有哪几篇必须一屏看得见，
+	 * 而不是靠一条条点「下一条」摸过去。
+	 */
+	const siblings = useMemo(() => {
+		if (!openEntry) return [];
+		const byTopic = flat.filter(item => item.group === openEntry.group && item.topic === openEntry.topic);
+		return byTopic.length > 1 ? byTopic : flat.filter(item => item.group === openEntry.group);
+	}, [flat, openEntry]);
 
 	// 外部 select（例如先例页的「战例研究」）之后要能直接看到正文：
 	// 只看「选中项变了」这一次，不对「openId 为空」做出反应 —— 否则关掉弹窗会立即被重开。
@@ -306,7 +320,7 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 			<DocPreview
 				open={openId !== null}
 				entry={openEntry}
-				body={docs.body}
+				body={reading ? reading.text : docs.body}
 				loading={docs.loading}
 				error={docs.error}
 				onClose={() => setOpenId(null)}
@@ -319,6 +333,31 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 				}}
 				index={openIndex}
 				total={flat.length}
+				siblings={reading ? [] : siblings}
+				onJump={id => {
+					setReading(null);
+					docs.select(id);
+					setOpenId(id);
+				}}
+				reading={reading !== null}
+				onReadAloud={() => {
+					if (reading) {
+						setReading(null);
+						return;
+					}
+					// 一次读完本段：顺序取正文，段间用标题分隔。20 篇封顶——
+					// 再多就不是「读一段」，而是把整个语料倒进 DOM。
+					const picked = siblings.slice(0, 20);
+					void Promise.all(
+						picked.map(item => docs.readDocument(item.id).then(text => ({ item, text })).catch(() => null)),
+					).then(parts => {
+						const text = parts
+							.filter((part): part is { item: (typeof picked)[number]; text: string } => part !== null)
+							.map(part => `# ${part.item.title}\n\n${part.text}`)
+							.join("\n\n---\n\n");
+						setReading({ ids: picked.map(item => item.id), text });
+					});
+				}}
 			/>
 		</>
 	);
@@ -338,6 +377,10 @@ function DocPreview({
 	onStep,
 	index,
 	total,
+	siblings,
+	onJump,
+	onReadAloud,
+	reading,
 }: {
 	open: boolean;
 	entry: DocEntry | null;
@@ -348,6 +391,12 @@ function DocPreview({
 	onStep(next: number): void;
 	index: number;
 	total: number;
+	/** 同一段（组或子目录）的条目：给目录用，省掉「一条条点下一条」。 */
+	siblings: readonly DocEntry[];
+	onJump(id: string): void;
+	/** 连读本段：把整段拼成一屏，滚动读完。 */
+	onReadAloud(): void;
+	reading: boolean;
 }) {
 	const { t } = useTranslation();
 	const dialog = useRef<HTMLDivElement | null>(null);
@@ -360,16 +409,26 @@ function DocPreview({
 		restoreTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 		dialog.current?.focus();
 		const onKey = (event: KeyboardEvent) => {
-			if (event.key !== "Escape") return;
-			event.stopPropagation();
-			onClose();
+			if (event.key === "Escape") {
+				event.stopPropagation();
+				onClose();
+				return;
+			}
+			// 翻页键：读一篇文章时最常见的是「下一篇」，不该只能去点按钮。
+			if (event.key === "ArrowRight" || event.key === "j") {
+				event.preventDefault();
+				if (index < total - 1) onStep(index + 1);
+			} else if (event.key === "ArrowLeft" || event.key === "k") {
+				event.preventDefault();
+				if (index > 0) onStep(index - 1);
+			}
 		};
 		document.addEventListener("keydown", onKey);
 		return () => {
 			document.removeEventListener("keydown", onKey);
 			restoreTo.current?.focus();
 		};
-	}, [open, onClose]);
+	}, [open, onClose, index, total, onStep]);
 
 	if (!open || !entry) return null;
 
@@ -399,10 +458,23 @@ function DocPreview({
 						<div className="fb-wrap font-mono text-[10.5px] text-text-4">{entry.path}</div>
 					</div>
 					<div className="flex shrink-0 items-center gap-1">
+						{/* 连读：一次读完本段，不用点「下一条」。 */}
+						<button
+							type="button"
+							aria-pressed={reading}
+							onClick={onReadAloud}
+							title={t("docs.reader.continuousHint", { count: siblings.length })}
+							className={`rounded-md border px-1.5 py-0.5 text-[10.5px] transition-colors ${
+								reading ? "border-accent/50 bg-accent-soft text-accent" : "border-line-subtle text-text-2 hover:bg-surface-hover"
+							}`}
+						>
+							{t("docs.reader.continuous")}
+						</button>
 						<button
 							type="button"
 							disabled={index <= 0}
 							onClick={() => onStep(index - 1)}
+							title={t("docs.reader.prevHint")}
 							className="rounded-md border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover disabled:opacity-35"
 						>
 							{t("docs.preview.prev")}
@@ -418,17 +490,49 @@ function DocPreview({
 					</div>
 				</div>
 
-				<div className="fb-scroll min-h-0 flex-1 overflow-y-auto px-4 py-3" data-testid="docs-body">
-					{error ? (
-						<p className="py-6 text-center text-[11.5px] text-text-4">{error}</p>
-					) : loading ? (
-						<div className="flex items-center justify-center gap-2 py-10 text-[11.5px] text-text-4">
-							<Spinner className="size-3" />
-							{t("docs.reader.loading")}
-						</div>
-					) : body !== null ? (
-						<Markdown source={body} />
+				<div className="flex min-h-0 flex-1">
+					{/* 目录：同段的全部条目一屏可见。窄面板折叠成一行下拉。 */}
+					{siblings.length > 1 ? (
+						<nav
+							aria-label={t("docs.reader.toc")}
+							className="fb-scroll hidden w-[180px] shrink-0 overflow-y-auto border-e border-line-subtle px-1.5 py-2 @min-[560px]:block"
+							data-testid="docs-toc"
+						>
+							<div className="px-1 pb-1 text-[9.5px] uppercase tracking-wider text-text-4">{t("docs.reader.toc")}</div>
+							{siblings.map((item, order) => (
+								<button
+									key={item.id}
+									type="button"
+									onClick={() => onJump(item.id)}
+									aria-current={item.id === entry.id ? "true" : undefined}
+									data-doc-id={item.id}
+									className={`flex w-full items-baseline gap-1.5 rounded px-1.5 py-1 text-left text-[10.5px] transition-colors ${
+										item.id === entry.id ? "bg-accent-soft text-accent" : "text-text-3 hover:bg-surface-hover hover:text-text"
+									}`}
+								>
+									<span className="shrink-0 font-mono text-[9.5px] tabular-nums opacity-70">{order + 1}</span>
+									<span className="min-w-0 flex-1 fb-wrap">{item.title}</span>
+								</button>
+							))}
+						</nav>
 					) : null}
+
+					<div className="fb-scroll min-h-0 flex-1 overflow-y-auto px-4 py-3" data-testid="docs-body">
+						{error ? (
+							<p className="py-6 text-center text-[11.5px] text-text-4">{error}</p>
+						) : loading ? (
+							<div className="flex items-center justify-center gap-2 py-10 text-[11.5px] text-text-4">
+								<Spinner className="size-3" />
+								{t("docs.reader.loading")}
+							</div>
+						) : body !== null ? (
+							<>
+								{/* 连读模式下这一段的所有文档已经在同一个滚动区里，标题即分隔。 */}
+								{reading ? <p className="pb-2 text-[10.5px] text-text-4">{t("docs.reader.continuousNote", { count: siblings.length })}</p> : null}
+								<Markdown source={body} />
+							</>
+						) : null}
+					</div>
 				</div>
 			</div>
 		</div>

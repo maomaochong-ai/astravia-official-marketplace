@@ -13,7 +13,7 @@ import type { PageProps } from "./overview";
 
 type Filter = StringKind | "all";
 
-const MAX_ROWS = 400;
+const MAX_ROWS = 200;
 
 /** 字符串页：按类型分组的可打印串，全部在渲染进程里本机算出。 */
 export function StringsPage({ model }: PageProps) {
@@ -50,14 +50,21 @@ export function StringsPage({ model }: PageProps) {
 		);
 	}, [filter, hits, query]);
 
+	// 类型标签只查一次：400 行逐行 t() 等于每次筛选 400 次查表。
+	const kindLabel = useMemo(() => {
+		const map = new Map<string, string>();
+		for (const kind of STRING_KINDS) map.set(kind, t(`stringKind.${kind}`));
+		return map;
+	}, [t]);
+
 	const rows: DataTableRow[] = useMemo(
 		() =>
 			visible.slice(0, MAX_ROWS).map(hit => ({
 				key: `${hit.offset}-${hit.value}`,
 				// 补齐到 8 位：不补的话 0x1f 与 0x1f0000 混排，列宽跳动像不同量级。
-				cells: [`0x${hit.offset.toString(16).padStart(8, "0")}`, t(`stringKind.${hit.kind}`), hit.value],
+				cells: [`0x${hit.offset.toString(16).padStart(8, "0")}`, kindLabel.get(hit.kind) ?? hit.kind, hit.value],
 			})),
-		[visible, t],
+		[visible, kindLabel],
 	);
 
 	const chips = [

@@ -86,50 +86,6 @@ export function InjectPage({ model, embedded = false, packId: packIdProp }: Page
 			{embedded ? null : <PageHeader title={t("page.inject.title")} description={t("page.inject.lead")} />}
 
 			<div className="fb-page">
-				{/* 说明已在注入块卡片里；这一行只留「批量清除」——唯一会一次动多个目标的动作。 */}
-				<div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1.5 rounded-xl bg-surface-2 px-3 py-2 text-[10.5px] leading-relaxed text-text-3 ring-1 ring-line-subtle">
-					{clearArmed ? (
-						<span className="flex min-w-0 shrink-0 flex-wrap items-center gap-1.5 rounded-md border border-risk-high/40 bg-risk-high/10 px-2 py-0.5">
-							<span className="min-w-0 fb-wrap text-risk-high">
-								{t("inject.clearAll.confirm", { count: markerTargets.length })}
-							</span>
-							<button
-								type="button"
-								onClick={async () => {
-									setClearArmed(false);
-									const script = renderBatchRemoval(
-										markerTargets.map(item => planFor(item, { packLabel: packId, body: body ?? "" })),
-										shell,
-									);
-									// 除了复制，还落一份到工作区：用户问的「脚本在哪个目录下」得有答案。
-									const name = shell === "powershell" ? "uninstall-all.ps1" : "uninstall-all.sh";
-									const saved = await model.saveInjectScript(name, script);
-									copy(script, saved ? t("inject.copiedTo", { path: saved }) : t("inject.copied"));
-								}}
-								className="shrink-0 rounded bg-risk-high px-1.5 py-0.5 font-medium text-surface"
-							>
-								{t("inject.clearAll.yes")}
-							</button>
-							<button
-								type="button"
-								onClick={() => setClearArmed(false)}
-								className="shrink-0 rounded px-1.5 py-0.5 text-text-3 hover:text-text"
-							>
-								{t("inject.clearAll.cancel")}
-							</button>
-						</span>
-					) : (
-						<button
-							type="button"
-							onClick={() => setClearArmed(true)}
-							title={t("inject.clearAll.hint", { count: markerTargets.length })}
-							className="inline-flex shrink-0 items-center gap-1 rounded-md border border-line-subtle px-2 py-0.5 text-[10.5px] text-text-2 hover:bg-surface-hover hover:text-text"
-						>
-							<Icon name="close" className="size-3" />
-							{t("inject.clearAll")}
-						</button>
-					)}
-				</div>
 				<div className="flex shrink-0 flex-wrap items-center gap-2">
 					<SegmentedControl<Shell>
 						size="sm"
@@ -146,7 +102,53 @@ export function InjectPage({ model, embedded = false, packId: packIdProp }: Page
 					</span>
 				</div>
 				<div className="fb-fill grid min-h-0 gap-2.5 grid-rows-[minmax(0,45%)_minmax(0,1fr)] @min-[900px]:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] @min-[900px]:grid-rows-[minmax(0,1fr)]">
-					<Card title={t("inject.targets.title")} bodyClassName="p-0" fill>
+					<Card
+						title={t("inject.targets.title")}
+						bodyClassName="p-0"
+						fill
+						actions={
+							// 批量清除移到这里：它动的是下面这些目标，放在页级一行里等于把动作与对象分开。
+							clearArmed ? (
+								<span className="flex items-center gap-1">
+									<span className="fb-wrap text-[10.5px] text-risk-high">{t("inject.clearAll.confirm", { count: markerTargets.length })}</span>
+									<button
+										type="button"
+										onClick={async () => {
+											setClearArmed(false);
+											const script = renderBatchRemoval(
+												markerTargets.map(item => planFor(item, { packLabel: packId, body: body ?? "" })),
+												shell,
+											);
+											// 除了复制，还落一份到工作区：用户问的「脚本在哪个目录下」得有答案。
+											const name = shell === "powershell" ? "uninstall-all.ps1" : "uninstall-all.sh";
+											const saved = await model.saveInjectScript(name, script);
+											copy(script, saved ? t("inject.copiedTo", { path: saved }) : t("inject.copied"));
+										}}
+										className="shrink-0 rounded bg-risk-high px-1.5 py-0.5 text-[10.5px] font-medium text-surface"
+									>
+										{t("inject.clearAll.yes")}
+									</button>
+									<button
+										type="button"
+										onClick={() => setClearArmed(false)}
+										className="shrink-0 rounded px-1 py-0.5 text-[10.5px] text-text-3 hover:text-text"
+									>
+										{t("inject.clearAll.cancel")}
+									</button>
+								</span>
+							) : (
+								<button
+									type="button"
+									onClick={() => setClearArmed(true)}
+									title={t("inject.clearAll.hint", { count: markerTargets.length })}
+									className="inline-flex shrink-0 items-center gap-1 rounded-md border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+								>
+									<Icon name="close" className="size-3" />
+									{t("inject.clearAll")}
+								</button>
+							)
+						}
+					>
 						<div className="fb-scroll fb-fill-scroll flex flex-col gap-2 overflow-y-auto p-2.5">
 							{INJECT_TARGETS.map(item => {
 								const active = item.id === targetId;
