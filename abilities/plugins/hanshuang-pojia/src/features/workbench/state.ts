@@ -5,7 +5,7 @@
 
 import type { ReportMode, TriageReport } from "../../domain/report/report";
 
-export type PageId = "overview" | "guide" | "docs" | "cases" | "samples" | "findings" | "strings" | "disasm" | "manifest" | "entropy" | "signature" | "compare" | "selfcheck" | "reports" | "settings" | "activity" | "prompts" | "inject";
+export type PageId = "overview" | "guide" | "docs" | "cases" | "samples" | "findings" | "strings" | "disasm" | "static" | "compare" | "selfcheck" | "reports" | "settings" | "activity" | "prompts" | "inject";
 
 export interface NavItem {
 	id: PageId;
@@ -25,9 +25,8 @@ export const NAV: readonly NavGroup[] = [
 	{
 		id: "forensics",
 		items: [
-			{ id: "manifest", icon: "nav-manifest" },
-			{ id: "entropy", icon: "nav-entropy" },
-			{ id: "signature", icon: "nav-signature" },
+			// 清单 / 熵 / 签名合并为一页的视图：读者是同一个问题，入口不该分三次。
+			{ id: "static", icon: "nav-manifest" },
 			{ id: "compare", icon: "nav-compare" },
 		],
 	},

@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import type { WorkbenchBridge } from "../bridge";
 import { useWorkbench } from "../hooks/use-workbench";
 import { getActivePrompt } from "../../../domain/prompt-library";
+import { SHIPPED_PRECEDENTS } from "../../../domain/case/precedents";
 import { deriveLiveStatus } from "../live-status";
 import { buildTimeline } from "../timeline";
 import { SIDEBAR_MAX, SIDEBAR_MIN, SplitHandle, useSidebarWidth } from "../hooks/use-sidebar-width";
@@ -15,23 +16,20 @@ import { ActivityPage } from "./pages/activity";
 import { ComparePage } from "./pages/compare";
 import { DisasmPage } from "./pages/disasm";
 import { DocsPage } from "./pages/docs";
-import { EntropyPage } from "./pages/entropy";
 import { FindingsPage } from "./pages/findings";
 import { GuidePage } from "./pages/guide";
-import { ManifestPage } from "./pages/manifest";
 import { OverviewPage, type PageProps } from "./pages/overview";
 import { ReportsPage } from "./pages/reports";
 import { CasesPage } from "./pages/cases";
 import { SamplesPage } from "./pages/samples";
 import { SelfCheckPage } from "./pages/selfcheck";
 import { SettingsPage } from "./pages/settings";
-import { SignaturePage } from "./pages/signature";
 import { StringsPage } from "./pages/strings";
 import { PromptsPage } from "./pages/prompts";
 import { InjectPage } from "./pages/inject";
 import { HandoffDialog } from "./workbench/handoff-dialog";
 import { SendPromptDialog } from "./workbench/send-prompt-dialog";
-
+import { StaticPage } from "./pages/static";
 /**
  * 页面必须静态导入，不能用 React.lazy（ADR 0009 D2 已回滚，见 2.17.2）。
  *
@@ -54,9 +52,7 @@ const PAGES: Record<string, PageComponent> = {
 	disasm: DisasmPage,
 	docs: DocsPage,
 	cases: CasesPage,
-	manifest: ManifestPage,
-	entropy: EntropyPage,
-	signature: SignaturePage,
+	static: StaticPage,
 	compare: ComparePage,
 	selfcheck: SelfCheckPage,
 	reports: ReportsPage,
@@ -121,6 +117,12 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 					collapsed={collapsed}
 					onToggle={() => setCollapsed(!collapsed)}
 					width={sidebarWidth}
+					counts={{
+						// 徽标回答「这里有多少东西可读」：知识库与案例库是主入口，没有数字时看不出空不空。
+						docs: model.docs.totals.documents,
+						cases: model.cases.cases.length + SHIPPED_PRECEDENTS.length,
+						prompts: model.promptLibrary.items.length,
+					}}
 				/>
 				{/* 面板里的分区由用户决定谁占多宽：收起时没有可拖的对象。 */}
 				{rail ? null : (

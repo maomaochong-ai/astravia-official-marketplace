@@ -15,7 +15,7 @@ import { Tag } from "../shell/tag";
 import type { PageProps } from "./overview";
 
 /** 签名页：只报告清单里看到的 v1/v2/v3 方案，不解析证书、不验证摘要。 */
-export function SignaturePage({ model }: PageProps) {
+export function SignaturePage({ model, embedded = false }: PageProps & { embedded?: boolean }) {
 	const { t } = useTranslation();
 	const report = model.report;
 	const busy = model.chat.sending;
@@ -33,7 +33,7 @@ export function SignaturePage({ model }: PageProps) {
 	if (!signature) {
 		return (
 			<>
-				<PageHeader title={t("page.signature.title")} description={t("page.signature.lead")} />
+				{embedded ? null : <PageHeader title={t("page.signature.title")} description={t("page.signature.lead")} />}
 				<EmptyState icon="shield" title={t("signature.none.title")} body={t("signature.none.body")} />
 			</>
 		);
@@ -47,11 +47,13 @@ export function SignaturePage({ model }: PageProps) {
 
 	return (
 		<>
-			<PageHeader
-				title={t("page.signature.title")}
-				description={t("page.signature.lead")}
-				actions={<AiButton label={t("ai.verifySignature")} onClick={() => model.ask("signature")} busy={busy} />}
-			/>
+			{embedded ? null : (
+				<PageHeader
+					title={t("page.signature.title")}
+					description={t("page.signature.lead")}
+					actions={<AiButton label={t("ai.verifySignature")} onClick={() => model.ask("signature")} busy={busy} />}
+				/>
+			)}
 			<div className="fb-page">
 				<Card title={t("signature.schemes")} bodyClassName="divide-y divide-line-subtle">
 					{schemes.map(scheme => (

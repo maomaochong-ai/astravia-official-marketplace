@@ -17,7 +17,7 @@
 | 工具链 / 权限 / 宿主边界 | 探测、装什么、哪些事要宿主批准 | [usage](domains/toolchain-and-limits/usage.md) | [dev](domains/toolchain-and-limits/dev.md) |
 | 对话侧注入 | 路由、形态读数、等价入口、提示词母本 | [usage](domains/dialogue-and-routing/usage.md) | [dev](domains/dialogue-and-routing/dev.md) |
 | 报告 / 版本 / 发布 | 四节报告、bump、市场构建 | [usage](domains/reporting-and-release/usage.md) | [dev](domains/reporting-and-release/dev.md) |
-| 工作台面板 | 17 页界面、状态、自检页 | [usage](domains/workbench-panel/usage.md) | [dev](domains/workbench-panel/dev.md) |
+| 工作台面板 | 15 页界面、状态、自检页 | [usage](domains/workbench-panel/usage.md) | [dev](domains/workbench-panel/dev.md) |
 | 外部 MCP 服务器 | 插件不需要 MCP；IDA / 浏览器 / JS 逆向要不要装 | [usage](domains/mcp-and-external-servers/usage.md) | [dev](domains/mcp-and-external-servers/dev.md) |
 
 `usage.md` 面向「装了插件要拿它干活的人」，讲触发方式、产出形状、什么时候够用什么时候不够。
@@ -96,7 +96,7 @@
   哈希清单与对账表放那里，散文留在这里。`node scripts/check-docs-deps.mjs --strict` 会拦住方向错了的迁移。
 
 - **使用者手册**：`src/content/docs/manual/`（含 [PANEL-HANDBOOK.md](../src/content/docs/manual/PANEL-HANDBOOK.md)
-  面板 17 页逐页说明，以及部署、反调试、IDA、合规中继等）。它们随 `.astraviapkg` 发布，面板「文档」页
+  面板 15 页逐页说明，以及部署、反调试、IDA、合规中继等）。它们随 `.astraviapkg` 发布，面板「文档」页
   按需 fetch。`docs/` 下的工程文档**不进包**——随包只发 `dist/`，所以给使用者看的东西必须放在
   `src/content/docs/` 下才有机会被读到。
 - **知识库 / 工具文档 / 案例原文**：`src/content/docs/{kb,kit-docs,cases}/`，由 `scripts/sync-docs.mjs`

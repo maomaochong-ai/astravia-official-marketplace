@@ -417,6 +417,8 @@
   "page.cases.lead": "Every case in this project, what it targets, and what it already proved.",
   "page.manifest.title": "Manifest",
   "page.manifest.lead": "Permissions graded by runtime risk, components by exposure.",
+  "page.static.title": "Static detail",
+  "page.static.lead": "Three views of the same triage: manifest, entropy, signature. Switching does not clear anything.",
   "page.entropy.title": "Entropy",
   "page.entropy.lead": "Where the bytes stop looking like code and start looking packed or encrypted.",
   "page.signature.title": "Signature",

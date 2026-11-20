@@ -26,7 +26,7 @@ function barClass(value: number): string {
 }
 
 /** 熵分布：整份样本切桶算香农熵，用来判断哪一段被压缩或加密。 */
-export function EntropyPage({ model }: PageProps) {
+export function EntropyPage({ model, embedded = false }: PageProps & { embedded?: boolean }) {
 	const { t } = useTranslation();
 	const busy = model.chat.sending;
 	const buckets = model.entropy;
@@ -35,7 +35,7 @@ export function EntropyPage({ model }: PageProps) {
 	if (buckets === null) {
 		return (
 			<>
-				<PageHeader title={t("page.entropy.title")} description={t("page.entropy.lead")} />
+				{embedded ? null : <PageHeader title={t("page.entropy.title")} description={t("page.entropy.lead")} />}
 				<EmptyState icon="activity" title={t("entropy.null.title")} body={t("entropy.null.body")} />
 			</>
 		);
@@ -52,11 +52,13 @@ export function EntropyPage({ model }: PageProps) {
 
 	return (
 		<>
-			<PageHeader
-				title={t("page.entropy.title")}
-				description={t("page.entropy.lead")}
-				actions={<AiButton label={t("ai.entropy")} onClick={() => model.ask("entropy")} busy={busy} disabled={!model.report} />}
-			/>
+			{embedded ? null : (
+				<PageHeader
+					title={t("page.entropy.title")}
+					description={t("page.entropy.lead")}
+					actions={<AiButton label={t("ai.entropy")} onClick={() => model.ask("entropy")} busy={busy} disabled={!model.report} />}
+				/>
+			)}
 			<div className="fb-page">
 				<div className="grid grid-cols-3 gap-2">
 					<StatTile label={t("entropy.average")} value={average.toFixed(2)} tone={average >= SEMI ? "medium" : "low"} />

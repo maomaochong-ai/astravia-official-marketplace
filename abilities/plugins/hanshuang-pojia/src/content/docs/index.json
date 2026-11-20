@@ -3365,9 +3365,9 @@
 		"topic": "",
 		"title": "面板界面实战手册",
 		"path": "src/content/docs/manual/PANEL-HANDBOOK.md",
-		"bytes": 11794,
-		"lines": 236,
-		"sha256": "b756a5139c77ac0c"
+		"bytes": 12030,
+		"lines": 239,
+		"sha256": "d55157d00182e788"
 	},
 	{
 		"id": "manual/POC-VALIDATION",

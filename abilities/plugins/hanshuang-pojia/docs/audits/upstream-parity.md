@@ -44,7 +44,7 @@
 | 路由 | 44 条目标 → 5 份能力 | 44 条路由表（`routing-table.generated.json`，指纹 `bfc208b6`），5 present / 39 标注 | 对等（缺口同为「39 目标 ≈ 5 内容」） |
 | 先例 / 战例 | `Tool/cases/` 14 条工程 + 233 目标特定产物 | 19 先例包（四文档）+ 14 条工程骨架（按语言 × OS 生成） | **更强**：骨架可跨 OS 重跑，产物不搬 |
 | 知识库 | 292 篇 + 42 工具判定 | 340 条索引（292 篇 1:1，SHA-256 集合 diff 为 0） | 对等 |
-| 面板 | Electron 渲染器内页面 | 17 页工作台（含自检页四组数字） | 对等 |
+| 面板 | Electron 渲染器内页面 | 15 页工作台（含自检页四组数字） | 对等 |
 | 安装器 | `setup/{install,update,uninstall,verify}.ps1` | 市场安装 + `probe_environment` / `install_toolchain` | **有意不对等**：宿主管生命周期 |
 | 动态能力 | Frida 脚本 + `temp_ocr.ps1` 截图 OCR | `frida_dump` / `generate_hook`；OCR **未做** | 部分对等（OCR 为 P2 未做） |
 | 测试 | 无随包测试 | 59 文件 / 711 例 + 79 例内容测试 | **更强** |
@@ -470,7 +470,7 @@ js-reverse-mcp、hook-mcp、jadx、apktool、radare2），配 `mcp.json.template
 
 **综合约 95%**。核心差距均为宿主 SDK 能力边界所致（无 transform、无 `before_provider_request`），
 非实现遗漏。2.13.1 重算的口径是代码量对照：上游自有 `py + ps1` **40,823 行** vs 插件 `ts/tsx`
-**38,520 行 / 251 文件**——用 38.5k 行 TS 复现 40.8k 行 Python/PowerShell 的等价能力，并额外承载 17 页 UI。
+**38,520 行 / 251 文件**——用 38.5k 行 TS 复现 40.8k 行 Python/PowerShell 的等价能力，并额外承载 15 页 UI。
 
 ---
 

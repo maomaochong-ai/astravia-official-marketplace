@@ -133,7 +133,7 @@ function Block({ block }: { block: MdBlock }) {
 export function Markdown({ source }: { source: string }) {
 	const blocks = useMemo(() => parseMarkdown(source), [source]);
 	return (
-		<div className="flex flex-col gap-2.5">
+		<div className="fb-prose flex flex-col gap-3">
 			{blocks.map((block, index) => (
 				<Block key={index} block={block} />
 			))}

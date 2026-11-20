@@ -451,13 +451,14 @@ describe("workbench state", () => {
 		expect(await screen.findByText("compare.needTwo.title")).toBeTruthy();
 	});
 
-	it("shows the manifest pages only after a report exists", async () => {
+	it("shows the static views only after a report exists", async () => {
 		const api = makeBridge();
 		await open(api);
-		await go("manifest");
+		await go("static");
 		expect(await screen.findByText("empty.noReport.title")).toBeTruthy();
 		await analyseDemo(api);
-		await go("manifest");
+		await go("static");
+		// 清单 / 熵 / 签名在同一页的三个视图里：默认先看清单，数据到了就出现。
 		expect(await screen.findByText("android.permission.CAMERA")).toBeTruthy();
 	});
 

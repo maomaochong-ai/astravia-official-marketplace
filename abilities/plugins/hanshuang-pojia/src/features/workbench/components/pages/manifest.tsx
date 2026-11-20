@@ -24,7 +24,7 @@ const LEVEL_TONE: Record<ReturnType<typeof permissionLevel>, TagTone> = {
 };
 
 /** 清单页：权限按运行时风险分级，组件标出对外暴露的那些。 */
-export function ManifestPage({ model }: PageProps) {
+export function ManifestPage({ model, embedded = false }: PageProps & { embedded?: boolean }) {
 	const { t } = useTranslation();
 	const report = model.report;
 	const busy = model.chat.sending;
@@ -59,7 +59,8 @@ export function ManifestPage({ model }: PageProps) {
 
 	return (
 		<>
-			<PageHeader
+			{embedded ? null : (
+				<PageHeader
 				title={t("page.manifest.title")}
 				description={t("page.manifest.lead")}
 				actions={
@@ -74,7 +75,8 @@ export function ManifestPage({ model }: PageProps) {
 						</button>
 					</>
 				}
-			/>
+				/>
+			)}
 			<div className="fb-page">
 				<Card title={t("manifest.permissions")} bodyClassName="px-1 py-1">
 					<DataTable

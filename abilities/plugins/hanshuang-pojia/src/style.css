@@ -195,6 +195,68 @@
 	padding: var(--fb-ins);
 }
 
+/*
+ * 上游工作流示意图（seep-kit docs/images/render_workflow.html）的视觉语言，落到面板里：
+ *   · 步骤盒：左侧 3px 强调条 + 底色，代替「一整块卡片里堆五行字」；
+ *   · 指标 chip：值用强调色、标签用灰，宽高固定，不会随数字长短跳动；
+ *   · 勾选行：等宽对勾 + 一行证据，不用项目符号。
+ * 颜色一律从宿主 token 取（accent / purple / risk-*），不写死十六进制——
+ * 浅色主题下同一套类名仍然可读。
+ */
+.fb-step {
+	border-left: 3px solid var(--color-accent, #38bdf8);
+	border-radius: 0 8px 8px 0;
+	background: var(--color-surface-2, #141c2e);
+	padding: 8px 11px;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+
+/* 语气变体：只换强调条，不换底，否则一屏三色会抢注意力。 */
+.fb-step[data-tone="ok"] {
+	border-left-color: var(--color-risk-low, #4ade80);
+}
+.fb-step[data-tone="warn"] {
+	border-left-color: var(--color-risk-medium, #fb923c);
+}
+.fb-step[data-tone="alert"] {
+	border-left-color: var(--color-risk-high, #fb7185);
+}
+.fb-step[data-tone="violet"] {
+	border-left-color: var(--color-purple, #c084fc);
+}
+.fb-step[data-tone="idle"] {
+	border-left-color: var(--color-line-strong, #334155);
+}
+
+.fb-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 7px;
+	border-radius: 6px;
+	border: 1px solid var(--color-line-subtle, #1e293b);
+	background: var(--color-surface, #0a101d);
+	font-size: 10px;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+.fb-chip > b {
+	color: var(--color-accent, #38bdf8);
+	font-weight: 700;
+}
+
+/*
+ * 正文阅读：上游把长文本限在 ~78ch（可读上限），这里同样。
+ * 不限宽时光标行会拉到 900px 以上，眼球每行回扫两次，读起来像在扫表格。
+ * max-width 用 ch 而不是 px：字号跟着面板变时，行宽保持不变。
+ */
+.fb-prose {
+	max-width: 78ch;
+	margin-inline: auto;
+}
+
 @container (max-width: 620px) {
 	.fb-main {
 		--fb-pad: 12px;
