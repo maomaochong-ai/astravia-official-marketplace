@@ -6,7 +6,7 @@ The plugin answers one question: *what is this file, and what should a reviewer 
 
 Since 2.0 the plugin also carries the **workbench kit protocol** — lab mode, the deployment and
 verification board, knowledge-base-first recon, and the `seep` / `ida` MCP tool matrix. It lives in
-the skill (`agent/skills/hanshuang-pojia/SKILL.md`), which the host loads on demand — the package no
+the skill (`agent/skills/memory/SKILL.md`), which the host loads on demand — the package no
 longer injects a standing block into every session. That layer is documentation the agent follows when
 the desktop kit is installed.
 
@@ -150,7 +150,7 @@ addressing, labels, directives, immediates that would need two instructions) are
 ## Where the rules live
 
 The package ships **no always-on system-prompt block.** The rules that must hold on every turn live in
-the skill (`agent/skills/hanshuang-pojia/SKILL.md`), and the host pays for a skill only through its
+the skill (`agent/skills/memory/SKILL.md`), and the host pays for a skill only through its
 index entry — `name` plus `description`, about 380 characters. The 97 KB body enters the context only
 when the agent invokes the skill for the task at hand.
 
@@ -238,8 +238,8 @@ Since 2.1 the kit's **skill library ships inside the plugin**: `agent/skills/` i
 `seep-kit/Tool/skill/` — 171 files, 2.48 MB, `softseep` (orchestrator), `apkseep`,
 `ida-reverse`, `client-license-validation-bypass`, the five `safe-skills/*` packs, the
 `hanshuang-pojia` handbook itself, and three script-bearing packs that carry both `.ps1` and `.sh`
-variants. `agent/prompts/SKILL-LIBRARY.md` holds the inventory and provenance,
-`agent/prompts/skill-library.sha256` the per-file hashes, and `src/test/skill-library.test.ts`
+variants. `docs/reference/skill-library.md` holds the inventory and provenance,
+`docs/reference/skill-library.sha256` the per-file hashes, and `src/test/skill-library.test.ts`
 recomputes the manifest so the tree cannot drift between builds.
 
 They are registered through `plugin.json#agent.skillPaths = ["agent/skills"]`, with
@@ -247,7 +247,7 @@ They are registered through `plugin.json#agent.skillPaths = ["agent/skills"]`, w
 the skill picker as soon as the plugin installs. The tree is not byte-identical to upstream in four
 places, deliberately — `SKILL-LIBRARY.md` lists them.
 
-`agent/skills/hanshuang-pojia/references/plugin-handbook.md` holds the detail the skill body should
+`agent/skills/memory/references/plugin-handbook.md` holds the detail the skill body should
 not carry: the verified kit layout, the full MCP tool list, the ten manuals, the per-host installer
 table, the deployment-check baseline, and the relay / memory mechanics. Only the skill's index entry is
 paid for on every turn, so the body can stay complete without costing anything until it is invoked.
