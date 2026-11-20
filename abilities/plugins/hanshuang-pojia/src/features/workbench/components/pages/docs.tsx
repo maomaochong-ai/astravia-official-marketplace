@@ -30,6 +30,24 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 
 	const [group, setGroup] = useState<string | null>(null);
 	const [openId, setOpenId] = useState<string | null>(null);
+	// 右键菜单：只存坐标与目标 id，动作都在渲染时决定。
+	const [menu, setMenu] = useState<{ x: number; y: number; id: string } | null>(null);
+
+	/** 导出：把正文写成一个 .md，交给浏览器下载。不经过宿主，所以不需要额外权限。 */
+	const exportEntry = async (id: string) => {
+		const entry = docs.byId(id);
+		if (!entry) return;
+		// 正文来自域层（会按需解 gzip 包），不猜资源 URL。
+		const text = await docs.readDocument(id).catch(() => null);
+		if (!text) return;
+		const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
+		const url = URL.createObjectURL(blob);
+		const anchor = document.createElement("a");
+		anchor.href = url;
+		anchor.download = `${entry.id.split("/").pop() ?? "doc"}.md`;
+		anchor.click();
+		URL.revokeObjectURL(url);
+	};
 
 	const groupCounts = docs.groups.map(item => ({ id: item.id, count: item.topics.reduce((sum, entry) => sum + entry.entries.length, 0) }));
 	const total = groupCounts.reduce((sum, item) => sum + item.count, 0);
@@ -124,6 +142,10 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 										key={hit.entry.id}
 										type="button"
 										onClick={() => setOpenId(hit.entry.id)}
+										onContextMenu={event => {
+											event.preventDefault();
+											setMenu({ x: event.clientX, y: event.clientY, id: hit.entry.id });
+										}}
 										className="flex w-full flex-col gap-0.5 border-b border-line-subtle px-3 py-1.5 text-left last:border-0 hover:bg-surface-hover"
 									>
 										<span className="w-full truncate text-[11.5px] text-text">{hit.entry.title}</span>
@@ -149,6 +171,10 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 													data-doc-id={doc.id}
 													type="button"
 													onClick={() => setOpenId(doc.id)}
+													onContextMenu={event => {
+														event.preventDefault();
+														setMenu({ x: event.clientX, y: event.clientY, id: doc.id });
+													}}
 													className="flex w-full items-center gap-2 px-3 py-1 text-left hover:bg-surface-hover"
 												>
 													<span className="min-w-0 flex-1 truncate text-[11.5px] text-text">{doc.title}</span>
@@ -163,6 +189,40 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 					</div>
 				</Card>
 			</div>
+
+			{/* 右键菜单：文档树上的四条常用动作，都在面板内完成。 */}
+			{menu ? (
+				<>
+					<div className="fixed inset-0 z-40" onClick={() => setMenu(null)} onContextMenu={event => { event.preventDefault(); setMenu(null); }} />
+					<div
+						className="fixed z-50 w-44 overflow-hidden rounded-lg bg-surface-2 py-1 shadow-lg ring-1 ring-line-strong"
+						style={{ left: Math.min(menu.x, window.innerWidth - 190), top: Math.min(menu.y, window.innerHeight - 170) }}
+						data-testid="docs-menu"
+					>
+						{(
+							[
+								["preview", () => setOpenId(menu.id)],
+								["export", () => void exportEntry(menu.id)],
+								["explain", () => model.askText(`用 read_doc 读 ${menu.id}，把它的方法步骤讲清楚：每一步的输入、产出与判据。`)],
+								["apply", () => model.askText(`按文档 ${menu.id} 的步骤在当前样本上实际做一遍；每步给出可复核的命令或偏移。`)],
+							] as const
+						).map(([key, run]) => (
+							<button
+								key={key}
+								type="button"
+								onClick={() => {
+									run();
+									setMenu(null);
+								}}
+								className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11.5px] text-text-2 transition-colors hover:bg-accent-soft hover:text-accent"
+							>
+								<Icon name={key === "export" ? "save" : key === "preview" ? "book" : key === "apply" ? "play" : "send"} className="size-3 shrink-0 text-text-4" />
+								{t(`docs.menu.${key}`)}
+							</button>
+						))}
+					</div>
+				</>
+			) : null}
 
 			<DocPreview
 				open={openId !== null}

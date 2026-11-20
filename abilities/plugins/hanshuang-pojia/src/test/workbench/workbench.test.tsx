@@ -380,7 +380,9 @@ describe("workbench state", () => {
 		// 注入块现在是提示词页的第二个视图：没有激活提示词时展示默认契约。
 		fireEvent.click(await screen.findByText("prompt.view.inject"));
 		expect(await screen.findByText("prompt.inject.title")).toBeTruthy();
-		expect(screen.getByText("prompt.inject.sourceDefault")).toBeTruthy();
+		// 卡片里给的是「说明 + 目标路径 + 预览/原文」，不再是单一来源文案。
+		// 说明文案在注入视图里可能出现两处（卡片一处），断言存在而不是唯一。
+		expect(screen.getAllByText("inject.intro").length).toBeGreaterThan(0);
 	});
 
 	it("renders the workflow bar and locks steps until their precondition is met", async () => {

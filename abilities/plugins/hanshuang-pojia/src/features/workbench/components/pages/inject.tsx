@@ -6,7 +6,6 @@ import { renderBatchRemoval, renderInstaller, renderRemovalScript, renderRestore
 import { INJECT_TARGETS, planFor, type InjectForm } from "../../../../domain/inject/targets";
 import { loadPackBody } from "../../services/packs";
 import { Card } from "../shell/card";
-import { FilterChips } from "../shell/filter-chips";
 import { Icon } from "../shell/icon";
 import { PageHeader } from "../shell/page-header";
 import { SegmentedControl } from "../shell/segmented-control";
@@ -27,10 +26,11 @@ const FORM_TONE: Record<InjectForm, string> = {
  * 「在对话里执行」不是装饰：面板不能调用 agent 工具，但它能把一句话交给对话，
  * 由那里的 Agent 调 `inject_target { apply: true }` 走命令通道真执行，再把证据带回来。
  */
-export function InjectPage({ model, embedded = false }: PageProps & { embedded?: boolean }) {
+export function InjectPage({ model, embedded = false, packId: packIdProp }: PageProps & { embedded?: boolean; packId?: string }) {
 	const { t } = useTranslation();
 	const [targetId, setTargetId] = useState<string>(INJECT_TARGETS[0]?.id ?? "");
-	const [packId, setPackId] = useState<string>(PACKS[0]?.id ?? "");
+	// 包切换由注入块卡片持有（同一张卡），这里只读它给的值：目标矩阵与正文永远同一个包。
+	const packId = packIdProp ?? PACKS[0]?.id ?? "";
 	const [shell, setShell] = useState<Shell>("powershell");
 	const [body, setBody] = useState<string | null>(null);
 	const [failure, setFailure] = useState<string | null>(null);
@@ -86,9 +86,8 @@ export function InjectPage({ model, embedded = false }: PageProps & { embedded?:
 			{embedded ? null : <PageHeader title={t("page.inject.title")} description={t("page.inject.lead")} />}
 
 			<div className="fb-page">
-				<div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-surface-2 px-3 py-2 text-[10.5px] leading-relaxed text-text-3 ring-1 ring-line-subtle">
-					<Icon name="shield" className="size-3.5 shrink-0 text-accent" />
-					<span className="min-w-0 flex-1">{t("inject.intro")}</span>
+				{/* 说明已在注入块卡片里；这一行只留「批量清除」——唯一会一次动多个目标的动作。 */}
+				<div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1.5 rounded-xl bg-surface-2 px-3 py-2 text-[10.5px] leading-relaxed text-text-3 ring-1 ring-line-subtle">
 					{clearArmed ? (
 						<span className="flex min-w-0 shrink-0 flex-wrap items-center gap-1.5 rounded-md border border-risk-high/40 bg-risk-high/10 px-2 py-0.5">
 							<span className="min-w-0 truncate text-risk-high">
@@ -132,7 +131,6 @@ export function InjectPage({ model, embedded = false }: PageProps & { embedded?:
 					)}
 				</div>
 				<div className="flex shrink-0 flex-wrap items-center gap-2">
-					<FilterChips items={PACKS.map(pack => ({ id: pack.id, label: pack.title }))} value={packId} onChange={setPackId} />
 					<SegmentedControl<Shell>
 						size="sm"
 						value={shell}

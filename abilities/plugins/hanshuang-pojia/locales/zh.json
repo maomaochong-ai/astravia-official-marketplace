@@ -308,8 +308,6 @@
   "prompt.backup.restore": "还原",
   "prompt.backup.manage": "备份",
   "prompt.inject.title": "注入块",
-  "prompt.inject.sourceActive": "来自提示词「{{name}}」",
-  "prompt.inject.sourceDefault": "未激活提示词，用默认契约",
   "prompt.inject.copy": "复制块",
   "prompt.inject.copied": "注入块已复制",
   "prompt.inject.howTo": "插件只能写项目内路径，所以主目录的 AGENTS.md 要你自己点一次：在对话里让 Agent 跑 install_astravia，或把上面的块粘进 ~/.astravia/agent/AGENTS.md。块按标记包裹，摘掉就回到原样。",
@@ -815,9 +813,6 @@
   "chat.failure.unknown": "发送失败：原始信息见下",
   "prompt.view.library": "提示词库",
   "prompt.view.inject": "注入",
-  "selfcheck.failed.title": "文档索引读不到",
-  "selfcheck.failed.empty": "索引为空，未知原因。",
-  "selfcheck.failed.hint": "文档从包内 assets/docs/ 读取；读到 404 说明发布包的资源没打进去。",
   "selfcheck.failed.retry": "重试",
   "settings.lab.title": "实验环境",
   "settings.lab.label": "开启实验环境（lab）",
@@ -941,5 +936,10 @@
   "guide.next.else": "若不成立：",
   "cases.completeness.sketch": "形状",
   "cases.completeness.worked": "可照做",
-  "cases.completeness.field": "现场"
+  "cases.completeness.field": "现场",
+  "docs.menu.preview": "预览",
+  "docs.menu.export": "导出 .md",
+  "docs.menu.explain": "交给对话解读",
+  "docs.menu.apply": "按此实施",
+  "inject.resize": "拖动调整正文高度（↑↓ 也可）"
 }

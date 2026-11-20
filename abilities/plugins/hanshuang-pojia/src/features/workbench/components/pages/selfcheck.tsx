@@ -78,10 +78,12 @@ export function SelfCheckPage({ model }: PageProps) {
 
 	const report = useMemo(
 		() =>
-			load.phase === "ready"
+			load.phase !== "loading"
 				? buildHealthReport(
 						{ cwd: model.cwd, persisted: model.persisted, chatStatus: model.chat.state.status, lab },
-						{ entries: load.library.entries, totals: load.library.totals },
+						load.phase === "ready"
+							? { entries: load.library.entries, totals: load.library.totals }
+							: { entries: [], totals: { documents: 0, assets: 0, bytes: 0, lines: 0, byGroup: {} }, failure: load.reason },
 					)
 				: null,
 		[load, model.cwd, model.persisted, model.chat.state.status, lab],
@@ -103,35 +105,9 @@ export function SelfCheckPage({ model }: PageProps) {
 		);
 	}
 
-	if (load.phase === "failed" || !report) {
-		return (
-			<>
-				<PageHeader title={t("page.selfcheck.title")} description={t("page.selfcheck.lead")} />
-				<div className="fb-page">
-					<Card title={t("selfcheck.failed.title")} bodyClassName="flex flex-col gap-2 p-3.5">
-						<div className="flex items-start gap-2">
-							<Icon name="alert" className="mt-0.5 size-3.5 shrink-0 text-risk-high" />
-							<p className="min-w-0 flex-1 break-words text-[11.5px] leading-relaxed text-text-2">
-								{load.phase === "failed" ? load.reason : t("selfcheck.failed.empty")}
-							</p>
-						</div>
-						<p className="text-[10.5px] leading-relaxed text-text-4">{t("selfcheck.failed.hint")}</p>
-						<div className="flex flex-wrap items-center gap-2">
-							<button
-								type="button"
-								onClick={() => run()}
-								className="inline-flex items-center gap-1 rounded-md border border-line-subtle px-2.5 py-1 text-[11px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
-							>
-								<Icon name="refresh" className="size-3" />
-								{t("selfcheck.failed.retry")}
-							</button>
-							<AiButton label={t("ai.toolchain")} onClick={() => model.ask("toolchain")} busy={model.chat.sending} />
-						</div>
-					</Card>
-				</div>
-			</>
-		);
-	}
+	// report 在两处早退之后才使用；loading 分支已返回，failed 也不再单独返回，
+	// 所以失败时也会走到这里，把未通过的项一并列出来。
+	if (!report) return <></>;
 
 	// 组级结论看最差一项；整体结论在 health.ts 里算，页面只负责呈现。
 	const groupsPassing = report.groups.filter(group => statusOfTally(tallyOf(group.items)) === "pass").length;

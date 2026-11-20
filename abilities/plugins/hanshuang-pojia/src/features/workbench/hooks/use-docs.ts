@@ -27,6 +27,8 @@ export interface DocsModel {
 	selected: DocEntry | null;
 	/** 按 id 取条目：弹窗按 id 打开，不必依赖当前选中项。 */
 	byId(id: string): DocEntry | null;
+	/** 直接读一篇正文（导出等场景用；不改选中态）。 */
+	readDocument(id: string): Promise<string>;
 	select(id: string | null): void;
 	body: string | null;
 	loading: boolean;
@@ -181,6 +183,7 @@ export function useDocs(bridge: WorkbenchBridge, enabled: boolean): DocsModel {
 		searching,
 		selected,
 		byId: id => library?.byId(id) ?? null,
+		readDocument: id => (library ? library.loadBody(id) : Promise.reject(new Error("docs index not loaded"))),
 		select,
 		body,
 		loading,

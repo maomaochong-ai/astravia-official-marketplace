@@ -17,6 +17,7 @@ import { hasSystemTemplate, SYSTEM_PROMPT_TEMPLATE } from "../../../../domain/pr
 import type { PageProps } from "./overview";
 import { InjectPage } from "./inject";
 import { ProbeRefusalCard } from "../prompts/probe-refusal-card";
+import { PACKS } from "../../../../domain/inject/packs";
 
 /** 两个视图：库列表 / 注入。它们回答同一个问题——「注入出去的是哪份提示词」。 */
 type View = "prompts" | "inject";
@@ -34,6 +35,8 @@ type View = "prompts" | "inject";
 export function PromptsPage({ model }: PageProps) {
 	const { t } = useTranslation();
 	const [view, setView] = useState<View>("prompts");
+	// 注入视图的提示词包：卡片与目标矩阵共用，避免「切了包但计划没变」。
+	const [packId, setPackId] = useState<string>(PACKS[0]?.id ?? "");
 	const [query, setQuery] = useState("");
 	const [editorOpen, setEditorOpen] = useState(false);
 	const [editingId, setEditingId] = useState<string | null>(null);
@@ -190,7 +193,7 @@ export function PromptsPage({ model }: PageProps) {
 			{view === "inject" ? (
 				<div className="fb-page">
 					{/* 上：最终写进 AGENTS.md 的块；中：拒答梯度对照；下：目标矩阵与安装脚本。 */}
-					<InjectBlockCard library={library} notify={model.notify} />
+					<InjectBlockCard library={library} notify={model.notify} packId={packId} onPackChange={setPackId} />
 					<ProbeRefusalCard
 						record={model.probe.record}
 						refresh={model.probe.refresh}
@@ -201,7 +204,7 @@ export function PromptsPage({ model }: PageProps) {
 							model.askText("按面板里的拒答梯度对照表，告诉我每一档为什么被拦，并按对应改写档位给出可直接发出的改写版本。")
 						}
 					/>
-					<InjectPage model={model} embedded />
+					<InjectPage model={model} embedded packId={packId} />
 				</div>
 			) : (
 				<div className="fb-page">

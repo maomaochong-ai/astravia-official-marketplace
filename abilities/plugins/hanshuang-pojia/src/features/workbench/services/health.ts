@@ -53,6 +53,14 @@ export interface HostFacts {
 export interface DocsFacts {
 	readonly entries: readonly DocEntry[];
 	readonly totals: DocTotals;
+	/** 索引读取失败的原因；有值时不假装 0 篇，而是把这一项判 fail。 */
+	readonly failure?: string;
+}
+
+/** 路由覆盖的一行摘要：失败分支也要能显示，所以单独抽出来。 */
+function describeRouting(): string {
+	const coverage = routingCoverage();
+	return `${coverage.present}/${coverage.routes} routes present · table ${coverage.sourceSha8}`;
 }
 
 function item(id: string, status: HealthStatus, detail: string): HealthItem {
@@ -64,6 +72,17 @@ function item(id: string, status: HealthStatus, detail: string): HealthItem {
  * 只读 import 进来的索引，不读磁盘 —— 面板运行的就是包里那一份。
  */
 function assetGroup(docs: DocsFacts): HealthGroup {
+	// 索引读不到时仍然给出整组条目：其余检查项照常列出，失败只落在 docs 这一行。
+	if (docs.failure) {
+		return {
+			id: "assets",
+			items: [
+				item("assets.docs", "fail", docs.failure),
+				item("assets.routing", "warn", describeRouting()),
+				item("assets.cases", "warn", "case projects: not evaluated while the document index is unreadable"),
+			],
+		};
+	}
 	const ids = new Set<string>();
 	let duplicates = 0;
 	let emptyTitles = 0;

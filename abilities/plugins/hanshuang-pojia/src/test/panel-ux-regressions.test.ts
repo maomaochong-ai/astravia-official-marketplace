@@ -135,10 +135,14 @@ describe("controls cannot be squeezed out of view", () => {
 		expect(read("src/features/workbench/components/shell/segmented-control.tsx")).toContain("shrink-0");
 	});
 
-	it("the injection block scrolls inside a bounded height", () => {
+	it("the injection block is resizable and opens in preview mode", () => {
 		const card = read("src/features/workbench/components/prompts/inject-block-card.tsx");
-		expect(card).toContain("max-h-[40vh]");
-		expect(card).toContain("overflow-auto");
+		// 默认预览：注入出去的是 Markdown，先看它变成什么样；原文切一档就能看。
+		expect(card).toContain('useState<View>("preview")');
+		// 底部可拖：高度限制在 160–560 之间，避免把下面的卡挤没。
+		expect(card).toContain("fb-resize");
+		expect(card).toMatch(/Math\.min\(560/);
+		expect(card).toContain("overflow-y-auto");
 	});
 });
 

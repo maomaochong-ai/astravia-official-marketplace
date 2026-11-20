@@ -120,8 +120,8 @@ export function SettingsPage({ model }: PageProps) {
 							<Card title={t("settings.runtime.title")} bodyClassName="divide-y divide-line-subtle">
 								{runtimeRows.map(row => (
 									<div key={row.key} className="flex items-baseline gap-2 px-3.5 py-2">
-										<span className="w-16 shrink-0 text-[10.5px] text-text-4">{row.label}</span>
-										<span className={`min-w-0 flex-1 truncate text-[11.5px] ${row.tone}`} title={row.value}>
+										<span className="w-14 shrink-0 text-[10.5px] text-text-4">{row.label}</span>
+										<span className={`min-w-0 flex-1 break-all text-[11.5px] ${row.tone}`} title={row.value}>
 											{row.value}
 										</span>
 									</div>
@@ -176,7 +176,7 @@ export function SettingsPage({ model }: PageProps) {
 												<span className={`mt-1.5 size-1.5 shrink-0 rounded-full ${SEVERITY_DOT[rule.severity]}`} />
 												<div className="min-w-0 flex-1">
 													<div className="flex items-center gap-1.5">
-														<span className="truncate text-[11.5px] text-text">{t(`rule.${rule.id}.title`)}</span>
+														<span className="min-w-0 text-[11.5px] leading-snug text-text">{t(`rule.${rule.id}.title`)}</span>
 														<span className={`shrink-0 font-mono text-[9.5px] ${SEVERITY_TEXT[rule.severity]}`}>{rule.severity}</span>
 													</div>
 													<div className="truncate font-mono text-[9.5px] text-text-4">{rule.id}</div>
@@ -246,7 +246,7 @@ export function SettingsPage({ model }: PageProps) {
 							{(usage ?? []).map(row => (
 								<div key={row.key} className="flex items-baseline gap-2 px-3.5 py-1.5">
 									<span className="w-20 shrink-0 text-[10px] text-text-4">{t(`settings.data.scope.${row.scope}`)}</span>
-									<span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-text-2" title={row.path}>
+									<span className="min-w-0 flex-1 break-all font-mono text-[10.5px] leading-snug text-text-2" title={row.path}>
 										{row.path}
 									</span>
 									<span className="shrink-0 tabular-nums text-[10px] text-text-4">
@@ -260,7 +260,7 @@ export function SettingsPage({ model }: PageProps) {
 								? storageEntries(model.cwd, model.sessionId).map(entry => (
 										<div key={entry.key} className="flex items-baseline gap-2 px-3.5 py-1.5">
 											<span className="w-20 shrink-0 text-[10px] text-text-4">{t(`settings.data.scope.${entry.scope}`)}</span>
-											<span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-text-2" title={entry.path}>
+											<span className="min-w-0 flex-1 break-all font-mono text-[10.5px] leading-snug text-text-2" title={entry.path}>
 												{entry.path}
 											</span>
 										</div>

@@ -206,6 +206,57 @@
 	padding: var(--fb-pad);
 }
 
+/* 活动页的终端观感：深底 + 等宽 + 无衬线数字，配色仍取主题的 accent / risk 三色。 */
+.fb-terminal {
+	background: color-mix(in oklab, var(--color-surface, #0a101d) 88%, var(--fb-accent) 12%);
+	font-variant-ligatures: none;
+}
+
+.fb-terminal .fb-log {
+	display: grid;
+	grid-template-columns: 62px 14px minmax(0, 1fr);
+	gap: 8px;
+	padding: 2px 10px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 10.5px;
+	line-height: 1.55;
+	color: var(--color-text-3, #94a3b8);
+}
+
+.fb-terminal .fb-log:hover {
+	background: color-mix(in oklab, var(--fb-accent) 10%, transparent);
+}
+
+.fb-terminal .fb-log[data-tone="ok"] .fb-log-mark,
+.fb-terminal .fb-log[data-tone="ok"] .fb-log-name {
+	color: var(--color-risk-low, #4ade80);
+}
+
+.fb-terminal .fb-log[data-tone="err"] .fb-log-mark,
+.fb-terminal .fb-log[data-tone="err"] .fb-log-name {
+	color: var(--color-risk-high, #fb7185);
+}
+
+.fb-terminal .fb-log[data-tone="run"] .fb-log-mark {
+	color: var(--color-risk-medium, #fb923c);
+}
+
+.fb-terminal .fb-log-name {
+	color: var(--color-text, #e2e8f0);
+}
+
+.fb-resize {
+	height: 8px;
+	cursor: row-resize;
+	touch-action: none;
+	background: transparent;
+	border-radius: 4px;
+}
+
+.fb-resize:hover {
+	background: color-mix(in oklab, var(--fb-accent) 22%, transparent);
+}
+
 .fb-page {
 	display: flex;
 	flex-direction: column;
@@ -233,6 +284,30 @@
 }
 
 /* 窄面板：只改三个变量，后面所有宽度自动跟着降。 */
+/*
+ * 选中态只有一种写法：`--fb-accent` 的淡底 + 强调色文字。
+ * 之前各页面各写 `bg-surface-4`，那是「比背景略亮」的灰 —— 看起来就是没选中。
+ */
+.fb-selected {
+	background: var(--fb-accent-soft);
+	color: var(--fb-accent);
+}
+
+/* 选中态里的次要文字跟着走，避免灰字压在强调底上读不清。 */
+.fb-selected .fb-muted,
+.fb-selected [data-muted] {
+	color: color-mix(in oklab, var(--fb-accent) 62%, var(--color-text-4, #94a3b8));
+}
+
+/*
+ * 卡头不画分隔线：面板里每张卡都有一条横线，加上分组、列表行的分隔，整页全是横线。
+ * 靠间距与标题字重分层就够了 —— 这是「减少线条感」的落点。
+ */
+.fb-card-head {
+	border-bottom: 0;
+	padding: 10px var(--fb-ins) 4px;
+}
+
 /* 卡头与卡体走同一个内边距变量，页面不再各写 p-3 / p-3.5。 */
 .fb-card-head {
 	padding: 10px var(--fb-ins);

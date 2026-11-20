@@ -160,7 +160,7 @@ export function CasesPage({ model, embedded = false }: PageProps & { embedded?: 
 													aria-pressed={active}
 													title={`cases/${item.slug}/`}
 													className={`flex w-full items-start gap-2 border-b border-line-subtle px-2.5 py-1.5 text-left last:border-0 ${
-														active ? "bg-surface-4" : "hover:bg-surface-hover"
+														active ? "fb-selected" : "hover:bg-surface-hover"
 													}`}
 												>
 													<div className="min-w-0 flex-1">
@@ -191,7 +191,7 @@ export function CasesPage({ model, embedded = false }: PageProps & { embedded?: 
 												aria-pressed={active}
 												title={item.path}
 												className={`flex w-full items-center gap-2 border-b border-line-subtle px-2.5 py-1.5 text-left last:border-0 ${
-													active ? "bg-surface-4" : "hover:bg-surface-hover"
+													active ? "fb-selected" : "hover:bg-surface-hover"
 												}`}
 											>
 												<span className="min-w-0 flex-1 truncate text-[11.5px] text-text">{item.name}</span>

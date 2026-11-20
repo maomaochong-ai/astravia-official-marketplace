@@ -96,7 +96,7 @@ export function DisasmPage({ model }: PageProps) {
 											onClick={() => disasm.select(item.offset)}
 											aria-pressed={active}
 											className={`flex w-full items-center gap-2 border-b border-line-subtle px-3.5 py-1.5 text-left last:border-0 ${
-												active ? "bg-surface-4" : "hover:bg-surface-hover"
+												active ? "fb-selected" : "hover:bg-surface-hover"
 											}`}
 										>
 											<span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-text">{item.name ?? t("disasm.functions.unnamed")}</span>
@@ -108,7 +108,6 @@ export function DisasmPage({ model }: PageProps) {
 							)}
 						</div>
 					</Card>
-
 					<Card
 						title={result ? `${result.name ?? t("disasm.functions.unnamed")} · ${hex(result.start)}` : t("disasm.output.title")}
 						actions={
