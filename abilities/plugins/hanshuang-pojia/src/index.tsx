@@ -82,6 +82,8 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 	// 权威的「当前有没有活跃会话」：订阅后宿主会立刻 replay 一次 conversation-changed，
 	// 比从 sendPrompt 的报错文案里猜可靠。undefined 表示还没收到。
 	let activeSession: string | null | undefined;
+	// 宿主在 conversation-changed 里带 cwd；记下来给 listReports 当根，不要另外去猜。
+	let activeCwd: string | null = null;
 	try {
 		const handle = ctx.conversation.on(event => {
 			if (event.type === "conversation-changed") activeSession = event.conversation.id;
@@ -145,6 +147,34 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 				return null;
 			}
 		},
+		// 只在工作区的 reports/ 下找：那是唯一被授权的写盘目录。
+		// reports/ 是平铺目录，readDir 一层就够；不递归，也不去猜别的位置。
+		listReports: async () => {
+			// 面板的 cwd 由会话状态给出（host 在 conversation 事件里推）；没有工作区就没有报告。
+			const cwd = activeCwd;
+			if (!cwd) return [];
+			let entries;
+			try {
+				entries = await ctx.fs.readDir(`${cwd}/reports`);
+			} catch {
+				// 目录还不存在：没有报告不是错误。
+				return [];
+			}
+			const reports = [];
+			for (const entry of entries) {
+				if (entry.isDirectory || !/\.(md|json)$/i.test(entry.name)) continue;
+				reports.push({ path: entry.path, name: entry.name, bytes: entry.size ?? 0 });
+			}
+			return reports;
+		},
+		readReport: async path => {
+			try {
+				const file = await ctx.fs.readFile(path);
+				return file.encoding === "utf8" ? file.content : null;
+			} catch {
+				return null;
+			}
+		},
 		saveReport: async (report, mode, format) => {
 			const stem = report.target.name.replace(/\.[^.]+$/, "") || "sample";
 			const isJson = format === "json";
@@ -181,6 +211,7 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 						case "conversation-changed":
 							hasSession = event.conversation.id !== null;
 							activeSession = event.conversation.id;
+							activeCwd = event.conversation.cwd;
 							publishTaskEvent({ phase: "conversation", sessionId: event.conversation.id, streaming: event.conversation.isStreaming, cwd: event.conversation.cwd });
 							push(chatStateOf(event.conversation));
 							return;

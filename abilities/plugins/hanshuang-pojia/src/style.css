@@ -128,9 +128,13 @@
 	--fb-risk-medium: light-dark(#bf4a00, #ff8549);
 	--fb-risk-medium-deep: light-dark(#9a3a00, #e25507);
 	--fb-risk-low: light-dark(#0b7a37, #40c977);
-	/* 强调色取宿主的 accent 变量；宿主没给时回落到一个中性蓝。 */
-	--fb-accent: var(--accent, #4f8cff);
-	--fb-accent-soft: color-mix(in oklab, var(--fb-accent) 16%, transparent);
+	/*
+	 * 强调色不能取宿主的 `--accent`：它在宿主里是**前景色**（深色主题 rgb(226,232,248)，
+	 * 另一处是 foreground 10% 的合成），拿来做选中态会得到一片近白或几乎透明，
+	 * 看起来就是「选中了但图标是灰的」。所以自己定：浅色主题蓝，深色主题亮蓝。
+	 */
+	--fb-accent: light-dark(#1f6feb, #7cb0ff);
+	--fb-accent-soft: color-mix(in oklab, var(--fb-accent) 18%, transparent);
 	--fb-risk-low-deep: light-dark(#075f2a, #00a240);
 	--fb-purple: light-dark(#7b3ec4, #c27aff);
 }

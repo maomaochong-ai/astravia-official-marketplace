@@ -25,6 +25,8 @@ export interface DocsModel {
 	hits: DocHit[] | null;
 	searching: boolean;
 	selected: DocEntry | null;
+	/** 按 id 取条目：弹窗按 id 打开，不必依赖当前选中项。 */
+	byId(id: string): DocEntry | null;
 	select(id: string | null): void;
 	body: string | null;
 	loading: boolean;
@@ -47,7 +49,7 @@ function initialDoc(library: DocsLibrary): DocEntry | null {
 export function useDocs(bridge: WorkbenchBridge, enabled: boolean): DocsModel {
 	const { t } = useTranslation();
 	const [query, setQuery] = useState("");
-	const [mode, setMode] = useState<DocSearchMode>("title");
+	const [mode, setMode] = useState<DocSearchMode>("full");
 	const [fullHits, setFullHits] = useState<DocHit[] | null>(null);
 	const [searching, setSearching] = useState(false);
 	const [selected, setSelected] = useState<DocEntry | null>(null);
@@ -178,6 +180,7 @@ export function useDocs(bridge: WorkbenchBridge, enabled: boolean): DocsModel {
 		hits: mode === "title" ? titleHits : fullHits,
 		searching,
 		selected,
+		byId: id => library?.byId(id) ?? null,
 		select,
 		body,
 		loading,

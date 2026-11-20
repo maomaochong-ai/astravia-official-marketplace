@@ -12,6 +12,13 @@ export type NotifyVariant = "info" | "success" | "warning" | "error";
  * 面板需要的宿主能力。装配层（index.tsx）用 PluginContext 实现，
  * 组件与 hooks 只依赖这个接口，测试里换成假实现即可，不需要 import SDK。
  */
+/** 工作区 `reports/` 下的一份报告。 */
+export interface ReportFile {
+	readonly path: string;
+	readonly name: string;
+	readonly bytes: number;
+}
+
 export interface WorkbenchBridge {
 	listFiles(directory: string): Promise<PluginFsEntry[]>;
 	/**
@@ -37,6 +44,10 @@ export interface WorkbenchBridge {
 	/** 上一次 `probe_refusal` 的落盘记录；没有就是 null。 */
 	probeRecord(): Promise<ProbeRecord | null>;
 	saveReport(report: TriageReport, mode: ReportMode, format: "markdown" | "json"): Promise<string | null>;
+	/** 工作区 `reports/` 下的报告文件（对话里产出的那些）。 */
+	listReports(): Promise<ReportFile[]>;
+	/** 读一份报告的正文；读不到返回 null。 */
+	readReport(path: string): Promise<string | null>;
 	/** 把注入/卸载脚本落到工作区 `.hanshuang/inject/`，返回相对路径；失败返回 null。 */
 	saveInjectScript(name: string, content: string): Promise<string | null>;
 	/** 把一句英文指令送进对话：有活跃会话就直接发，没有就新开一个。 */

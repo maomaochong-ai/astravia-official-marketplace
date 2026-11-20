@@ -7,6 +7,7 @@ import { stringKind, type StringKind } from "../../../domain/string-kinds";
 import { renderMarkdown, reportToJson, type TriageReport } from "../../../domain/report/report";
 import { scopeForSample } from "../../../domain/sample-scope";
 import type { ProbeRecord } from "../../../domain/refusal-probe";
+import type { ReportFile } from "../bridge";
 import { resolveSamplePath } from "../../../domain/sample-path";
 import { readNativeFacts } from "../../../domain/native/detect";
 import { addressMapFor } from "../../../domain/native/image";
@@ -123,6 +124,9 @@ export interface WorkbenchModel {
 	probe: { record: ProbeRecord | null; refresh(): void };
 	/** 把注入/卸载脚本落到工作区 `.hanshuang/inject/`；返回相对路径或 null。 */
 	saveInjectScript(name: string, content: string): Promise<string | null>;
+	/** 工作区 reports/ 下的报告（对话里产出的）。 */
+	listReports(): Promise<ReportFile[]>;
+	readReport(path: string): Promise<string | null>;
 	/** 当前会话 id；存储的会话作用域靠它分区，null = 还没有活跃会话。 */
 	sessionId: string | null;
 
@@ -669,6 +673,8 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		myCases,
 		probe: { record: probeRecord, refresh: refreshProbe },
 		saveInjectScript: (name, content) => bridge.saveInjectScript(name, content),
+		listReports: () => bridge.listReports(),
+		readReport: path => bridge.readReport(path),
 		caseDocs,
 		exportReport,
 		copyReport,

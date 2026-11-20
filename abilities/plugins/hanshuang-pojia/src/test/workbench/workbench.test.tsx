@@ -85,6 +85,8 @@ function makeBridge(overrides: Partial<WorkbenchBridge> = {}): WorkbenchBridge {
 		saveLabMode: vi.fn(async () => true),
 		probeRecord: vi.fn(async () => null),
 		saveInjectScript: vi.fn(async () => ".hanshuang/inject/x.ps1"),
+		listReports: vi.fn(async () => []),
+		readReport: vi.fn(async () => null),
 		...overrides,
 	};
 }
@@ -117,22 +119,20 @@ describe("workbench shell", () => {
 		expect(await screen.findAllByText(/Knowledge Base/)).toBeTruthy();
 	}, 15_000);
 
-	it("hands the pane to the reader after a pick, and gives the list back", async () => {
+	it("opens a document in a preview overlay and returns to the list", async () => {
 		const api = makeBridge();
 		await open(api);
 		await go("knowledge");
 		await screen.findByTestId("docs-list");
 
-		// 目录卡的可见性在外层 Card 上；窄面板下选中即收起。
-		const card = () => screen.getByTestId("docs-list-card");
-		expect(card().className.includes("hidden @min")).toBe(false);
-
+		// 目录吃满主区；点一行开弹窗，而不是把正文挤进另一栏。
 		fireEvent.click(screen.getByTestId("docs-list").querySelector('[data-doc-id="kb/README"]') as HTMLButtonElement);
-		await waitFor(() => expect(card().className.includes("hidden @min")).toBe(true));
+		expect(await screen.findByTestId("doc-preview")).toBeTruthy();
 
-		// 返回按钮清掉选中，目录重新占满。
-		fireEvent.click(screen.getByText("docs.reader.back"));
-		await waitFor(() => expect(card().className.includes("hidden @min")).toBe(false));
+		// 弹窗里的「返回目录」关掉预览，列表仍在原位。
+		fireEvent.click(screen.getByText("docs.preview.back"));
+		await waitFor(() => expect(screen.queryByTestId("doc-preview")).toBeNull());
+		expect(screen.getByTestId("docs-list-card")).toBeTruthy();
 	}, 15_000);
 
 	it("lists only sample files from the workspace", async () => {

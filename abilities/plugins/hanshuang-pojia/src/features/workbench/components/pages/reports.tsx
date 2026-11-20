@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { formatBytes, renderMarkdown } from "../../../../domain/report/report";
 import { AiButton } from "../shell/ai-button";
@@ -10,6 +10,7 @@ import { PageHeader } from "../shell/page-header";
 import { SegmentedControl } from "../shell/segmented-control";
 import { StatTile } from "../shell/stat-tile";
 import { Tag } from "../shell/tag";
+import type { ReportFile } from "../../bridge";
 import type { PageProps } from "./overview";
 
 type Tab = "report" | "library";
@@ -35,6 +36,25 @@ function when(iso: string): string {
 export function ReportsPage({ model }: PageProps) {
 	const { t } = useTranslation();
 	const [tab, setTab] = useState<Tab>("report");
+	// 对话里产出的报告落在工作区 reports/；面板只读它们，不生成。
+	const [workspaceReports, setWorkspaceReports] = useState<ReportFile[] | null>(null);
+	const [previewPath, setPreviewPath] = useState<string | null>(null);
+	const [previewBody, setPreviewBody] = useState<string | null>(null);
+
+	useEffect(() => {
+		let alive = true;
+		void model.listReports().then(
+			files => {
+				if (alive) setWorkspaceReports(files);
+			},
+			() => {
+				if (alive) setWorkspaceReports([]);
+			},
+		);
+		return () => {
+			alive = false;
+		};
+	}, [model]);
 	const report = model.report;
 
 	// 与 copyReport/exportReport 同一份渲染结果：屏幕上看到的就是会被复制出去的那份。
@@ -203,12 +223,73 @@ export function ReportsPage({ model }: PageProps) {
 					</Card>
 				)}
 
+				{/* 工作区 reports/：对话里 Agent 写下的报告。点开就地预览，不离开面板。 */}
+				<Card
+					title={t("reports.workspace.title")}
+					actions={<span className="font-mono text-[10px] text-text-4">{workspaceReports?.length ?? "…"}</span>}
+					bodyClassName="p-0"
+				>
+					{workspaceReports === null ? (
+						<p className="px-3.5 py-2 text-[10.5px] text-text-4">{t("reports.workspace.loading")}</p>
+					) : workspaceReports.length === 0 ? (
+						<p className="px-3.5 py-2 text-[10.5px] leading-relaxed text-text-4">{t("reports.workspace.empty")}</p>
+					) : (
+						<div className="fb-scroll max-h-[220px] divide-y divide-line-subtle overflow-y-auto">
+							{workspaceReports.map(file => (
+								<button
+									key={file.path}
+									type="button"
+									onClick={() => {
+										setPreviewPath(file.path);
+										setPreviewBody(null);
+										void model.readReport(file.path).then(setPreviewBody);
+									}}
+									title={file.path}
+									className="flex w-full min-w-0 items-center gap-2 px-3.5 py-1.5 text-left transition-colors hover:bg-surface-hover"
+								>
+									<Icon name="file" className="size-3 shrink-0 text-text-4" />
+									<span className="min-w-0 flex-1 truncate text-[11.5px] text-text">{file.name}</span>
+									<span className="shrink-0 font-mono text-[9.5px] text-text-4">{formatBytes(file.bytes)}</span>
+								</button>
+							))}
+						</div>
+					)}
+				</Card>
+
 				{/* 存储状态是事实，不是提示：放在页尾一行，不占一整个卡片。 */}
 				<div className="flex shrink-0 items-center gap-1.5 px-1 text-[10px] text-text-4">
 					<Icon name={model.persisted ? "check" : "alert"} className={`size-3 shrink-0 ${model.persisted ? "text-risk-low" : "text-risk-medium"}`} />
 					<span className="min-w-0 truncate">{model.persisted ? t("reports.storage.on") : t("reports.storage.off")}</span>
 				</div>
 			</div>
+
+			{previewPath ? (
+				<div className="fb-overlay" onClick={() => setPreviewPath(null)}>
+					<div
+						className="flex max-h-[88%] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-surface-2 ring-1 ring-line-strong"
+						onClick={event => event.stopPropagation()}
+					>
+						<div className="flex shrink-0 items-center gap-2 border-b border-line-subtle px-3.5 py-2">
+							<button
+								type="button"
+								onClick={() => setPreviewPath(null)}
+								className="inline-flex shrink-0 items-center gap-1 rounded-md border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 hover:bg-surface-hover hover:text-text"
+							>
+								<Icon name="chevron" className="size-3 rotate-180" />
+								{t("reports.workspace.back")}
+							</button>
+							<span className="min-w-0 flex-1 truncate font-mono text-[10px] text-text-4">{previewPath}</span>
+						</div>
+						<div className="fb-scroll min-h-0 flex-1 overflow-y-auto px-4 py-3">
+							{previewBody === null ? (
+								<p className="text-[11px] text-text-4">{t("reports.workspace.loading")}</p>
+							) : (
+								<Markdown source={previewBody} />
+							)}
+						</div>
+					</div>
+				</div>
+			) : null}
 		</>
 	);
 }

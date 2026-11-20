@@ -3,146 +3,108 @@ import { Card } from "../shell/card";
 import { Icon } from "../shell/icon";
 import { PageHeader } from "../shell/page-header";
 import { AiButton } from "../shell/ai-button";
-import { SegmentedControl } from "../shell/segmented-control";
 import { useState } from "react";
 import type { PageProps } from "./overview";
 
 /**
- * 一次评估的六段，与当前实现对齐（不是旧版的五步）：
- * 载入样本 → 静态画像 → 语义核对（知识库） → 动态/注入 → 交付 → 复核与回滚。
+ * 使用指南：一张**工作流图** + 每步交付什么。
  *
- * 每段写明「在哪个页面做」「哪条命令/工具」「产出什么」，读者照着点就能走完，
- * 不需要先理解插件结构。旧版只写「选样本 / 跑 / 读 / 问 / 导出」五步，
- * 与现在的知识库两级筛选、注入矩阵、报告与回滚都对不上。
+ * 上一版是六段文字列表，读者得自己把「哪一步用哪个页面」拼起来。现在：
+ *   · 上半是一行流图（六段带箭头，箭头之间标「进入下一段的判据」）；
+ *   · 下半是工件表：每段产出的文件/结论、落在哪个页面、下一步拿它干什么；
+ *   · 最后一段是边界：插件不做什么，免得把「工具输出」当成「结论」。
  */
-const STAGES = ["intake", "static", "knowledge", "dynamic", "deliver", "review"] as const;
+const FLOW = ["intake", "static", "knowledge", "dynamic", "deliver", "review"] as const;
 
-const CAP_PANEL = ["cap.panel.engine", "cap.panel.report", "cap.panel.strings", "cap.panel.compare", "cap.panel.probe"] as const;
-const CAP_CHAT = ["cap.chat.toolchain", "cap.chat.explain", "cap.chat.split", "cap.chat.disasm"] as const;
-const LIMITS = ["limit.execute", "limit.network", "limit.size", "limit.scope", "limit.tools"] as const;
+/** 每段的工件：产出是什么、在哪看、下一步用它干什么。 */
+const ARTIFACTS: Record<(typeof FLOW)[number], { where: string; out: string; next: string }> = {
+	intake: { where: "samples", out: "sha256 / 格式 / 节区 / 熵", next: "带着指纹进静态画像" },
+	static: { where: "findings / strings / disasm / static", out: "规则命中 + 偏移 + 符号", next: "把命中拿去知识库找方法" },
+	knowledge: { where: "knowledge", out: "方法文档 + 先例 slug + 可跑工具", next: "决定用哪个方法、跑哪个脚本" },
+	dynamic: { where: "prompts", out: "激活的提示词 / 注入计划 / 拒答梯度", next: "用配置去验证假设" },
+	deliver: { where: "reports", out: "四节报告（概要/判定点/证据/防御）", next: "交付、复核、归档" },
+	review: { where: "selfcheck / activity", out: "自检结论 + 调用配对 + 回滚命令", next: "任何改动都必须能回滚" },
+};
 
-type Tab = "flow" | "split" | "limits";
-
-/** 使用指南：一条完整链路、面板与对话的分工、以及插件真的做不到的事。 */
 export function GuidePage({ model }: PageProps) {
 	const { t } = useTranslation();
 	const busy = model.chat.sending;
-	const [tab, setTab] = useState<Tab>("flow");
+	const [active, setActive] = useState<(typeof FLOW)[number]>("intake");
 
 	return (
 		<>
 			<PageHeader
 				title={t("page.guide.title")}
 				description={t("page.guide.lead")}
-				actions={
-					<>
-						<SegmentedControl<Tab>
-							size="sm"
-							value={tab}
-							onValueChange={setTab}
-							ariaLabel={t("page.guide.title")}
-							items={[
-								{ value: "flow", label: t("guide.tab.flow") },
-								{ value: "split", label: t("guide.tab.split") },
-								{ value: "limits", label: t("guide.tab.limits") },
-							]}
-						/>
-						<AiButton label={t("ai.workflow")} onClick={() => model.ask("continue")} busy={busy} />
-					</>
-				}
+				actions={<AiButton label={t("ai.workflow")} onClick={() => model.ask("continue")} busy={busy} />}
 			/>
 
 			<div className="fb-page">
-				{tab === "flow" ? (
-					<>
-						<Card title={t("guide.flow.title")} bodyClassName="p-3.5">
-							<ol className="flex flex-col gap-0">
-								{STAGES.map((stage, index) => (
-									<li key={stage} className="flex gap-3">
-										{/* 竖线只连在本段与下一段之间：最后一段不画，避免结尾多出一截。 */}
-										<div className="flex w-5 shrink-0 flex-col items-center">
-											<span className="flex size-5 items-center justify-center rounded-full bg-surface-4 font-mono text-[10px] text-text-2">
-												{index + 1}
-											</span>
-											{index < STAGES.length - 1 ? <span aria-hidden className="my-1 w-px flex-1 bg-line-subtle" /> : null}
-										</div>
-										<div className={`min-w-0 flex-1 ${index < STAGES.length - 1 ? "pb-3.5" : ""}`}>
-											<div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-												<span className="text-[12px] font-medium text-text">{t(`guide.stage.${stage}.title`)}</span>
-												<span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-[9.5px] text-text-3">{t(`guide.stage.${stage}.where`)}</span>
-											</div>
-											<p className="mt-1 text-[10.5px] leading-relaxed text-text-3">{t(`guide.stage.${stage}.body`)}</p>
-											<p className="mt-0.5 font-mono text-[10px] text-text-4">{t(`guide.stage.${stage}.out`)}</p>
-										</div>
-									</li>
-								))}
-							</ol>
-						</Card>
-
-						<Card title={t("guide.lab.title")} bodyClassName="p-3.5">
-							<div className="flex items-start gap-2.5">
-								<Icon name="chip" className="mt-0.5 size-3.5 shrink-0 text-accent" />
-								<div className="min-w-0 flex-1">
-									<div className="flex flex-wrap items-center gap-2">
-										<span className="text-[11.5px] font-medium text-text-2">{t("guide.lab.status")}</span>
-										<span
-											className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-												model.lab.state.enabled ? "bg-risk-low/15 text-risk-low" : "bg-surface-4 text-text-4"
-											}`}
-										>
-											{t(model.lab.state.enabled ? "guide.lab.on" : "guide.lab.off")}
-										</span>
-									</div>
-									<p className="mt-1.5 text-[10.5px] leading-relaxed text-text-3">{t("guide.lab.lead")}</p>
-									<p className="mt-1 text-[10.5px] leading-relaxed text-text-4">{t("guide.lab.case")}</p>
-								</div>
+				{/* 工作流图：六段横排，段间箭头标注「判据」。窄面板自动折行。 */}
+				<Card title={t("guide.flow.title")} bodyClassName="p-3">
+					<ol className="flex flex-wrap items-stretch gap-1.5">
+						{FLOW.map((stage, index) => (
+							<li key={stage} className="flex min-w-0 flex-1 items-stretch gap-1.5" style={{ minWidth: 150 }}>
 								<button
 									type="button"
-									onClick={() => model.lab.set(!model.lab.state.enabled)}
-									className="shrink-0 rounded-md border border-line-subtle px-2.5 py-1 text-[11px] font-medium text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+									onClick={() => setActive(stage)}
+									aria-pressed={active === stage}
+									className={`flex min-w-0 flex-1 flex-col gap-1 rounded-lg border px-2.5 py-2 text-left transition-colors ${
+										active === stage ? "border-accent/50 bg-accent-soft" : "border-line-subtle bg-surface hover:bg-surface-hover"
+									}`}
 								>
-									{t(model.lab.state.enabled ? "guide.lab.disable" : "guide.lab.enable")}
+									<span className="flex items-center gap-1.5">
+										<span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-surface-4 font-mono text-[9.5px] text-text-2">
+											{index + 1}
+										</span>
+										<span className={`truncate text-[11.5px] font-medium ${active === stage ? "text-accent" : "text-text"}`}>
+											{t(`guide.stage.${stage}.title`)}
+										</span>
+									</span>
+									<span className="truncate font-mono text-[9.5px] text-text-4">{ARTIFACTS[stage].where}</span>
 								</button>
-							</div>
-						</Card>
-					</>
-				) : null}
-
-				{tab === "split" ? (
-					<div className="grid gap-3 @min-[900px]:grid-cols-2">
-						<Card title={t("guide.cap.panel")} bodyClassName="divide-y divide-line-subtle">
-							{CAP_PANEL.map(item => (
-								<div key={item} className="flex gap-1.5 px-3.5 py-1.5">
-									<Icon name="check" className="mt-0.5 size-3 shrink-0 text-risk-low" />
-									<span className="min-w-0 flex-1 text-[10.5px] leading-relaxed text-text-3">{t(`guide.${item}`)}</span>
-								</div>
-							))}
-						</Card>
-						<Card title={t("guide.cap.chat")} bodyClassName="divide-y divide-line-subtle">
-							{CAP_CHAT.map(item => (
-								<div key={item} className="flex gap-1.5 px-3.5 py-1.5">
-									<Icon name="chevron" className="mt-0.5 size-3 shrink-0 text-text-4" />
-									<span className="min-w-0 flex-1 text-[10.5px] leading-relaxed text-text-3">{t(`guide.${item}`)}</span>
-								</div>
-							))}
-						</Card>
-					</div>
-				) : null}
-
-				{tab === "limits" ? (
-					<Card title={t("guide.limit.title")} bodyClassName="divide-y divide-line-subtle">
-						{LIMITS.map(item => (
-							<div key={item} className="flex gap-1.5 px-3.5 py-1.5">
-								<Icon name="ban" className="mt-0.5 size-3 shrink-0 text-text-4" />
-								<span className="min-w-0 flex-1 text-[10.5px] leading-relaxed text-text-3">{t(`guide.${item}`)}</span>
-							</div>
+								{index < FLOW.length - 1 ? (
+									<span aria-hidden className="flex shrink-0 items-center px-0.5 text-text-4">
+										<Icon name="chevron" className="size-3" />
+									</span>
+								) : null}
+							</li>
 						))}
-						<div className="flex flex-wrap gap-1.5 px-3.5 py-2.5">
-							<AiButton label={t("ai.toolchain")} onClick={() => model.ask("toolchain")} busy={busy} />
-							<AiButton label={t("ai.report")} onClick={() => model.ask("report")} busy={busy} disabled={!model.report} />
+					</ol>
+					<p className="mt-2 text-[10px] leading-relaxed text-text-4">{t("guide.flow.note")}</p>
+				</Card>
+
+				{/* 选中段的工件表：产出 / 下一步，两行就够，不做成图表。 */}
+				<Card title={`${t(`guide.stage.${active}.title`)} · ${t("guide.artifacts.title")}`} bodyClassName="divide-y divide-line-subtle">
+					<div className="flex items-start gap-2.5 px-3.5 py-2">
+						<Icon name="check" className="mt-0.5 size-3 shrink-0 text-accent" />
+						<div className="min-w-0 flex-1">
+							<div className="text-[11.5px] text-text">{t("guide.artifacts.out")}</div>
+							<div className="mt-0.5 font-mono text-[10px] text-text-3">{ARTIFACTS[active].out}</div>
 						</div>
-					</Card>
-				) : null}
+					</div>
+					<div className="flex items-start gap-2.5 px-3.5 py-2">
+						<Icon name="chevron" className="mt-0.5 size-3 shrink-0 text-text-4" />
+						<div className="min-w-0 flex-1">
+							<div className="text-[11.5px] text-text">{t("guide.artifacts.next")}</div>
+							<div className="mt-0.5 text-[10.5px] leading-relaxed text-text-3">{ARTIFACTS[active].next}</div>
+						</div>
+					</div>
+					<div className="px-3.5 py-2 text-[10.5px] leading-relaxed text-text-3">{t(`guide.stage.${active}.body`)}</div>
+				</Card>
+
+				<Card title={t("guide.limit.title")} bodyClassName="divide-y divide-line-subtle">
+					{(["execute", "network", "size", "scope", "tools"] as const).map(item => (
+						<div key={item} className="flex gap-1.5 px-3.5 py-1.5">
+							<Icon name="ban" className="mt-0.5 size-3 shrink-0 text-text-4" />
+							<span className="min-w-0 flex-1 text-[10.5px] leading-relaxed text-text-3">{t(`guide.limit.${item}`)}</span>
+						</div>
+					))}
+					<div className="flex flex-wrap gap-1.5 px-3.5 py-2.5">
+						<AiButton label={t("ai.toolchain")} onClick={() => model.ask("toolchain")} busy={busy} />
+						<AiButton label={t("ai.report")} onClick={() => model.ask("report")} busy={busy} disabled={!model.report} />
+					</div>
+				</Card>
 			</div>
 		</>
 	);
