@@ -1,10 +1,11 @@
 {
   "name": "@astravia-marketplace/hanshuang-pojia",
-  "version": "2.17.5",
+  "version": "2.17.6",
   "private": true,
   "type": "module",
   "scripts": {
     "check": "tsc --noEmit",
+    "verify:routing": "node --experimental-strip-types scripts/verify-routing.mjs",
     "test": "vitest run",
     "build": "vite build",
     "analyze": "node scripts/analyze.mjs",
