@@ -329,6 +329,8 @@
   "prompt.preview.empty": "还没有内容",
   "sidebar.collapse": "收起侧栏",
   "sidebar.expand": "展开侧栏",
+  "sidebar.resize": "拖拽调整侧栏宽度（双击回默认）",
+  "docs.list.resize": "拖拽调整列表宽度（双击回默认）",
   "inject.noActivePrompt": "未激活提示词",
   "dropzone.empty.title": "选择一个样本开始体检",
   "dropzone.empty.body": "拖一个文件进来，或从样本列表里选、输入项目内路径。文件会先复制进工作区；引擎只读字节，不上传、不解包、不执行。",

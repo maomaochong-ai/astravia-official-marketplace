@@ -329,6 +329,8 @@
   "prompt.preview.empty": "Nothing written yet",
   "sidebar.collapse": "Collapse sidebar",
   "sidebar.expand": "Expand sidebar",
+  "sidebar.resize": "Drag to resize the sidebar (double-click to reset)",
+  "docs.list.resize": "Drag to resize the list (double-click to reset)",
   "inject.noActivePrompt": "No active prompt",
   "dropzone.empty.title": "Select a sample to inspect",
   "dropzone.empty.body": "Drop a file here, pick one from the list, or type a path inside this project. Files are copied into the workspace first; the engine reads bytes only — nothing is uploaded, unpacked or run.",
