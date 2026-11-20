@@ -88,7 +88,7 @@
 `decompile_android` 只写到 APK 旁边的目录，从不改原文件，而且只接受尚不存在的目录：已存在的 `output_dir`
 直接拒绝而不是合并进去；`apktool` 也不再带 `-f`，重跑不可能抹掉你自己的文件夹。重建产物放在案件旁的 `exports/` 下：
 补丁是你那次修改的产出，不会有一个 `patches/` 目录提前替你留位。
-`probe_environment` 每个工具跑一次短 `--version`，结果缓存一分钟，并把两种失败分清楚：被拒绝是设置问题，找不到才是装的问题。`install_toolchain` 把后者变成你真要敲的命令：按目标（`apk` / `native` / `firmware` / `dynamic` / `full`）筛掉用不上的工具，取本平台的配方（brew / apt / winget / scoop / pipx），到此为止——插件不跑安装器，每条命令你先看到再决定。商业套件（IDA、Binary Ninja、JEB）只作为上下文列出，不给命令；可选工具不占任何权限位，因为插件从不启动它们。与 2.0 的全量对照见 [docs/reference/toolchain-parity.md](docs/reference/toolchain-parity.md)。
+`probe_environment` 每个工具跑一次短 `--version`，结果缓存一分钟，并把两种失败分清楚：被拒绝是设置问题，找不到才是装的问题。`install_toolchain` 把后者变成你真要敲的命令：按目标（`apk` / `native` / `firmware` / `dynamic` / `full`）筛掉用不上的工具，取本平台的配方（brew / apt / winget / scoop / pipx），到此为止——插件不跑安装器，每条命令你先看到再决定。商业套件（IDA、Binary Ninja、JEB）只作为上下文列出，不给命令；可选工具不占任何权限位，因为插件从不启动它们。与 2.0 的全量对照见 [spec/toolchain-parity.md](spec/toolchain-parity.md)。
 
 同一套引擎可以在终端里跑，不经过插件沙箱：
 
@@ -189,12 +189,12 @@ node scripts/analyze.mjs asm x86-64 "mov rax, rbx" "ret" --address 0x1000
 2.1 起，工具包的**技能库直接随包发出**：`agent/skills/` 是 `seep-kit/Tool/skill/` 的移植版 ——
 171 个文件、2.48 MB，含 `softseep`（总控）、`apkseep`、`ida-reverse`、`client-license-validation-bypass`，
 以及五个 `safe-skills/*` 技术包，另有 `hanshuang-pojia` 主手册与三个带跨平台脚本的技能包。
-清单与来源在 `docs/reference/skill-library.md`，逐文件哈希在 `docs/reference/skill-library.sha256`，
+清单与来源在 `docs/reference/skill-library.md`，逐文件哈希在 `spec/skill-library.sha256`，
 `src/test/skill-library.test.ts` 会重算清单，防止构建时静默丢失。
 
 它们通过 `plugin.json#agent.skillPaths = ["agent/skills"]` 注册，`skillPresentation.defaultVisibility`
 为 `visible`、五个 surface 全开，所以装好即可在技能选择器里看到，不需要额外配置。
-相对上游并非逐字节一致，且有四处是刻意的（见 `SKILL-LIBRARY.md` 的同名一节）。
+相对上游并非逐字节一致，且有四处是刻意的（见 `spec/skill-library.sha256` 与 `docs/reference/skill-library.md` 的同名一节）。
 
 提示词本体不该背的细节放在 `agent/skills/memory/references/plugin-handbook.md`：实测的工具包目录结构、
 MCP 工具全表、十篇手册索引、宿主安装矩阵、校验基线、中继与记忆机制。每轮付费的只有技能索引项，
@@ -233,17 +233,15 @@ MCP 工具全表、十篇手册索引、宿主安装矩阵、校验基线、中�
 
 ```text
 cases/                             # 19 个先例包：只有源码，构建期内联，从不随包
-docs/                              # 工程文档：README.md 索引 + contract/ reference/ audits/ plans/
+docs/                              # 工程文档，从不入包：README.md 索引 + contract/ reference/ audits/ domains/ adr/
+spec/                              # 机器读产物，从不入包：技能哈希清单 + 工具链对账表
+AGENTS.md                          # 给 Astravia 以外宿主的跨 Agent 协议（随包，位于插件根）
 agent/
-├── skills/                          # 九个 SKILL.md 目录，经 skillPaths 注册
-│   ├── hanshuang-pojia/             # 宿主在对话区列出的主技能，含 references/
-│   ├── apk-reverse/  ida-reverse/  radare2/     # 各自 scripts/*.ps1 与 *.sh 成对
-│   └── apkseep/  softseep/  reverse-engineering/  …  # safe-skills 移植
-└── docs/                            # 整目录入包（打包器唯一收集的 agent/ 子树）
-    ├── SYSTEM.md                    # 常驻作战契约，lab 开启时作为提示块注入
-    ├── AGENTS.md                    # 同一份协议给 Astravia 以外的 agent
-    ├── SKILL-LIBRARY.md             # 随包技能库：清单、来源、四处刻意差异
-    └── skill-library.sha256         # 171 条逐文件哈希；测试会重算它
+├── prompts/SYSTEM.md              # 常驻作战契约，lab 开启时作为提示块注入
+└── skills/                        # 经 skillPaths 注册；宿主递归扫这一棵
+    ├── memory/                    # 核心作战手册（PART I–V + references/），先于任何专项技能加载
+    ├── apkseep/  softseep/  client-license-validation-bypass/
+    └── safe-skills/               # apk-reverse、ida-reverse、radare2、reverse-engineering、mcp-js-reverse-playbook
 src/
 ├── index.tsx                        # 只做装配：bridge、标签卡、工具、清理
 ├── runtime-contract.ts              # 标签卡读取的 PluginContext 句柄
