@@ -924,5 +924,9 @@
   "inject.clearAll": "Remove all",
   "inject.remove": "Uninstall",
   "inject.pack.loading": "loading pack…",
-  "inject.pack.chars": "{{count}} chars"
+  "inject.pack.chars": "{{count}} chars",
+  "inject.clearAll.confirm": "This builds a script that strips the marker block from {{count}} targets. Nothing outside the block is touched. Continue?",
+  "inject.clearAll.yes": "Yes, build it",
+  "inject.clearAll.cancel": "Cancel",
+  "inject.clearAll.hint": "Build a script that strips marker blocks from {{count}} targets (asks first)"
 }

@@ -34,6 +34,12 @@ export function InjectPage({ model, embedded = false }: PageProps & { embedded?:
 	const [shell, setShell] = useState<Shell>("powershell");
 	const [body, setBody] = useState<string | null>(null);
 	const [failure, setFailure] = useState<string | null>(null);
+	// 能批量摘除的只有 marker-block 目标：系统层要整份还原，不可用目标本来就不存在。
+	const markerTargets = INJECT_TARGETS.filter(item => item.form === "marker-block");
+	// 批量清除是唯一会“一次动多个目标”的动作：先亮出将改哪些文件，再给确认。
+	// 6 秒后自动收回，避免按钮长期处于已武装状态被误点。
+	// 6 秒后自动收回，避免按钮长期处于已武装状态被误点。
+	const [clearArmed, setClearArmed] = useState(false);
 
 	// 正文按需读：包不在分块里，切包时才取。
 	useEffect(() => {
@@ -83,14 +89,40 @@ export function InjectPage({ model, embedded = false }: PageProps & { embedded?:
 				<div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-surface-2 px-3 py-2 text-[10.5px] leading-relaxed text-text-3 ring-1 ring-line-subtle">
 					<Icon name="shield" className="size-3.5 shrink-0 text-accent" />
 					<span className="min-w-0 flex-1">{t("inject.intro")}</span>
-					<button
-						type="button"
-						onClick={() => copy(renderBatchRemoval(INJECT_TARGETS.map(item => planFor(item, { packLabel: packId, body: body ?? "" })), shell), t("inject.copied"))}
-						className="inline-flex shrink-0 items-center gap-1 rounded-md border border-line-subtle px-2 py-0.5 text-[10.5px] text-text-2 hover:bg-surface-hover hover:text-text"
-					>
-						<Icon name="close" className="size-3" />
-						{t("inject.clearAll")}
-					</button>
+					{clearArmed ? (
+						<span className="flex min-w-0 shrink-0 flex-wrap items-center gap-1.5 rounded-md border border-risk-high/40 bg-risk-high/10 px-2 py-0.5">
+							<span className="min-w-0 truncate text-risk-high">
+								{t("inject.clearAll.confirm", { count: markerTargets.length })}
+							</span>
+							<button
+								type="button"
+								onClick={() => {
+									setClearArmed(false);
+									copy(renderBatchRemoval(markerTargets.map(item => planFor(item, { packLabel: packId, body: body ?? "" })), shell), t("inject.copied"));
+								}}
+								className="shrink-0 rounded bg-risk-high px-1.5 py-0.5 font-medium text-surface"
+							>
+								{t("inject.clearAll.yes")}
+							</button>
+							<button
+								type="button"
+								onClick={() => setClearArmed(false)}
+								className="shrink-0 rounded px-1.5 py-0.5 text-text-3 hover:text-text"
+							>
+								{t("inject.clearAll.cancel")}
+							</button>
+						</span>
+					) : (
+						<button
+							type="button"
+							onClick={() => setClearArmed(true)}
+							title={t("inject.clearAll.hint", { count: markerTargets.length })}
+							className="inline-flex shrink-0 items-center gap-1 rounded-md border border-line-subtle px-2 py-0.5 text-[10.5px] text-text-2 hover:bg-surface-hover hover:text-text"
+						>
+							<Icon name="close" className="size-3" />
+							{t("inject.clearAll")}
+						</button>
+					)}
 				</div>
 				<div className="flex shrink-0 flex-wrap items-center gap-2">
 					<FilterChips items={PACKS.map(pack => ({ id: pack.id, label: pack.title }))} value={packId} onChange={setPackId} />
