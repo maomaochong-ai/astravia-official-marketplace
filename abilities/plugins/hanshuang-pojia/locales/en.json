@@ -308,8 +308,6 @@
   "prompt.backup.restore": "Restore",
   "prompt.backup.manage": "Backups",
   "prompt.inject.title": "Injection block",
-  "prompt.inject.sourceActive": "From prompt “{{name}}”",
-  "prompt.inject.sourceDefault": "No active prompt — using the default contract",
   "prompt.inject.copy": "Copy block",
   "prompt.inject.copied": "Injection block copied",
   "prompt.inject.howTo": "The plugin may only write inside the project, so the AGENTS.md in your home directory needs one click from you: ask the agent to run install_astravia, or paste the block above into ~/.astravia/agent/AGENTS.md. It is fenced by markers — removing them restores the original file.",
@@ -815,9 +813,6 @@
   "chat.failure.unknown": "Send failed — raw message below",
   "prompt.view.library": "Library",
   "prompt.view.inject": "Inject",
-  "selfcheck.failed.title": "Document index unavailable",
-  "selfcheck.failed.empty": "The index came back empty for an unknown reason.",
-  "selfcheck.failed.hint": "Documents are read from assets/docs/ inside the package; a 404 means the release is missing those resources.",
   "selfcheck.failed.retry": "Retry",
   "settings.lab.title": "Lab mode",
   "settings.lab.label": "Enable lab mode",
@@ -941,5 +936,10 @@
   "guide.next.else": "If it fails:",
   "cases.completeness.sketch": "shape",
   "cases.completeness.worked": "worked",
-  "cases.completeness.field": "field"
+  "cases.completeness.field": "field",
+  "docs.menu.preview": "Preview",
+  "docs.menu.export": "Export .md",
+  "docs.menu.explain": "Explain in chat",
+  "docs.menu.apply": "Apply this method",
+  "inject.resize": "Drag to resize the body (or ↑↓)"
 }
