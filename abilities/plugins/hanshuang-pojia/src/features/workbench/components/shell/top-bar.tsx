@@ -1,5 +1,4 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import type { LabState } from "../../../../domain/lab-mode";
 import type { ChatState, PageId } from "../../state";
 import { Icon } from "./icon";
 
@@ -11,8 +10,6 @@ export interface TopBarProps {
 	onSend(): void;
 	canSend: boolean;
 	/** 实验环境开关：开着时提示块会带上交付规范，所以必须在界面上看得见。 */
-	lab: LabState;
-	onToggleLab(): void;
 }
 
 const DOT: Record<ChatState["status"], string> = {
@@ -22,7 +19,7 @@ const DOT: Record<ChatState["status"], string> = {
 };
 
 /** 面包屑 + 宿主对话状态 + 主操作。设计稿的紫色徽标在这里承担「回程」可见性。 */
-export function TopBar({ page, chat, sending, onSend, canSend, lab, onToggleLab }: TopBarProps) {
+export function TopBar({ page, chat, sending, onSend, canSend }: TopBarProps) {
 	const { t } = useTranslation();
 	const label =
 		chat.status === "streaming"
@@ -41,29 +38,6 @@ export function TopBar({ page, chat, sending, onSend, canSend, lab, onToggleLab 
 				<span className="hidden shrink-0 text-text-4 @min-[560px]:inline">/</span>
 				<span className="min-w-0 truncate font-medium text-text-2">{t(`nav.${page}`)}</span>
 			</div>
-
-			{/* 实验模式：开关形状，不是徽标。默认开启，状态只用一颗旋钮与一个字母表示；
-			 * 详细说明放 title，不在顶栏占两行字。 */}
-			<button
-				type="button"
-				role="switch"
-				aria-checked={lab.enabled}
-				aria-label={t("lab.on")}
-				onClick={onToggleLab}
-				title={t(lab.enabled ? "lab.onHint" : "lab.offHint")}
-				data-testid="lab-switch"
-				className="flex shrink-0 items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-surface-hover"
-			>
-				<span className={`text-[10px] font-semibold uppercase tracking-wide ${lab.enabled ? "text-text-2" : "text-text-4"}`}>LAB</span>
-				<span
-					aria-hidden
-					className={`relative h-3.5 w-7 rounded-full transition-colors ${lab.enabled ? "bg-accent" : "bg-surface-4 ring-1 ring-inset ring-line-strong"}`}
-				>
-					<span
-						className={`absolute top-0.5 size-2.5 rounded-full bg-surface transition-all ${lab.enabled ? "left-[16px]" : "left-0.5"}`}
-					/>
-				</span>
-			</button>
 
 			<div
 				className={`flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1 ${

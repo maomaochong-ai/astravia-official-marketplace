@@ -579,7 +579,6 @@
   "settings.group.analysis": "Analysis",
   "settings.group.storage": "Storage",
   "settings.runtime.title": "Current state",
-  "settings.runtime.lab": "Lab mode",
   "settings.runtime.prompt": "Injected prompt",
   "settings.runtime.workspace": "Workspace",
   "settings.runtime.none": "not set",
@@ -739,9 +738,7 @@
   "meta.sha256": "SHA-256",
   "panel.crash.title": "This panel hit an error",
   "panel.crash.body": "The workbench caught the failure so the tab stays usable. Copy the message below into the chat if you want it looked at.",
-  "lab.on": "LAB",
   "lab.onHint": "Lab mode is on: the agent gets the delivery shape (locate → patch table → runnable artefact → verification → rollback). Click to turn it off.",
-  "lab.offHint": "Lab mode is off: ordinary answers only. Click, or send `lab：` in the conversation.",
   "status.title": "Live",
   "status.session": "Session",
   "status.session.streaming": "Streaming",
@@ -929,5 +926,7 @@
   "inject.clearAll.yes": "Yes, build it",
   "inject.clearAll.cancel": "Cancel",
   "inject.clearAll.hint": "Build a script that strips marker blocks from {{count}} targets (asks first)",
-  "inject.copiedTo": "Script copied and saved to {{path}}"
+  "inject.copiedTo": "Script copied and saved to {{path}}",
+  "docs.filter": "Filter",
+  "settings.group.data": "Data"
 }

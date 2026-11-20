@@ -101,8 +101,6 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 				sending={model.chat.sending}
 				canSend={model.cwd !== null}
 				onSend={() => setPending(model.previewPrompt("continue"))}
-				lab={model.lab.state}
-				onToggleLab={() => model.lab.set(!model.lab.state.enabled)}
 			/>
 			<InjectStatusBar library={model.promptLibrary} />
 			<div className="flex min-h-0 flex-1">

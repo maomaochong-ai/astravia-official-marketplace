@@ -26,9 +26,7 @@ export function Toggle({ checked, onChange, label, hint, disabled, hideLabel }: 
 				aria-label={typeof label === "string" ? label : undefined}
 				disabled={disabled}
 				onClick={() => onChange(!checked)}
-				className={`relative mt-0.5 h-4 w-7 shrink-0 rounded-full transition-colors disabled:opacity-40 ${
-					checked ? "bg-purple" : "bg-surface-4"
-				}`}
+				className={`relative mt-0.5 h-4 w-7 shrink-0 rounded-full transition-colors disabled:opacity-40 ${checked ? "bg-accent" : "bg-surface-4 ring-1 ring-inset ring-line-strong"}`}
 			>
 				<span
 					className={`absolute top-0.5 size-3 rounded-full bg-surface transition-[left] ${checked ? "left-3.5" : "left-0.5"}`}

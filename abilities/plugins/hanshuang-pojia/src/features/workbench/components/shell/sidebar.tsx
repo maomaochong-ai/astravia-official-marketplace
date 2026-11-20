@@ -131,7 +131,7 @@ export function Sidebar({ page, onNavigate, status, timeline, rail, collapsed, o
 										{dot ? (
 											<span
 												aria-hidden
-												className={`absolute end-1 top-1 size-1.5 rounded-full ${DOT_TONE[dot]} ${dot === "live" ? "fb-pulse" : ""}`}
+											className={`absolute end-1 top-1/2 size-1.5 -translate-y-1/2 rounded-full ${DOT_TONE[dot]} ${dot === "live" ? "fb-pulse" : ""}`}
 											/>
 										) : null}
 									</button>
@@ -141,7 +141,6 @@ export function Sidebar({ page, onNavigate, status, timeline, rail, collapsed, o
 					</div>
 				))}
 			</nav>
-
 			{rail ? (
 				<div className="border-t border-line-subtle px-2 py-2">
 					<SidebarStatus status={status} rail />

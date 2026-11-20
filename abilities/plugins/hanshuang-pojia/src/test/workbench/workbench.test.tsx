@@ -176,6 +176,8 @@ describe("workbench shell", () => {
 		const api = makeBridge();
 		await open(api);
 		await go("settings");
+		// 设置页分两栏：先切到「分析」分组才看得到模式选择。
+		fireEvent.click(screen.getByTestId("settings-tab-analysis"));
 		fireEvent.click(await screen.findByText("mode.full"));
 		await analyseDemo(api);
 		await waitFor(() => expect(api.analyse).toHaveBeenLastCalledWith(SAMPLE, { mode: "full", disabledRules: [] }));
@@ -372,6 +374,7 @@ describe("workbench state", () => {
 		await go("selfcheck");
 		expect(await screen.findByText("selfcheck.item.engine.digest")).toBeTruthy();
 		await go("settings");
+		fireEvent.click(screen.getByTestId("settings-tab-analysis"));
 		expect(await screen.findByText("settings.mode.title")).toBeTruthy();
 		await go("prompts");
 		// 注入块现在是提示词页的第二个视图：没有激活提示词时展示默认契约。
@@ -426,7 +429,9 @@ describe("workbench state", () => {
 		const api = makeBridge();
 		await open(api);
 		await go("settings");
-		// 设置页里现在有两个开关族：实验环境与规则。这里要的是规则开关（aria-label 以 rule. 开头）。
+		// 规则开关在「分析」分组里（设置页现在是两栏）。
+		fireEvent.click(screen.getByTestId("settings-tab-analysis"));
+		// 同组里还有实验环境开关，按 aria-label 前缀挑规则那一个。
 		const ruleSwitch = screen
 			.getAllByRole("switch")
 			.find(node => (node.getAttribute("aria-label") ?? "").startsWith("rule."));

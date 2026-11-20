@@ -114,10 +114,10 @@ describe("the sidebar draws one palette, not five", () => {
 
 describe("lab mode is a switch, on by default", () => {
 	it("renders a real switch with a stable test id", () => {
-		const topBar = read("src/features/workbench/components/shell/top-bar.tsx");
-		expect(topBar).toContain('role="switch"');
-		expect(topBar).toContain('data-testid="lab-switch"');
-		expect(topBar).toContain("aria-checked={lab.enabled}");
+		const settings = read("src/features/workbench/components/pages/settings.tsx");
+		// 开关收敛在设置页：lab 开关与规则开关都在这里。
+		expect(settings).toContain('settings.lab.label');
+		expect(settings).toContain('onChange={value => lab.set(value)}');
 	});
 
 	it("defaults to enabled when nothing was ever stored", () => {
