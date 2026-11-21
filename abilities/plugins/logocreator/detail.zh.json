@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "标志设计",
+      "title": "把品牌标志画成真正的矢量图形",
+      "description": "填一个名字，选结构和风格，内置引擎把图形、文字标志与配色画成一份独立的 SVG。不需要密钥、不联网、不用等——同一组参数永远得到同一个标志。",
+      "badges": ["本地引擎", "真矢量", "品牌套件"]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "brand_name": "LogoCreator",
+        "user_prompt": "给山上茶馆做个标志",
+        "assistant_reply": "叶形图形已生成，品牌套件就绪。"
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "你能得到什么",
+      "items": [
+        {
+          "title": "六种结构，八种风格",
+          "description": "图形 + 名称、仅图形、文字标志、字母组合、徽章、抽象——每种都能配极简、几何、渐变、吉祥物、手绘、奢华、复古或立体。风格格子预览的是你自己的品牌名，不是样图。",
+          "icon": "solar:widget-5-linear"
+        },
+        {
+          "title": "画的是图形，不是纹理",
+          "description": "引擎先把描述落到它真能画的题材上——叶片、咖啡杯、波浪、山峰、火焰、光圈、轨道、盾牌、齿轮、书本、爪印、角色等——再在 512 网格上用路径搭出来。",
+          "icon": "solar:pen-new-square-linear"
+        },
+        {
+          "title": "可以直接用的套件",
+          "description": "组合与图形 SVG，浅色、深色、透明、单色四个版本，从站点图标到 2048 px 的 PNG，brand-colors.css 与 .json，可打印的品牌指南，以及一张品牌看板。",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "能在对话里使唤",
+          "description": "直接在聊天里要一个标志：Agent 设计好、把 SVG 写进项目、打开面板给你看，需要时还能把整套品牌套件建出来。",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "怎么开始",
+      "items": [
+        {
+          "title": "安装插件",
+          "description": "所有内容随插件一起安装，不需要再下载运行时，也不需要注册账号。"
+        },
+        {
+          "title": "打开工作台",
+          "description": "在输入框打 / 选 LogoCreator，或用输入栏里的开关。面板会从右侧打开。"
+        },
+        {
+          "title": "先起名，再选样式",
+          "description": "填入品牌名，点一个快速开始，或直接选结构，再挑风格。预览与八个风格格子会跟着你输入实时重画。"
+        },
+        {
+          "title": "生成，然后取走套件",
+          "description": "点「设计标志」会生成几个变体进入历史。任意一格都能保存 SVG、2048 px PNG，或把整套品牌套件存成压缩包。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "引擎是确定性的：一个设计只存它的参数，不存图片。所以几个月后重新打开它，渲染出来的矢量图逐字节一致；历史记录因此很小，导出在任何尺寸下都清晰。"
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "content": "AI 生成是可选项，需要你自己的 Together API 密钥。它的产物是位图：只能导出 PNG，也不能放大重绘。用 AI 做探索，要真正投入使用请用内置引擎。"
+    },
+    {
+      "type": "links",
+      "title": "出处",
+      "items": [
+        {
+          "label": "上游项目 LogoCreator",
+          "href": "https://github.com/Nutlope/logocreator"
+        },
+        {
+          "label": "Together AI 图像模型文档",
+          "href": "https://docs.together.ai/docs/images-overview"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "Logo design",
+      "title": "A brand's mark, drawn as real vector art",
+      "description": "Type a name, choose a structure and a style, and the built-in engine draws the mark, the wordmark and the palette as one standalone SVG. No key, no network, no waiting — and the same numbers always produce the same logo.",
+      "badges": ["Offline engine", "Real SVG", "Brand kit"]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "brand_name": "LogoCreator",
+        "user_prompt": "Logo for a mountain teahouse.",
+        "assistant_reply": "Leaf mark, warm palette, kit ready."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What you get",
+      "items": [
+        {
+          "title": "Six structures, eight styles",
+          "description": "Icon-and-name, icon only, wordmark, monogram, emblem and abstract — each in Minimal, Geometric, Gradient, Mascot, Hand-drawn, Luxury, Retro or 3D. Style tiles preview your own brand name, not a stock sample.",
+          "icon": "solar:widget-5-linear"
+        },
+        {
+          "title": "A mark, not a texture",
+          "description": "The engine resolves the brief to a subject it can actually draw — leaf, cup, wave, mountain, flame, aperture, orbit, shield, gear, book, paw, creature and more — then builds it from paths on a 512 grid.",
+          "icon": "solar:pen-new-square-linear"
+        },
+        {
+          "title": "A kit you can ship",
+          "description": "Lockup and mark as SVG, on-light, on-dark, transparent and mono variants, PNGs from favicon to 2048 px, brand-colors.css and .json, a printable brand guide and a brand board.",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "Understood from the conversation",
+          "description": "Ask for a logo in the chat: the agent designs it, writes the SVG into your project, opens the panel so you can see it, and can build the whole kit on request.",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "Everything ships inside it. There is no runtime to download and no account to create."
+        },
+        {
+          "title": "Open the studio",
+          "description": "Press / in the composer and pick LogoCreator, or use its toggle in the input bar. The panel opens on the right."
+        },
+        {
+          "title": "Name it, then choose",
+          "description": "Type the brand name, tap a quick-start preset or pick a structure, then choose a style. The preview and the eight style tiles all redraw as you type."
+        },
+        {
+          "title": "Design, then take the kit",
+          "description": "Design logos writes a few variations into your history. From any tile, save the SVG, a 2048 px PNG, or the full brand kit as a zip."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "The engine is deterministic: a design is stored as its fields, never as a picture, so reopening it months later re-renders byte-identical vector art. That is also why the history stays tiny and every export is sharp at any size."
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "content": "AI generation is optional and needs your own Together API key. Those results are raster images: they export as PNG only and cannot be rebuilt larger. Use AI to explore, and the built-in engine for anything you will actually ship."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "LogoCreator upstream",
+          "href": "https://github.com/Nutlope/logocreator"
+        },
+        {
+          "label": "Together AI image models",
+          "href": "https://docs.together.ai/docs/images-overview"
+        }
+      ]
+    }
+  ]
+}

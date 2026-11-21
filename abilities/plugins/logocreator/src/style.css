@@ -1,0 +1,26 @@
+/* Tailwind entry only. No business selectors — plugin CSS shares the host page. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* Host theme contract: semantic aliases only, values stay owned by the host. */
+@theme inline {
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-background: var(--background);
+	--color-border: var(--border);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-destructive: var(--destructive);
+	--color-foreground: var(--foreground);
+	--color-input: var(--input);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-ring: var(--ring);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+}

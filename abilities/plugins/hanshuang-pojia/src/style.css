@@ -335,7 +335,6 @@
 	flex: 0 0 auto;
 }
 /*
-/*
  * 样本页两栏：左选择器固定 240–300，右说明吃剩余。
  *
  * 与设置页同一套做法（`minmax` 而不是容器查询）。窄面板下变成单列：
@@ -363,6 +362,7 @@
 	}
 }
 
+/*
  * 设置页两栏：左 tab 固定 88–132px，右卡吃剩余高度。
  *
  * 不用容器查询是故意的：面板宽度由宿主的活动栏决定，容器查询的参照宽度与用户看到的
@@ -376,9 +376,36 @@
 	min-height: 0;
 }
 
+/*
+ * 左栏不是一张浮在左上角的小卡：它是一整列，右侧一条分隔线，顶部与内容对齐。
+ * 之前给 tab 包了一层圆角底 + ring，面板一高就变成「一个小盒子挂在空白里」。
+ */
 .fb-settings-tabs {
-	max-height: 100%;
+	padding-block: 2px;
 	overflow-y: auto;
+}
+
+/* 选中态：底色 + 左侧强调条。只有底色时，四个灰底块里看不出哪个是当前页。 */
+.fb-settings-tab {
+	position: relative;
+}
+.fb-settings-tab[aria-selected="true"]::before {
+	content: "";
+	position: absolute;
+	inset-block: 4px;
+	inset-inline-start: -4px;
+	width: 2px;
+	border-radius: 2px;
+	background: var(--fb-accent);
+}
+
+/* 内容限宽：规则行拉到 900px 时开关离标签太远，容易看串行。 */
+.fb-settings-body {
+	display: flex;
+	min-width: 0;
+	max-width: 760px;
+	flex-direction: column;
+	gap: var(--fb-gap);
 }
 /* 页面上唯一吃掉剩余高度的容器：它贴到底部，内部自己滚。 */
 .fb-fill {

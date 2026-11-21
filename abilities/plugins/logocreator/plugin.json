@@ -1,0 +1,46 @@
+{
+  "id": "logocreator",
+  "name": "%name%",
+  "version": "0.0.1",
+  "icon": "assets/icon.svg",
+  "defaultLocale": "en",
+  "pluginApiVersion": "^2.4.0",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "logocreator",
+    "expose": "./plugin"
+  },
+  "styles": ["dist/style.css"],
+  "permissions": [
+    "ui.slot.activity-tab",
+    "ui.slot.input-action",
+    "agent.tools.register",
+    "agent.toolHandler.execute",
+    "agent.skills.control",
+    "storage.read",
+    "storage.write",
+    "secrets.read",
+    "secrets.write",
+    "fs.read",
+    "fs.write",
+    "network.fetch",
+    "shell.openExternal"
+  ],
+  "network": {
+    "allowedHosts": ["api.together.xyz"]
+  },
+  "agent": {
+    "skillPaths": ["agent/skills/logo-studio"],
+    "skillPresentation": {
+      "defaultVisibility": "hidden",
+      "skills": {
+        "logo-studio": {
+          "defaultVisibility": "visible",
+          "displayName": "%name%"
+        }
+      }
+    }
+  },
+  "description": "%description%",
+  "author": "Astravia"
+}

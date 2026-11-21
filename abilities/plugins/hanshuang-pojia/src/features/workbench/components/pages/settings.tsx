@@ -11,6 +11,7 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useEffect, useState } from "react";
 import { RULES, type Severity } from "../../../../domain/audit/rules";
+import type { ReportMode } from "../../../../domain/report/report";
 import { getActivePrompt } from "../../../../domain/prompt-library";
 import { DEFAULT_SETTINGS } from "../../state";
 import { SEVERITY_DOT, SEVERITY_TEXT } from "../../severity";
@@ -22,6 +23,7 @@ import { Icon } from "../shell/icon";
 import { NumberField } from "../shell/number-field";
 import { PageHeader } from "../shell/page-header";
 import { Toggle } from "../shell/toggle";
+import { SegmentedControl } from "../shell/segmented-control";
 import type { PageProps } from "./overview";
 
 const MODES = ["summary", "full"] as const;
@@ -81,7 +83,6 @@ export function SettingsPage({ model }: PageProps) {
 		loadUsage();
 	};
 
-	const sortValue = (severity: Severity) => ORDER.indexOf(severity);
 
 	return (
 		<>
@@ -110,7 +111,7 @@ export function SettingsPage({ model }: PageProps) {
 					role="tablist"
 					aria-orientation="vertical"
 					aria-label={t("page.settings.title")}
-					className="fb-settings-tabs flex shrink-0 flex-col gap-1 self-start rounded-xl bg-surface-2 p-1 ring-1 ring-line-subtle"
+					className="fb-settings-tabs flex shrink-0 flex-col gap-0.5 border-e border-line-subtle pe-1"
 				>
 					{TABS.map(item => (
 						<button
@@ -120,7 +121,7 @@ export function SettingsPage({ model }: PageProps) {
 							role="tab"
 							aria-selected={tab === item}
 							data-testid={`settings-tab-${item}`}
-							className={`w-full shrink-0 rounded-md px-2.5 py-1.5 text-left text-[11.5px] transition-colors ${
+							className={`fb-settings-tab w-full shrink-0 rounded-md px-2.5 py-1.5 text-left text-[11.5px] transition-colors ${
 								tab === item ? "bg-accent-soft font-medium text-accent" : "text-text-2 hover:bg-surface-hover hover:text-text"
 							}`}
 						>
@@ -133,8 +134,10 @@ export function SettingsPage({ model }: PageProps) {
 				<div
 					role="tabpanel"
 					aria-label={t(`settings.group.${tab}`)}
-					className="fb-scroll flex min-h-0 flex-col gap-2.5 overflow-y-auto"
+					className="fb-scroll flex min-h-0 flex-col gap-2.5 overflow-y-auto ps-3"
 				>
+					{/* 内容限宽：规则行拉到 900px 时，开关离标签太远，看串行。 */}
+					<div className="fb-settings-body">
 					{tab === "runtime" ? (
 						<>
 							<Card title={t("settings.lab.title")} bodyClassName="flex flex-col gap-2 p-3.5">
@@ -165,30 +168,16 @@ export function SettingsPage({ model }: PageProps) {
 
 					{tab === "analysis" ? (
 						<>
-							<Card title={t("settings.mode.title")} bodyClassName="p-3.5">
-								<div className="flex gap-2">
-									{MODES.map(mode => {
-										const active = settings.mode === mode;
-										return (
-											<button
-												key={mode}
-												type="button"
-												onClick={() => updateSettings({ mode })}
-												aria-pressed={active}
-												className={`min-w-0 flex-1 rounded-md border px-3 py-2 text-left transition-colors ${
-													active ? "border-accent/50 bg-accent-soft" : "border-line-subtle bg-surface hover:bg-surface-hover"
-												}`}
-											>
-												<div className="flex items-center gap-1.5">
-													<Icon name={active ? "check" : "scan"} className={`size-3.5 ${active ? "text-accent" : "text-text-4"}`} />
-													<span className="text-[12px] font-medium text-text">{t(`mode.${mode}`)}</span>
-												</div>
-												<p className="mt-1 text-[10.5px] leading-relaxed text-text-4">{t(`settings.mode.${mode}`)}</p>
-											</button>
-										);
-									})}
-								</div>
-								<p className="mt-2 text-[10.5px] leading-relaxed text-text-4">{t("settings.mode.note")}</p>
+							{/* 二选一用分段控件：两张等宽大卡把 8 个字的选项摊成半屏，读起来比选项本身更重。 */}
+							<Card title={t("settings.mode.title")} bodyClassName="flex flex-col gap-2 p-3.5">
+								<SegmentedControl<ReportMode>
+									value={settings.mode}
+									onValueChange={mode => updateSettings({ mode })}
+									ariaLabel={t("settings.mode.title")}
+									items={MODES.map(mode => ({ value: mode, label: t(`mode.${mode}`) }))}
+								/>
+								<p className="text-[10.5px] leading-relaxed text-text-3">{t(`settings.mode.${settings.mode}`)}</p>
+								<p className="text-[10.5px] leading-relaxed text-text-4">{t("settings.mode.note")}</p>
 							</Card>
 
 							<Card
@@ -200,24 +189,40 @@ export function SettingsPage({ model }: PageProps) {
 								}
 								bodyClassName="divide-y divide-line-subtle"
 							>
-								{[...RULES]
-									.sort((left, right) => sortValue(left.severity) - sortValue(right.severity))
-									.map(rule => {
-										const enabled = !settings.disabledRules.includes(rule.id);
-										return (
-											<div key={rule.id} className="flex items-start gap-2.5 px-3.5 py-2">
-												<span className={`mt-1.5 size-1.5 shrink-0 rounded-full ${SEVERITY_DOT[rule.severity]}`} />
-												<div className="min-w-0 flex-1">
-													<div className="flex items-center gap-1.5">
-														<span className="min-w-0 text-[11.5px] leading-snug text-text">{t(`rule.${rule.id}.title`)}</span>
-														<span className={`shrink-0 font-mono text-[9.5px] ${SEVERITY_TEXT[rule.severity]}`}>{rule.severity}</span>
-													</div>
-													<div className="fb-wrap font-mono text-[9.5px] text-text-4">{rule.id}</div>
-												</div>
-												<Toggle checked={enabled} onChange={() => toggleRule(rule.id)} label={t(`rule.${rule.id}.title`)} hideLabel />
+								{/*
+								 * 37 条规则平铺成一张长表时，读者只能一条条扫；按严重度分组后
+								 * 「高危有几条、关了几条」直接读得出来 —— 而开关本来就是按级别决定的。
+								 */}
+								{ORDER.map(severity => {
+									const group = RULES.filter(rule => rule.severity === severity).sort((left, right) =>
+										left.id.localeCompare(right.id),
+									);
+									if (group.length === 0) return null;
+									const off = group.filter(rule => settings.disabledRules.includes(rule.id)).length;
+									return (
+										<div key={severity}>
+											<div className="sticky top-0 z-1 flex items-center gap-2 bg-surface-2/95 px-3.5 py-1.5 backdrop-blur">
+												<span className={`size-1.5 shrink-0 rounded-full ${SEVERITY_DOT[severity]}`} />
+												<span className={`text-[10.5px] font-medium ${SEVERITY_TEXT[severity]}`}>{t(`severity.${severity}`)}</span>
+												<span className="font-mono text-[9.5px] tabular-nums text-text-4">
+													{group.length - off}/{group.length}
+												</span>
 											</div>
-										);
-									})}
+											{group.map(rule => {
+												const enabled = !settings.disabledRules.includes(rule.id);
+												return (
+													<div key={rule.id} className="flex items-start gap-2.5 px-3.5 py-2">
+														<div className="min-w-0 flex-1">
+															<div className="min-w-0 text-[11.5px] leading-snug text-text">{t(`rule.${rule.id}.title`)}</div>
+															<div className="fb-wrap font-mono text-[9.5px] text-text-4">{rule.id}</div>
+														</div>
+														<Toggle checked={enabled} onChange={() => toggleRule(rule.id)} label={t(`rule.${rule.id}.title`)} hideLabel />
+													</div>
+												);
+											})}
+										</div>
+									);
+								})}
 							</Card>
 
 							<Card title={t("settings.scan.title")} bodyClassName="divide-y divide-line-subtle">
@@ -329,6 +334,7 @@ export function SettingsPage({ model }: PageProps) {
 							</div>
 						</Card>
 					) : null}
+					</div>
 				</div>
 			</div>
 		</>

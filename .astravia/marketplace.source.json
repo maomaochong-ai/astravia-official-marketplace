@@ -978,7 +978,7 @@
       "slug": "hanshuang-pojia",
       "name": "寒霜破甲",
       "description": "Audit an APK, iOS package, ELF, PE or Mach-O file from the chat: permissions, exported components, embedded secrets, section entropy, symbol tables, function-level disassembly with a call graph, and a 0-100 risk score — plus 340 bundled field documents, manuals and full case studies the agent can search mid-investigation.",
-      "version": "2.17.31",
+      "version": "2.17.32",
       "configVersion": 2,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -2076,6 +2076,48 @@
       },
       "source": {
         "path": "abilities/plugins/todesk"
+      },
+      "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "plugin",
+      "slug": "logocreator",
+      "name": "LogoCreator",
+      "description": "Design a brand-ready logo and export a complete brand kit: a built-in vector engine that needs no key or network, six logo structures in eight styles, plus optional AI generation with your own Together key.",
+      "version": "0.0.1",
+      "configVersion": 1,
+      "author": "Astravia",
+      "category": "Design",
+      "categoryI18n": {
+        "zh": "设计",
+        "en": "Design"
+      },
+      "tags": [
+        "logo",
+        "branding",
+        "svg",
+        "vector",
+        "design",
+        "brand-kit"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "LogoCreator",
+            "description": "设计能直接用的品牌标志并导出完整品牌套件：内置矢量引擎不需要密钥也不联网，六种结构、八种风格，另可选配自己的 Together 密钥做 AI 生成。",
+            "tags": [
+              "标志",
+              "品牌",
+              "SVG",
+              "矢量",
+              "设计",
+              "品牌套件"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/logocreator"
       },
       "minAppVersion": "0.5.59"
     }
