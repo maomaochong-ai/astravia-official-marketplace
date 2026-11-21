@@ -204,5 +204,6 @@
   "brief.action": "Plan 3 directions",
   "brief.hint": "No image provider needed: the brief picks structure, style and palette, and the engine draws it locally.",
   "tool.image.label": "Generate an image mark",
-  "notify.aiNoProvider": "No image provider is connected: add one in Astravia's settings, or use the vector engine (26 subjects)."
+  "notify.aiNoProvider": "No image provider is connected — add one in Astravia's settings, or stay on the vector engine.",
+  "dock.image": "Image mark"
 }

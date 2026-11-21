@@ -56,6 +56,7 @@ export function LogoCanvas(): JSX.Element {
 	});
 	const generation = useGeneration({
 		aiUnavailable: t("notify.aiUnavailable"),
+		aiNoProvider: t("notify.aiNoProvider"),
 		aiFailed: t("notify.aiFailed"),
 		localFailed: t("notify.localFailed"),
 		aiDone: (count) => t("notify.aiDone", { count }),
@@ -184,6 +185,9 @@ export function LogoCanvas(): JSX.Element {
 	const selectedRecord = selectedId ? history.items.find((item) => item.id === selectedId) : undefined;
 	// Raster designs are drawn from their blob; vector ones from the spec.
 	const rasterUrl = useRasterUrl(selectedRecord);
+	// Auto-detected on mount (and after the AI dialog refreshes it): the dock shows the
+	// image slot only when this is true.
+	const imageAvailable = generation.providers.length > 0;
 
 	return (
 		<div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-background text-foreground">
@@ -307,6 +311,12 @@ export function LogoCanvas(): JSX.Element {
 					inspectorOpen={inspectorOpen}
 					inspectorTab={inspectorTab}
 					onGenerate={() => void generation.generate(form.spec)}
+					imageAvailable={imageAvailable}
+					onGenerateImage={() => {
+						// Ask for this batch on the raster line explicitly: flipping the mode and
+						// calling generate in the same tick would still run the vector path.
+						void generation.generate(form.spec, { mode: "ai" });
+					}}
 					onSurprise={() => void generation.generate(form.spec, { surprise: true })}
 					onOpenNotes={() => openInspector("notes")}
 					onToggleInspector={() => (inspectorOpen ? setInspectorOpen(false) : openInspector("design"))}

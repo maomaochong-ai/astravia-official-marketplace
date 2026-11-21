@@ -1,6 +1,8 @@
 import type { PluginAgentToolRegistration } from "@astravia-org/plugin-sdk";
 import { DETAIL_ENTRIES, STYLE_ENTRIES, TYPE_ENTRIES } from "../domain/catalog";
 import { availableSubjects } from "../domain/engine/compose";
+import { probeImageProviders } from "../domain/ai/host-media";
+import { getPluginContext } from "../plugin-context";
 import { TOOL_CATALOG } from "../tab-ids";
 import { TOOL_LABELS } from "../contributions";
 
@@ -11,6 +13,8 @@ interface CatalogResult {
 	detailLevels: string[];
 	subjects: string[];
 	engine: { canvas: string; output: string; deterministic: string; offline: string };
+	/** Whether the raster path can run *right now* on this host. */
+	image: { available: boolean; denied: boolean; providers: { id: string; name: string }[]; hint: string };
 }
 
 /**
@@ -32,8 +36,11 @@ export function createCatalogTool(): PluginAgentToolRegistration<Record<string, 
 		].join("\n"),
 		parameters: { type: "object", properties: {}, additionalProperties: false },
 		scope_use: ["conversation", "project"],
-		handler: () =>
-			({
+		handler: async () => {
+			// Auto-detect instead of assuming: the agent has to know whether a brief can go
+			// to `logocreator_image` or must stay on the vector engine.
+			const image = await probeImageProviders(getPluginContext());
+			return {
 				ok: true,
 				types: TYPE_ENTRIES.map((entry) => ({
 					id: entry.id,
@@ -50,6 +57,17 @@ export function createCatalogTool(): PluginAgentToolRegistration<Record<string, 
 					deterministic: "same fields + same seed reproduce the same bytes",
 					offline: "no network and no API key required",
 				},
-			}) satisfies CatalogResult,
+				image: {
+					available: image.available,
+					denied: image.denied,
+					providers: image.providers.map((provider) => ({ id: provider.id, name: provider.displayName })),
+					hint: image.available
+						? "Providers are connected: briefs outside the 26 subjects can go to logocreator_image."
+						: image.denied
+							? "The image permission is refused: re-authorise the plugin, then retry logocreator_image."
+							: "No image provider is connected: stay on the vector engine and say so.",
+				},
+			} satisfies CatalogResult;
+		},
 	};
 }

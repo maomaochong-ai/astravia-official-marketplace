@@ -11,6 +11,12 @@ export type EngineMode = "local" | "ai";
 export interface GenerateOptions {
 	/** Roll a different style for each variation, like a deck of cards. */
 	surprise?: boolean;
+	/**
+	 * Run this one batch on a specific line, regardless of the current toggle.
+	 * Needed because "switch mode, then generate" in one handler reads the previous
+	 * state — the vector path would run while the button said "image".
+	 */
+	mode?: EngineMode;
 }
 
 export interface GenerationApi {
@@ -41,6 +47,8 @@ const SEED_STRIDE = 7919;
  */
 export function useGeneration(messages: {
 	aiUnavailable: string;
+	/** Shown when the raster path was asked for but nothing is connected. */
+	aiNoProvider: string;
 	aiFailed: string;
 	localFailed: string;
 	aiDone: (count: number) => string;
@@ -101,9 +109,17 @@ export function useGeneration(messages: {
 			const history = getHistoryStore();
 			const ctx = getPluginContext();
 			const count = Math.max(1, Math.min(8, settings.variations));
+			const runMode = options.mode ?? mode;
 
 			try {
-				if (mode === "ai") {
+				if (runMode === "ai") {
+					// Auto-detect first: a mode set before the provider disappeared must not
+					// surface as a bare exception.
+					if (providers.length === 0) {
+						ctx.ui.notify({ message: messages.aiNoProvider, variant: "warning" });
+						setMode("local");
+						return;
+					}
 					const { images, failures } = await generateMarksWithHost(ctx, {
 						spec,
 						count,
@@ -158,7 +174,7 @@ export function useGeneration(messages: {
 					});
 					// Do not leave the user on a mode that cannot run.
 					setMode("local");
-				} else if (mode === "ai") {
+				} else if (runMode === "ai") {
 					ctx.ui.notify({ message: messages.aiFailed, error: cause });
 				} else {
 					ctx.ui.notify({ message: messages.localFailed, error: cause });
@@ -168,7 +184,7 @@ export function useGeneration(messages: {
 				busy.current = false;
 			}
 		},
-		[messages, mode, settings.providerId, settings.variations],
+		[messages, mode, providers.length, settings.providerId, settings.variations],
 	);
 
 	return {

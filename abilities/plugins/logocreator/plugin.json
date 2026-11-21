@@ -1,7 +1,7 @@
 {
   "id": "logocreator",
   "name": "%name%",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "icon": "assets/icon.png",
   "defaultLocale": "zh",
   "pluginApiVersion": "^2.4.0",

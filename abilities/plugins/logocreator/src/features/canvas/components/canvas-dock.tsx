@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { IconExport, IconGenerate, IconNote, IconShuffle, IconSliders } from "../../../shared/components/icons";
+import { IconExport, IconGenerate, IconImageSize, IconNote, IconShuffle, IconSliders } from "../../../shared/components/icons";
 import { FOCUS_RING } from "../../../shared/styles/tokens";
 
 export interface CanvasDockProps {
@@ -13,6 +13,10 @@ export interface CanvasDockProps {
 	inspectorTab: "design" | "notes";
 	onGenerate: () => void;
 	onSurprise: () => void;
+	/** True when the host reports a usable image provider (see probeImageProviders). */
+	imageAvailable: boolean;
+	/** Runs the raster path in-panel: the same work the agent does via the tool. */
+	onGenerateImage: () => void;
 	onOpenNotes: () => void;
 	onToggleInspector: () => void;
 	onOpenKit: () => void;
@@ -72,6 +76,8 @@ export function CanvasDock({
 	canGenerate,
 	running,
 	mode,
+	imageAvailable,
+	onGenerateImage,
 	pendingNotes,
 	inspectorOpen,
 	inspectorTab,
@@ -101,6 +107,16 @@ export function CanvasDock({
 					onClick={onGenerate}
 					icon={<IconGenerate />}
 				/>
+				{imageAvailable ? (
+					// The raster path is offered only when the host can actually run it, so the
+					// button never leads to an error the user cannot act on.
+					<DockSlot
+						label={t("dock.image")}
+						disabled={running || !canGenerate}
+						onClick={onGenerateImage}
+						icon={<IconImageSize />}
+					/>
+				) : null}
 				<DockSlot
 					label={t("action.surprise")}
 					disabled={running || !canGenerate}

@@ -4,6 +4,29 @@
 
 引擎完全本地：不需要密钥、不联网，`renderLogo(spec)` 是纯函数，同一组参数 + 同一个 seed 永远得到同一份字节。上游 [LogoCreator](https://github.com/Nutlope/logocreator) 是 Together AI 上的 FLUX 生成器，没有本地绘图引擎——这里把它补上了，AI 生成作为可选路径保留。
 
+## 自动识别图像服务（0.4.1）
+
+配置好图像服务后，插件自己会看到它，不需要用户先点开某个对话框：
+
+| 位置 | 行为 |
+| --- | --- |
+| `probeImageProviders()` | 挂载时探测三个状态：可用 / 权限被拒 / 未接入。**从不抛异常** |
+| dock | 探测到可用时自动出现「图像标志」槽；点它就用宿主服务出图 |
+| `logocreator_catalog` | 返回 `image.available / denied / providers[]`，agent 据此决定走矢量还是图像，不必猜 |
+| 生成之后 | 结果写成 `engine:"ai"` + blobId，画布直接画 PNG（不再用 spec 重画矢量） |
+
+两个曾经真出错的点，现在都有测试钉住：
+- `setMode("ai")` 与 `generate()` 同一 tick 会读到旧状态，结果走了矢量产线 →
+  现在 `generate(spec, { mode: "ai" })` 显式指定这一批的产线（`panel-image-path.test.tsx`）；
+- 权限被拒时不再假装"没接入"：面板不显示图像槽，目录工具给出"重新授权"的提示。
+
+## 版本号
+
+发布序列是 0.0.1 … 0.0.9 → 0.1.0 → … → 0.4.0 → **0.4.1**。
+从 0.0.9 起版本号按语义化走（minor 用于成组行为变化），不是每逢发布都只加最后一位：
+回到 0.0.10 会在已装 0.4.0 的客户端上被判定为**降级**，市场不会推送。
+下一次要纯补丁递增时用 `node scripts/marketplace.mjs bump --slug logocreator --level patch --apply`。
+
 ## 两条产线（0.4.0）
 
 之前只有一个矢量工具，而技能却告诉 agent"词表外的题材改走 AI 路径"——没有那条路可走，

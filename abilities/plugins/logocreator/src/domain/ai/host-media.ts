@@ -95,6 +95,39 @@ function isPermissionDenied(cause: unknown): boolean {
 	return cause instanceof Error && /permission denied/i.test(cause.message);
 }
 
+/**
+ * "Can this host make images right now?" — answerable without throwing.
+ *
+ * The panel asks on mount (to decide whether to offer the image path) and the
+ * catalogue tool asks before it advises the agent. Both need three outcomes, not an
+ * exception: available / permission refused / no provider connected.
+ */
+export interface ImageAvailability {
+	available: boolean;
+	/** `media.generate` was refused (usually an upgrade that was never re-authorised). */
+	denied: boolean;
+	providers: HostImageProvider[];
+	/** Sentence for the UI when nothing is usable. */
+	reason?: string;
+}
+
+export async function probeImageProviders(ctx: PluginContext): Promise<ImageAvailability> {
+	try {
+		const providers = await listImageProviders(ctx);
+		return { available: providers.length > 0, denied: false, providers };
+	} catch (cause) {
+		if (cause instanceof HostMediaError && cause.code === PERMISSION_DENIED) {
+			return { available: false, denied: true, providers: [], reason: cause.message };
+		}
+		return {
+			available: false,
+			denied: false,
+			providers: [],
+			reason: cause instanceof Error ? cause.message : String(cause),
+		};
+	}
+}
+
 /** Providers the user has already connected that can do text-to-image. */
 export async function listImageProviders(ctx: PluginContext): Promise<HostImageProvider[]> {
 	let providers: Awaited<ReturnType<PluginContext["media"]["listProviders"]>>;
