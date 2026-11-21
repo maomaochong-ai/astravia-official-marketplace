@@ -136,8 +136,8 @@ describe("the conversation → canvas reveal", () => {
 
 		renderPanel();
 
-		const nameInput = (await screen.findByPlaceholderText("Fern & Field")) as HTMLInputElement;
-		await waitFor(() => expect(nameInput.value).toBe("Fern & Field"));
+		// The stage's title chip is what the user reads; the inspector field may be closed.
+		await waitFor(() => expect(screen.getAllByText("Fern & Field").length).toBeGreaterThan(0));
 	});
 
 	it("falls back to the newest design when nothing is pending", async () => {
@@ -146,8 +146,7 @@ describe("the conversation → canvas reveal", () => {
 
 		renderPanel();
 
-		const nameInput = (await screen.findByPlaceholderText("Fern & Field")) as HTMLInputElement;
-		await waitFor(() => expect(nameInput.value).toBe("Kettle Lane"));
+		await waitFor(() => expect(screen.getAllByText("Kettle Lane").length).toBeGreaterThan(0));
 	});
 
 	it("claims a pending design only once", async () => {
@@ -156,14 +155,13 @@ describe("the conversation → canvas reveal", () => {
 		setPendingDesignId("one");
 
 		const first = renderPanel();
-		await waitFor(() => expect((screen.getByPlaceholderText("Fern & Field") as HTMLInputElement).value).toBe("First"));
+		await waitFor(() => expect(screen.getAllByText("First").length).toBeGreaterThan(0));
 		first.unmount();
 
 		// A remount with nothing pending keeps the form the user left behind, rather
 		// than dragging it back to the same record.
 		setPluginContext(ctx);
 		renderPanel();
-		const nameInput = (await screen.findByPlaceholderText("Fern & Field")) as HTMLInputElement;
-		await waitFor(() => expect(nameInput.value).toBe("First"));
+		await waitFor(() => expect(screen.getAllByText("First").length).toBeGreaterThan(0));
 	});
 });

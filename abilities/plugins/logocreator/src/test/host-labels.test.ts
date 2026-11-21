@@ -54,7 +54,7 @@ describe("host-rendered labels", () => {
 			{ label: `agent[${index}].name`, raw: agent.name },
 			...(agent.description ? [{ label: `agent[${index}].description`, raw: agent.description }] : []),
 		]),
-		...plugin.agent.teams.flatMap((team, index) => [
+		...(plugin.agent.teams ?? []).flatMap((team, index) => [
 			{ label: `team[${index}].name`, raw: team.name },
 			...(team.description ? [{ label: `team[${index}].description`, raw: team.description }] : []),
 			...team.members.map((member, memberIndex) => ({
@@ -84,10 +84,10 @@ describe("host-rendered labels", () => {
 	it("gives the tab and the input action a human name, not the slug", () => {
 		const tab = resolvePluginText("%tab.label%", locales, "zh", plugin.defaultLocale);
 		const pill = resolvePluginText("%panel.title%", locales, "zh", plugin.defaultLocale);
-		// A product name is a brand mark, not a translatable label: both languages read
-		// the same thing, and neither reads the internal slug.
-		expect(tab).toBe("LogoCreator");
-		expect(pill).toBe("LogoCreator");
+		// The zh override is what a Chinese host renders: Chinese prose, not a slug and
+		// not the English product name.
+		expect(tab).toBe("标志设计");
+		expect(pill).toBe("标志设计");
 		// The slug is never what a user should read.
 		expect(tab).not.toBe("logocreator");
 		expect(pill).not.toBe("logocreator");

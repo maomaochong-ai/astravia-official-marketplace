@@ -124,39 +124,53 @@ afterEach(() => {
 	cleanup();
 });
 
-describe("the studio panel mounts", () => {
-	it("renders the studio instead of throwing or hanging on a spinner", async () => {
+describe("the canvas mounts", () => {
+	it("renders a stage with floating chrome instead of a scrolling form", async () => {
 		const { ctx } = fakeContext();
 		setPluginContext(ctx);
 		renderPanel();
 
-		// Resolved catalog text, not a key and not a slug: this is the tab/toolbar
-		// name a user reads.
-		expect(screen.getAllByText("LogoCreator").length).toBeGreaterThan(0);
-		expect(await screen.findByText("Design logos")).toBeTruthy();
-		// No history yet → the empty state, not a blank column.
-		expect(await screen.findByText("Nothing here yet")).toBeTruthy();
+		// Stage chrome: the title chip (untitled), the dock, the action rail.
+		expect(await screen.findByText("Untitled")).toBeTruthy();
+		expect(screen.getByLabelText("Design settings")).toBeTruthy();
+		expect(screen.getByLabelText("Canvas notes")).toBeTruthy();
+		expect(screen.getByLabelText("History")).toBeTruthy();
+		// The form itself is not on the stage: it opens in the rail.
+		expect(screen.queryByPlaceholderText("Fern & Field")).toBeNull();
+	});
+
+	it("opens the design rail from the dock", async () => {
+		const { ctx } = fakeContext();
+		setPluginContext(ctx);
+		renderPanel();
+
+		fireEvent.click(await screen.findByLabelText("Design settings"));
+		expect(await screen.findByPlaceholderText("Fern & Field")).toBeTruthy();
+		// Two tabs, one rail.
+		expect(screen.getByRole("tab", { name: "Design" })).toBeTruthy();
+		expect(screen.getByRole("tab", { name: "Notes" })).toBeTruthy();
 	});
 
 	it("degrades the AI mode when the host has no image provider", async () => {
 		const { ctx } = fakeContext();
 		setPluginContext(ctx);
 		renderPanel();
-		// Mount must not surface an error toast just because media is empty.
 		expect(notifyOf(ctx)).not.toHaveBeenCalled();
 	});
 
-	it("designs three vectors from the form and stores them", async () => {
+	it("designs three vectors from the stage and stores them", async () => {
 		const { ctx, storage } = fakeContext();
 		setPluginContext(ctx);
 		renderPanel();
 
+		fireEvent.click(await screen.findByLabelText("Design settings"));
 		const nameInput = (await screen.findByPlaceholderText("Fern & Field")) as HTMLInputElement;
 		fireEvent.change(nameInput, { target: { value: "Fern & Field" } });
 		const intent = (await screen.findByPlaceholderText("a minimal leaf mark, organic and calm")) as HTMLTextAreaElement;
 		fireEvent.change(intent, { target: { value: "a leaf mark for a garden studio" } });
+		fireEvent.click(screen.getByLabelText("Close the panel"));
 
-		fireEvent.click(screen.getByText("Design logos"));
+		fireEvent.click(screen.getByLabelText("Design logos"));
 
 		await waitFor(() => {
 			expect(storage.files["designs.json"]).toBeTruthy();
@@ -164,7 +178,6 @@ describe("the studio panel mounts", () => {
 		const saved = JSON.parse(storage.files["designs.json"]);
 		expect(saved.items).toHaveLength(3);
 		expect(saved.items[0].spec.brandName).toBe("Fern & Field");
-		expect(saved.items[0].engine).toBe("local");
 		// The brief was read as a leaf, which is the whole point of `intent`.
 		expect(saved.items[0].subject).toBe("leaf");
 	});
@@ -176,7 +189,7 @@ describe("the studio panel mounts", () => {
 
 		// Disabled + an inline hint: the state is knowable up front, so it must not
 		// cost a click and a toast.
-		const button = (await screen.findByText("Design logos")).closest("button") as HTMLButtonElement;
+		const button = (await screen.findByLabelText("Type a brand name first")) as HTMLButtonElement;
 		expect(button.disabled).toBe(true);
 		expect(screen.getByText("Type a brand name to design it.")).toBeTruthy();
 		expect(storage.files["designs.json"]).toBeUndefined();

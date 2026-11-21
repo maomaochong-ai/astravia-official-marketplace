@@ -97,16 +97,11 @@ describe("plugin identity", () => {
 		}
 	});
 
-	it("resolves every team member to one of its own agents", () => {
-		const ownAgents = new Set(plugin.agent.agents.map((agent: { id: string }) => agent.id));
-		for (const team of plugin.agent.teams ?? []) {
-			expect(team.members.length).toBeGreaterThan(0);
-			for (const member of team.members) {
-				if (member.role) continue;
-				expect(ownAgents.has(member.agent), `${team.id}/${member.agent} must be a declared agent`).toBe(true);
-				expect(member.responsibility.length).toBeGreaterThan(10);
-			}
-		}
+	it("registers the specialist as an agent, so @ lists it under the agents block", () => {
+		// A teams entry would put the same persona under the teams block ("N members"),
+		// which is not what this plugin is: one specialist, no crew.
+		expect(plugin.agent.agents).toHaveLength(1);
+		expect(plugin.agent.teams ?? []).toHaveLength(0);
 	});
 
 
@@ -159,13 +154,14 @@ describe("marketplace registration", () => {
 		expect(entry.categoryI18n.en).toBeTruthy();
 	});
 
-	it("carries one product name across languages", () => {
-		// LogoCreator is a brand mark: translating it would leave two names for one
-		// ability. What still has to adapt per locale is the copy around it.
-		expect(entry.detail.i18n.zh.name).toBe(entry.name);
-		expect(en.name).toBe(entry.name);
-		expect(zh.name).toBe(entry.name);
-		expect(entry.name).not.toMatch(/plugin|skill|mcp|bundle|studio|插件|技能|套装/i);
+	it("shows a Chinese name by default and keeps an English one for English hosts", () => {
+		// The card's own name is the English product name; a Chinese UI reads the zh
+		// override, which is Chinese prose rather than a transliteration.
+		expect(plugin.defaultLocale).toBe("zh");
+		expect(en.name).toBe("LogoCreator");
+		expect(zh.name).toBe(entry.detail.i18n.zh.name);
+		expect(zh.name).toMatch(/[\u4e00-\u9fa5]/);
+		expect(zh.name).not.toMatch(/plugin|skill|mcp|bundle|studio|插件|技能|套装/i);
 		// Everything the host renders as the plugin's own name goes through these keys.
 		expect(zh["tab.label"]).toBe(zh.name);
 		expect(zh["panel.title"]).toBe(zh.name);
@@ -210,8 +206,8 @@ describe("locales", () => {
 		expect(missingZh, `missing in zh.json: ${missingZh.join(", ")}`).toEqual([]);
 	});
 
-	it("keeps the default language English", () => {
-		expect(plugin.defaultLocale).toBe("en");
+	it("defaults to Chinese, with English still complete", () => {
+		expect(plugin.defaultLocale).toBe("zh");
 		// A Chinese value where the English one is identical usually means one of the
 		// two files was copy-pasted and never translated.
 		const untranslated = Object.keys(en).filter(
@@ -293,7 +289,7 @@ describe("the team agent", () => {
 			expect(en[key], `en is missing ${key}`).toBeTruthy();
 			expect(zh[key], `zh is missing ${key}`).toBeTruthy();
 		}
-		expect(zh["agent.logoMaster.name"]).toBe("LogoCreator");
+		expect(zh["agent.logoMaster.name"]).toBe("标志设计");
 	});
 
 	it("ships an avatar inside the package, in a format the host accepts", () => {

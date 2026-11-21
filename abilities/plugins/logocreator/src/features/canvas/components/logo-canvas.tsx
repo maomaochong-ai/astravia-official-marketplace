@@ -5,22 +5,21 @@ import type { DesignRecord } from "../../../domain/history-store";
 import { kitSlug } from "../../../domain/brand-kit";
 import { previewUrl } from "../../../domain/render-png";
 import { getPluginContext, reportError } from "../../../plugin-context";
-import { BUTTON_PRIMARY, FOCUS_RING } from "../../../shared/styles/tokens";
+import { FOCUS_RING } from "../../../shared/styles/tokens";
+import { useCanvasNotes } from "../hooks/use-canvas-notes";
 import { useDesignHistory } from "../hooks/use-design-history";
 import { useGeneration } from "../hooks/use-generation";
 import { useLogoForm } from "../hooks/use-logo-form";
 import { savePngFile, saveSvgFile } from "../services/export-files";
+import { claimPendingDesignId, onPendingDesignChanged, peekPendingDesignId } from "../pending-design";
+import { publishCanvasSpec } from "../canvas-prompt";
 import { AiSettingsDialog } from "./ai-settings-dialog";
 import { BrandKitDialog } from "./brand-kit-dialog";
+import { CanvasDock } from "./canvas-dock";
+import { CanvasInspector } from "./canvas-inspector";
+import { CanvasSurface } from "./canvas-surface";
 import { HistorySheet } from "./history-sheet";
 import { ResultGrid } from "./result-grid";
-import { CanvasControls } from "./canvas-controls";
-import { CanvasToolbar } from "./canvas-toolbar";
-import { claimPendingDesignId, onPendingDesignChanged, peekPendingDesignId } from "../pending-design";
-import { useCanvasNotes } from "../hooks/use-canvas-notes";
-import { CanvasSurface } from "./canvas-surface";
-import { NotesList } from "./notes-list";
-import { publishCanvasSpec } from "../canvas-prompt";
 
 function Icon({ path }: { path: string }): JSX.Element {
 	return (
@@ -31,11 +30,21 @@ function Icon({ path }: { path: string }): JSX.Element {
 }
 
 /**
- * The activity-panel surface: form on top, gallery below.
+ * The tab: a canvas, not a form.
  *
- * A single column, because the panel is 400–600 px wide and a two-column layout
- * here would leave neither half usable. The form scrolls with the gallery rather
- * than pinning itself, so the newest result is never hidden behind a fixed header.
+ * Same anatomy as the reference design plugin, for the same reason — a 400–600 px
+ * side panel has room for exactly one subject:
+ *
+ *   stage (fixed, fills)      · art, click-to-pin, pan-free single frame
+ *   floating top-left         · brand + engine badge (title slot)
+ *   floating top-right        · history / AI source / reset
+ *   floating bottom dock      · generate · surprise · design panel · notes · kit
+ *   right inspector           · the form or the notes list, as a rail
+ *
+ * The previous build was a single scrolling column: the canvas scrolled away under
+ * a five-screen form, and the primary verb lived at the bottom of it. Nothing in
+ * this file may reintroduce page-level scrolling — the stage is `flex-1 min-h-0`
+ * and only the inspector scrolls.
  */
 export function LogoCanvas(): JSX.Element {
 	const { t, locale } = useTranslation();
@@ -53,7 +62,6 @@ export function LogoCanvas(): JSX.Element {
 		aiDone: (count) => t("notify.aiDone", { count }),
 		aiPartial: (failed) => t("notify.aiPartial", { failed }),
 	});
-
 	const notes = useCanvasNotes({
 		sendFailed: t("error.notesSend"),
 		addFailed: t("error.notesAdd"),
@@ -64,31 +72,29 @@ export function LogoCanvas(): JSX.Element {
 	const [kitRecord, setKitRecord] = useState<DesignRecord | null>(null);
 	const [aiOpen, setAiOpen] = useState(false);
 	const [historyOpen, setHistoryOpen] = useState(false);
+	const [inspectorOpen, setInspectorOpen] = useState(false);
+	const [inspectorTab, setInspectorTab] = useState<"design" | "notes">("design");
 
 	const subject = useMemo(() => resolveMark(form.spec).subject, [form.spec]);
+	// Typing stays at caret speed; the mark repaints on the next idle slot.
+	const deferredSpec = useDeferredValue(form.spec);
+	const preview = useMemo(() => previewUrl(renderLogo(deferredSpec).svg), [deferredSpec]);
+	const canGenerate = Boolean(form.spec.brandName.trim()) || form.spec.type === "wordmark";
+	const visibleNotes = notes.notes.filter((note) => note.designId === null || note.designId === selectedId);
+	const pendingCount = visibleNotes.filter((note) => note.status === "pending").length;
 
-	// Keeping the newest result selected makes "generate → save" a straight line.
 	useEffect(() => {
 		if (generation.lastCreatedId) setSelectedId(generation.lastCreatedId);
 	}, [generation.lastCreatedId]);
 
-	// Two ways a design can arrive while this panel is not the active one, and they
-	// need different treatment:
-	//  - a **tool** just created it → the user is waiting to see *that* one, so it is
-	//    claimed and loaded, replacing whatever the form held;
-	//  - this is just the panel opening again → only seed an empty form, because
-	//    overwriting half-finished work with the last saved design is worse than
-	//    showing nothing.
+	// A tool created a design while the panel was closed → show that one. Opening the
+	// tab again must not clobber half-finished work, so only an empty form is seeded.
 	const claimedRef = useRef<string | null>(null);
 	const revealPending = useCallback(() => {
 		const pendingId = claimPendingDesignId();
 		if (!pendingId || claimedRef.current === pendingId) return;
 		const record = history.items.find((item) => item.id === pendingId);
-		if (!record) {
-			// The tool wrote to storage; this panel hydrated before that landed.
-			// Re-render when the store catches up.
-			return;
-		}
+		if (!record) return;
 		claimedRef.current = pendingId;
 		form.load(record.spec);
 		setSelectedId(record.id);
@@ -109,23 +115,17 @@ export function LogoCanvas(): JSX.Element {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [history.ready, history.items.length]);
 
-	// A tool call can land while the panel is already open: the store notifies, or
-	// the pending id changes without a store write (a second run in the same turn).
 	useEffect(() => onPendingDesignChanged(revealPending), [revealPending]);
 
-	// Publish the open design so the composer toggle can carry it into a prompt.
+	// Publish the open design so the composer chip can carry it into a prompt.
 	useEffect(() => {
 		publishCanvasSpec(form.spec);
 	}, [form.spec]);
 
-	// The preview follows the *deferred* spec: typing stays at caret speed while the
-	// mark repaints on React's next idle slot.
-	const deferredSpec = useDeferredValue(form.spec);
-	const preview = useMemo(() => previewUrl(renderLogo(deferredSpec).svg), [deferredSpec]);
-
-	// Enabled state instead of a toast: "no name yet" is knowable before the click,
-	// and a warning toast for a known-invalid state is a wasted round trip.
-	const canGenerate = Boolean(form.spec.brandName.trim()) || form.spec.type === "wordmark";
+	const openInspector = (tab: "design" | "notes") => {
+		setInspectorTab(tab);
+		setInspectorOpen(true);
+	};
 
 	const handleSaveSvg = (record: DesignRecord) => {
 		const ctx = getPluginContext();
@@ -159,142 +159,137 @@ export function LogoCanvas(): JSX.Element {
 		}
 	};
 
+	const selectedRecord = selectedId ? history.items.find((item) => item.id === selectedId) : undefined;
+
 	return (
-		<div className="relative flex h-full min-h-0 w-full flex-col bg-background text-foreground">
-			<CanvasToolbar
-				title={t("panel.title")}
-				subtitle={t("panel.subtitle")}
-				engineBadge={generation.mode === "ai" ? "AI" : t("panel.localBadge")}
-				actions={[
-					{
-						id: "history",
-						label: t("panel.history"),
-						icon: <Icon path="M12 8v4l3 2M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Z" />,
-						onClick: () => setHistoryOpen(true),
-					},
-					{
-						id: "ai",
-						label: t("panel.ai"),
-						icon: <Icon path="M12 3v3m0 12v3M3 12h3m12 0h3M6.3 6.3l2.1 2.1m7.2 7.2l2.1 2.1m0-11.4l-2.1 2.1M8.4 15.6l-2.1 2.1" />,
-						onClick: () => setAiOpen(true),
-					},
-					{
-						id: "reset",
-						label: t("panel.reset"),
-						icon: <Icon path="M4 10a8 8 0 1 1 2 5M4 5v5h5" />,
-						onClick: form.reset,
-					},
-				]}
-			/>
-
-			<div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
-				{/* Sticky: the art and the verb that changes it never scroll away. */}
-				<div className="sticky top-0 z-10 -mx-3 space-y-2 bg-background px-3 pb-2 pt-3">
-					<CanvasSurface
-						previewUrl={preview}
-						alt={t("panel.previewAlt")}
-						notes={notes.notes.filter((note) => note.designId === null || note.designId === selectedId)}
-						dark={form.spec.surface === "dark"}
-						onPlace={async (point, noteText) => notes.add({ designId: selectedId, text: noteText, ...point })}
-					/>
-					<div className="flex items-center gap-1.5">
-						<button
-							type="button"
-							onClick={() => void generation.generate(form.spec)}
-							disabled={generation.running || !canGenerate}
-							title={canGenerate ? undefined : t("action.needName")}
-							className={`${BUTTON_PRIMARY} ${FOCUS_RING} h-9 flex-1 text-[13px]`}
-						>
-							{generation.running ? t("action.working") : generation.mode === "ai" ? t("action.generateAi") : t("action.generate")}
-						</button>
-						<button
-							type="button"
-							onClick={() => void generation.generate(form.spec, { surprise: true })}
-							disabled={generation.running || !canGenerate}
-							title={t("action.surprise")}
-							aria-label={t("action.surprise")}
-							className={`${FOCUS_RING} flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40`}
-						>
-							<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-								<path d="M4 8.5l2.5 2.5L9 8.5 6.5 6zM15 8.5L17.5 11 20 8.5 17.5 6zM4 17l2.5 2.5L9 17l-2.5-2.5zM15 17l2.5 2.5L20 17l-2.5-2.5z" strokeLinejoin="round" />
-								<circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
-							</svg>
-						</button>
+		<div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-background text-foreground">
+			{/* Stage — the canvas fills it; nothing here scrolls. */}
+			<div className="relative min-h-0 flex-1">
+				<div className="absolute inset-0 flex items-center justify-center p-4 pb-16">
+					<div className="w-full max-w-[min(100%,34rem)]">
+						<CanvasSurface
+							previewUrl={preview}
+							alt={t("panel.previewAlt")}
+							notes={visibleNotes}
+							dark={form.spec.surface === "dark"}
+							onPlace={async (point, text) => notes.add({ designId: selectedId, text, ...point })}
+						/>
 					</div>
-					{canGenerate ? null : (
-						<p className="text-[10.5px] leading-snug text-muted-foreground">{t("action.needName")}</p>
-					)}
 				</div>
 
-				<div className="mt-2">
-					<NotesList
-						notes={notes.notes.filter((note) => note.designId === null || note.designId === selectedId)}
-						onRemove={(id) => void notes.remove(id)}
-						onHandToAgent={() => void notes.handToAgent(selectedId, form.spec.brandName)}
-						busy={generation.running}
-					/>
-				</div>
-
-				<div className="mt-4 flex items-center justify-between">
-					<span className="text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
-						{t("gallery.title")}
+				{/* Title slot, floating (reference: `absolute left-3 top-3`). */}
+				<div className="absolute left-3 top-3 z-40 flex max-w-[calc(100%-5.5rem)] items-center gap-1.5">
+					<span className="truncate rounded-md bg-popover/95 px-1.5 py-0.5 text-[12px] font-medium text-foreground shadow-sm ring-1 ring-border/60">
+						{form.spec.brandName || t("canvas.untitled")}
 					</span>
-					{history.items.length > 0 ? (
-						<button
-							type="button"
-							onClick={() => setHistoryOpen(true)}
-							className="text-[10.5px] font-medium text-muted-foreground hover:text-foreground"
-						>
-							{t("gallery.viewAll", { count: history.items.length })}
-						</button>
-					) : null}
+					<span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+						{generation.mode === "ai" ? "AI" : t("panel.localBadge")}
+					</span>
 				</div>
 
-				<div className="mt-2">
-					<ResultGrid
-						records={history.items.slice(0, 24)}
-						ready={history.ready}
-						selectedId={selectedId}
-						locale={locale}
-						label={history.label}
-						onSelect={(record) => {
-							form.load(record.spec);
-							setSelectedId(record.id);
-						}}
-						onToggleFavorite={(record) => void history.setFavorite(record.id, !record.favorite)}
-						onSaveSvg={handleSaveSvg}
-						onSavePng={(record) => void handleSavePng(record)}
-						onOpenKit={setKitRecord}
-						onDelete={(record) => void history.remove(record.id)}
-						t={t}
-						emptyState={
-							<div className="rounded-xl border border-dashed border-border px-4 py-8 text-center">
-								<p className="text-[12px] font-medium text-foreground">{t("empty.title")}</p>
-								<p className="mx-auto mt-1 max-w-[16rem] text-[11px] leading-relaxed text-muted-foreground">
-									{t("empty.body")}
-								</p>
-							</div>
-						}
-					/>
+				{/* Action rail, floating top-right. */}
+				<div className="absolute right-2 top-2 z-40 flex items-center gap-0.5 rounded-lg border border-border/70 bg-popover/95 p-0.5 shadow-sm">
+					<button
+						type="button"
+						onClick={() => setHistoryOpen(true)}
+						title={t("panel.history")}
+						aria-label={t("panel.history")}
+						className={`${FOCUS_RING} relative flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground`}
+					>
+						<Icon path="M12 8v4l3 2M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Z" />
+						{history.items.length > 0 ? (
+							<span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-primary" aria-hidden />
+						) : null}
+					</button>
+					<button
+						type="button"
+						onClick={() => setAiOpen(true)}
+						title={t("panel.ai")}
+						aria-label={t("panel.ai")}
+						className={`${FOCUS_RING} flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground`}
+					>
+						<Icon path="M12 3v3m0 12v3M3 12h3m12 0h3M6.3 6.3l2.1 2.1m7.2 7.2l2.1 2.1m0-11.4l-2.1 2.1M8.4 15.6l-2.1 2.1" />
+					</button>
+					<button
+						type="button"
+						onClick={form.reset}
+						title={t("panel.reset")}
+						aria-label={t("panel.reset")}
+						className={`${FOCUS_RING} flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground`}
+					>
+						<Icon path="M4 10a8 8 0 1 1 2 5M4 5v5h5" />
+					</button>
 				</div>
 
-				<CanvasControls
-					spec={form.spec}
-					previewSpec={deferredSpec}
-					patch={form.patch}
-					activePreset={form.activePreset}
-					applyPreset={form.applyPreset}
-					variations={generation.settings.variations}
-					onVariations={generation.updateVariations}
-					subject={subject}
-					aiMode={generation.mode === "ai"}
-					imageLabels={{
-						fromImage: t("colour.fromImage"),
-						imageFailed: t("error.imageRead"),
-						tooLarge: t("error.imageTooLarge"),
+				{/* Recent results, floating over the stage's lower edge — visible the
+				    moment a run lands, without stealing the stage. */}
+				{history.ready ? (
+					<div className="absolute inset-x-0 bottom-16 z-20 px-3">
+						<ResultGrid
+							compact
+							records={history.items.slice(0, 8)}
+							ready={history.ready}
+							selectedId={selectedId}
+							locale={locale}
+							label={history.label}
+							onSelect={(record) => {
+								form.load(record.spec);
+								setSelectedId(record.id);
+							}}
+							onToggleFavorite={(record) => void history.setFavorite(record.id, !record.favorite)}
+							onSaveSvg={handleSaveSvg}
+							onSavePng={(record) => void handleSavePng(record)}
+							onOpenKit={setKitRecord}
+							onDelete={(record) => void history.remove(record.id)}
+							t={t}
+							emptyState={<span />}
+						/>
+					</div>
+				) : null}
+
+				<CanvasDock
+					canGenerate={canGenerate}
+					running={generation.running}
+					mode={generation.mode}
+					pendingNotes={pendingCount}
+					inspectorOpen={inspectorOpen}
+					inspectorTab={inspectorTab}
+					onGenerate={() => void generation.generate(form.spec)}
+					onSurprise={() => void generation.generate(form.spec, { surprise: true })}
+					onOpenNotes={() => openInspector("notes")}
+					onToggleInspector={() => (inspectorOpen ? setInspectorOpen(false) : openInspector("design"))}
+					onOpenKit={() => {
+						if (selectedRecord) setKitRecord(selectedRecord);
+						else setInspectorOpen(true);
 					}}
 				/>
 
+				<CanvasInspector
+					open={inspectorOpen}
+					tab={inspectorTab}
+					onTab={setInspectorTab}
+					onClose={() => setInspectorOpen(false)}
+					controls={{
+						spec: form.spec,
+						previewSpec: deferredSpec,
+						patch: form.patch,
+						activePreset: form.activePreset,
+						applyPreset: form.applyPreset,
+						variations: generation.settings.variations,
+						onVariations: generation.updateVariations,
+						subject,
+						aiMode: generation.mode === "ai",
+						imageLabels: {
+							fromImage: t("colour.fromImage"),
+							imageFailed: t("error.imageRead"),
+							tooLarge: t("error.imageTooLarge"),
+						},
+					}}
+					notes={visibleNotes}
+					onRemoveNote={(id) => void notes.remove(id)}
+					onHandToAgent={() => void notes.handToAgent(selectedId, form.spec.brandName)}
+					busy={generation.running}
+				/>
 			</div>
 
 			<BrandKitDialog record={kitRecord} onClose={() => setKitRecord(null)} t={t} />
@@ -328,6 +323,15 @@ export function LogoCanvas(): JSX.Element {
 				onRefresh={generation.refreshProviders}
 				t={t}
 			/>
+
+			{/* Inline hint when a design cannot be generated yet (no toast: the state is
+			    knowable before the click). */}
+			{canGenerate ? null : (
+				<p className="pointer-events-none absolute bottom-1 left-1/2 z-40 -translate-x-1/2 text-[10px] text-muted-foreground">
+					{t("action.needName")}
+				</p>
+			)}
 		</div>
 	);
 }
+

@@ -11,38 +11,43 @@ src/
 ├── index.tsx                    插件装配：画布 tab + 输入栏开关 + 工具注册
 ├── plugin-context.ts            激活时的 ctx、设计历史与备注两个 store
 ├── contributions.ts             所有交给宿主渲染的 %key% 与输入栏 id
-├── tab-ids.ts                   tab / 工具 id（测试直接引用真名）
+├── tab-ids.ts                   tab / 工具 id
 ├── domain/
-│   ├── spec.ts                  一个设计由哪些字段决定（唯一事实源）
-│   ├── catalog.ts               类型、风格、细节、预设、题材关键词
-│   ├── color-plan.ts            题材 → 色相锚点 → 调色板；图片取色
-│   ├── palette.ts               sRGB / HSL / WCAG 对比度
+│   ├── spec.ts / catalog.ts     设计由哪些字段决定；类型、风格、预设、题材词
+│   ├── color-plan.ts/palette.ts 题材→色相锚点→调色板；sRGB/HSL/WCAG
 │   ├── prng.ts                  mulberry32 + xmur3（种子唯一入口）
 │   ├── engine/                  几何、单线字库、26 题材、8 风格、SVG 合成
-│   ├── render-png.ts            SVG → PNG（canvas）/ 图片取像素
-│   ├── brand-kit.ts             套件内容 + zip（fflate）
-│   ├── brand-guide.ts           可打印 HTML 指南 + 品牌看板
-│   ├── history-store.ts         设计历史（只存参数，mutation 前强制 hydrate）
+│   ├── render-png.ts            SVG → PNG / 图片取像素
+│   ├── brand-kit.ts             HTML 指南 + PNG/WebP + zip
+│   ├── history-store.ts         设计历史（mutation 前强制 hydrate）
 │   ├── notes.ts                 画布备注（锚点、状态、交给 Agent 的文案）
 │   ├── settings.ts              变体数与所选图像服务
-│   └── ai/                      宿主图像服务路径 + 提示词构造（可选）
+│   └── ai/                      宿主图像服务路径 + 提示词构造
 ├── features/canvas/
-│   ├── components/              画布、控件、格子、五个弹窗（一个文件一个主组件）
-│   ├── hooks/                   use-logo-form / use-design-history / use-generation / use-canvas-notes
+│   ├── components/
+│   │   ├── logo-canvas.tsx      stage + 浮层 chrome（唯一容器）
+│   │   ├── canvas-dock.tsx      底部 dock：生成/随机/设计面板/备注/套件
+│   │   ├── canvas-inspector.tsx 右侧 inspector：设计页签与备注页签
+│   │   ├── canvas-surface.tsx   画布本体：图形、图钉、落点输入
+│   │   ├── notes-list.tsx       备注清单 + 交给 Agent
+│   │   ├── canvas-controls.tsx  设计表单（在 inspector 里渲染）
+│   │   ├── result-grid.tsx      结果格子（compact = 横向小卡）
+│   │   └── …                    预设、类型、风格、取色、历史、套件、AI 弹窗
+│   ├── hooks/                   form / history / generation / notes
 │   ├── services/export-files.ts 保存入口（全部走 fs.saveAs）
 │   ├── canvas-prompt.ts         输入栏开关打开的上下文
 │   └── pending-design.ts        工具 → 画布的一次性"看这个"交接
-├── shared/                      segmented / modal-dialog / tokens / 格式化
+├── shared/                      segmented / modal-dialog（面板内浮层）/ tokens
 ├── tools/                       design、brand_kit、catalog、notes 四个 Agent 工具
-└── test/                        引擎、调色板、历史、备注、manifest、画布接线
+└── test/                        引擎、调色板、历史、备注、布局、manifest、接线
 
 agent/
-├── skills/logocreator/          技能（name === 目录名，也出现在 skillPresentation）
+├── skills/logocreator/          技能（name === 目录名）
 │   ├── SKILL.md                 操作手册：四个工具、一轮的固定顺序、硬规则
-│   └── references/              9 份按需读的深度文件（见下）
+│   └── references/              9 份按需读的深度文件
 └── agents/
     ├── logo-master.md           智能体系统提示词
-    └── logo-master.webp         头像：512×512，与插件图标同一张图
+    └── logo-master.webp         512×512 头像（与插件图标同源）
 ````
 ## 引擎怎么画
 
@@ -87,14 +92,43 @@ agent/
   （问完 → 四个决定 → 三个变体 → 审 → 交付），人设与判断在智能体提示词里，工具细节在技能里——
   三层不重叠。
 
-## 名字只有一个：LogoCreator
+## 名字与归属
 
-能力名、tab 标签、输入栏芯片、技能 `name` 与别名、团队名，中英两种界面都读 **LogoCreator**。
-产品名是品牌标记，不是可翻译标签；翻译它会让同一个能力在两种界面下有两个名字。
-随语言变化的只有描述、副标题与工具说明——这些仍然 en/zh 双份维护。
+- 能力卡的英文名是 `LogoCreator`，中文界面读 `detail.i18n.zh.name` = **标志设计**；
+  `defaultLocale` 是 `zh`，所以没装语言包时先显示中文。
+- 插件只注册**一个智能体**（`agent.agents[]`），**没有 teams**。@ 提及面板按这两块分组：
+  写进 teams 就会出现在「团队（N 位成员）」里，那是给多角色编队用的，而这里只有一位专家。
+- 内部标识统一：tab `logocreator-canvas`、工具 `logocreator_*`、技能目录 `agent/skills/logocreator`。
 
-内部标识也统一：tab id `logocreator-canvas`、工具 `logocreator_*`、技能目录 `agent/skills/logocreator`。
-"studio" 是开发期的内部叫法，v0.0.8 起已从 id、文件名与文案里清除。
+## 画布布局（对齐宿主内置设计插件）
+
+tab 不是一个纵向表单，而是一块画布加浮层 chrome。这是宿主的 `astravia-ui-design` 的解剖结构，
+换成 400–600px 的侧栏后更必须如此：面板只装得下一个主体。
+
+```text
+┌──────────────────────────────────────────┐
+│ 标题芯片（品牌名 + 引擎徽标）   历史/AI/重置 │  ← 浮在左上/右上 (absolute, z-40)
+│                                          │
+│              ● 画布（stage）              │  ← relative min-h-0 flex-1，不滚动
+│            点击落备注图钉                 │
+│                                          │
+│  [ 最近结果：横向小卡 ]                    │  ← 浮在 stage 下缘 (bottom-16)
+│        ┌───────────────────────────┐     │
+│        │ → ✦ │ ⚙ 备注⑶ │ ▤        │     │  ← 底部居中 dock (bottom-3, -translate-x-1/2)
+│        └───────────────────────────┘     │
+└──────────────────────────────────────────┘
+     ⚙/备注 打开右侧 inspector（absolute inset-y-0 right-0），唯一的滚动区域
+```
+
+| 区域 | 组件 | 为什么在这里 |
+| --- | --- | --- |
+| stage | `logo-canvas.tsx` | `min-h-0 flex-1`，永不滚动：滚走的画布 = 在改一个看不见的图形 |
+| 标题芯片 / 动作轨 | 同上 | `absolute z-40`，与参考工程同一坐标语言 |
+| dock | `canvas-dock.tsx` | 四个高频动词 + 备注角标；无 `backdrop-blur`（背后画布每帧重绘） |
+| inspector | `canvas-inspector.tsx` | 设计/备注两页签，`absolute right-0` **盖住** stage 而不是压缩它 |
+| 结果横条 | `result-grid.tsx` 的 `compact` | 生成后立刻可见，不抢 stage |
+
+所有弹窗用 `absolute inset-0`（面板根是 `relative`），不会盖住对话区。
 
 ## 画布备注：让宿主直接改
 

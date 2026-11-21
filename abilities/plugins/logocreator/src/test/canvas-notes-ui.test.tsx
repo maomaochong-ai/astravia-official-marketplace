@@ -117,9 +117,12 @@ describe("canvas notes", () => {
 			</__PluginI18nContext.Provider>,
 		);
 
-		// Give the canvas a brand so the prompt names it.
+		// The brand field lives in the inspector rail; a user opens it from the dock.
+		fireEvent.click(await screen.findByLabelText(copy("dock.inspector")));
 		const nameInput = (await screen.findByPlaceholderText("Fern & Field")) as HTMLInputElement;
 		fireEvent.change(nameInput, { target: { value: "Fern & Field" } });
+		// Close the rail so the stage is clickable again (it overlaps the art).
+		fireEvent.click(screen.getByLabelText(copy("inspector.close")));
 
 		const surface = screen.getByLabelText(copy("notes.surface"));
 		// jsdom reports a zero-size box; the layer falls back to the centre anchor.
@@ -139,7 +142,9 @@ describe("canvas notes", () => {
 		expect(saved.items[0].x).toBeCloseTo(0.25, 1);
 		expect(saved.items[0].y).toBeCloseTo(0.75, 1);
 
-		fireEvent.click(screen.getByLabelText(copy("notes.handToAgent")));
+		// The hand-off lives in the notes rail now.
+		fireEvent.click(screen.getByLabelText(copy("dock.notes")));
+		fireEvent.click(await screen.findByLabelText(copy("notes.handToAgent")));
 
 		await waitFor(() => expect(sendPrompt).toHaveBeenCalledTimes(1));
 		const prompt = String(sendPrompt.mock.calls[0]?.[0] ?? "");
@@ -158,9 +163,12 @@ describe("canvas notes", () => {
 			</__PluginI18nContext.Provider>,
 		);
 
-		await screen.findByPlaceholderText("Fern & Field");
-		// No pins → no button at all. A disabled button that can never be enabled
-		// reads as a broken feature; an absent one reads as "nothing to send".
+		// The dock is the stage's permanent chrome, so this much renders immediately.
+		expect(await screen.findByLabelText(copy("dock.notes"))).toBeTruthy();
+		fireEvent.click(screen.getByLabelText(copy("dock.notes")));
+		// No pins → the notes rail has nothing to offer. A hand-off button that can
+		// never be enabled reads as a broken feature; an absent one reads as "nothing
+		// to send".
 		expect(screen.queryByLabelText(copy("notes.handToAgent"))).toBeNull();
 		expect(sendPrompt).not.toHaveBeenCalled();
 	});

@@ -23,8 +23,6 @@ export const BUTTON_PRIMARY =
 export const BUTTON_SECONDARY =
 	"inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-[12px] font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50";
 
-export const BUTTON_GHOST =
-	"inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 text-[12px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50";
 
 export const CHIP =
 	"inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors";

@@ -1,9 +1,9 @@
 {
   "id": "logocreator",
   "name": "%name%",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "icon": "assets/icon.png",
-  "defaultLocale": "en",
+  "defaultLocale": "zh",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -51,20 +51,6 @@
           "designer"
         ],
         "abilities": "own"
-      }
-    ],
-    "teams": [
-      {
-        "id": "logocreator",
-        "name": "%team.logoCreator.name%",
-        "description": "%team.logoCreator.description%",
-        "members": [
-          {
-            "agent": "logo-master",
-            "responsibility": "%team.logoCreator.leadResponsibility%"
-          }
-        ],
-        "workflow": "You are the only member of this team, so you both decide and produce. Run every request through this order and do not skip a step:\n\n1. Read the brief and ask only what is missing: what the business does, and where the mark appears first. One question round, never a running commentary.\n2. Decide four things in order — intent, type, style, colour — and be ready to justify each in one sentence (logocreator skill, references/directions.md).\n3. Produce three variations with logocreator_design, then look at them before saying anything about them (references/critique.md).\n4. When a direction is chosen, deliver: the files, the resolved subject, the palette and the seed. Build the kit only when the user asks for it or when they will hand the brand to someone else (references/deliverables.md).\n\nYou do not have a production or layout specialist to hand off to inside this team. If the user needs the brand applied to a deck, a site or packaging, finish the identity, then say plainly which part is outside this team's scope and what to bring to it — the palette hexes and the lockup path."
       }
     ]
   },
