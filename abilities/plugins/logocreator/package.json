@@ -20,7 +20,7 @@
     "@astravia-org/plugin-vite": "^0.2.4"
   },
   "name": "@astravia/plugin-logocreator",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "type": "module",
   "scripts": {
