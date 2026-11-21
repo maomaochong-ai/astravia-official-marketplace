@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "type": "plugin",
+  "slug": "logocreator",
+  "version": "0.0.1",
+  "icon": "assets/icon.svg",
+  "detail": {
+    "format": "blocks",
+    "path": "detail.json",
+    "meta": [
+      {
+        "key": "repository",
+        "value": "https://github.com/Nutlope/logocreator"
+      }
+    ],
+    "i18n": {
+      "zh": {
+        "path": "detail.zh.json"
+      }
+    }
+  }
+}
