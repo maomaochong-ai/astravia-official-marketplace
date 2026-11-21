@@ -12,12 +12,15 @@ export interface ModalDialogProps {
 }
 
 /**
- * An overlay confined to the activity panel's viewport.
+ * An overlay confined to the activity panel, not the window.
  *
- * It is `fixed inset-0` because the panel is a scrolling column: an absolutely
- * positioned sheet would be clipped by whichever ancestor happens to overflow.
- * Escape and backdrop clicks both close, and focus moves to the panel so the
- * keyboard does not stay behind the overlay.
+ * `absolute inset-0` inside the panel's `relative` root: a dialog that covers the
+ * conversation is the wrong trade in a side panel — the user is usually reading a
+ * reply while they rename a design. Anchoring is the panel's job (it sets
+ * `relative`), so this component stays position-agnostic.
+ *
+ * Escape and backdrop clicks both close; the backdrop is a real button so a mouse
+ * and a keyboard reach the same target.
  */
 export function ModalDialog({ open, title, description, onClose, children, footer, size = "narrow" }: ModalDialogProps): JSX.Element | null {
 	useEffect(() => {
@@ -35,7 +38,7 @@ export function ModalDialog({ open, title, description, onClose, children, foote
 	if (!open) return null;
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+		<div className="absolute inset-0 z-50 flex items-center justify-center p-3">
 			<button
 				type="button"
 				aria-label="Close dialog"

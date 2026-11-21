@@ -3,32 +3,24 @@ import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { CanvasNote } from "../../../domain/notes";
 import { BUTTON_PRIMARY, FOCUS_RING, TEXTAREA } from "../../../shared/styles/tokens";
 
-export interface CanvasNotesLayerProps {
-	/** Svg preview (data URL) the notes sit on. */
+export interface CanvasSurfaceProps {
 	previewUrl: string;
 	alt: string;
+	/** Pending notes to pin on the art. */
 	notes: CanvasNote[];
-	/** Dark surface needs light pins, or they disappear into the art. */
+	/** Dark spec surfaces need the art on a dark stage. */
 	dark: boolean;
 	onPlace: (point: { x: number; y: number }, text: string) => Promise<boolean>;
-	onRemove: (id: string) => void;
 }
 
 /**
- * The canvas surface the user annotates.
+ * The canvas itself: artwork, pins, and the one-line note you drop on it.
  *
- * Clicking the artwork drops a pin and opens one line of input; the pin keeps the
- * fractional position, so the same note lands on the same part of the mark at any
- * preview size. Pending pins are numbered because the agent reads them in order.
+ * Split from the note list on purpose. This is the part that must stay on screen
+ * while the form scrolls (it is what you are editing); the list is a checklist and
+ * can live below the fold with the other panels.
  */
-export function CanvasNotesLayer({
-	previewUrl,
-	alt,
-	notes,
-	dark,
-	onPlace,
-	onRemove,
-}: CanvasNotesLayerProps): JSX.Element {
+export function CanvasSurface({ previewUrl, alt, notes, dark, onPlace }: CanvasSurfaceProps): JSX.Element {
 	const { t } = useTranslation();
 	const [draft, setDraft] = useState<{ x: number; y: number } | null>(null);
 	const [text, setText] = useState("");
@@ -102,7 +94,12 @@ export function CanvasNotesLayer({
 						maxLength={600}
 					/>
 					<div className="flex items-center gap-1.5">
-						<button type="button" onClick={() => void submit()} disabled={saving || !text.trim()} className={`${BUTTON_PRIMARY} ${FOCUS_RING} h-8 px-3 text-[12px]`}>
+						<button
+							type="button"
+							onClick={() => void submit()}
+							disabled={saving || !text.trim()}
+							className={`${BUTTON_PRIMARY} ${FOCUS_RING} h-8 px-3 text-[12px]`}
+						>
 							{t("notes.add")}
 						</button>
 						<button
@@ -119,27 +116,6 @@ export function CanvasNotesLayer({
 						<span className="text-[10px] text-muted-foreground">{t("notes.hint")}</span>
 					</div>
 				</div>
-			) : null}
-
-			{pins.length > 0 ? (
-				<ul className="space-y-1">
-					{pins.map((note, index) => (
-						<li key={note.id} className="flex items-start gap-1.5 rounded-lg bg-amber-500/10 px-2 py-1">
-							<span className="mt-[1px] flex size-4 shrink-0 items-center justify-center rounded-full bg-amber-500 text-[9px] font-semibold text-white">
-								{index + 1}
-							</span>
-							<span className="min-w-0 flex-1 text-[11px] leading-snug text-foreground">{note.text}</span>
-							<button
-								type="button"
-								onClick={() => onRemove(note.id)}
-								aria-label={t("notes.remove")}
-								className="shrink-0 text-[10px] text-muted-foreground hover:text-destructive"
-							>
-								×
-							</button>
-						</li>
-					))}
-				</ul>
 			) : null}
 		</div>
 	);

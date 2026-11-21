@@ -18,7 +18,8 @@ import { CanvasControls } from "./canvas-controls";
 import { CanvasToolbar } from "./canvas-toolbar";
 import { claimPendingDesignId, onPendingDesignChanged, peekPendingDesignId } from "../pending-design";
 import { useCanvasNotes } from "../hooks/use-canvas-notes";
-import { CanvasNotesLayer } from "./canvas-notes-layer";
+import { CanvasSurface } from "./canvas-surface";
+import { NotesList } from "./notes-list";
 import { publishCanvasSpec } from "../canvas-prompt";
 
 function Icon({ path }: { path: string }): JSX.Element {
@@ -122,13 +123,9 @@ export function LogoCanvas(): JSX.Element {
 	const deferredSpec = useDeferredValue(form.spec);
 	const preview = useMemo(() => previewUrl(renderLogo(deferredSpec).svg), [deferredSpec]);
 
-	const handleGenerate = async () => {
-		if (!form.spec.brandName.trim() && form.spec.type !== "wordmark") {
-			getPluginContext().ui.notify({ message: t("notify.needName"), variant: "warning" });
-			return;
-		}
-		await generation.generate(form.spec);
-	};
+	// Enabled state instead of a toast: "no name yet" is knowable before the click,
+	// and a warning toast for a known-invalid state is a wasted round trip.
+	const canGenerate = Boolean(form.spec.brandName.trim()) || form.spec.type === "wordmark";
 
 	const handleSaveSvg = (record: DesignRecord) => {
 		const ctx = getPluginContext();
@@ -163,7 +160,7 @@ export function LogoCanvas(): JSX.Element {
 	};
 
 	return (
-		<div className="flex h-full min-h-0 w-full flex-col bg-background text-foreground">
+		<div className="relative flex h-full min-h-0 w-full flex-col bg-background text-foreground">
 			<CanvasToolbar
 				title={t("panel.title")}
 				subtitle={t("panel.subtitle")}
@@ -190,70 +187,52 @@ export function LogoCanvas(): JSX.Element {
 				]}
 			/>
 
-			<div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-				<div className="mb-3">
-					<CanvasNotesLayer
+			<div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
+				{/* Sticky: the art and the verb that changes it never scroll away. */}
+				<div className="sticky top-0 z-10 -mx-3 space-y-2 bg-background px-3 pb-2 pt-3">
+					<CanvasSurface
 						previewUrl={preview}
 						alt={t("panel.previewAlt")}
 						notes={notes.notes.filter((note) => note.designId === null || note.designId === selectedId)}
 						dark={form.spec.surface === "dark"}
 						onPlace={async (point, noteText) => notes.add({ designId: selectedId, text: noteText, ...point })}
-						onRemove={(id) => void notes.remove(id)}
 					/>
+					<div className="flex items-center gap-1.5">
+						<button
+							type="button"
+							onClick={() => void generation.generate(form.spec)}
+							disabled={generation.running || !canGenerate}
+							title={canGenerate ? undefined : t("action.needName")}
+							className={`${BUTTON_PRIMARY} ${FOCUS_RING} h-9 flex-1 text-[13px]`}
+						>
+							{generation.running ? t("action.working") : generation.mode === "ai" ? t("action.generateAi") : t("action.generate")}
+						</button>
+						<button
+							type="button"
+							onClick={() => void generation.generate(form.spec, { surprise: true })}
+							disabled={generation.running || !canGenerate}
+							title={t("action.surprise")}
+							aria-label={t("action.surprise")}
+							className={`${FOCUS_RING} flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40`}
+						>
+							<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+								<path d="M4 8.5l2.5 2.5L9 8.5 6.5 6zM15 8.5L17.5 11 20 8.5 17.5 6zM4 17l2.5 2.5L9 17l-2.5-2.5zM15 17l2.5 2.5L20 17l-2.5-2.5z" strokeLinejoin="round" />
+								<circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+							</svg>
+						</button>
+					</div>
+					{canGenerate ? null : (
+						<p className="text-[10.5px] leading-snug text-muted-foreground">{t("action.needName")}</p>
+					)}
 				</div>
 
-				<CanvasControls
-					spec={form.spec}
-					previewSpec={deferredSpec}
-					patch={form.patch}
-					activePreset={form.activePreset}
-					applyPreset={form.applyPreset}
-					variations={generation.settings.variations}
-					onVariations={generation.updateVariations}
-					subject={subject}
-					aiMode={generation.mode === "ai"}
-					imageLabels={{
-						fromImage: t("colour.fromImage"),
-						imageFailed: t("error.imageRead"),
-						tooLarge: t("error.imageTooLarge"),
-					}}
-				/>
-
-				<div className="mt-3 flex items-center gap-1.5">
-					<button
-						type="button"
-						onClick={() => void handleGenerate()}
-						disabled={generation.running}
-						className={`${BUTTON_PRIMARY} ${FOCUS_RING} h-10 flex-1 text-[13px]`}
-					>
-						{generation.running ? t("action.working") : generation.mode === "ai" ? t("action.generateAi") : t("action.generate")}
-					</button>
-					<button
-						type="button"
-						onClick={() => void notes.handToAgent(selectedId, form.spec.brandName)}
-						disabled={generation.running || notes.notes.filter((note) => note.status === "pending").length === 0}
-						title={t("notes.handToAgent")}
-						aria-label={t("notes.handToAgent")}
-						className={`${FOCUS_RING} flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40`}
-					>
-						<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-							<path d="M4 6.5h16M4 12h10M4 17.5h7" strokeLinecap="round" />
-							<path d="M16.5 15.5l2 2 3-3.5" strokeLinecap="round" strokeLinejoin="round" />
-						</svg>
-					</button>
-					<button
-						type="button"
-						onClick={() => void generation.generate(form.spec, { surprise: true })}
-						disabled={generation.running}
-						title={t("action.surprise")}
-						aria-label={t("action.surprise")}
-						className={`${FOCUS_RING} flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50`}
-					>
-						<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-							<path d="M4 8.5l2.5 2.5L9 8.5 6.5 6zM15 8.5L17.5 11 20 8.5 17.5 6zM4 17l2.5 2.5L9 17l-2.5-2.5zM15 17l2.5 2.5L20 17l-2.5-2.5z" strokeLinejoin="round" />
-							<circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
-						</svg>
-					</button>
+				<div className="mt-2">
+					<NotesList
+						notes={notes.notes.filter((note) => note.designId === null || note.designId === selectedId)}
+						onRemove={(id) => void notes.remove(id)}
+						onHandToAgent={() => void notes.handToAgent(selectedId, form.spec.brandName)}
+						busy={generation.running}
+					/>
 				</div>
 
 				<div className="mt-4 flex items-center justify-between">
@@ -298,6 +277,24 @@ export function LogoCanvas(): JSX.Element {
 						}
 					/>
 				</div>
+
+				<CanvasControls
+					spec={form.spec}
+					previewSpec={deferredSpec}
+					patch={form.patch}
+					activePreset={form.activePreset}
+					applyPreset={form.applyPreset}
+					variations={generation.settings.variations}
+					onVariations={generation.updateVariations}
+					subject={subject}
+					aiMode={generation.mode === "ai"}
+					imageLabels={{
+						fromImage: t("colour.fromImage"),
+						imageFailed: t("error.imageRead"),
+						tooLarge: t("error.imageTooLarge"),
+					}}
+				/>
+
 			</div>
 
 			<BrandKitDialog record={kitRecord} onClose={() => setKitRecord(null)} t={t} />

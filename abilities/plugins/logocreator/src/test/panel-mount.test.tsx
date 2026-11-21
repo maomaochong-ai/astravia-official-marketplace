@@ -169,13 +169,18 @@ describe("the studio panel mounts", () => {
 		expect(saved.items[0].subject).toBe("leaf");
 	});
 
-	it("refuses to design without a name, and says why", async () => {
-		const { ctx } = fakeContext();
+	it("refuses to design without a name, before the click", async () => {
+		const { ctx, storage } = fakeContext();
 		setPluginContext(ctx);
 		renderPanel();
-		fireEvent.click(await screen.findByText("Design logos"));
-		await waitFor(() => expect(notifyOf(ctx)).toHaveBeenCalled());
-		expect(notifyOf(ctx).mock.calls[0][0]).toMatchObject({ message: "Give the brand a name first" });
+
+		// Disabled + an inline hint: the state is knowable up front, so it must not
+		// cost a click and a toast.
+		const button = (await screen.findByText("Design logos")).closest("button") as HTMLButtonElement;
+		expect(button.disabled).toBe(true);
+		expect(screen.getByText("Type a brand name to design it.")).toBeTruthy();
+		expect(storage.files["designs.json"]).toBeUndefined();
+		expect(notifyOf(ctx)).not.toHaveBeenCalled();
 	});
 });
 

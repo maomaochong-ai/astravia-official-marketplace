@@ -149,7 +149,7 @@ describe("canvas notes", () => {
 		await waitFor(() => expect(JSON.parse(files["notes.json"]).items[0].status).toBe("resolved"));
 	});
 
-	it("never sends an empty batch", async () => {
+	it("offers no hand-off control until something is pinned", async () => {
 		const { ctx, sendPrompt } = context();
 		setPluginContext(ctx);
 		render(
@@ -159,8 +159,9 @@ describe("canvas notes", () => {
 		);
 
 		await screen.findByPlaceholderText("Fern & Field");
-		const button = screen.getByLabelText(copy("notes.handToAgent")) as HTMLButtonElement;
-		expect(button.disabled).toBe(true);
+		// No pins → no button at all. A disabled button that can never be enabled
+		// reads as a broken feature; an absent one reads as "nothing to send".
+		expect(screen.queryByLabelText(copy("notes.handToAgent"))).toBeNull();
 		expect(sendPrompt).not.toHaveBeenCalled();
 	});
 });

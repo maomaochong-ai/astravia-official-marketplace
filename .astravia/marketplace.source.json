@@ -2084,7 +2084,7 @@
       "slug": "logocreator",
       "name": "LogoCreator",
       "description": "A logo design canvas in Astravia: a deterministic vector engine that needs no key and no network, six structures in eight styles, canvas notes the agent can act on, and a complete brand kit.",
-      "version": "0.0.9",
+      "version": "0.1.0",
       "configVersion": 1,
       "author": "Astravia",
       "category": "Design",
