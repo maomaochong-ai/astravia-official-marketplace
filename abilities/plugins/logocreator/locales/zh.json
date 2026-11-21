@@ -1,10 +1,10 @@
 {
-  "name": "Logo设计",
+  "name": "logo设计",
   "description": "设计可直接使用的品牌标志，并导出完整品牌套件——内置矢量引擎无需密钥、不联网，也可用宿主里已接好的图像服务做 AI 生成。",
-  "tab.label": "Logo设计",
-  "agent.logoMaster.name": "Logo设计",
+  "tab.label": "logo设计",
+  "agent.logoMaster.name": "logo设计",
   "agent.logoMaster.description": "设计标志：定结构、定配色，交付整套品牌套件。内置矢量引擎无需密钥，需要时也能用 AI 生成。",
-  "panel.title": "Logo设计",
+  "panel.title": "logo设计",
   "panel.subtitle": "标志设计画布：图形、组合、配色与整套品牌套件，都在这一个面板里完成。",
   "panel.localBadge": "本地",
   "panel.history": "历史",
@@ -218,5 +218,12 @@
   "notify.copyFailed": "图片复制失败",
   "placeholder.title": "填个名字，或说一句话",
   "placeholder.body": "右侧输入品牌名，或直接描述想要的图形 —— 引擎离线就能画 26 个题材、8 种风格。",
-  "placeholder.meta": "6 种结构 · 8 种风格 · 26 个题材"
+  "placeholder.meta": "6 种结构 · 8 种风格 · 26 个题材",
+  "notes.handoff.noNotes": "还没有待处理的备注。",
+  "notes.handoff.noWorkspace": "先把项目打开：不知道在哪个项目里开会话。",
+  "notes.handoff.otherWorkspace": "当前对话在别的项目里，切回本项目的会话再交。",
+  "notes.handoff.streaming": "Agent 正在跑，它收尾时会自己把备注取走。",
+  "notes.handoff.willCreate": "会为这个项目新建一个会话再交出去",
+  "notes.handoff.failed": "备注没能交给对话",
+  "canvas.resetView": "回到 100%"
 }
