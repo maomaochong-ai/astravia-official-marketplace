@@ -2,6 +2,7 @@ import type { JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { CanvasNote } from "../../../domain/notes";
 import { BUTTON_SECONDARY, FOCUS_RING } from "../../../shared/styles/tokens";
+import { IconCheck } from "../../../shared/components/icons";
 
 export interface NotesListProps {
 	notes: CanvasNote[];
@@ -36,6 +37,7 @@ export function NotesList({ notes, onRemove, onHandToAgent, busy }: NotesListPro
 					aria-label={t("notes.handToAgent")}
 					className={`${BUTTON_SECONDARY} ${FOCUS_RING} h-7 text-[11px]`}
 				>
+					<IconCheck className="size-3" />
 					{t("notes.handToAgent")}
 				</button>
 			</div>
@@ -45,7 +47,7 @@ export function NotesList({ notes, onRemove, onHandToAgent, busy }: NotesListPro
 						<span className="mt-[1px] flex size-4 shrink-0 items-center justify-center rounded-full bg-amber-500 text-[9px] font-semibold text-white">
 							{index + 1}
 						</span>
-						<span className="min-w-0 flex-1 text-[11px] leading-snug text-foreground">{note.text}</span>
+						<span className="min-w-0 flex-1 break-words text-[11px] leading-snug text-foreground">{note.text}</span>
 						<button
 							type="button"
 							onClick={() => onRemove(note.id)}

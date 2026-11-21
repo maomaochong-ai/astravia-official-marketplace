@@ -2,7 +2,9 @@ import type { JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { LogoSpec } from "../../../domain/spec";
 import type { CanvasNote } from "../../../domain/notes";
+import type { PlanCandidate } from "../../../domain/planner";
 import { FOCUS_RING } from "../../../shared/styles/tokens";
+import { BriefPlanner } from "./brief-planner";
 import { CanvasControls, type CanvasControlsProps } from "./canvas-controls";
 import { NotesList } from "./notes-list";
 
@@ -12,6 +14,7 @@ export interface CanvasInspectorProps {
 	onTab: (tab: "design" | "notes") => void;
 	onClose: () => void;
 	controls: CanvasControlsProps;
+	onPlan: (candidates: PlanCandidate[]) => Promise<void>;
 	notes: CanvasNote[];
 	onRemoveNote: (id: string) => void;
 	onHandToAgent: () => void;
@@ -35,6 +38,7 @@ export function CanvasInspector({
 	onTab,
 	onClose,
 	controls,
+	onPlan,
 	notes,
 	onRemoveNote,
 	onHandToAgent,
@@ -45,10 +49,12 @@ export function CanvasInspector({
 
 	return (
 		<aside
-			className="absolute inset-y-0 right-0 z-30 flex w-[min(88%,20rem)] flex-col border-l border-border/70 bg-background shadow-xl"
+			// Width is clamped both ways: below ~15rem the two-tab header starts wrapping
+			// mid-word, above 20rem it eats the stage on a narrow panel.
+			className="absolute inset-y-0 right-0 z-30 flex w-[clamp(15rem,88%,20rem)] min-w-0 flex-col border-l border-border/70 bg-background shadow-xl"
 			aria-label={t("inspector.title")}
 		>
-			<header className="flex items-center gap-1 border-b border-border/60 px-2 py-1.5">
+			<header className="flex min-w-0 items-center gap-1 border-b border-border/60 px-2 py-1.5">
 				<div role="tablist" aria-label={t("inspector.title")} className="flex items-center gap-0.5">
 					{(
 						[
@@ -83,9 +89,12 @@ export function CanvasInspector({
 				</button>
 			</header>
 
-			<div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+			<div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-3">
 				{tab === "design" ? (
-					<CanvasControls {...controls} />
+					<div className="space-y-3">
+						<BriefPlanner onPlan={onPlan} />
+						<CanvasControls {...controls} />
+					</div>
 				) : (
 					<div className="space-y-3">
 						<NotesList notes={notes} onRemove={onRemoveNote} onHandToAgent={onHandToAgent} busy={busy} />

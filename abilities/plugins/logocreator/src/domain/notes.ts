@@ -1,4 +1,6 @@
 import type { PluginStorageApi } from "@astravia-org/plugin-sdk";
+import { describePart, type LogoPart } from "./note-parts";
+import { mergeLists, toPersistedList, type PersistedList } from "./persist-merge";
 
 /**
  * Canvas notes — the "this is wrong, change it" channel.
@@ -19,10 +21,25 @@ export const NOTES_LIMIT = 200;
 
 export type NoteStatus = "pending" | "resolved";
 
+/**
+ * Who a note is about.
+ *
+ * - `design`: this design only (the comment on the mark you are looking at).
+ * - `global`: the brand as a whole — palette, tone, "always keep 24 px legible".
+ *
+ * The reference design plugin draws the same line between element/frame anchors and
+ * free canvas notes; both kinds are needed, and mixing them silently is what makes a
+ * note list feel unreliable.
+ */
+export type NoteScope = "design" | "global";
+
 export interface CanvasNote {
 	id: string;
-	/** Design the note is about; a note without one is about the current form. */
+	/** Design the note is about; null means "the form currently open". */
 	designId: string | null;
+	scope: NoteScope;
+	/** Which structural part the pin landed on; null for a global note. */
+	part: LogoPart | null;
 	text: string;
 	/** Fractional anchor on the canvas preview: 0–1, top-left origin. */
 	x: number;
@@ -33,10 +50,7 @@ export interface CanvasNote {
 	resolvedAt?: number;
 }
 
-interface NotesFile {
-	schemaVersion: number;
-	items: CanvasNote[];
-}
+type NotesFile = PersistedList<CanvasNote>;
 
 export function newNoteId(): string {
 	return `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -57,6 +71,8 @@ export function coerceNote(raw: unknown): CanvasNote | null {
 	return {
 		id: value.id,
 		designId: typeof value.designId === "string" && value.designId ? value.designId : null,
+		scope: value.scope === "global" ? "global" : "design",
+		part: (value.part as LogoPart | undefined) ?? null,
 		text: value.text.trim().slice(0, MAX_NOTE_LENGTH),
 		x: clamp01(value.x),
 		y: clamp01(value.y),
@@ -68,6 +84,8 @@ export function coerceNote(raw: unknown): CanvasNote | null {
 
 export class NoteStore {
 	private items: CanvasNote[] = [];
+	/** Deleted ids, merged into the file so no writer can revive them. */
+	private tombstones = new Set<string>();
 	private loaded = false;
 	private hydrating: Promise<void> | null = null;
 	private listeners = new Set<() => void>();
@@ -97,6 +115,7 @@ export class NoteStore {
 				this.items = Array.isArray(parsed.items)
 					? parsed.items.map(coerceNote).filter((note): note is CanvasNote => note !== null)
 					: [];
+				this.tombstones = new Set(Array.isArray(parsed.deleted) ? parsed.deleted : []);
 			}
 		} catch {
 			this.items = [];
@@ -121,11 +140,20 @@ export class NoteStore {
 		return () => this.listeners.delete(listener);
 	}
 
-	async add(draft: { designId: string | null; text: string; x: number; y: number }): Promise<CanvasNote> {
+	async add(draft: {
+		designId: string | null;
+		text: string;
+		x: number;
+		y: number;
+		scope?: NoteScope;
+		part?: LogoPart | null;
+	}): Promise<CanvasNote> {
 		await this.ready();
 		const note = coerceNote({
 			id: newNoteId(),
-			designId: draft.designId,
+			designId: draft.scope === "global" ? null : draft.designId,
+			scope: draft.scope === "global" ? "global" : "design",
+			part: draft.scope === "global" ? null : (draft.part ?? null),
 			text: draft.text,
 			x: draft.x,
 			y: draft.y,
@@ -154,18 +182,52 @@ export class NoteStore {
 	async remove(id: string): Promise<void> {
 		await this.ready();
 		this.items = this.items.filter((note) => note.id !== id);
+		this.tombstones.add(id);
 		await this.persist();
 	}
 
 	async clear(designId?: string | null): Promise<void> {
 		await this.ready();
-		this.items = designId === undefined ? [] : this.items.filter((note) => note.designId !== designId);
+		const doomed =
+			designId === undefined
+				? this.items
+				: this.items.filter((note) => note.designId === designId && note.scope === "design");
+		for (const note of doomed) this.tombstones.add(note.id);
+		this.items = this.items.filter((note) => !doomed.includes(note));
 		await this.persist();
 	}
 
+	/** Same read-merge-write rule as the design history: a delete must stick. */
 	private async persist(): Promise<void> {
-		const file: NotesFile = { schemaVersion: NOTES_SCHEMA, items: this.items };
-		await this.storage.writeFile(NOTES_PATH, JSON.stringify(file, null, 2), "utf8");
+		let stored: NotesFile = { schemaVersion: NOTES_SCHEMA, items: [] };
+		try {
+			const raw = await this.storage.readFile(NOTES_PATH, "utf8");
+			if (raw) {
+				const parsed = JSON.parse(raw) as NotesFile;
+				stored = {
+					schemaVersion: NOTES_SCHEMA,
+					items: Array.isArray(parsed.items)
+						? parsed.items.map(coerceNote).filter((note): note is CanvasNote => note !== null)
+						: [],
+					deleted: Array.isArray(parsed.deleted) ? parsed.deleted : [],
+				};
+			}
+		} catch {
+			// A corrupt file must not block a delete; the write below replaces it.
+		}
+
+		const merged = mergeLists({
+			file: stored,
+			mine: this.items,
+			myTombstones: [...this.tombstones],
+			idOf: (note) => note.id,
+			rankOf: (note) => note.createdAt,
+		});
+		merged.items = merged.items.slice(0, NOTES_LIMIT);
+		this.items = merged.items;
+		this.tombstones = new Set(merged.tombstones);
+
+		await this.storage.writeFile(NOTES_PATH, JSON.stringify(toPersistedList(merged), null, 2), "utf8");
 		this.emit();
 	}
 
@@ -182,11 +244,17 @@ export class NoteStore {
  * away the composition the user already accepted (the same rule the skill states).
  */
 export function notesPrompt(notes: readonly CanvasNote[], brandName: string): string {
-	const lines = notes.map((note, index) => `${index + 1}. ${note.text}`).join("\n");
+	const lines = notes
+		.map((note, index) => {
+			const where = note.scope === "global" ? "whole brand" : describePart(note.part);
+			return `${index + 1}. [${where}] ${note.text}`;
+		})
+		.join("\n");
 	return [
 		`Apply these canvas notes to the "${brandName || "current"}" logo:`,
 		lines,
 		"Change only the fields a note names (name, tagline, type, style, detail, colour, surface, monochrome, intent, seed) and re-render with logocreator_design.",
 		"Keep the seed unless a note is about the mark's shape; do not re-roll the whole design.",
+		"A note marked \"whole brand\" is a standing rule: apply it to this design and state it back, so later designs can follow it.",
 	].join("\n\n");
 }

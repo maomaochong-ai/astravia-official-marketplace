@@ -44,13 +44,22 @@ function withSize(svg: string, size: number): string {
 		.replace(/<svg/, `<svg width="${size}" height="${size}"`);
 }
 
-export function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+export function canvasToBlob(canvas: HTMLCanvasElement, type: "image/png" | "image/webp" = "image/png"): Promise<Blob> {
 	return new Promise((resolve, reject) => {
-		canvas.toBlob((blob) => {
-			if (blob) resolve(blob);
-			else reject(new Error("The browser could not encode a PNG from this canvas"));
-		}, "image/png");
+		canvas.toBlob(
+			(blob) => {
+				if (blob) resolve(blob);
+				else reject(new Error(`The browser could not encode ${type} from this canvas`));
+			},
+			type,
+			0.95,
+		);
 	});
+}
+
+/** Kept for the PNG call sites; WebP asks for it explicitly. */
+export function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+	return canvasToBlob(canvas, "image/png");
 }
 
 /** Rasterise any SVG at arbitrary pixel dimensions. */
@@ -84,6 +93,26 @@ export async function svgToPngBlob(svg: string, size: number): Promise<Blob> {
 
 export async function svgToPngBytes(svg: string, size: number): Promise<Uint8Array> {
 	const blob = await svgToPngBlob(svg, size);
+	return new Uint8Array(await blob.arrayBuffer());
+}
+
+/**
+ * WebP for the web: same rasteriser, different encoder. Photographic AI marks drop
+ * to a third of the PNG size, which is the reason the format is offered at all.
+ * Returns null when the platform silently keeps PNG (older WebViews), so the caller
+ * can say so instead of shipping a mislabelled file.
+ */
+export async function svgToWebpBytes(svg: string, size: number): Promise<Uint8Array | null> {
+	const image = await loadImage(svgToDataUrl(withSize(svg, size)));
+	const canvas = document.createElement("canvas");
+	canvas.width = size;
+	canvas.height = size;
+	const context = canvas.getContext("2d");
+	if (!context) throw new Error("Canvas 2D is unavailable in this window");
+	context.clearRect(0, 0, size, size);
+	context.drawImage(image.element, 0, 0, size, size);
+	const blob = await canvasToBlob(canvas, "image/webp");
+	if (blob.type !== "image/webp") return null;
 	return new Uint8Array(await blob.arrayBuffer());
 }
 

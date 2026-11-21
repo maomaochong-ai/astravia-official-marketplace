@@ -2083,8 +2083,8 @@
       "type": "plugin",
       "slug": "logocreator",
       "name": "LogoCreator",
-      "description": "A logo design canvas in Astravia: a deterministic vector engine that needs no key and no network, six structures in eight styles, canvas notes the agent can act on, and a complete brand kit.",
-      "version": "0.2.1",
+      "description": "A logo canvas in Astravia: a local vector engine that plans from a one-line brief with no image model, eight styles, canvas notes the agent can act on, and export to SVG/PNG/WebP with a brand kit.",
+      "version": "0.3.0",
       "configVersion": 1,
       "author": "Astravia",
       "category": "Design",
@@ -2103,8 +2103,8 @@
       "detail": {
         "i18n": {
           "zh": {
-            "name": "标志设计",
-            "description": "Astravia 里的标志设计画布：内置确定性矢量引擎，无需密钥、不联网，六种结构、八种风格，可在画布上留备注让 Agent 直接改，并导出整套品牌套件。",
+            "name": "Logo设计",
+            "description": "Astravia 里的标志画布：一句话就能定方向、本地矢量引擎直接出图（不需要图像模型），八种风格、画布备注交给 Agent 改，导出 SVG/PNG/WebP 与整套品牌套件。",
             "tags": [
               "标志",
               "品牌",

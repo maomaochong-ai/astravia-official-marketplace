@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 import type { DesignRecord } from "../../../domain/history-store";
 import { formatRelativeTime } from "../../../shared/formatters/bytes";
+import { IconCopy, IconPalette, IconStar, IconTrash, IconVector } from "../../../shared/components/icons";
 import { FOCUS_RING } from "../../../shared/styles/tokens";
 import { LogoPreview } from "./logo-preview";
 
@@ -102,33 +103,20 @@ export function LogoTile({
 				</div>
 				<div className="flex items-center gap-0.5">
 					<IconButton label={t("tile.favorite")} active={record.favorite} onClick={onToggleFavorite}>
-						<svg viewBox="0 0 24 24" className="size-3.5" fill={record.favorite ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" aria-hidden>
-							<path d="M12 3.6l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.8l5.9-.9z" strokeLinejoin="round" />
-						</svg>
+						<IconStar filled={record.favorite} className="size-3.5" />
 					</IconButton>
 					<IconButton label={t("tile.saveSvg")} onClick={onSaveSvg}>
-						<svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-							<path d="M12 4v10m0 0l-3.5-3.5M12 14l3.5-3.5M5 17.5V19h14v-1.5" strokeLinecap="round" strokeLinejoin="round" />
-						</svg>
+						<IconVector className="size-3.5" />
 					</IconButton>
 					<IconButton label={t("tile.savePng")} onClick={onSavePng}>
-						<svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-							<rect x="4" y="5" width="16" height="14" rx="2" />
-							<circle cx="9.5" cy="10" r="1.4" />
-							<path d="M5 16.5l4-4 3 3 2.5-2.5 4.5 4.5" strokeLinejoin="round" />
-						</svg>
+						<IconCopy className="size-3.5" />
 					</IconButton>
 					<IconButton label={t("tile.kit")} onClick={onOpenKit}>
-						<svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-							<path d="M4 8.5l8-3.5 8 3.5-8 3.5z" strokeLinejoin="round" />
-							<path d="M4 12.5l8 3.5 8-3.5M4 16.5l8 3.5 8-3.5" strokeLinejoin="round" />
-						</svg>
+						<IconPalette className="size-3.5" />
 					</IconButton>
 					<span className="flex-1" />
 					<IconButton label={t("tile.delete")} onClick={onDelete}>
-						<svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-							<path d="M6 7h12M9.5 7V5.5h5V7M8 7l.7 11.5h6.6L16 7" strokeLinecap="round" strokeLinejoin="round" />
-						</svg>
+						<IconTrash className="size-3.5" />
 					</IconButton>
 				</div>
 			</figcaption>

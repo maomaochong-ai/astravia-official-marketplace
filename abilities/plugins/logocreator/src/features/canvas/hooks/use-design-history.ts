@@ -7,6 +7,8 @@ export interface DesignHistoryApi {
 	items: DesignRecord[];
 	ready: boolean;
 	error: string | null;
+	/** Store a design the caller already rendered (the offline planner's path). */
+	add: (draft: Parameters<ReturnType<typeof getHistoryStore>["add"]>[0]) => Promise<void>;
 	setFavorite: (id: string, favorite: boolean) => Promise<void>;
 	rename: (id: string, name: string) => Promise<void>;
 	remove: (id: string) => Promise<void>;
@@ -45,6 +47,17 @@ export function useDesignHistory(messages: { saveFailed: string; updateFailed: s
 		// `messages` is a literal per render; the effect must run once per mount.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
+
+	const add = useCallback(
+		async (draft: Parameters<ReturnType<typeof getHistoryStore>["add"]>[0]) => {
+			try {
+				await getHistoryStore().add(draft);
+			} catch (cause) {
+				reportError(messages.saveFailed, cause);
+			}
+		},
+		[messages.saveFailed],
+	);
 
 	const setFavorite = useCallback(
 		async (id: string, favorite: boolean) => {
@@ -91,6 +104,7 @@ export function useDesignHistory(messages: { saveFailed: string; updateFailed: s
 		items,
 		ready,
 		error,
+		add,
 		setFavorite,
 		rename,
 		remove,

@@ -1,11 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
-import { type CanvasNote, notesPrompt } from "../../../domain/notes";
+import { type CanvasNote, type NoteScope, notesPrompt } from "../../../domain/notes";
+import type { LogoPart } from "../../../domain/note-parts";
+
+/** What the canvas hands the store when a pin is placed. */
+export interface NoteDraft {
+	designId: string | null;
+	text: string;
+	x: number;
+	y: number;
+	scope: NoteScope;
+	part: LogoPart | null;
+}
 import { getNoteStore, getPluginContext, reportError } from "../../../plugin-context";
 
 export interface CanvasNotesApi {
 	notes: CanvasNote[];
 	ready: boolean;
-	add: (draft: { designId: string | null; text: string; x: number; y: number }) => Promise<boolean>;
+	add: (draft: NoteDraft) => Promise<boolean>;
 	remove: (id: string) => Promise<void>;
 	/** Send the pending notes of one design to the active conversation. */
 	handToAgent: (designId: string | null, brandName: string) => Promise<boolean>;
@@ -49,7 +60,7 @@ export function useCanvasNotes(messages: {
 	}, []);
 
 	const add = useCallback(
-		async (draft: { designId: string | null; text: string; x: number; y: number }) => {
+		async (draft: NoteDraft) => {
 			try {
 				await getNoteStore().add(draft);
 				return true;

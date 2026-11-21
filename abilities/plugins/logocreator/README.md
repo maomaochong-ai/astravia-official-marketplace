@@ -4,6 +4,18 @@
 
 引擎完全本地：不需要密钥、不联网，`renderLogo(spec)` 是纯函数，同一组参数 + 同一个 seed 永远得到同一份字节。上游 [LogoCreator](https://github.com/Nutlope/logocreator) 是 Together AI 上的 FLUX 生成器，没有本地绘图引擎——这里把它补上了，AI 生成作为可选路径保留。
 
+## 0.3.0 的四条行为约定
+
+1. **没有图像模型也能用。** `domain/planner.ts` 把一句话解析成三个具体 spec（结构/风格/配色/seed）
+   并给出取舍理由，引擎本地渲染；agent 侧对应 `logocreator_plan`。这条是"插件不能闲置死"的答案，
+   和宿主内置设计插件同一个分工：模型选字段，本地渲染。
+2. **删除真的删。** 两个 store 都写 tombstone，且每次写前先读文件：`(file ∪ mine) − tombstones`。
+   陈旧实例再也复活不了已删除的记录（`history-delete.test.ts` 钉住）。
+3. **备注分两级、带部位。** 局部备注解析成结构部位（图形/文字标志/标语/背景），全局备注是品牌级规则；
+   交给 agent 时写进 prompt（`1. [the pictorial mark] …`），改完由 `logocreator_notes` 显式收口。
+4. **一个图标集。** `shared/components/icons.tsx` 是唯一的 24px `currentColor` 字形来源，
+   tab 图标也用它 —— 宿主在没有显式 icon 时会把 512px 图标缩成 16px 的小矩形。
+
 ## 目录
 
 ```text

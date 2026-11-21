@@ -1,6 +1,8 @@
 import { useState, type JSX, type MouseEvent } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import type { CanvasNote } from "../../../domain/notes";
+import type { CanvasNote, NoteScope } from "../../../domain/notes";
+import { partAt } from "../../../domain/note-parts";
+import type { LogoSpec } from "../../../domain/spec";
 import { BUTTON_PRIMARY, FOCUS_RING, TEXTAREA } from "../../../shared/styles/tokens";
 
 export interface CanvasSurfaceProps {
@@ -10,8 +12,17 @@ export interface CanvasSurfaceProps {
 	notes: CanvasNote[];
 	/** Dark spec surfaces need the art on a dark stage. */
 	dark: boolean;
-	onPlace: (point: { x: number; y: number }, text: string) => Promise<boolean>;
+	onPlace: (point: { x: number; y: number }, text: string, scope: NoteScope, part: ReturnType<typeof partAt>) => Promise<boolean>;
+	/** Needed to resolve a pin to a structural part (mark / wordmark / tagline). */
+	spec: LogoSpec;
 }
+
+/**
+ * Two kinds of note, matching the reference plugin's free-vs-anchored distinction:
+ * a **design** note is about this mark ("this leaf is too thin"); a **global** note is
+ * a standing rule for the brand ("always keep 24 px legible"). A note list that
+ * mixes them without saying which is which is the reason the feature feels imprecise.
+ */
 
 /**
  * The canvas itself: artwork, pins, and the one-line note you drop on it.
@@ -20,11 +31,12 @@ export interface CanvasSurfaceProps {
  * while the form scrolls (it is what you are editing); the list is a checklist and
  * can live below the fold with the other panels.
  */
-export function CanvasSurface({ previewUrl, alt, notes, dark, onPlace }: CanvasSurfaceProps): JSX.Element {
+export function CanvasSurface({ previewUrl, alt, notes, dark, onPlace, spec }: CanvasSurfaceProps): JSX.Element {
 	const { t } = useTranslation();
 	const [draft, setDraft] = useState<{ x: number; y: number } | null>(null);
 	const [text, setText] = useState("");
 	const [saving, setSaving] = useState(false);
+	const [scope, setScope] = useState<NoteScope>("design");
 
 	const place = (event: MouseEvent<HTMLDivElement>) => {
 		const box = event.currentTarget.getBoundingClientRect();
@@ -39,7 +51,8 @@ export function CanvasSurface({ previewUrl, alt, notes, dark, onPlace }: CanvasS
 	const submit = async () => {
 		if (!draft || !text.trim()) return;
 		setSaving(true);
-		const ok = await onPlace(draft, text.trim());
+		// Resolve the pin to a structural part: "the wordmark", not "y=0.74".
+		const ok = await onPlace(draft, text.trim(), scope, partAt({ type: spec.type }, draft.y));
 		setSaving(false);
 		if (ok) {
 			setDraft(null);
@@ -83,6 +96,32 @@ export function CanvasSurface({ previewUrl, alt, notes, dark, onPlace }: CanvasS
 
 			{draft ? (
 				<div className="space-y-1.5">
+					<div role="radiogroup" aria-label={t("notes.scope")} className="flex items-center gap-1">
+						{(
+							[
+								{ id: "design" as const, label: t("notes.scopeDesign") },
+								{ id: "global" as const, label: t("notes.scopeGlobal") },
+							]
+						).map((option) => (
+							<button
+								key={option.id}
+								type="button"
+								role="radio"
+								aria-checked={scope === option.id}
+								onClick={() => setScope(option.id)}
+								className={`rounded-full border px-2 py-0.5 text-[10.5px] font-medium transition-colors ${
+									scope === option.id
+										? "border-primary bg-primary/10 text-foreground"
+										: "border-border text-muted-foreground hover:text-foreground"
+								}`}
+							>
+								{option.label}
+							</button>
+						))}
+						<span className="min-w-0 flex-1 truncate text-[10px] text-muted-foreground">
+							{t(`notes.part.${partAt({ type: spec.type }, draft.y)}`)}
+						</span>
+					</div>
 					<textarea
 						className={TEXTAREA}
 						rows={2}

@@ -3,6 +3,7 @@ import type { DesignRecord } from "../../../domain/history-store";
 import { formatRelativeTime } from "../../../shared/formatters/bytes";
 import { BUTTON_SECONDARY, FOCUS_RING, INPUT } from "../../../shared/styles/tokens";
 import { ModalDialog } from "../../../shared/components/modal-dialog";
+import { IconStar, IconTrash } from "../../../shared/components/icons";
 
 export interface HistorySheetProps {
 	open: boolean;
@@ -147,9 +148,7 @@ export function HistorySheet({
 									record.favorite ? "text-amber-500" : "text-muted-foreground hover:text-foreground"
 								}`}
 							>
-								<svg viewBox="0 0 24 24" className="size-3.5" fill={record.favorite ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" aria-hidden>
-									<path d="M12 3.6l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.8l5.9-.9z" strokeLinejoin="round" />
-								</svg>
+								<IconStar filled={record.favorite} className="size-3.5" />
 							</button>
 							<button
 								type="button"
@@ -157,9 +156,7 @@ export function HistorySheet({
 								aria-label={t("tile.delete")}
 								className={`${FOCUS_RING} flex size-6 items-center justify-center rounded-md text-muted-foreground hover:text-destructive`}
 							>
-								<svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-									<path d="M6 7h12M9.5 7V5.5h5V7M8 7l.7 11.5h6.6L16 7" strokeLinecap="round" strokeLinejoin="round" />
-								</svg>
+								<IconTrash className="size-3.5" />
 							</button>
 						</li>
 					))}

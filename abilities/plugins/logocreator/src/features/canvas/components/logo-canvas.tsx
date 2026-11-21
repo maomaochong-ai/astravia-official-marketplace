@@ -1,11 +1,12 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type JSX } from "react";
 import { useActiveConversation, useTranslation } from "@astravia-org/plugin-sdk";
 import { renderLogo, resolveMark } from "../../../domain/engine/compose";
-import type { DesignRecord } from "../../../domain/history-store";
+import { newDesignId, type DesignRecord } from "../../../domain/history-store";
 import { kitSlug } from "../../../domain/brand-kit";
 import { previewUrl } from "../../../domain/render-png";
 import { getPluginContext, reportError } from "../../../plugin-context";
 import { FOCUS_RING } from "../../../shared/styles/tokens";
+import { IconClose, IconEye, IconHistory, IconRename, IconReset } from "../../../shared/components/icons";
 import { useCanvasNotes } from "../hooks/use-canvas-notes";
 import { useDesignHistory } from "../hooks/use-design-history";
 import { useGeneration } from "../hooks/use-generation";
@@ -21,13 +22,7 @@ import { CanvasSurface } from "./canvas-surface";
 import { HistorySheet } from "./history-sheet";
 import { ResultGrid } from "./result-grid";
 
-function Icon({ path }: { path: string }): JSX.Element {
-	return (
-		<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-			<path d={path} strokeLinecap="round" strokeLinejoin="round" />
-		</svg>
-	);
-}
+
 
 /**
  * The tab: a canvas, not a form.
@@ -76,6 +71,8 @@ export function LogoCanvas(): JSX.Element {
 	const [aiOpen, setAiOpen] = useState(false);
 	const [historyOpen, setHistoryOpen] = useState(false);
 	const [inspectorOpen, setInspectorOpen] = useState(false);
+	const [editingName, setEditingName] = useState(false);
+	const [nameDraft, setNameDraft] = useState("");
 	const [inspectorTab, setInspectorTab] = useState<"design" | "notes">("design");
 
 	const subject = useMemo(() => resolveMark(form.spec).subject, [form.spec]);
@@ -124,6 +121,27 @@ export function LogoCanvas(): JSX.Element {
 	useEffect(() => {
 		publishCanvasSpec(cwd, form.spec);
 	}, [cwd, form.spec]);
+
+	/** The offline planner's bridge: three planned specs become three stored designs. */
+	const handlePlan = async (candidates: { spec: typeof form.spec }[]) => {
+		for (const candidate of candidates) {
+			const rendered = renderLogo(candidate.spec);
+			// The hook owns error reporting; the id is ours so the reveal can point at it.
+			await history.add({ id: newDesignId(), spec: candidate.spec, engine: "local", subject: rendered.subject });
+		}
+		// Select the first candidate: the planner's order is the recommendation order.
+		if (candidates[0]) form.load(candidates[0].spec);
+	};
+
+	const commitName = () => {
+		setEditingName(false);
+		const next = nameDraft.trim().slice(0, 48);
+		if (next === form.spec.brandName) return;
+		form.patch({ brandName: next });
+		// Renaming the open design is also a rename of the history entry it came from,
+		// otherwise the rail keeps showing the old label next to the new artwork.
+		if (selectedId) void history.rename(selectedId, next);
+	};
 
 	const openInspector = (tab: "design" | "notes") => {
 		setInspectorTab(tab);
@@ -175,19 +193,46 @@ export function LogoCanvas(): JSX.Element {
 							alt={t("panel.previewAlt")}
 							notes={visibleNotes}
 							dark={form.spec.surface === "dark"}
-							onPlace={async (point, text) => notes.add({ designId: selectedId, text, ...point })}
+							spec={form.spec}
+						onPlace={async (point, text, scope, part) =>
+							notes.add({ designId: selectedId, text, ...point, scope, part })
+						}
 						/>
 					</div>
 				</div>
 
-				{/* Title slot, floating (reference: `absolute left-3 top-3`). */}
-				<div className="absolute left-3 top-3 z-40 flex max-w-[calc(100%-5.5rem)] items-center gap-1.5">
-					<span className="truncate rounded-md bg-popover/95 px-1.5 py-0.5 text-[12px] font-medium text-foreground shadow-sm ring-1 ring-border/60">
-						{form.spec.brandName || t("canvas.untitled")}
-					</span>
-					<span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
-						{generation.mode === "ai" ? "AI" : t("panel.localBadge")}
-					</span>
+				{/* Title slot: the design's own name, editable in place (reference keeps a
+				    rename field here too). No engine badge — this plugin runs on the host's
+				    own models and has no engine of its own to advertise. */}
+				<div className="absolute left-3 top-3 z-40 flex max-w-[calc(100%-5.5rem)] items-center gap-1">
+					{editingName ? (
+						<input
+							autoFocus
+							value={nameDraft}
+							onChange={(event) => setNameDraft(event.target.value)}
+							onBlur={commitName}
+							onKeyDown={(event) => {
+								if (event.key === "Enter") commitName();
+								if (event.key === "Escape") setEditingName(false);
+							}}
+							maxLength={48}
+							aria-label={t("label.brandName")}
+							className="min-w-0 rounded-md border border-ring bg-popover px-1.5 py-0.5 text-[12px] font-medium text-foreground outline-none"
+						/>
+					) : (
+						<button
+							type="button"
+							onClick={() => {
+								setNameDraft(form.spec.brandName);
+								setEditingName(true);
+							}}
+							title={t("canvas.renameHint")}
+							className="group flex min-w-0 items-center gap-1 rounded-md bg-popover/95 px-1.5 py-0.5 text-[12px] font-medium text-foreground shadow-sm ring-1 ring-border/60 hover:bg-accent"
+						>
+							<span className="truncate max-w-[9rem]">{form.spec.brandName || t("canvas.untitled")}</span>
+							<IconRename className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+						</button>
+					)}
 				</div>
 
 				{/* Action rail, floating top-right. */}
@@ -199,7 +244,7 @@ export function LogoCanvas(): JSX.Element {
 						aria-label={t("panel.history")}
 						className={`${FOCUS_RING} relative flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground`}
 					>
-						<Icon path="M12 8v4l3 2M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Z" />
+						<IconHistory />
 						{history.items.length > 0 ? (
 							<span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-primary" aria-hidden />
 						) : null}
@@ -211,7 +256,7 @@ export function LogoCanvas(): JSX.Element {
 						aria-label={t("panel.ai")}
 						className={`${FOCUS_RING} flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground`}
 					>
-						<Icon path="M12 3v3m0 12v3M3 12h3m12 0h3M6.3 6.3l2.1 2.1m7.2 7.2l2.1 2.1m0-11.4l-2.1 2.1M8.4 15.6l-2.1 2.1" />
+						<IconEye />
 					</button>
 					<button
 						type="button"
@@ -220,7 +265,7 @@ export function LogoCanvas(): JSX.Element {
 						aria-label={t("panel.reset")}
 						className={`${FOCUS_RING} flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground`}
 					>
-						<Icon path="M4 10a8 8 0 1 1 2 5M4 5v5h5" />
+						<IconReset />
 					</button>
 				</div>
 
@@ -288,6 +333,7 @@ export function LogoCanvas(): JSX.Element {
 							tooLarge: t("error.imageTooLarge"),
 						},
 					}}
+					onPlan={handlePlan}
 					notes={visibleNotes}
 					onRemoveNote={(id) => void notes.remove(id)}
 					onHandToAgent={() => void notes.handToAgent(selectedId, form.spec.brandName)}
@@ -327,13 +373,7 @@ export function LogoCanvas(): JSX.Element {
 				t={t}
 			/>
 
-			{/* Inline hint when a design cannot be generated yet (no toast: the state is
-			    knowable before the click). */}
-			{canGenerate ? null : (
-				<p className="pointer-events-none absolute bottom-1 left-1/2 z-40 -translate-x-1/2 text-[10px] text-muted-foreground">
-					{t("action.needName")}
-				</p>
-			)}
+
 		</div>
 	);
 }

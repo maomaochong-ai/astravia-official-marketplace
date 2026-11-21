@@ -6,7 +6,8 @@ import { previewUrl } from "../../../domain/render-png";
 import { getPluginContext, reportError } from "../../../plugin-context";
 import { BUTTON_PRIMARY, BUTTON_SECONDARY, FOCUS_RING } from "../../../shared/styles/tokens";
 import { ModalDialog } from "../../../shared/components/modal-dialog";
-import { saveKitFile, savePngFile, saveSvgFile } from "../services/export-files";
+import { IconImageSize } from "../../../shared/components/icons";
+import { saveKitFile, savePngFile, saveSvgFile, saveWebpFile } from "../services/export-files";
 
 export interface BrandKitDialogProps {
 	record: DesignRecord | null;
@@ -71,7 +72,7 @@ export function BrandKitDialog({ record, onClose, t }: BrandKitDialogProps): JSX
 		<ModalDialog
 			open={record !== null}
 			onClose={onClose}
-			title={t("kit.title")}
+			title={t("export.title")}
 			description={record ? `${record.spec.brandName || t("kit.untitled")} · ${record.subject}` : undefined}
 			size="wide"
 			footer={
@@ -86,25 +87,17 @@ export function BrandKitDialog({ record, onClose, t }: BrandKitDialogProps): JSX
 					</button>
 					<button
 						type="button"
-						disabled={!record || record.engine !== "local"}
+						disabled={!record || record.engine !== "local" || !variants}
 						onClick={() => {
-							if (!record || !variants) return;
-							void saveSvgFile(fs(), record.spec, variants.svg);
+							if (!variants) return;
+							void navigator.clipboard
+								?.writeText(variants.svg)
+								.then(() => getPluginContext().ui.notify({ message: t("export.copied"), variant: "success" }))
+								.catch(() => undefined);
 						}}
 						className={`${BUTTON_SECONDARY} ${FOCUS_RING}`}
 					>
-						{t("kit.saveSvg")}
-					</button>
-					<button
-						type="button"
-						disabled={!record || record.engine !== "local"}
-						onClick={() => {
-							if (!record || !variants) return;
-							void savePngFile(fs(), record.spec, variants.svg, 2048);
-						}}
-						className={`${BUTTON_SECONDARY} ${FOCUS_RING}`}
-					>
-						{t("kit.savePng")}
+						{t("export.copySvg")}
 					</button>
 					<span className="flex-1" />
 					{kit ? <span className="text-[10.5px] text-muted-foreground">{t("kit.fileCount", { count: kit.files.length })}</span> : null}
@@ -141,6 +134,46 @@ export function BrandKitDialog({ record, onClose, t }: BrandKitDialogProps): JSX
 							<figcaption className="truncate px-2 py-1 text-[10px] text-muted-foreground">{preview.label}</figcaption>
 						</figure>
 					))}
+				</div>
+			) : null}
+
+			{record && record.engine === "local" && variants ? (
+				<div className="mt-3 space-y-1.5">
+					<span className="flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
+						<IconImageSize className="size-3" />
+						{t("kit.saveSvg")} / PNG / WebP
+					</span>
+					<div className="flex flex-wrap gap-1.5">
+						<button
+							type="button"
+							onClick={() => void saveSvgFile(fs(), record.spec, variants.svg)}
+							className={`${BUTTON_SECONDARY} ${FOCUS_RING}`}
+						>
+							SVG
+						</button>
+						{[512, 1024, 2048].map((size) => (
+							<button
+								key={size}
+								type="button"
+								onClick={() => void savePngFile(fs(), record.spec, variants.svg, size)}
+								className={`${BUTTON_SECONDARY} ${FOCUS_RING}`}
+							>
+								{t("export.pngSize", { size })}
+							</button>
+						))}
+						<button
+							type="button"
+							onClick={async () => {
+								const result = await saveWebpFile(fs(), record.spec, variants.svg, 1024);
+								if (result === "unsupported") {
+									getPluginContext().ui.notify({ message: t("export.webpUnsupported"), variant: "warning" });
+								}
+							}}
+							className={`${BUTTON_SECONDARY} ${FOCUS_RING}`}
+						>
+							{t("export.webp")}
+						</button>
+					</div>
 				</div>
 			) : null}
 

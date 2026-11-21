@@ -93,8 +93,8 @@ describe("a mutation on an un-hydrated store", () => {
 		expect(JSON.parse(files["designs.json"]).items).toEqual([]);
 	});
 
-	it("hydrates once, even when two mutations race", async () => {
-		const { storage, reads } = fakeStorage({ "designs.json": stored(["a"]) });
+	it("lands both of two racing mutations, exactly once each", async () => {
+		const { storage, files } = fakeStorage({ "designs.json": stored(["a"]) });
 		const store = new HistoryStore(storage);
 
 		await Promise.all([
@@ -102,7 +102,14 @@ describe("a mutation on an un-hydrated store", () => {
 			store.add({ id: "y", spec: spec("Y"), engine: "local", subject: "leaf" }),
 		]);
 
-		expect(reads()).toBe(1);
+		// Persist re-reads before writing (that is what makes deletes stick), so the
+		// old "one file read" count is no longer the property worth asserting.
+		const saved = JSON.parse(files["designs.json"]);
+		const ids = saved.items.map((item: { id: string }) => item.id);
+		expect(ids).toContain("x");
+		expect(ids).toContain("y");
+		expect(ids).toContain("a");
+		expect(new Set(ids).size).toBe(ids.length);
 		expect(store.list()).toHaveLength(3);
 	});
 

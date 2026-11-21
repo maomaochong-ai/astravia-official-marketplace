@@ -86,8 +86,8 @@ describe("host-rendered labels", () => {
 		const pill = resolvePluginText("%panel.title%", locales, "zh", plugin.defaultLocale);
 		// The zh override is what a Chinese host renders: Chinese prose, not a slug and
 		// not the English product name.
-		expect(tab).toBe("标志设计");
-		expect(pill).toBe("标志设计");
+		expect(tab).toBe("Logo设计");
+		expect(pill).toBe("Logo设计");
 		// The slug is never what a user should read.
 		expect(tab).not.toBe("logocreator");
 		expect(pill).not.toBe("logocreator");

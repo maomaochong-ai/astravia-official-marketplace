@@ -124,15 +124,18 @@ describe("the prompt a batch of notes becomes", () => {
 	it("numbers the notes, names the brand, and forbids a blind re-roll", () => {
 		const prompt = notesPrompt(
 			[
-				{ id: "1", designId: null, text: "make the leaf wider", x: 0.5, y: 0.5, createdAt: 1, status: "pending" },
-				{ id: "2", designId: null, text: "use the warmer green", x: 0.4, y: 0.4, createdAt: 2, status: "pending" },
+				{ id: "1", designId: null, scope: "design", part: "mark", text: "make the leaf wider", x: 0.5, y: 0.5, createdAt: 1, status: "pending" },
+				{ id: "2", designId: null, scope: "design", part: "mark", text: "use the warmer green", x: 0.4, y: 0.4, createdAt: 2, status: "pending" },
 			],
 			"Fern & Field",
 		);
 
 		expect(prompt).toContain('"Fern & Field"');
-		expect(prompt).toContain("1. make the leaf wider");
-		expect(prompt).toContain("2. use the warmer green");
+		// Each line names the structural part the pin landed on, so the model is not
+		// guessing what "here" meant.
+		expect(prompt).toContain("1. [the pictorial mark] make the leaf wider");
+		expect(prompt).toContain("2. [the pictorial mark] use the warmer green");
+		expect(prompt).toContain("whole brand");
 		expect(prompt).toMatch(/keep the seed/i);
 		expect(prompt).toContain("logocreator_design");
 	});

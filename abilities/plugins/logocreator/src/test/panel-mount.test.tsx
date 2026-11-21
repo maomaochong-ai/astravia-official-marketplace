@@ -187,11 +187,12 @@ describe("the canvas mounts", () => {
 		setPluginContext(ctx);
 		renderPanel();
 
-		// Disabled + an inline hint: the state is knowable up front, so it must not
-		// cost a click and a toast.
+		// Disabled, with the reason in the control's own title/aria-label. No separate
+		// hint line under the dock: that stray paragraph was the "extra text" the dock
+		// stacked below itself.
 		const button = (await screen.findByLabelText("Type a brand name first")) as HTMLButtonElement;
 		expect(button.disabled).toBe(true);
-		expect(screen.getByText("Type a brand name to design it.")).toBeTruthy();
+		expect(button.getAttribute("title")).toBe("Type a brand name first");
 		expect(storage.files["designs.json"]).toBeUndefined();
 		expect(notifyOf(ctx)).not.toHaveBeenCalled();
 	});

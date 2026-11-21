@@ -57,7 +57,7 @@ describe("the dock", () => {
 	});
 
 	it("carries the four canvas verbs and a notes badge", () => {
-		for (const key of ["action.generate", "action.surprise", "dock.inspector", "dock.notes", "dock.kit"]) {
+		for (const key of ["action.generate", "action.surprise", "dock.inspector", "dock.notes", "dock.export"]) {
 			expect(dock, `dock is missing ${key}`).toContain(key);
 		}
 		expect(dock).toContain("badge={pendingNotes}");
@@ -90,15 +90,19 @@ describe("the tab strip icon", () => {
 
 	it("is an explicit 16 px glyph, not the inherited plugin artwork", () => {
 		// Both contribution surfaces: the activity tab and the composer chip.
-		expect(registration).toContain("icon: <TabMark />");
-		expect(registration).toContain("<TabMark className=\"size-3.5\" />");
+		expect(registration).toContain("icon: <IconGenerate");
+		expect(registration.match(/icon: <IconGenerate/g)?.length).toBe(2);
 	});
 
-	it("draws the glyph in currentColor so it follows the tab state", () => {
-		const mark = readFileSync(join(ROOT, "src/shared/components/tab-mark.tsx"), "utf8");
-		expect(mark).toContain("currentColor");
-		// No raster: an <img> is exactly the 16 px-scaled photo problem.
-		expect(mark).not.toMatch(/<img\s+src=/);
-		expect(mark).toContain('viewBox="0 0 24 24"');
+	it("comes from the shared glyph set, drawn in currentColor", () => {
+		// One set for the chip, the rail and the dock: a single stroke weight on a single
+		// 24 px grid is what makes a toolbar look designed rather than assembled.
+		const glyphs = readFileSync(join(ROOT, "src/shared/components/icons.tsx"), "utf8");
+		expect(glyphs).toContain("currentColor");
+		expect(glyphs).toContain('viewBox="0 0 24 24"');
+		expect(glyphs).not.toMatch(/<img\s+src=/);
+		// And the panel must not hand-roll path soup beside the set.
+		const panel = readFileSync(join(ROOT, "src/features/canvas/components/logo-canvas.tsx"), "utf8");
+		expect(panel).not.toContain("<svg viewBox");
 	});
 });

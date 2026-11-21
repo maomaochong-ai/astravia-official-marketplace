@@ -16,6 +16,7 @@ export const TOOL_LABELS = {
 	kit: "%tool.kit.label%",
 	catalog: "%tool.catalog.label%",
 	notes: "%tool.notes.label%",
+	plan: "%tool.plan.label%",
 } as const;
 
 /** Input-action id. The host prefixes it with `<pluginId>:`, so it must not repeat the plugin id. */

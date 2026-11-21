@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { LOGO_TAB_ID } from "../../../tab-ids";
+import { IconExport, IconGenerate, IconNote, IconShuffle, IconSliders } from "../../../shared/components/icons";
 import { FOCUS_RING } from "../../../shared/styles/tokens";
 
 export interface CanvasDockProps {
@@ -85,7 +85,7 @@ export function CanvasDock({
 
 	return (
 		<div className="pointer-events-none absolute bottom-3 left-1/2 z-40 -translate-x-1/2">
-			<div className="pointer-events-auto flex items-end gap-1 rounded-2xl border border-border/80 bg-popover px-2 py-1.5 shadow-md">
+			<div className="pointer-events-auto flex max-w-[calc(100vw-2rem)] flex-wrap items-end justify-center gap-1 rounded-2xl border border-border/80 bg-popover px-2 py-1.5 shadow-md">
 				<DockSlot
 					primary
 					label={
@@ -99,61 +99,34 @@ export function CanvasDock({
 					}
 					disabled={running || !canGenerate}
 					onClick={onGenerate}
-					icon={
-						<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-							<path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-						</svg>
-					}
+					icon={<IconGenerate />}
 				/>
 				<DockSlot
 					label={t("action.surprise")}
 					disabled={running || !canGenerate}
 					onClick={onSurprise}
-					icon={
-						<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-							<path d="M4 8.5l2.5 2.5L9 8.5 6.5 6zM15 8.5L17.5 11 20 8.5 17.5 6zM4 17l2.5 2.5L9 17l-2.5-2.5zM15 17l2.5 2.5L20 17l-2.5-2.5z" strokeLinejoin="round" />
-							<circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
-						</svg>
-					}
+					icon={<IconShuffle />}
 				/>
 				<span className="mx-0.5 h-5 w-px bg-border/70" aria-hidden />
 				<DockSlot
 					label={t("dock.inspector")}
 					active={inspectorOpen && inspectorTab === "design"}
 					onClick={onToggleInspector}
-					icon={
-						<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-							<path d="M4 7h10M18 7h2M4 17h4M12 17h8M4 12h16" strokeLinecap="round" />
-							<circle cx="16" cy="7" r="2" />
-							<circle cx="10" cy="17" r="2" />
-						</svg>
-					}
+					icon={<IconSliders />}
 				/>
 				<DockSlot
 					label={t("dock.notes")}
 					active={inspectorOpen && inspectorTab === "notes"}
 					badge={pendingNotes}
 					onClick={onOpenNotes}
-					icon={
-						<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-							<path d="M4 6.5h16M4 12h10M4 17.5h7" strokeLinecap="round" />
-							<path d="M16.5 15.5l2 2 3-3.5" strokeLinecap="round" strokeLinejoin="round" />
-						</svg>
-					}
+					icon={<IconNote />}
 				/>
 				<DockSlot
-					label={t("dock.kit")}
+					label={t("dock.export")}
 					onClick={onOpenKit}
-					icon={
-						<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-							<path d="M4 8.5l8-3.5 8 3.5-8 3.5z" strokeLinejoin="round" />
-							<path d="M4 12.5l8 3.5 8-3.5M4 16.5l8 3.5 8-3.5" strokeLinejoin="round" />
-						</svg>
-					}
+					icon={<IconExport />}
 				/>
 			</div>
 		</div>
 	);
 }
-
-void LOGO_TAB_ID;

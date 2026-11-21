@@ -289,7 +289,7 @@ describe("the team agent", () => {
 			expect(en[key], `en is missing ${key}`).toBeTruthy();
 			expect(zh[key], `zh is missing ${key}`).toBeTruthy();
 		}
-		expect(zh["agent.logoMaster.name"]).toBe("标志设计");
+		expect(zh["agent.logoMaster.name"]).toBe("Logo设计");
 	});
 
 	it("ships an avatar inside the package, in a format the host accepts", () => {

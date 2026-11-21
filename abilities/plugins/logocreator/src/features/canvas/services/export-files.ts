@@ -1,7 +1,7 @@
 import type { PluginFsApi } from "@astravia-org/plugin-sdk";
 import type { BrandKit } from "../../../domain/brand-kit";
 import { kitSlug } from "../../../domain/brand-kit";
-import { svgToPngBytes } from "../../../domain/render-png";
+import { svgToPngBytes, svgToWebpBytes } from "../../../domain/render-png";
 import type { LogoSpec } from "../../../domain/spec";
 import { bytesToBase64 } from "../../../shared/formatters/bytes";
 import { reportError } from "../../../plugin-context";
@@ -37,6 +37,24 @@ export async function savePngFile(fs: PluginFsApi, spec: LogoSpec, svg: string, 
 		});
 	} catch (cause) {
 		reportError("Could not save the PNG", cause);
+		return null;
+	}
+}
+
+/**
+ * WebP export. Returns `"unsupported"` rather than writing a PNG named .webp — a
+ * mislabelled file is worse than a missing one.
+ */
+export async function saveWebpFile(fs: PluginFsApi, spec: LogoSpec, svg: string, size: number): Promise<string | null | "unsupported"> {
+	try {
+		const bytes = await svgToWebpBytes(svg, size);
+		if (!bytes) return "unsupported";
+		return await fs.saveAs(`${kitSlug(spec)}-${size}.webp`, bytesToBase64(bytes), "base64", {
+			title: `Save ${size} px WebP`,
+			filters: [{ name: "WebP", extensions: ["webp"] }],
+		});
+	} catch (cause) {
+		reportError("Could not save the WebP", cause);
 		return null;
 	}
 }

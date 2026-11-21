@@ -1,4 +1,5 @@
 import type { PluginStorageApi } from "@astravia-org/plugin-sdk";
+import { mergeLists, toPersistedList, type PersistedList } from "./persist-merge";
 import { normalizeSpec, type LogoSpec } from "./spec";
 
 /**
@@ -30,10 +31,7 @@ export interface DesignRecord {
 	blobId?: string;
 }
 
-interface HistoryFile {
-	schemaVersion: number;
-	items: DesignRecord[];
-}
+type HistoryFile = PersistedList<DesignRecord>;
 
 export interface DesignDraft {
 	id: string;
@@ -79,6 +77,8 @@ export function displayLabel(record: DesignRecord): string {
  */
 export class HistoryStore {
 	private items: DesignRecord[] = [];
+	/** Ids deleted in this instance; merged into the file so no writer can revive them. */
+	private tombstones = new Set<string>();
 	private loaded = false;
 	/** In-flight read, so two concurrent mutations hydrate once rather than twice. */
 	private hydrating: Promise<void> | null = null;
@@ -113,6 +113,7 @@ export class HistoryStore {
 				this.items = Array.isArray(parsed.items)
 					? parsed.items.map(coerceRecord).filter((r): r is DesignRecord => r !== null)
 					: [];
+				this.tombstones = new Set(Array.isArray(parsed.deleted) ? parsed.deleted : []);
 			}
 		} catch {
 			// A corrupt or unreadable file must not look like "no designs ever".
@@ -172,6 +173,7 @@ export class HistoryStore {
 		await this.ready();
 		const gone = this.items.find((item) => item.id === id);
 		this.items = this.items.filter((item) => item.id !== id);
+		this.tombstones.add(id);
 		await this.persist();
 		if (gone?.blobId) {
 			// Best effort: an orphaned blob is a wasted kilobyte, not a broken design.
@@ -182,15 +184,52 @@ export class HistoryStore {
 	async clear(): Promise<void> {
 		await this.ready();
 		const blobs = this.items.map((item) => item.blobId).filter((id): id is string => Boolean(id));
+		for (const item of this.items) this.tombstones.add(item.id);
 		this.items = [];
 		await this.persist();
 		await Promise.all(blobs.map((id) => this.storage.deleteBlob(id).catch(() => undefined)));
 	}
 
+	/**
+	 * Read-merge-write.
+	 *
+	 * The file is the shared truth between this instance, any other activation, and
+	 * the agent tools. Re-reading before writing is what makes a delete stick: the
+	 * merged list is (file ∪ mine) − tombstones, so a stale writer can only add
+	 * things nobody deleted.
+	 */
 	private async persist(): Promise<void> {
-		const file: HistoryFile = { schemaVersion: HISTORY_SCHEMA, items: this.items };
+		let stored: HistoryFile = { schemaVersion: HISTORY_SCHEMA, items: [] };
 		try {
-			await this.storage.writeFile(HISTORY_PATH, JSON.stringify(file, null, 2), "utf8");
+			const raw = await this.storage.readFile(HISTORY_PATH, "utf8");
+			if (raw) {
+				const parsed = JSON.parse(raw) as HistoryFile;
+				stored = {
+					schemaVersion: HISTORY_SCHEMA,
+					items: Array.isArray(parsed.items)
+						? parsed.items.map(coerceRecord).filter((r): r is DesignRecord => r !== null)
+						: [],
+					deleted: Array.isArray(parsed.deleted) ? parsed.deleted : [],
+				};
+			}
+		} catch {
+			// A corrupt file must not block a delete; the write below replaces it.
+		}
+
+		const merged = mergeLists({
+			file: stored,
+			mine: this.items,
+			myTombstones: [...this.tombstones],
+			idOf: (item) => item.id,
+			rankOf: (item) => item.createdAt,
+		});
+		// Cap before writing: the file must not hold more than the store promises to keep.
+		merged.items = merged.items.slice(0, HISTORY_LIMIT);
+		this.items = merged.items;
+		this.tombstones = new Set(merged.tombstones);
+
+		try {
+			await this.storage.writeFile(HISTORY_PATH, JSON.stringify(toPersistedList(merged), null, 2), "utf8");
 		} catch (error) {
 			throw new Error(`Could not save the design history: ${error instanceof Error ? error.message : String(error)}`);
 		}

@@ -3,6 +3,7 @@ import { createBrandKitTool } from "./brand-kit";
 import { createCatalogTool } from "./catalog";
 import { createDesignTool } from "./design-logo";
 import { createNotesTool } from "./notes";
+import { createPlanTool } from "./plan";
 
 /**
  * Registers the agent tools and returns one handle per registration, so a
@@ -17,5 +18,6 @@ export function registerTools(ctx: PluginContext): Disposable[] {
 		ctx.agent.registerTool(createBrandKitTool()),
 		ctx.agent.registerTool(createCatalogTool()),
 		ctx.agent.registerTool(createNotesTool()),
+		ctx.agent.registerTool(createPlanTool()),
 	];
 }

@@ -4,7 +4,7 @@ import type { JSX } from "react";
 import "./style.css";
 import { LogoCanvas } from "./features/canvas/components/logo-canvas";
 import { setPluginContext } from "./plugin-context";
-import { TabMark } from "./shared/components/tab-mark";
+import { IconGenerate } from "./shared/components/icons";
 import { activeScopeKey, canvasInstructions, setActiveConversation, setCanvasEngaged } from "./features/canvas/canvas-prompt";
 import { INPUT_ACTION_ID, INPUT_ACTION_LABEL_KEY, TAB_LABEL_KEY } from "./contributions";
 import { LOGO_TAB_ID } from "./tab-ids";
@@ -66,7 +66,7 @@ export default definePlugin({
 				label: TAB_LABEL_KEY,
 				// An explicit glyph: the inherited plugin icon is a 512 px photo, which
 				// at the strip's 16 px reads as a rectangle (see TabMark).
-				icon: <TabMark />,
+				icon: <IconGenerate className="size-4" />,
 				order: 26,
 				scope_use: ["conversation", "project"],
 				initiallyVisible: true,
@@ -84,7 +84,7 @@ export default definePlugin({
 						// between the toggle state and the tab.
 						id: INPUT_ACTION_ID,
 						label: INPUT_ACTION_LABEL_KEY,
-						icon: <TabMark className="size-3.5" />,
+						icon: <IconGenerate className="size-3.5" />,
 						defaultActive: false,
 						scope_use: ["conversation", "project"],
 						onToggle: (active) => {
