@@ -3,9 +3,9 @@ import { generateMarksWithHost, HostMediaError } from "../domain/ai/host-media";
 import { newDesignId } from "../domain/history-store";
 import { normalizeSpec } from "../domain/spec";
 import { getHistoryStore, getPluginContext } from "../plugin-context";
-import { setPendingDesignId } from "../features/canvas/pending-design";
+import { revealInCanvas } from "../features/canvas/reveal";
 import { TOOL_LABELS } from "../contributions";
-import { LOGO_TAB_ID, TOOL_IMAGE } from "../tab-ids";
+import { TOOL_IMAGE } from "../tab-ids";
 
 interface ImageToolInput {
 	/** What the mark should look like, in the user's own words. */
@@ -128,16 +128,11 @@ export function createImageTool(): PluginAgentToolRegistration<ImageToolInput> {
 				lastDesignId = designId;
 			}
 
-			if (lastDesignId) {
-				// Same hand-off as the vector tool: the panel opens on this design.
-				setPendingDesignId(session.cwd, lastDesignId);
-				try {
-					ctx.ui.setActivityTabVisible(LOGO_TAB_ID, true, { cwd: session.cwd });
-					ctx.ui.openActivityTab(LOGO_TAB_ID, { width: "max", cwd: session.cwd });
-				} catch {
-					// Opening the tab is convenience; the designs are already stored.
-				}
-			}
+			// The panel comes up on this design — same path as the vector tool. Reported
+			// rather than swallowed: a failure to open is information the user needs.
+			const reveal = lastDesignId
+				? revealInCanvas(ctx, session.cwd, lastDesignId)
+				: { opened: false, error: undefined };
 
 			return {
 				ok: true,
@@ -154,6 +149,11 @@ export function createImageTool(): PluginAgentToolRegistration<ImageToolInput> {
 				notes: [
 					"Raster output: PNG only, no SVG or brand kit, cannot be enlarged.",
 					"Vector designs and raster marks live in the same history; the panel labels them AI or Vector.",
+					...(reveal.opened
+						? []
+						: [
+								`The design is stored, but the canvas could not be opened automatically${reveal.error ? `: ${reveal.error}` : "."} The user can open the LogoCreator tab themselves.`,
+							]),
 				],
 			} satisfies ImageToolResult;
 		},

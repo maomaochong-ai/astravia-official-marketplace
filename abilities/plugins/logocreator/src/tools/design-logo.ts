@@ -5,8 +5,8 @@ import { newDesignId } from "../domain/history-store";
 import { AUTO } from "../domain/spec";
 import { getHistoryStore, getPluginContext } from "../plugin-context";
 import { TOOL_LABELS } from "../contributions";
-import { setPendingDesignId } from "../features/canvas/pending-design";
-import { LOGO_TAB_ID, TOOL_DESIGN } from "../tab-ids";
+import { revealInCanvas } from "../features/canvas/reveal";
+import { TOOL_DESIGN } from "../tab-ids";
 import { DESIGN_PROPERTIES, specFromInput, type DesignToolPayload } from "./spec-from-input";
 
 const SEED_STRIDE = 7919;
@@ -88,19 +88,15 @@ export function createDesignTool(): PluginAgentToolRegistration<DesignToolPayloa
 				notes.push("Colour was chosen by the engine from the brief. Pass an explicit hex to pin it.");
 			}
 
-			// Hand the newest design to the panel, then put the panel on screen. Both
-			// halves matter: opening a tab onto the *previous* design reads as "the tool
-			// did nothing", and the reference plugin learned the same lesson (its
-			// `setPendingDesignPath` / `claimCanvasReveal` pair).
-			// Scoped by this call's own session, so a run in one conversation cannot surface
-			// a design in another conversation's panel.
-			if (lastDesignId) setPendingDesignId(session.cwd, lastDesignId);
-			try {
-				const ui = getPluginContext().ui;
-				ui.setActivityTabVisible(LOGO_TAB_ID, true, { cwd: session.cwd });
-				ui.openActivityTab(LOGO_TAB_ID, { width: "max", cwd: session.cwd });
-			} catch (cause) {
-				notes.push(`The studio panel could not be opened: ${describe(cause)}`);
+			// Hand the newest design to the panel and put it on screen. Opening the tab onto
+			// the *previous* design reads as "the tool did nothing" (the reference plugin's
+			// `setPendingDesignPath` / `claimCanvasReveal` pair exists for the same reason).
+			// `revealInCanvas` opens without a cwd so the host targets the conversation it is
+			// displaying — a tool-session cwd that differs from it records the tab somewhere
+			// nobody is looking.
+			if (lastDesignId) {
+				const reveal = revealInCanvas(getPluginContext(), session.cwd, lastDesignId);
+				if (!reveal.opened) notes.push(`The design is stored but the canvas could not be opened: ${reveal.error ?? "unknown"}`);
 			}
 
 			return {

@@ -36,14 +36,44 @@ function Glyph({ className = SIZE, children }: IconProps & { children: JSX.Eleme
 	);
 }
 
-/** Generate: spark + arrow, the primary verb. */
-export function IconGenerate(props: IconProps): JSX.Element {
+/**
+ * A four-point spark — the "make something" gesture, and the only glyph that still
+ * reads at 14 px. Filled, because an outlined star at this size turns into a smudge
+ * with the stroke weight we use everywhere else.
+ */
+function sparkPath(cx: number, cy: number, r: number): string {
+	const k = r * 0.28;
+	return `M${cx} ${cy - r}C${cx + k} ${cy - k} ${cx + k} ${cy - k} ${cx + r} ${cy}C${cx + k} ${cy + k} ${cx + k} ${cy + k} ${cx} ${cy + r}C${cx - k} ${cy + k} ${cx - k} ${cy + k} ${cx - r} ${cy}C${cx - k} ${cy - k} ${cx - k} ${cy - k} ${cx} ${cy - r}Z`;
+}
+
+/** Generate: one large spark plus a smaller echo. Two weights of the same idea. */
+export function IconGenerate({ className = SIZE }: IconProps): JSX.Element {
 	return (
-		<Glyph {...props}>
+		<svg viewBox="0 0 24 24" className={className} aria-hidden>
+			<path d={sparkPath(10, 10.5, 7)} fill="currentColor" />
+			<path d={sparkPath(18, 17.5, 3.4)} fill="currentColor" opacity="0.55" />
+		</svg>
+	);
+}
+
+/** The spark on its own, for inline use beside a label. */
+export function IconSpark({ className = SIZE }: IconProps): JSX.Element {
+	return (
+		<svg viewBox="0 0 24 24" className={className} aria-hidden>
+			<path d={sparkPath(12, 12, 8)} fill="currentColor" />
+		</svg>
+	);
+}
+
+/** The stage itself: a frame, a mark in it, two lines of wordmark below. */
+export function IconCanvas({ className = SIZE }: IconProps): JSX.Element {
+	return (
+		<Glyph className={className}>
 			<>
-				<path d="M13.5 4.5 10 11l6.5-3.5L13.5 4.5Z" />
-				<path d="M4 20l7.2-7.2" />
-				<path d="M17.5 14.5 19 18l3.5 1.5L19 21l-1.5 3.5L16 21l-3.5-1.5L16 18l1.5-3.5Z" />
+				<rect x="3.5" y="3" width="17" height="12" rx="2.6" />
+				<circle cx="8.6" cy="8" r="1.7" />
+				<path d="M4.5 13.2l3.6-3.4 2.6 2.4 2.4-2.2 2.6 2.6" />
+				<path d="M7.5 19h9" />
 			</>
 		</Glyph>
 	);

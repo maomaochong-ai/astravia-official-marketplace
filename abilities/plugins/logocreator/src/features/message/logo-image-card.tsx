@@ -5,7 +5,7 @@ import { getPluginContext } from "../../plugin-context";
 import { setPendingDesignId } from "../canvas/pending-design";
 import { LOGO_TAB_ID } from "../../tab-ids";
 import { BUTTON_SECONDARY, FOCUS_RING } from "../../shared/styles/tokens";
-import { IconCopy, IconEye, IconRename, IconSliders } from "../../shared/components/icons";
+import { IconCanvas, IconCopy, IconEye, IconRename } from "../../shared/components/icons";
 
 /**
  * The card that puts generated marks back into the conversation.
@@ -129,7 +129,7 @@ export function LogoImageCard({ descriptor, pending }: PluginCardProps): JSX.Ele
 								aria-label={t("card.openCanvas")}
 								className={`${BUTTON_SECONDARY} ${FOCUS_RING} h-6 px-1.5 text-[10px]`}
 							>
-								<IconSliders className="size-3" />
+								<IconCanvas className="size-3" />
 								{t("card.openCanvasShort")}
 							</button>
 							<button

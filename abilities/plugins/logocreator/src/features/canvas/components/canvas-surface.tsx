@@ -4,6 +4,7 @@ import type { CanvasNote, NoteScope } from "../../../domain/notes";
 import { partAt } from "../../../domain/note-parts";
 import type { LogoSpec } from "../../../domain/spec";
 import { BUTTON_PRIMARY, FOCUS_RING, NOTE_DOT, NOTE_RING, TEXTAREA } from "../../../shared/styles/tokens";
+import { CanvasPlaceholder } from "./canvas-placeholder";
 
 export interface CanvasSurfaceProps {
 	previewUrl: string;
@@ -20,6 +21,14 @@ export interface CanvasSurfaceProps {
 	 * draw *that*: re-rendering the spec as vectors would show a different mark.
 	 */
 	rasterUrl?: string | null;
+	/**
+	 * Nothing has been made yet: draw the cover instead of a real render.
+	 *
+	 * The stage used to render `renderLogo({brandName:"Untitled"})` when empty — a
+	 * wordmark for a brand that does not exist, which reads as "you already have a
+	 * logo". The cover says the opposite: pick a structure, or type a name.
+	 */
+	empty?: boolean;
 }
 
 /**
@@ -36,7 +45,16 @@ export interface CanvasSurfaceProps {
  * while the form scrolls (it is what you are editing); the list is a checklist and
  * can live below the fold with the other panels.
  */
-export function CanvasSurface({ previewUrl, alt, notes, dark, onPlace, spec, rasterUrl }: CanvasSurfaceProps): JSX.Element {
+export function CanvasSurface({
+	previewUrl,
+	alt,
+	notes,
+	dark,
+	onPlace,
+	spec,
+	rasterUrl,
+	empty = false,
+}: CanvasSurfaceProps): JSX.Element {
 	const { t } = useTranslation();
 	const [draft, setDraft] = useState<{ x: number; y: number } | null>(null);
 	const [text, setText] = useState("");
@@ -80,7 +98,11 @@ export function CanvasSurface({ previewUrl, alt, notes, dark, onPlace, spec, ras
 					if (event.key === "Enter" || event.key === " ") setDraft({ x: 0.5, y: 0.5 });
 				}}
 			>
-				<img src={rasterUrl ?? previewUrl} alt={alt} className="block w-full" draggable={false} />
+				{empty ? (
+					<CanvasPlaceholder />
+				) : (
+					<img src={rasterUrl ?? previewUrl} alt={alt} className="block w-full" draggable={false} />
+				)}
 				{pins.map((note, index) => (
 					<span
 						key={note.id}

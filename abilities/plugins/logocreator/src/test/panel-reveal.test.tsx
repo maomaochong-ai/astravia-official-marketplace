@@ -6,8 +6,8 @@ import type { PluginContext } from "@astravia-org/plugin-sdk";
 import { __PluginI18nContext, __setPluginHostBridge } from "@astravia-org/plugin-sdk";
 import { LogoCanvas } from "../features/canvas/components/logo-canvas";
 import { normalizeSpec } from "../domain/spec";
-import { setPluginContext } from "../plugin-context";
-import { setPendingDesignId } from "../features/canvas/pending-design";
+import { getHistoryStore, setPluginContext } from "../plugin-context";
+import { claimPendingDesignId, peekPendingDesignId, setPendingDesignId } from "../features/canvas/pending-design";
 
 /**
  * The conversation → canvas reveal.
@@ -149,6 +149,30 @@ describe("the conversation → canvas reveal", () => {
 		renderPanel();
 
 		await waitFor(() => expect(screen.getAllByText("Kettle Lane").length).toBeGreaterThan(0));
+	});
+
+	it("keeps waiting when the record has not arrived yet", async () => {
+		// The real sequence: the panel is already open on an older design, the agent starts
+		// a run, the tool stores the new record and leaves the id — but the panel's first
+		// claim can run before the store holds that record. Consuming the id there lost it,
+		// and because the form already carried a brand name the "newest design" fallback did
+		// not fire either, so the canvas stayed on the old design.
+		const ctx = fakeContext([record("existing", "Old Brand", 1_000)]);
+		setPluginContext(ctx);
+
+		const view = renderPanel();
+		await waitFor(() => expect(screen.getAllByText("Old Brand").length).toBeGreaterThan(0));
+
+		// The tool leaves the id behind before the record exists.
+		setPendingDesignId(CWD, "late");
+		expect(peekPendingDesignId(CWD)).toBe("late");
+
+		// Then it lands.
+		await getHistoryStore().add({ id: "late", spec: normalizeSpec({ brandName: "Arrived" }), engine: "local", subject: "leaf" });
+
+		await waitFor(() => expect(screen.getAllByText("Arrived").length).toBeGreaterThan(0));
+		expect(claimPendingDesignId(CWD)).toBeNull();
+		view.unmount();
 	});
 
 	it("claims a pending design only once", async () => {

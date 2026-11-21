@@ -93,11 +93,19 @@ export function LogoCanvas(): JSX.Element {
 	// tab again must not clobber half-finished work, so only an empty form is seeded.
 	const claimedRef = useRef<string | null>(null);
 	const revealPending = useCallback(() => {
-		const pendingId = claimPendingDesignId(cwd);
+		// Peek, look the record up, and only then consume.
+		//
+		// Claiming first was a real defect: a tool writes the design and opens the tab; the
+		// panel mounts and runs this before the store has hydrated the new record, the
+		// lookup missed, and the id was already gone — so the canvas kept showing the
+		// previous design. That is exactly the "image generated but the canvas did not
+		// switch" report. Peeking keeps the hand-off alive until the record exists.
+		const pendingId = peekPendingDesignId(cwd);
 		if (!pendingId || claimedRef.current === pendingId) return;
 		const record = history.items.find((item) => item.id === pendingId);
 		if (!record) return;
 		claimedRef.current = pendingId;
+		claimPendingDesignId(cwd);
 		form.load(record.spec);
 		setSelectedId(record.id);
 	}, [cwd, history.items, form]);
@@ -201,6 +209,9 @@ export function LogoCanvas(): JSX.Element {
 							notes={visibleNotes}
 							dark={form.spec.surface === "dark"}
 							spec={form.spec}
+							// Empty = nothing typed and nothing stored: show the cover, not a logo for
+							// a brand called "Untitled".
+							empty={!form.spec.brandName.trim() && !rasterUrl && history.items.length === 0}
 						rasterUrl={rasterUrl}
 						onPlace={async (point, text, scope, part) =>
 							notes.add({ designId: selectedId, text, ...point, scope, part })
