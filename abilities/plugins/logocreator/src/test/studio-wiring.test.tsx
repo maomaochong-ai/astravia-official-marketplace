@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { ColourPicker } from "../features/studio/components/colour-picker";
-import { ResultGrid } from "../features/studio/components/result-grid";
+import { ColourPicker } from "../features/canvas/components/colour-picker";
+import { ResultGrid } from "../features/canvas/components/result-grid";
 import { Segmented } from "../shared/components/segmented";
-import { useLogoForm } from "../features/studio/hooks/use-logo-form";
+import { useLogoForm } from "../features/canvas/hooks/use-logo-form";
 import { STARTER_PRESETS } from "../domain/catalog";
 import { AUTO } from "../domain/spec";
 import type { DesignRecord } from "../domain/history-store";

@@ -73,7 +73,7 @@
     {
       "type": "callout",
       "tone": "warning",
-      "content": "AI 生成是可选项，需要你自己的 Together API 密钥。它的产物是位图：只能导出 PNG，也不能放大重绘。用 AI 做探索，要真正投入使用请用内置引擎。"
+      "content": "AI 生成是可选项，用的是你已在 Astravia 里接好的图像服务——本插件不需要填任何密钥。它的产物是位图：只能导出 PNG，也不能放大重绘。用 AI 做探索，要真正投入使用请用内置引擎。"
     },
     {
       "type": "links",
@@ -84,8 +84,8 @@
           "href": "https://github.com/Nutlope/logocreator"
         },
         {
-          "label": "Together AI 图像模型文档",
-          "href": "https://docs.together.ai/docs/images-overview"
+          "label": "Astravia 图像服务设置",
+          "href": "https://github.com/maomaochong-ai/astravia-official-marketplace"
         }
       ]
     }

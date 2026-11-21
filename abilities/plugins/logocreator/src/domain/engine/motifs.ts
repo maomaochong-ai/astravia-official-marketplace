@@ -478,8 +478,3 @@ export const ABSTRACT_VARIANTS = Object.keys(abstractVariants);
 export function abstractMotif(name: string): MotifFn {
 	return abstractVariants[name] ?? abstractVariants.slices;
 }
-
-export function motifFor(subject: string | null): MotifFn | null {
-	if (!subject) return null;
-	return MOTIFS[subject] ?? null;
-}

@@ -15,24 +15,16 @@ import { renderLogo } from "../../domain/engine/compose";
 let engaged = false;
 let current: LogoSpec | null = null;
 
-export function setStudioEngaged(value: boolean): void {
+export function setCanvasEngaged(value: boolean): void {
 	engaged = value;
 }
 
-export function isStudioEngaged(): boolean {
-	return engaged;
-}
-
 /** Called by the panel whenever the form changes. */
-export function publishStudioSpec(spec: LogoSpec): void {
+export function publishCanvasSpec(spec: LogoSpec): void {
 	current = spec;
 }
 
-export function currentStudioSpec(): LogoSpec | null {
-	return current;
-}
-
-export function studioInstructions(): string[] {
+export function canvasInstructions(): string[] {
 	if (!engaged || !current || !current.brandName.trim()) return [];
 	const palette = resolvePalette(current);
 	const subject = renderLogo(current).subject;

@@ -11,8 +11,10 @@ import { PresetRow } from "./preset-row";
 import { StylePicker } from "./style-picker";
 import { TypePicker } from "./type-picker";
 
-export interface StudioControlsProps {
+export interface CanvasControlsProps {
 	spec: LogoSpec;
+	/** Deferred copy for the style tiles, so eight renders never ride on one keystroke. */
+	previewSpec?: LogoSpec;
 	patch: (next: Partial<LogoSpec>) => void;
 	activePreset: string | null;
 	applyPreset: (preset: (typeof STARTER_PRESETS)[number]) => void;
@@ -30,8 +32,9 @@ export interface StudioControlsProps {
  * changes the layout of the mark comes before everything that only changes its
  * surface, so a user who stops halfway still has a coherent logo.
  */
-export function StudioControls({
+export function CanvasControls({
 	spec,
+	previewSpec,
 	patch,
 	activePreset,
 	applyPreset,
@@ -40,7 +43,7 @@ export function StudioControls({
 	subject,
 	aiMode,
 	imageLabels,
-}: StudioControlsProps): JSX.Element {
+}: CanvasControlsProps): JSX.Element {
 	const { t } = useTranslation();
 	const palette = resolvePalette(spec);
 
@@ -60,7 +63,7 @@ export function StudioControls({
 
 			<div>
 				<span className={SECTION_LABEL}>{t("label.style")}</span>
-				<StylePicker value={spec.style} spec={spec} onChange={(style) => patch({ style })} />
+				<StylePicker value={spec.style} spec={previewSpec ?? spec} onChange={(style) => patch({ style })} />
 			</div>
 
 			<div>

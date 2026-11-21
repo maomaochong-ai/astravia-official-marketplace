@@ -189,15 +189,3 @@ export function extractPalette(pixels: Uint8ClampedArray, sampleStep = 4): strin
 	}
 	return picked;
 }
-
-/** Ensure a spec's explicit colour never disappears into its surface. */
-export function primaryFor(spec: LogoSpec): string {
-	const palette = resolvePalette(spec);
-	if (!spec.monochrome && isHexColor(spec.primary) && spec.primary.trim() !== AUTO) {
-		const floor = spec.surface === "dark" ? 2.2 : 2.6;
-		if (contrastRatio(palette.primary, palette.surface || "#FFFFFF") < floor) {
-			return ensureContrast(palette.primary, palette.surface || "#FFFFFF", floor);
-		}
-	}
-	return palette.primary;
-}

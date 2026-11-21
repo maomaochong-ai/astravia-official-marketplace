@@ -80,9 +80,3 @@ export function LogoPreview({ record, className, alt }: LogoPreviewProps): JSX.E
 		/>
 	);
 }
-
-/** The SVG string for export, from the same renderer the preview used. */
-export function recordSvg(record: DesignRecord): string | null {
-	if (record.engine !== "local") return null;
-	return renderLogo(record.spec).svg;
-}

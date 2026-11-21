@@ -87,18 +87,6 @@ export async function svgToPngBytes(svg: string, size: number): Promise<Uint8Arr
 	return new Uint8Array(await blob.arrayBuffer());
 }
 
-export function downloadBlob(blob: Blob, filename: string): void {
-	const url = URL.createObjectURL(blob);
-	const anchor = document.createElement("a");
-	anchor.href = url;
-	anchor.download = filename;
-	document.body.appendChild(anchor);
-	anchor.click();
-	anchor.remove();
-	// Give the browser a tick to start the download before the URL is revoked.
-	setTimeout(() => URL.revokeObjectURL(url), 4000);
-}
-
 /** Sample the dominant colours of a user-supplied image, for brand import. */
 export async function readImagePixels(file: File | Blob, maxEdge = 256): Promise<Uint8ClampedArray> {
 	const url = URL.createObjectURL(file);

@@ -203,13 +203,6 @@ export const STARTER_PRESETS: readonly StarterPreset[] = [
 	},
 ];
 
-export const INTENT_SUGGESTIONS: readonly string[] = [
-	"a friendly fox with a subtle leaf, modern and rounded",
-	"a minimal mountain peak inside a circle",
-	"an abstract mark that suggests upward motion",
-	"a soft geometric bird taking flight",
-];
-
 /**
  * Keyword → subject. The keyword that appears **earliest** in the brief wins, not
  * the one listed first: a brief reads front-to-back, so "leaf mark for a bakery"

@@ -130,15 +130,6 @@ export function jitter(points: readonly Point[], amount: number, next: () => num
 	}));
 }
 
-export function scalePoints(points: readonly Point[], cx: number, cy: number, factor: number): Point[] {
-	return points.map((p) => ({ x: round(cx + (p.x - cx) * factor), y: round(cy + (p.y - cy) * factor) }));
-}
-
-/** Midpoint of an arc's angular span — where a label or dot belongs. */
-export function arcMidpoint(cx: number, cy: number, r: number, fromDeg: number, toDeg: number): Point {
-	return polar(cx, cy, r, (fromDeg + toDeg) / 2);
-}
-
 export function clamp(value: number, min: number, max: number): number {
 	return Math.max(min, Math.min(max, value));
 }

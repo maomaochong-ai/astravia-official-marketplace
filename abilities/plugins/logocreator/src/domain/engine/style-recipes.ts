@@ -30,7 +30,7 @@ export interface StyleRecipe {
 	extrusion: number;
 	/** Hand-drawn displacement amplitude, in mark-box units. */
 	wobble: number;
-	ornament: "none" | "ring" | "double-ring" | "laurel" | "rays" | "grid";
+	ornament: "none" | "ring" | "double-ring" | "laurel" | "rays";
 	/** Wordmark letter-spacing in em. */
 	tracking: number;
 	weight: number;
@@ -64,7 +64,10 @@ export const STYLE_RECIPES: Record<StyleId, StyleRecipe> = {
 		id: "geometric",
 		stroke: 6,
 		corner: 0.05,
-		ornament: "grid",
+		// No construction grid: behind a finished mark it reads as an unfinished
+		// blueprint. Geometric earns its difference from sharp corners, a heavier
+		// weight and uppercase tracking.
+		ornament: "none",
 		weight: 700,
 		tracking: 0.02,
 		uppercase: true,

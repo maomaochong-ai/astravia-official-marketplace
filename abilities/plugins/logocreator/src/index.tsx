@@ -1,34 +1,24 @@
 import { definePlugin, type Disposable, type PluginContext } from "@astravia-org/plugin-sdk";
-import { lazy, Suspense, type JSX } from "react";
+import type { JSX } from "react";
 // Tailwind pipeline only — business CSS here would leak into the host page.
 import "./style.css";
+import { LogoCanvas } from "./features/canvas/components/logo-canvas";
 import { setPluginContext } from "./plugin-context";
-import { setStudioEngaged, studioInstructions } from "./features/studio/studio-prompt";
+import { setCanvasEngaged, canvasInstructions } from "./features/canvas/canvas-prompt";
+import { INPUT_ACTION_ID, INPUT_ACTION_LABEL_KEY, TAB_LABEL_KEY } from "./contributions";
 import { LOGO_TAB_ID } from "./tab-ids";
 import { registerTools } from "./tools/register-tools";
 
 /**
- * The studio panel is the expensive half of this plugin (engine + export + kit),
- * and it is only needed once the tab is actually opened. Splitting it keeps the
- * activation cost to the tab descriptor and the tool registrations.
+ * The panel is imported statically on purpose.
+ *
+ * The craft plugins lazy-load their editors because each one carries a 3–32 MB
+ * wasm build; this panel is ~100 KB of React plus the engine, which the tools
+ * already pull into the same chunk. Lazy-loading it only bought a second network
+ * hop — and a dynamic import that fails inside the host leaves a Suspense that
+ * never resolves, i.e. a tab that opens onto nothing. A panel that always renders
+ * is worth more than 40 KB.
  */
-const LogoStudioPanel = lazy(() =>
-	import("./features/studio/components/logo-studio-panel").then((module) => ({ default: module.LogoStudioPanel })),
-);
-
-function PanelShell(): JSX.Element {
-	return (
-		<Suspense
-			fallback={
-				<div className="flex h-full w-full items-center justify-center bg-background text-[11px] text-muted-foreground">
-					LogoCreator
-				</div>
-			}
-		>
-			<LogoStudioPanel />
-		</Suspense>
-	);
-}
 
 const GATED = ["ui.slot.activity-tab", "ui.slot.input-action", "agent.tools.register"] as const;
 
@@ -36,9 +26,13 @@ function missingPermissions(ctx: PluginContext): string[] {
 	return GATED.filter((permission) => !ctx.permissions.has(permission));
 }
 
+function PanelShell(): JSX.Element {
+	return <LogoCanvas />;
+}
+
 export default definePlugin({
 	activate(ctx) {
-		// One context per activation; the newest wins, and components read it lazily.
+		// One context per activation; components read it lazily, tools via handlers.
 		setPluginContext(ctx);
 
 		const missing = missingPermissions(ctx);
@@ -51,16 +45,18 @@ export default definePlugin({
 
 		const owned: Disposable[] = [];
 
-		// Not on the tab strip by default: every conversation would inherit a logo
-		// tab. It joins the strip from the composer toggle, the panel's "+" list, or
-		// when a tool opens it.
+		// `initiallyVisible: true` is the whole point: this plugin exists to show a
+		// studio, so the tab belongs on the strip. `initiallyVisible: false` (the
+		// reference plugin's choice) is right for a canvas that only makes sense once
+		// a design document exists — there is no equivalent marker here, so hiding it
+		// meant a user installed the plugin and saw nothing at all.
 		owned.push(
 			ctx.ui.registerActivityTab({
 				id: LOGO_TAB_ID,
-				label: "%tab.label%",
+				label: TAB_LABEL_KEY,
 				order: 26,
 				scope_use: ["conversation", "project"],
-				initiallyVisible: false,
+				initiallyVisible: true,
 				retention: "warm",
 				component: PanelShell,
 			}),
@@ -70,16 +66,25 @@ export default definePlugin({
 			try {
 				owned.push(
 					ctx.ui.registerInputAction({
-						id: "logocreator:brand",
-						label: "%panel.title%",
+						// The host namespaces this as `<pluginId>:<id>`, so the id must not
+						// repeat the plugin id — `logocreator:logocreator:brand` broke jumps
+						// between the toggle state and the tab.
+						id: INPUT_ACTION_ID,
+						label: INPUT_ACTION_LABEL_KEY,
 						defaultActive: false,
 						scope_use: ["conversation", "project"],
 						onToggle: (active) => {
-							setStudioEngaged(active);
-							if (active) ctx.ui.openActivityTab(LOGO_TAB_ID);
+							setCanvasEngaged(active);
+							// Both directions keep the tab in sync: turning the toggle on is a
+							// request to look at the studio, turning it off must not close it
+							// (the panel may be holding work nobody asked to discard).
+							if (active) {
+								ctx.ui.setActivityTabVisible(LOGO_TAB_ID, true);
+								ctx.ui.openActivityTab(LOGO_TAB_ID);
+							}
 						},
 						decoratePrompt: () => {
-							const instructions = studioInstructions();
+							const instructions = canvasInstructions();
 							return instructions.length > 0 ? { instructions } : {};
 						},
 					}),
@@ -98,7 +103,7 @@ export default definePlugin({
 		}
 
 		return () => {
-			setStudioEngaged(false);
+			setCanvasEngaged(false);
 			for (const disposable of owned) disposable.dispose();
 		};
 	},

@@ -1,14 +1,14 @@
 import type { JSX, ReactNode } from "react";
 import { BUTTON_GHOST, FOCUS_RING } from "../../../shared/styles/tokens";
 
-export interface StudioToolbarProps {
+export interface CanvasToolbarProps {
 	title: string;
 	subtitle: string;
 	engineBadge: string;
 	actions: { id: string; label: string; icon: ReactNode; onClick: () => void }[];
 }
 
-export function StudioToolbar({ title, subtitle, engineBadge, actions }: StudioToolbarProps): JSX.Element {
+export function CanvasToolbar({ title, subtitle, engineBadge, actions }: CanvasToolbarProps): JSX.Element {
 	return (
 		<header className="flex items-start justify-between gap-2 border-b border-border/60 px-3 py-2.5">
 			<div className="min-w-0">

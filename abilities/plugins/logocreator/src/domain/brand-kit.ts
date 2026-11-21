@@ -200,5 +200,3 @@ export async function buildBrandKit(spec: LogoSpec, options: KitOptions = {}): P
 export function paletteLines(palette: BrandPalette): string[] {
 	return [palette.primary, palette.secondary, palette.accent, palette.ink, palette.muted];
 }
-
-export const DARK_BACKGROUND = DARK_SURFACE;

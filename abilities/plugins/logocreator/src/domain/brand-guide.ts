@@ -132,7 +132,10 @@ export function buildBrandGuide(assets: GuideAssets): string {
 
 	const type = page(
 		`<header><span class="eyebrow">Type &amp; usage</span><h2>Typography</h2></header>
-		<div class="specimen" style="font-family:${family}">Aa</div>
+		<div class="specimen" style='font-family:${family}'>Aa</div>
+
+		<!-- The stack contains double quotes, so any attribute carrying it must be
+		     single-quoted; a double-quoted one ends at "Segoe UI" and breaks parsing. -->
 		<p class="note">The wordmark is set in <strong>${esc(fontLabel(recipe.font))}</strong> at weight ${recipe.weight}${recipe.uppercase ? ", uppercase" : ""}${recipe.tracking ? `, letter-spacing ${(recipe.tracking * 1000).toFixed(0)}/1000 em` : ""}. Pair it with the same family for headings and a neutral sans for body copy.</p>
 		<div class="split lists">
 			<div>
@@ -247,7 +250,7 @@ export function buildBrandBoard(assets: GuideAssets): string {
 	const chips = [palette.primary, palette.secondary, palette.accent, palette.ink]
 		.map(
 			(hex, i) =>
-				`<g transform="translate(${1120 + i * 112} 720)"><rect width="92" height="92" rx="10" fill="${hex}"/><text x="0" y="116" font-family="${FONT_STACKS.sans}" font-size="15" fill="#8b8a84">${hex}</text></g>`,
+				`<g transform="translate(${1120 + i * 112} 720)"><rect width="92" height="92" rx="10" fill="${hex}"/><text x="0" y="116" font-family='${FONT_STACKS.sans}' font-size="15" fill="#8b8a84">${hex}</text></g>`,
 		)
 		.join("");
 
@@ -256,12 +259,12 @@ export function buildBrandBoard(assets: GuideAssets): string {
 		<rect width="${W}" height="10" fill="${palette.primary}"/>
 		<rect x="72" y="86" width="720" height="720" rx="22" fill="#ffffff" stroke="#e3e2dc"/>
 		${strip(assets.logo, 132, 146, 600)}
-		<text x="880" y="150" font-family="${FONT_STACKS.sans}" font-size="17" letter-spacing="3" fill="#8b8a84">BRAND BOARD</text>
-		<text x="880" y="238" font-family="${FONT_STACKS.sans}" font-size="66" font-weight="700" fill="#15140f">${company}</text>
-		<text x="880" y="286" font-family="${FONT_STACKS.sans}" font-size="20" fill="#74726b">${esc(spec.tagline || `${spec.style} · ${spec.type.replace("-", " + ")} · ${subject.replace("abstract:", "abstract ")}`)}</text>
+		<text x="880" y="150" font-family='${FONT_STACKS.sans}' font-size="17" letter-spacing="3" fill="#8b8a84">BRAND BOARD</text>
+		<text x="880" y="238" font-family='${FONT_STACKS.sans}' font-size="66" font-weight="700" fill="#15140f">${company}</text>
+		<text x="880" y="286" font-family='${FONT_STACKS.sans}' font-size="20" fill="#74726b">${esc(spec.tagline || `${spec.style} · ${spec.type.replace("-", " + ")} · ${subject.replace("abstract:", "abstract ")}`)}</text>
 		<rect x="880" y="330" width="120" height="3" fill="${palette.primary}"/>
 		${strip(assets.markSvg, 1080, 400, 260)}
 		${chips}
-		<text x="72" y="900" font-family="${FONT_STACKS.sans}" font-size="16" fill="#8b8a84">Generated with LogoCreator · SVG and PNG exports in this kit</text>
+		<text x="72" y="900" font-family='${FONT_STACKS.sans}' font-size="16" fill="#8b8a84">Generated with LogoCreator · SVG and PNG exports in this kit</text>
 	</svg>`;
 }

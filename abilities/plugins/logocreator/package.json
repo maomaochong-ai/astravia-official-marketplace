@@ -20,12 +20,14 @@
     "@astravia-org/plugin-vite": "^0.2.4"
   },
   "name": "@astravia/plugin-logocreator",
-  "version": "0.0.1",
+  "version": "0.0.9",
   "private": true,
   "type": "module",
   "scripts": {
     "check": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "dead-code": "node scripts/dead-code.mjs",
+    "prove:guards": "node scripts/prove-hydration-guard.mjs && node scripts/prove-reveal-guard.mjs"
   }
 }

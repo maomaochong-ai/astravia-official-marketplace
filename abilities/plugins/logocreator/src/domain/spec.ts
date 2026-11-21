@@ -94,25 +94,3 @@ export function normalizeSpec(input: Partial<LogoSpec> | null | undefined): Logo
 export function displayName(spec: LogoSpec): string {
 	return spec.brandName || "Untitled";
 }
-
-/** Stable cache key: two specs that render identically share a key. */
-export function specKey(spec: LogoSpec): string {
-	const normalized = normalizeSpec(spec);
-	return [
-		normalized.brandName,
-		normalized.tagline,
-		normalized.type,
-		normalized.style,
-		normalized.detail,
-		normalized.primary,
-		normalized.surface,
-		normalized.monochrome ? "mono" : "colour",
-		normalized.intent,
-		normalized.seed,
-	].join("|");
-}
-
-/** Derive a sibling spec — same brand, different number. Used for variations. */
-export function respin(spec: LogoSpec, seed: number): LogoSpec {
-	return { ...spec, seed: Math.abs(Math.trunc(seed)) >>> 0 };
-}

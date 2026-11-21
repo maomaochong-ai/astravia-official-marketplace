@@ -2083,8 +2083,8 @@
       "type": "plugin",
       "slug": "logocreator",
       "name": "LogoCreator",
-      "description": "Design a brand-ready logo and export a complete brand kit: a built-in vector engine that needs no key or network, six logo structures in eight styles, plus optional AI generation with your own Together key.",
-      "version": "0.0.1",
+      "description": "A logo design canvas in Astravia: a deterministic vector engine that needs no key and no network, six structures in eight styles, canvas notes the agent can act on, and a complete brand kit.",
+      "version": "0.0.9",
       "configVersion": 1,
       "author": "Astravia",
       "category": "Design",
@@ -2104,7 +2104,7 @@
         "i18n": {
           "zh": {
             "name": "LogoCreator",
-            "description": "设计能直接用的品牌标志并导出完整品牌套件：内置矢量引擎不需要密钥也不联网，六种结构、八种风格，另可选配自己的 Together 密钥做 AI 生成。",
+            "description": "Astravia 里的标志设计画布：内置确定性矢量引擎，无需密钥、不联网，六种结构、八种风格，可在画布上留备注让 Agent 直接改，并导出整套品牌套件。",
             "tags": [
               "标志",
               "品牌",

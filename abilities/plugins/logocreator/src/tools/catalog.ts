@@ -2,6 +2,7 @@ import type { PluginAgentToolRegistration } from "@astravia-org/plugin-sdk";
 import { DETAIL_ENTRIES, STYLE_ENTRIES, TYPE_ENTRIES } from "../domain/catalog";
 import { availableSubjects } from "../domain/engine/compose";
 import { TOOL_CATALOG } from "../tab-ids";
+import { TOOL_LABELS } from "../contributions";
 
 interface CatalogResult {
 	ok: true;
@@ -23,7 +24,7 @@ export function createCatalogTool(): PluginAgentToolRegistration<Record<string, 
 	return {
 		id: TOOL_CATALOG,
 		name: TOOL_CATALOG,
-		label: "%tool.catalog.label%",
+		label: TOOL_LABELS.catalog,
 		description: [
 			"List what the LogoCreator engine can draw: logo types, styles, detail levels and the pictorial subjects it recognises.",
 			"Call it before designing when you are unsure which style id or subject word is valid. It reads nothing and changes nothing.",

@@ -1,14 +1,12 @@
 import { resolvePalette } from "../color-plan";
 import { AUTO, type LogoSpec } from "../spec";
-import { recipeFor } from "../engine/style-recipes";
 
 /**
  * Text-to-image prompt, built from the same spec the local engine renders.
  *
- * Upstream's prompt builder is the reference for structure: subject first, then
- * composition rules, then hard negatives. Keeping it here (rather than inline in
- * the client) means the prompt can be shown to the user before it is spent on a
- * paid generation.
+ * Kept separate from the client so the prompt can be shown to the user before a
+ * paid job is spent, and so the wording can change without touching transport.
+ * Structure: subject → style → colour → detail → hard negatives.
  */
 
 const STYLE_PROMPTS: Record<string, string> = {
@@ -33,11 +31,12 @@ const TYPE_PROMPTS: Record<string, string> = {
 
 export function buildLogoPrompt(spec: LogoSpec): string {
 	const palette = resolvePalette(spec);
-	const recipe = recipeFor(spec.style);
 	const parts: string[] = [];
 
 	const subject = TYPE_PROMPTS[spec.type] ?? TYPE_PROMPTS["icon-name"];
-	parts.push(`A professional logo. ${subject.charAt(0).toUpperCase()}${subject.slice(1)} for a brand called "${spec.brandName || "the brand"}".`);
+	parts.push(
+		`A professional logo. ${subject.charAt(0).toUpperCase()}${subject.slice(1)} for a brand called "${spec.brandName || "the brand"}".`,
+	);
 	parts.push(STYLE_PROMPTS[spec.style] ?? STYLE_PROMPTS.minimal);
 
 	if (spec.intent.trim()) parts.push(`Subject: ${spec.intent.trim()}.`);
@@ -49,13 +48,13 @@ export function buildLogoPrompt(spec: LogoSpec): string {
 		parts.push(`${primary}, with ${palette.secondary} as a supporting tone.`);
 	}
 
-	const detail =
+	parts.push(
 		spec.detail === "minimal"
 			? "Very few elements; readable at 16 px."
 			: spec.detail === "detailed"
 				? "Moderate detail, still legible at small sizes."
-				: "Balanced detail; clean at both large and small sizes.";
-	parts.push(detail);
+				: "Balanced detail; clean at both large and small sizes.",
+	);
 
 	parts.push(
 		[
@@ -68,6 +67,5 @@ export function buildLogoPrompt(spec: LogoSpec): string {
 		].join(" "),
 	);
 
-	void recipe;
 	return parts.join("\n\n");
 }

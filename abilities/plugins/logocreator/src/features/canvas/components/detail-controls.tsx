@@ -12,7 +12,7 @@ export interface DetailControlsProps {
 	onVariations: (value: number) => void;
 	/** The subject the engine picked, shown as a confirmation of the brief. */
 	subject: string;
-	/** Set when the design will come from Together instead of the local engine. */
+	/** Set when the design will come from a host image provider instead of the engine. */
 	aiMode: boolean;
 }
 

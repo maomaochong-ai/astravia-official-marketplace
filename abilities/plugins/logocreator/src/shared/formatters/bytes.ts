@@ -12,12 +12,6 @@ export function bytesToBase64(bytes: Uint8Array, chunkSize = 0x8000): string {
 	return btoa(binary);
 }
 
-export function formatBytes(size: number): string {
-	if (size < 1024) return `${size} B`;
-	if (size < 1024 * 1024) return `${(size / 1024).toFixed(0)} KB`;
-	return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 export function formatRelativeTime(timestamp: number, locale: string): string {
 	const delta = Date.now() - timestamp;
 	const minutes = Math.round(delta / 60_000);

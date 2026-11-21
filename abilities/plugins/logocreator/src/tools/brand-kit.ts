@@ -4,6 +4,7 @@ import { buildBrandGuide } from "../domain/brand-guide";
 import { renderLogo } from "../domain/engine/compose";
 import { getPluginContext } from "../plugin-context";
 import { TOOL_BRAND_KIT } from "../tab-ids";
+import { TOOL_LABELS } from "../contributions";
 import { DESIGN_PROPERTIES, specFromInput, type DesignToolPayload } from "./spec-from-input";
 
 interface KitToolResult {
@@ -28,7 +29,7 @@ export function createBrandKitTool(): PluginAgentToolRegistration<DesignToolPayl
 	return {
 		id: TOOL_BRAND_KIT,
 		name: TOOL_BRAND_KIT,
-		label: "%tool.kit.label%",
+		label: TOOL_LABELS.kit,
 		description: [
 			"Build a complete brand kit for one logo and write it into the workspace.",
 			"Writes the lockup and mark as SVG, on-light / on-dark / transparent / mono variants, PNG sizes (512, 1024, 2048, favicons, apple-touch), brand-colors.css and .json, a printable brand-guide.html, a brand-board.png, and a README.",

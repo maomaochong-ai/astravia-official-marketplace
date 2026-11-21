@@ -7,8 +7,6 @@
  * CSS layer.
  */
 
-export const PANEL = "flex h-full min-h-0 w-full flex-col bg-background text-foreground";
-
 export const CARD = "rounded-xl border border-border/60 bg-card";
 
 export const SECTION_LABEL = "mb-2 block text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground";

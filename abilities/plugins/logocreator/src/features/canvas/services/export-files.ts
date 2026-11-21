@@ -53,12 +53,3 @@ export async function saveKitFile(fs: PluginFsApi, kit: BrandKit): Promise<strin
 		return null;
 	}
 }
-
-export async function saveTextFile(fs: PluginFsApi, filename: string, content: string, title: string): Promise<string | null> {
-	try {
-		return await fs.saveAs(filename, content, "utf8", { title });
-	} catch (cause) {
-		reportError(`Could not save ${filename}`, cause);
-		return null;
-	}
-}

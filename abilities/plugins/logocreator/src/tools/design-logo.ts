@@ -4,6 +4,8 @@ import { kitSlug } from "../domain/brand-kit";
 import { newDesignId } from "../domain/history-store";
 import { AUTO } from "../domain/spec";
 import { getHistoryStore, getPluginContext } from "../plugin-context";
+import { TOOL_LABELS } from "../contributions";
+import { setPendingDesignId } from "../features/canvas/pending-design";
 import { LOGO_TAB_ID, TOOL_DESIGN } from "../tab-ids";
 import { DESIGN_PROPERTIES, specFromInput, type DesignToolPayload } from "./spec-from-input";
 
@@ -29,7 +31,7 @@ export function createDesignTool(): PluginAgentToolRegistration<DesignToolPayloa
 	return {
 		id: TOOL_DESIGN,
 		name: TOOL_DESIGN,
-		label: "%tool.design.label%",
+		label: TOOL_LABELS.design,
 		description: [
 			"Design a logo with the built-in vector engine and write the SVG files into the workspace.",
 			"Every file is real vector art: a 512×512 canvas with the mark, the wordmark and the palette resolved from the brief. The same fields plus the same seed reproduce the same bytes, so a design can be regenerated later.",
@@ -60,6 +62,7 @@ export function createDesignTool(): PluginAgentToolRegistration<DesignToolPayloa
 			const designs: DesignToolResult["designs"] = [];
 			const files: string[] = [];
 			let lastSubject = "";
+			let lastDesignId: string | null = null;
 
 			for (let index = 0; index < count; index += 1) {
 				const variant = { ...spec, seed: (spec.seed + index * SEED_STRIDE) >>> 0 };
@@ -70,8 +73,12 @@ export function createDesignTool(): PluginAgentToolRegistration<DesignToolPayloa
 				await fs.writeFile(file, rendered.svg, "utf8");
 				files.push(file);
 				designs.push({ file, subject: rendered.subject, seed: variant.seed, style: variant.style });
+				const recordId = newDesignId();
 				await getHistoryStore()
-					.add({ id: newDesignId(), spec: variant, engine: "local", subject: rendered.subject })
+					.add({ id: recordId, spec: variant, engine: "local", subject: rendered.subject })
+					.then(() => {
+						lastDesignId = recordId;
+					})
 					.catch((cause) => {
 						notes.push(`The design was written but not stored in the panel history: ${describe(cause)}`);
 					});
@@ -81,8 +88,15 @@ export function createDesignTool(): PluginAgentToolRegistration<DesignToolPayloa
 				notes.push("Colour was chosen by the engine from the brief. Pass an explicit hex to pin it.");
 			}
 
+			// Hand the newest design to the panel, then put the panel on screen. Both
+			// halves matter: opening a tab onto the *previous* design reads as "the tool
+			// did nothing", and the reference plugin learned the same lesson (its
+			// `setPendingDesignPath` / `claimCanvasReveal` pair).
+			if (lastDesignId) setPendingDesignId(lastDesignId);
 			try {
-				getPluginContext().ui.openActivityTab(LOGO_TAB_ID, { width: "max" });
+				const ui = getPluginContext().ui;
+				ui.setActivityTabVisible(LOGO_TAB_ID, true, { cwd: session.cwd });
+				ui.openActivityTab(LOGO_TAB_ID, { width: "max", cwd: session.cwd });
 			} catch (cause) {
 				notes.push(`The studio panel could not be opened: ${describe(cause)}`);
 			}

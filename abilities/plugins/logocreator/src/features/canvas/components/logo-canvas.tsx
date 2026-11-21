@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useState, type JSX } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { renderLogo } from "../../../domain/engine/compose";
-import { resolveMark } from "../../../domain/engine/compose";
+import { renderLogo, resolveMark } from "../../../domain/engine/compose";
 import type { DesignRecord } from "../../../domain/history-store";
-import { AUTO } from "../../../domain/spec";
 import { kitSlug } from "../../../domain/brand-kit";
 import { previewUrl } from "../../../domain/render-png";
 import { getPluginContext, reportError } from "../../../plugin-context";
@@ -16,9 +14,12 @@ import { AiSettingsDialog } from "./ai-settings-dialog";
 import { BrandKitDialog } from "./brand-kit-dialog";
 import { HistorySheet } from "./history-sheet";
 import { ResultGrid } from "./result-grid";
-import { StudioControls } from "./studio-controls";
-import { StudioToolbar } from "./studio-toolbar";
-import { publishStudioSpec } from "../studio-prompt";
+import { CanvasControls } from "./canvas-controls";
+import { CanvasToolbar } from "./canvas-toolbar";
+import { claimPendingDesignId, onPendingDesignChanged, peekPendingDesignId } from "../pending-design";
+import { useCanvasNotes } from "../hooks/use-canvas-notes";
+import { CanvasNotesLayer } from "./canvas-notes-layer";
+import { publishCanvasSpec } from "../canvas-prompt";
 
 function Icon({ path }: { path: string }): JSX.Element {
 	return (
@@ -35,7 +36,7 @@ function Icon({ path }: { path: string }): JSX.Element {
  * here would leave neither half usable. The form scrolls with the gallery rather
  * than pinning itself, so the newest result is never hidden behind a fixed header.
  */
-export function LogoStudioPanel(): JSX.Element {
+export function LogoCanvas(): JSX.Element {
 	const { t, locale } = useTranslation();
 	const form = useLogoForm();
 	const history = useDesignHistory({
@@ -45,13 +46,17 @@ export function LogoStudioPanel(): JSX.Element {
 		clearFailed: t("error.historyClear"),
 	});
 	const generation = useGeneration({
-		aiKeyRequired: t("notify.aiKeyRequired"),
+		aiUnavailable: t("notify.aiUnavailable"),
 		aiFailed: t("notify.aiFailed"),
 		localFailed: t("notify.localFailed"),
 		aiDone: (count) => t("notify.aiDone", { count }),
-		keySaved: t("notify.keySaved"),
-		keyCleared: t("notify.keyCleared"),
-		keyFailed: t("error.keyFailed"),
+		aiPartial: (failed) => t("notify.aiPartial", { failed }),
+	});
+
+	const notes = useCanvasNotes({
+		sendFailed: t("error.notesSend"),
+		addFailed: t("error.notesAdd"),
+		removeFailed: t("error.notesRemove"),
 	});
 
 	const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -66,31 +71,63 @@ export function LogoStudioPanel(): JSX.Element {
 		if (generation.lastCreatedId) setSelectedId(generation.lastCreatedId);
 	}, [generation.lastCreatedId]);
 
-	// Seed the form once with the most recent design, so reopening the tab shows
-	// the mark the user was last working on instead of an empty canvas.
+	// Two ways a design can arrive while this panel is not the active one, and they
+	// need different treatment:
+	//  - a **tool** just created it → the user is waiting to see *that* one, so it is
+	//    claimed and loaded, replacing whatever the form held;
+	//  - this is just the panel opening again → only seed an empty form, because
+	//    overwriting half-finished work with the last saved design is worse than
+	//    showing nothing.
+	const claimedRef = useRef<string | null>(null);
+	const revealPending = useCallback(() => {
+		const pendingId = claimPendingDesignId();
+		if (!pendingId || claimedRef.current === pendingId) return;
+		const record = history.items.find((item) => item.id === pendingId);
+		if (!record) {
+			// The tool wrote to storage; this panel hydrated before that landed.
+			// Re-render when the store catches up.
+			return;
+		}
+		claimedRef.current = pendingId;
+		form.load(record.spec);
+		setSelectedId(record.id);
+	}, [history.items, form]);
+
 	useEffect(() => {
-		if (!history.ready || form.spec.brandName) return;
+		if (!history.ready) return;
+		if (peekPendingDesignId()) {
+			revealPending();
+			return;
+		}
+		if (form.spec.brandName) return;
 		const latest = history.items[0];
 		if (latest) {
 			form.load(latest.spec);
 			setSelectedId(latest.id);
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [history.ready]);
+	}, [history.ready, history.items.length]);
+
+	// A tool call can land while the panel is already open: the store notifies, or
+	// the pending id changes without a store write (a second run in the same turn).
+	useEffect(() => onPendingDesignChanged(revealPending), [revealPending]);
 
 	// Publish the open design so the composer toggle can carry it into a prompt.
 	useEffect(() => {
-		publishStudioSpec(form.spec);
+		publishCanvasSpec(form.spec);
 	}, [form.spec]);
 
-	const preview = useMemo(() => previewUrl(renderLogo(form.spec).svg), [form.spec]);
+	// The preview follows the *deferred* spec: typing stays at caret speed while the
+	// mark repaints on React's next idle slot.
+	const deferredSpec = useDeferredValue(form.spec);
+	const preview = useMemo(() => previewUrl(renderLogo(deferredSpec).svg), [deferredSpec]);
 
 	const handleGenerate = async () => {
 		if (!form.spec.brandName.trim() && form.spec.type !== "wordmark") {
 			getPluginContext().ui.notify({ message: t("notify.needName"), variant: "warning" });
 			return;
 		}
-		await generation.generate({ ...form.spec, primary: form.spec.primary === AUTO ? AUTO : form.spec.primary });
+		await generation.generate(form.spec);
 	};
 
 	const handleSaveSvg = (record: DesignRecord) => {
@@ -127,7 +164,7 @@ export function LogoStudioPanel(): JSX.Element {
 
 	return (
 		<div className="flex h-full min-h-0 w-full flex-col bg-background text-foreground">
-			<StudioToolbar
+			<CanvasToolbar
 				title={t("panel.title")}
 				subtitle={t("panel.subtitle")}
 				engineBadge={generation.mode === "ai" ? "AI" : t("panel.localBadge")}
@@ -154,22 +191,25 @@ export function LogoStudioPanel(): JSX.Element {
 			/>
 
 			<div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-				<div className="mb-3 overflow-hidden rounded-xl border border-border/60 bg-card">
-					<div
-						className="aspect-square w-full"
-						style={form.spec.surface === "dark" ? { background: "#121210" } : { background: "#ffffff" }}
-					>
-						<img src={preview} alt={t("panel.previewAlt")} className="size-full object-contain" draggable={false} />
-					</div>
+				<div className="mb-3">
+					<CanvasNotesLayer
+						previewUrl={preview}
+						alt={t("panel.previewAlt")}
+						notes={notes.notes.filter((note) => note.designId === null || note.designId === selectedId)}
+						dark={form.spec.surface === "dark"}
+						onPlace={async (point, noteText) => notes.add({ designId: selectedId, text: noteText, ...point })}
+						onRemove={(id) => void notes.remove(id)}
+					/>
 				</div>
 
-				<StudioControls
+				<CanvasControls
 					spec={form.spec}
+					previewSpec={deferredSpec}
 					patch={form.patch}
 					activePreset={form.activePreset}
 					applyPreset={form.applyPreset}
 					variations={generation.settings.variations}
-					onVariations={(variations) => generation.updateSettings({ variations })}
+					onVariations={generation.updateVariations}
 					subject={subject}
 					aiMode={generation.mode === "ai"}
 					imageLabels={{
@@ -187,6 +227,19 @@ export function LogoStudioPanel(): JSX.Element {
 						className={`${BUTTON_PRIMARY} ${FOCUS_RING} h-10 flex-1 text-[13px]`}
 					>
 						{generation.running ? t("action.working") : generation.mode === "ai" ? t("action.generateAi") : t("action.generate")}
+					</button>
+					<button
+						type="button"
+						onClick={() => void notes.handToAgent(selectedId, form.spec.brandName)}
+						disabled={generation.running || notes.notes.filter((note) => note.status === "pending").length === 0}
+						title={t("notes.handToAgent")}
+						aria-label={t("notes.handToAgent")}
+						className={`${FOCUS_RING} flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40`}
+					>
+						<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+							<path d="M4 6.5h16M4 12h10M4 17.5h7" strokeLinecap="round" />
+							<path d="M16.5 15.5l2 2 3-3.5" strokeLinecap="round" strokeLinejoin="round" />
+						</svg>
 					</button>
 					<button
 						type="button"
@@ -268,15 +321,14 @@ export function LogoStudioPanel(): JSX.Element {
 			<AiSettingsDialog
 				open={aiOpen}
 				settings={generation.settings}
-				hasKey={generation.hasKey}
+				providers={generation.providers}
+				denied={generation.aiDenied}
 				onClose={() => setAiOpen(false)}
-				onSaveKey={async (key) => {
-					await generation.saveKey(key);
-					generation.setMode("ai");
+				onChooseProvider={(providerId) => {
+					generation.updateSettings({ providerId });
+					generation.setMode(providerId ? "ai" : "local");
 				}}
-				onForgetKey={generation.forgetKey}
-				onUpdateSettings={generation.updateSettings}
-				onOpenExternal={(url) => void getPluginContext().ui.openExternal(url)}
+				onRefresh={generation.refreshProviders}
 				t={t}
 			/>
 		</div>

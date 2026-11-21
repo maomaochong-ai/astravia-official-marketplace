@@ -4,7 +4,7 @@ import { createRng, hashSeed, type Rng } from "../prng";
 import { normalizeSpec, type LogoSpec } from "../spec";
 import { ABSTRACT_VARIANTS, MOTIFS, PICTORIAL_SUBJECTS, abstractMotif, type MotifFn, type Shape } from "./motifs";
 import { polar, roundedRect } from "./geometry";
-import { FONT_STACKS, recipeFor, type StyleRecipe } from "./style-recipes";
+import { FONT_STACKS, recipeFor, type FontStackKey, type StyleRecipe } from "./style-recipes";
 import { glyphBlock, initialsOf, isCjkGlyph } from "./glyphs";
 
 /**
@@ -117,14 +117,6 @@ function ornamentSvg(ctx: Ctx): string {
 			const inner = polar(50, 50, i % 2 === 0 ? 45 : 47.5, angle);
 			const outer = polar(50, 50, 49, angle);
 			return `<path d="M${inner.x} ${inner.y}L${outer.x} ${outer.y}" stroke="${tint}" stroke-width="0.9" stroke-opacity="0.45" stroke-linecap="round"/>`;
-		}).join("");
-	}
-	if (ornament === "grid") {
-		// Graph-paper ghost: geometry style only, faint enough to read as texture
-		// rather than as part of the mark.
-		return Array.from({ length: 7 }, (_, i) => {
-			const at = 10 + i * 13.33;
-			return `<path d="M${at.toFixed(1)} 10V90M10 ${at.toFixed(1)}H90" stroke="${tint}" stroke-width="0.4" stroke-opacity="0.1"/>`;
 		}).join("");
 	}
 	// laurel
@@ -248,19 +240,44 @@ interface TextPlan {
 }
 
 /**
+ * Advance width of a run, in em, for the chosen stack.
+ *
+ * A per-character average is wrong the moment a name is not pure Latin: a CJK
+ * glyph advances a full em where a lowercase Latin letter advances about half.
+ * Estimating by average would let a 12-character Chinese name compute a font size
+ * that renders ~630 px wide inside a 512 px canvas — the type does not clip, it
+ * just runs off the edge. Summing per glyph costs nothing and stays correct in
+ * both scripts.
+ */
+function advanceEm(text: string, font: FontStackKey): number {
+	let em = 0;
+	for (const char of text) {
+		const code = char.codePointAt(0) ?? 0;
+		if (code >= 0x2e80) em += 1; // CJK, kana, hangul, full-width punctuation
+		else if (char === " ") em += 0.28;
+		else if (/[A-Z0-9]/.test(char)) em += font === "serif" ? 0.66 : 0.62;
+		else if (/[a-z]/.test(char)) em += font === "serif" ? 0.5 : 0.52;
+		else em += 0.36; // punctuation and symbols
+	}
+	return em;
+}
+
+/**
  * Fit the brand name into `availableWidth`. There is no font-metrics API inside
- * a pure-SVG generator, so per-character width is estimated for the chosen stack
- * and the result is clamped rather than trusted.
+ * a pure-SVG generator, so the run is measured from `advanceEm` and the result is
+ * clamped rather than trusted.
  */
 function planWordmark(spec: LogoSpec, recipe: StyleRecipe, availableWidth: number, baseSize: number): TextPlan {
 	const raw = spec.brandName || "Untitled";
 	const text = recipe.uppercase ? raw.toUpperCase() : raw;
 	const words = text.split(/\s+/).filter(Boolean);
+	// CJK names have no spaces, so the multi-word policy never applies to them; the
+	// size clamp is what keeps a long one inside the canvas.
 	const lines = words.length > 1 && text.length > 16 ? balanceLines(words) : [text];
-	const perChar = recipe.font === "serif" ? 0.6 : recipe.font === "hand" ? 0.56 : 0.62;
-	const longest = lines.reduce((max, line) => Math.max(max, line.length), 1);
+	const widest = lines.reduce((max, line) => Math.max(max, advanceEm(line, recipe.font)), 1);
+	const longest = lines.reduce((max, line) => Math.max(max, [...line].length), 1);
 	const trackingWidth = recipe.tracking * Math.max(0, longest - 1);
-	const fitted = (availableWidth * 0.96) / (longest * perChar + trackingWidth);
+	const fitted = (availableWidth * 0.96) / (widest + trackingWidth);
 	const fontSize = Math.max(18, Math.min(baseSize, fitted));
 	return { lines, fontSize, lineHeight: fontSize * 1.16, tracking: recipe.tracking };
 }
@@ -360,13 +377,16 @@ function textureOverlay(ctx: Ctx, rng: Rng): string {
 	if (ctx.recipe.texture === "grain") {
 		return `<rect width="${CANVAS}" height="${CANVAS}" filter="url(#grain-${ctx.uid})" opacity="0.05"/>`;
 	}
+	// Retro's printer's rule sits under a stacked lockup only. An emblem already
+	// fills the canvas, and a dot row behind its badge reads as a printing fault.
+	if (ctx.spec.type === "emblem" || ctx.spec.type === "icon") return "";
 	const color = ctx.monoInk ?? ctx.palette.accent;
 	const jitter = rng.fork("dots");
 	const dots: string[] = [];
 	for (let row = 0; row < 2; row += 1) {
 		for (let col = 0; col < 12; col += 1) {
 			dots.push(
-				`<circle cx="${(160 + col * 17 + jitter.range(-1.5, 1.5)).toFixed(1)}" cy="${(462 + row * 10).toFixed(1)}" r="${(2.4 - row * 0.7).toFixed(1)}" fill="${color}" fill-opacity="0.45"/>`,
+				`<circle cx="${(176 + col * 16 + jitter.range(-1.2, 1.2)).toFixed(1)}" cy="${(478 + row * 9).toFixed(1)}" r="${(2.2 - row * 0.7).toFixed(1)}" fill="${color}" fill-opacity="0.4"/>`,
 			);
 		}
 	}

@@ -80,12 +80,32 @@ export function displayLabel(record: DesignRecord): string {
 export class HistoryStore {
 	private items: DesignRecord[] = [];
 	private loaded = false;
+	/** In-flight read, so two concurrent mutations hydrate once rather than twice. */
+	private hydrating: Promise<void> | null = null;
 	private listeners = new Set<() => void>();
 
 	constructor(private readonly storage: PluginStorageApi) {}
 
 	async hydrate(): Promise<DesignRecord[]> {
 		if (this.loaded) return this.items;
+		this.hydrating ??= this.read();
+		await this.hydrating;
+		return this.items;
+	}
+
+	/**
+	 * Every mutation awaits this first.
+	 *
+	 * `persist()` rewrites the whole file, so a write that lands before the read
+	 * would replace the user's entire history with the one record in memory. Not
+	 * hypothetical: the agent tools add designs while the panel is closed — exactly
+	 * when nothing has hydrated this store yet.
+	 */
+	private async ready(): Promise<void> {
+		if (!this.loaded) await this.hydrate();
+	}
+
+	private async read(): Promise<void> {
 		try {
 			const raw = await this.storage.readFile(HISTORY_PATH, "utf8");
 			if (raw) {
@@ -95,14 +115,12 @@ export class HistoryStore {
 					: [];
 			}
 		} catch {
-			// A corrupt or unreadable file must not look like "no designs ever":
-			// keep the in-memory list and let the next write replace the file.
+			// A corrupt or unreadable file must not look like "no designs ever".
 			this.items = [];
 		}
 		this.items.sort((a, b) => b.createdAt - a.createdAt);
 		this.loaded = true;
 		this.emit();
-		return this.items;
 	}
 
 	list(): DesignRecord[] {
@@ -119,6 +137,7 @@ export class HistoryStore {
 	}
 
 	async add(draft: DesignDraft): Promise<DesignRecord> {
+		await this.ready();
 		const record: DesignRecord = {
 			id: draft.id,
 			spec: normalizeSpec(draft.spec),
@@ -135,6 +154,7 @@ export class HistoryStore {
 	}
 
 	async update(id: string, patch: Partial<Pick<DesignRecord, "favorite" | "name" | "spec">>): Promise<void> {
+		await this.ready();
 		this.items = this.items.map((item) =>
 			item.id === id
 				? {
@@ -149,6 +169,7 @@ export class HistoryStore {
 	}
 
 	async remove(id: string): Promise<void> {
+		await this.ready();
 		const gone = this.items.find((item) => item.id === id);
 		this.items = this.items.filter((item) => item.id !== id);
 		await this.persist();
@@ -159,6 +180,7 @@ export class HistoryStore {
 	}
 
 	async clear(): Promise<void> {
+		await this.ready();
 		const blobs = this.items.map((item) => item.blobId).filter((id): id is string => Boolean(id));
 		this.items = [];
 		await this.persist();

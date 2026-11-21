@@ -154,13 +154,3 @@ export function shiftHue(hex: string, degrees: number, lightness?: number): stri
 		l: lightness ?? hsl.l,
 	});
 }
-
-export function withAlpha(hex: string, alpha: number): string {
-	const { r, g, b } = hexToRgb(hex);
-	return `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, alpha)).toFixed(3)})`;
-}
-
-/** Serialize a hex colour for an SVG attribute, keeping the export readable. */
-export function svgColor(hex: string): string {
-	return normalizeHex(hex);
-}

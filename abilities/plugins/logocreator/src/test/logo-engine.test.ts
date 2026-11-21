@@ -84,6 +84,25 @@ describe("the composer", () => {
 		const size = (svg: string) => Number(/font-size="([\d.]+)"/.exec(svg)?.[1] ?? 0);
 		expect(size(long)).toBeLessThan(size(short));
 	});
+
+	it("measures a CJK name at a full em per glyph", () => {
+		// A 11-character Chinese name advances ~11 em. Measured as if each glyph were
+		// 0.62 em (the Latin average) the size would come out at ~58 px and the run
+		// would render ~630 px wide inside a 512 px canvas — no clip, it just runs
+		// off the edge. `advanceEm` keeps it inside the 96% budget.
+		const name = "青岚茶事旗舰店春分限定";
+		const svg = renderLogo(spec({ brandName: name })).svg;
+		const size = Number(/font-size="([\d.]+)"/.exec(svg)?.[1] ?? 0);
+		expect(size).toBeGreaterThan(18);
+		expect(size * [...name].length).toBeLessThanOrEqual(512 * 0.96);
+	});
+
+	it("draws a CJK monogram as one set character, not a broken glyph", () => {
+		const { svg } = renderLogo(spec({ type: "monogram", brandName: "青岚" }));
+		expect(svg).toContain("<text");
+		expect(svg).toContain("青");
+		expect(svg).not.toMatch(/NaN/);
+	});
 });
 
 describe("mark resolution", () => {
