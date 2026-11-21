@@ -73,7 +73,7 @@
     {
       "type": "callout",
       "tone": "warning",
-      "content": "AI generation is optional and needs your own Together API key. Those results are raster images: they export as PNG only and cannot be rebuilt larger. Use AI to explore, and the built-in engine for anything you will actually ship."
+      "content": "AI marks are optional and run on the image providers you already connected in Astravia — there is no key to paste into this plugin. Those results are raster images: they export as PNG only and cannot be rebuilt larger. Use AI to explore, and the built-in engine for anything you will actually ship."
     },
     {
       "type": "links",
@@ -84,8 +84,8 @@
           "href": "https://github.com/Nutlope/logocreator"
         },
         {
-          "label": "Together AI image models",
-          "href": "https://docs.together.ai/docs/images-overview"
+          "label": "Astravia image services",
+          "href": "https://github.com/maomaochong-ai/astravia-official-marketplace"
         }
       ]
     }

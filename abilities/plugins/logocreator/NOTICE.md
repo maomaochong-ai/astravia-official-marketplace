@@ -10,11 +10,12 @@ files with that repository.
 - **The product idea and feature set.** Logos from a short brief, several
   structures and eight styles, variations per run, a brand kit with variants,
   palette and a style guide, on-device history with favourites.
-- **`assets/icon.svg`** — the upstream application's brand mark
-  (`app/icon.svg` at the pinned upstream revision), used unmodified so the ability
-  is recognisable as the same product rather than an invented look-alike.
 - **The colour-contrast helpers' contract** (WCAG relative luminance and contrast
   ratio) — standard formulas, reimplemented here with tests.
+
+Upstream's own logo is **not** shipped here. `assets/icon.png` is the mark the
+plugin owner supplied for this ability (see below), so the plugin is identifiable
+as itself rather than as the upstream product.
 
 ## What is written here
 
@@ -23,14 +24,24 @@ motif library, the style recipes, the SVG composer), the palette planner, the br
 kit and printable guide, the history store, the studio UI, and the agent tools are
 new code written for this plugin.
 
-The upstream app generates logos with FLUX on Together AI and has no local drawing
+The upstream app generates logos with a hosted image model and has no local drawing
 engine at all; that engine is the reason this plugin works with no key and no
-network. Conversely, the AI path here is optional and calls the same public
-Together image endpoint the upstream app uses.
+network. Conversely, the AI path here is optional and runs on whatever image
+providers the user already connected in Astravia.
 
-## Licensing note
+## Artwork in this package
 
-The upstream repository does not currently ship a `LICENSE` file, so no licence is
-asserted for its content in this plugin's marketplace metadata. If upstream adds a
-licence later, this file should be updated to match, and `assets/icon.svg` reviewed
-against it.
+| File | Origin | Notes |
+| --- | --- | --- |
+| `assets/icon.png` | Supplied by the plugin owner (`portrait/caterpillar-portrait-hoodie-01.jpg`) | 512×512 full square, opaque; lanczos downscale of the 1024 master; the plugin's only icon |
+| `agent/agents/logo-master.webp` | Derived from the same file | 512×512 WebP, ~37 KB — the same framing and pixel size the reference avatar uses |
+
+Both are the same mark, so the ability card, the sidebar entry and the agent avatar
+never disagree about what this plugin looks like. Both are **unmasked squares**: the
+host draws its own rounded container, so baking a squircle into the file would
+round the corners twice. Replacing one means replacing both —
+`src/test/artwork.test.ts` asserts each file exists, is a supported format, stays
+inside the host's size ceiling and is square.
+
+No licence is asserted for the upstream repository's content: it does not currently
+ship a `LICENSE` file, so nothing of its own is reproduced here.
