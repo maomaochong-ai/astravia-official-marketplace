@@ -1,4 +1,4 @@
-import type { PluginAgentToolRegistration } from "@astravia-org/plugin-sdk";
+import type { PluginAgentToolRegistration, PluginImageRef } from "@astravia-org/plugin-sdk";
 import { generateMarksWithHost, HostMediaError } from "../domain/ai/host-media";
 import { newDesignId } from "../domain/history-store";
 import { normalizeSpec } from "../domain/spec";
@@ -15,12 +15,21 @@ interface ImageToolInput {
 	count?: number;
 	/** Hex, so the raster sits in the same palette as the vector designs. */
 	colour?: string;
+	/**
+	 * A previously generated image to edit (a card's ref, or the attached target).
+	 * With this set the provider runs image-to-image and `count` is forced to 1.
+	 */
+	referenceImageId?: string;
 }
 
 interface ImageToolResult {
 	ok: boolean;
 	engine: "ai";
-	images: { designId: string; subject: string }[];
+	/** Refs the host can render; the card payload carries the same list. */
+	images: PluginImageRef[];
+	designIds: string[];
+	/** Descriptor for the conversation card (host reads `details.cards`). */
+	cards: { type: string; key?: string; payload: unknown }[];
 	failures: string[];
 	notes: string[];
 }
@@ -81,9 +90,15 @@ export function createImageTool(): PluginAgentToolRegistration<ImageToolInput> {
 			const ctx = getPluginContext();
 			const history = getHistoryStore();
 
+			const reference = typeof input.referenceImageId === "string" ? input.referenceImageId : undefined;
 			let generated: Awaited<ReturnType<typeof generateMarksWithHost>>;
 			try {
-				generated = await generateMarksWithHost(ctx, { spec, count: Number(input.count) || 3 });
+				generated = await generateMarksWithHost(ctx, {
+					spec,
+					// An edit produces one result by definition; more would be different edits.
+					count: reference ? 1 : Number(input.count) || 3,
+					...(reference ? { referenceBlobId: reference } : {}),
+				});
 			} catch (cause) {
 				if (cause instanceof HostMediaError) {
 					return { ok: false, error: cause.message, code: cause.code, notes: ["Fall back to logocreator_design with the closest vector subject."] };
@@ -91,12 +106,25 @@ export function createImageTool(): PluginAgentToolRegistration<ImageToolInput> {
 				return { ok: false, error: cause instanceof Error ? cause.message : String(cause) };
 			}
 
-			const images: ImageToolResult["images"] = [];
+			const images: PluginImageRef[] = [];
+			const designIds: string[] = [];
 			let lastDesignId: string | null = null;
 			for (const image of generated.images) {
 				const designId = newDesignId();
 				await history.add({ id: designId, spec, engine: "ai", subject: image.modelId ?? "image", blobId: image.blobId });
-				images.push({ designId, subject: image.modelId ?? "image" });
+				// The card needs a URL, not a blob id: resolve the same ref the host would, so
+				// what the conversation shows is exactly what the panel stored.
+				const ref = await ctx.storage.getBlobRef(image.blobId).catch(() => null);
+				if (ref?.url) {
+					images.push({
+						id: ref.id,
+						url: ref.url,
+						mimeType: ref.mimeType,
+						providerId: image.providerId,
+						rootId: reference ?? ref.id,
+					});
+					designIds.push(designId);
+				}
 				lastDesignId = designId;
 			}
 
@@ -115,6 +143,13 @@ export function createImageTool(): PluginAgentToolRegistration<ImageToolInput> {
 				ok: true,
 				engine: "ai",
 				images,
+				designIds,
+				// Cross-turn dedup key = the lineage root, so an edited version replaces the
+				// earlier card instead of stacking duplicates in the thread.
+				cards:
+					images.length > 0
+						? [{ type: "logocreator:image", key: images[0].rootId, payload: { images, designIds } }]
+						: [],
 				failures: generated.failures,
 				notes: [
 					"Raster output: PNG only, no SVG or brand kit, cannot be enlarged.",

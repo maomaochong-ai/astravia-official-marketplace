@@ -205,5 +205,15 @@
   "brief.hint": "No image provider needed: the brief picks structure, style and palette, and the engine draws it locally.",
   "tool.image.label": "Generate an image mark",
   "notify.aiNoProvider": "No image provider is connected — add one in Astravia's settings, or stay on the vector engine.",
-  "dock.image": "Image mark"
+  "dock.image": "Image mark",
+  "card.image.title": "Generated mark",
+  "card.processing": "Generating…",
+  "card.preview": "Preview",
+  "card.alt": "Generated logo mark",
+  "card.openCanvas": "Open this design in the canvas",
+  "card.openCanvasShort": "Canvas",
+  "card.editTarget": "Edit this image",
+  "card.copy": "Copy the image",
+  "card.rasterNote": "Raster image — PNG only, cannot be enlarged.",
+  "notify.copyFailed": "The image could not be copied"
 }

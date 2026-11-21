@@ -4,9 +4,10 @@ import type { JSX } from "react";
 import "./style.css";
 import { LogoCanvas } from "./features/canvas/components/logo-canvas";
 import { setPluginContext } from "./plugin-context";
-import { IconGenerate } from "./shared/components/icons";
+import { IconGenerate, IconImageSize } from "./shared/components/icons";
 import { activeScopeKey, canvasInstructions, setActiveConversation, setCanvasEngaged } from "./features/canvas/canvas-prompt";
-import { INPUT_ACTION_ID, INPUT_ACTION_LABEL_KEY, TAB_LABEL_KEY } from "./contributions";
+import { IMAGE_CARD_TYPE, INPUT_ACTION_ID, INPUT_ACTION_LABEL_KEY, TAB_LABEL_KEY } from "./contributions";
+import { LogoImageCard } from "./features/message/logo-image-card";
 import { LOGO_TAB_ID } from "./tab-ids";
 import { registerTools } from "./tools/register-tools";
 
@@ -74,6 +75,27 @@ export default definePlugin({
 				component: PanelShell,
 			}),
 		);
+
+		// Raster results appear under the message that produced them, with a skeleton while
+		// the job runs. Without this, the tool's images only existed in the panel and the
+		// conversation looked like nothing happened.
+		if (ctx.permissions.has("ui.slot.message")) {
+			try {
+				owned.push(
+					ctx.ui.registerCardRenderer({
+						type: IMAGE_CARD_TYPE,
+						component: LogoImageCard,
+						title: "%card.image.title%",
+						icon: <IconImageSize className="size-3.5" />,
+						// Claims the space before the result lands, so the message does not jump.
+						pendingFor: (toolCall) =>
+							toolCall.toolName === "logocreator_image" ? { type: IMAGE_CARD_TYPE, payload: {} } : null,
+					}),
+				);
+			} catch (error) {
+				console.warn("[logocreator] the image card renderer could not be registered", error);
+			}
+		}
 
 		if (ctx.permissions.has("ui.slot.input-action")) {
 			try {

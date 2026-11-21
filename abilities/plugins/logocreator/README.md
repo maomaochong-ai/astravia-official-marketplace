@@ -4,6 +4,21 @@
 
 引擎完全本地：不需要密钥、不联网，`renderLogo(spec)` 是纯函数，同一组参数 + 同一个 seed 永远得到同一份字节。上游 [LogoCreator](https://github.com/Nutlope/logocreator) 是 Together AI 上的 FLUX 生成器，没有本地绘图引擎——这里把它补上了，AI 生成作为可选路径保留。
 
+## 结果回到对话（0.5.0）
+
+借鉴宿主内置的 `image-gen` 插件：**生成结果必须出现在用户正在看的地方**，而不只是躺在面板里。
+三条链路全部照它的形状实现：
+
+| 机制 | 宿主 API | 在本插件里的作用 |
+| --- | --- | --- |
+| 卡片渲染器 | `ui.registerCardRenderer` + `pendingFor` | 图像结果贴在产生它的那条消息下；作业在跑时先占位一个骨架，消息不跳 |
+| 图片引用 | `PluginImageRef[]`（含 url / rootId） | 工具返回可渲染 refs，而不是只有 blobId；`rootId` 让同一谱系的编辑互相替换而不是堆叠 |
+| 作为编辑目标 | `ui.setPromptAttachment` | 卡片上的「改这张」把图片挂到下一条 prompt，指令里点名 `logocreator_image` 与 `referenceImageId` |
+| 预览 / 复制 | `ui.previewImage` / `ui.copyImage` | 点图开宿主的灯箱（整组一起），复制走原生剪贴板（先重编码 PNG，因为原生只认 PNG/JPEG） |
+| 编辑真的落到图上 | `ctx.media.submit` 的 `image-to-image` | `logocreator_image(referenceImageId)` 走图生图，结果仍是同一个标志 |
+
+新增权限 `ui.slot.message`：卡片渲染、`previewImage`、`copyImage` 都由它把关。
+
 ## 自动识别图像服务（0.4.1）
 
 配置好图像服务后，插件自己会看到它，不需要用户先点开某个对话框：

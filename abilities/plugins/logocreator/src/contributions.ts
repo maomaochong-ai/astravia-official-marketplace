@@ -20,6 +20,12 @@ export const TOOL_LABELS = {
 	image: "%tool.image.label%",
 } as const;
 
+/**
+ * Card renderer type. Must be globally unique across plugins, hence the plugin id
+ * prefix — the same convention the host documents for `image-gen:preview`.
+ */
+export const IMAGE_CARD_TYPE = "logocreator:image";
+
 /** Input-action id. The host prefixes it with `<pluginId>:`, so it must not repeat the plugin id. */
 export const INPUT_ACTION_ID = "brand";
 

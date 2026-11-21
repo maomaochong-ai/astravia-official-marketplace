@@ -37,7 +37,8 @@ function host() {
 		putBlob: async () => ({ id: "b", url: "", mimeType: "image/png" }),
 		putBlobFromFile: async () => ({ id: "b", url: "", mimeType: "image/png" }),
 		readBlob: async () => null,
-		getBlobRef: async () => null,
+		// The card needs a URL: the tool resolves the same ref the host would.
+		getBlobRef: async (id: string) => ({ id, url: `blob:host/${id}`, mimeType: "image/png" }),
 		deleteBlob: async () => undefined,
 	};
 	const ctx = {
@@ -65,11 +66,25 @@ describe("the raster tool", () => {
 		const result = (await tool.handler({
 			trigger: { input: { prompt: "a plush owl in a hoodie, seated", brandName: "Hootly", count: 2 } },
 			session: { cwd: "C:/repo/demo" },
-		} as never)) as { ok: boolean; images: unknown[]; engine: string };
+		} as never)) as {
+			ok: boolean;
+			engine: string;
+			images: { id: string; url: string; mimeType?: string; rootId?: string }[];
+			designIds: string[];
+			cards: { type: string; key?: string; payload: unknown }[];
+		};
 
 		expect(result.ok).toBe(true);
 		expect(result.engine).toBe("ai");
+		// Refs the host can render, not just blob ids.
 		expect(result.images).toHaveLength(2);
+		expect(result.images[0]).toMatchObject({ mimeType: "image/png" });
+		expect(String(result.images[0].url).startsWith("blob:host/")).toBe(true);
+		// One card descriptor, keyed by lineage root so a later edit replaces it.
+		expect(result.cards).toHaveLength(1);
+		expect(result.cards[0]).toMatchObject({ type: "logocreator:image" });
+		expect(result.cards[0].key).toBe(result.images[0].rootId);
+		expect(result.designIds).toHaveLength(2);
 		// Stored, not just returned: the panel reads the store, not the tool result.
 		const saved = JSON.parse(files["designs.json"]);
 		expect(saved.items).toHaveLength(2);

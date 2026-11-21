@@ -205,5 +205,15 @@
   "brief.hint": "不需要接入任何图像服务：按描述定结构、风格与配色，本地直接出图。",
   "tool.image.label": "生成图像标志",
   "notify.aiNoProvider": "没有可用的图像服务：先去 Astravia 设置里接一个，或继续用矢量引擎。",
-  "dock.image": "图像标志"
+  "dock.image": "图像标志",
+  "card.image.title": "已生成的标志",
+  "card.processing": "生成中…",
+  "card.preview": "预览",
+  "card.alt": "生成的标志图像",
+  "card.openCanvas": "在画布里打开这个设计",
+  "card.openCanvasShort": "画布",
+  "card.editTarget": "改这张图",
+  "card.copy": "复制图片",
+  "card.rasterNote": "位图 —— 只能导出 PNG，无法放大。",
+  "notify.copyFailed": "图片复制失败"
 }

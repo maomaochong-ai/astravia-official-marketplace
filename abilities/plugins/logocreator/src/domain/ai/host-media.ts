@@ -153,6 +153,12 @@ export async function listImageProviders(ctx: PluginContext): Promise<HostImageP
 
 export interface HostGenerationRequest {
 	spec: LogoSpec;
+	/**
+	 * Existing blob to edit instead of generating from text. This makes the card's
+	 * "reuse as edit target" real: the provider runs image-to-image with the user's own
+	 * image as the source, so the result stays recognisably the same mark.
+	 */
+	referenceBlobId?: string;
 	/** 1–8; each one is a separate job so a partial failure still yields images. */
 	count: number;
 	/** Omit to use the first provider that can do text-to-image. */
@@ -190,10 +196,21 @@ export async function generateMarksWithHost(ctx: PluginContext, request: HostGen
 				operation: "generate",
 				providerId: provider.id,
 				kind: "image",
-				mode: "text-to-image",
+				mode: request.referenceBlobId ? "image-to-image" : "text-to-image",
 				prompt,
 				...(provider.modelId ? { modelId: provider.modelId } : {}),
 				dimensions: { width: 1024, height: 1024 },
+				...(request.referenceBlobId
+					? {
+							inputs: [
+								{
+									kind: "image" as const,
+									mimeType: "image/png",
+									source: { type: "plugin-blob" as const, blobId: request.referenceBlobId },
+								},
+							],
+						}
+					: {}),
 			});
 
 			// A provider may refuse synchronously (bad prompt, not signed in). Waiting on a
