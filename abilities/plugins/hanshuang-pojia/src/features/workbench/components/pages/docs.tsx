@@ -111,7 +111,10 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 
 	// 外部 select（例如先例页的「战例研究」）之后要能直接看到正文：
 	// 只看「选中项变了」这一次，不对「openId 为空」做出反应 —— 否则关掉弹窗会立即被重开。
-	const openedFor = useRef<string | null>(null);
+	//
+	// 首帧就把当前 selected 记成「已处理」：否则进页就被当成一次外部选中，
+	// 弹窗会在用户还没点任何东西时自己打开（注：useDocs 在加载后会默认选中第一篇）。
+	const openedFor = useRef<string | null>(docs.selected?.id ?? null);
 	useEffect(() => {
 		const id = docs.selected?.id ?? null;
 		if (id && openedFor.current !== id) {
@@ -177,7 +180,9 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 							{groupCounts.map(item => {
 								const open = item.id === group;
 								const label = t(DOC_GROUPS.find(entry => entry.id === item.id)?.labelKey ?? "docs.group.kb");
-								const topics = docs.groups.find(entry => entry.id === item.id)?.topics ?? [];
+								// 子目录 id 可能是空串（文件直接位于组根）：那种不是「一个子目录」，
+								// 渲染出来就是一行只有计数的空行 —— 截图里那个孤零零的「5」。
+								const topics = (docs.groups.find(entry => entry.id === item.id)?.topics ?? []).filter(sub => sub.id.trim().length > 0);
 								return (
 									<div key={item.id}>
 										{/* 再点一次已选中的组：先退子目录，再退组。 */}

@@ -6,7 +6,13 @@ import { entropyProfile, type EntropyBucket } from "../../../domain/entropy";
 import { stringKind, type StringKind } from "../../../domain/string-kinds";
 import { renderMarkdown, reportToJson, type TriageReport } from "../../../domain/report/report";
 import { scopeForSample } from "../../../domain/sample-scope";
-import { EMPTY_PROFILE, PROBE_PROFILE_PATH, type ProbeProfile, type ProbeRecord } from "../../../domain/refusal-probe";
+import {
+	EMPTY_PROFILE,
+	PROBE_PROFILE_PATH,
+	type HostModelSnapshot,
+	type ProbeProfile,
+	type ProbeRecord,
+} from "../../../domain/refusal-probe";
 import type { ReportFile } from "../bridge";
 import { resolveSamplePath } from "../../../domain/sample-path";
 import { readNativeFacts } from "../../../domain/native/detect";
@@ -158,6 +164,8 @@ export interface WorkbenchModel {
 		/** 要测谁：端点 / 模型 / 风格 / 语言 / 档数。非机密，插件作用域持久化。 */
 		profile: ProbeProfile;
 		patchProfile(patch: Partial<ProbeProfile>): void;
+		/** 宿主当前模型（provider / id / api 风格）；null = 还没读到。 */
+		hostModel: HostModelSnapshot | null;
 	};
 	/** 把注入/卸载脚本落到工作区 `.hanshuang/inject/`；返回相对路径或 null。 */
 	saveInjectScript(name: string, content: string): Promise<string | null>;
@@ -463,6 +471,19 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 			alive = false;
 		};
 	}, [bridge]);
+
+	// 宿主模型快照：运行时每轮写、这里进提示词页时读一次。
+	const [hostModel, setHostModel] = useState<HostModelSnapshot | null>(null);
+	useEffect(() => {
+		if (page !== "prompts") return;
+		let alive = true;
+		void bridge.hostModel().then(snapshot => {
+			if (alive) setHostModel(snapshot);
+		});
+		return () => {
+			alive = false;
+		};
+	}, [bridge, page]);
 
 	const patchProfile = useCallback((patch: Partial<ProbeProfile>) => {
 		setProbeProfile(previous => ({ ...previous, ...patch }));
@@ -797,7 +818,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		setStaticView,
 		patchKnowledge,
 		myCases,
-		probe: { record: probeRecord, refresh: refreshProbe, profile: probeProfile, patchProfile },
+		probe: { record: probeRecord, refresh: refreshProbe, profile: probeProfile, patchProfile, hostModel },
 		saveInjectScript: (name, content) => bridge.saveInjectScript(name, content),
 		listReports: () => bridge.listReports(),
 		readReport: path => bridge.readReport(path),

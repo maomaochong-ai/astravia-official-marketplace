@@ -33,7 +33,12 @@ export function SamplesPage({ model }: PageProps) {
 			 * 窄面板（< 880px，也就是大多数时候）下基本看不到。
 			 * 换成 flex：宽屏横排、窄屏竖排，两者都能拿到有界高度。
 			 */}
-			<div className="fb-page fb-fill @min-[880px]:flex-row">
+			{/*
+			 * 两栏：左样选择器（固定窄列）、右说明与边界。
+			 * 用 .fb-samples 的 grid 模板而不是容器查询 —— 容器宽度不可靠时，
+			 * 左栏会占满一行而右栏整块掉到下面（截图里的样子）。
+			 */}
+			<div className="fb-page fb-fill fb-samples">
 				{/* 当前样本：滚出 picker 视野后仍要知道「正在看哪一份」。 */}
 				{model.selectedPath ? (
 					<div className="flex shrink-0 flex-wrap items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 ring-1 ring-line-subtle">
@@ -50,7 +55,7 @@ export function SamplesPage({ model }: PageProps) {
 				) : null}
 				<Card
 					title={t("page.samples.picker")}
-					className="min-h-[180px] max-h-[46vh] @min-[880px]:max-h-none @min-[880px]:w-[260px] @min-[880px]:shrink-0"
+					className="fb-samples-picker min-h-[180px]"
 					bodyClassName="flex min-h-0 flex-1 flex-col pt-2"
 				>
 					<SamplePicker
@@ -66,7 +71,7 @@ export function SamplesPage({ model }: PageProps) {
 					/>
 				</Card>
 
-				<div className="fb-scroll flex min-h-0 flex-col gap-3 overflow-y-auto @min-[880px]:flex-1">
+				<div className="fb-scroll flex min-h-0 flex-col gap-3 overflow-y-auto">
 					<Card title={t("page.samples.formats")} bodyClassName="px-1 py-1">
 						<DataTable columns={[t("page.samples.col.format"), t("page.samples.col.parsed")]} rows={rows} mono={[true, false]} />
 					</Card>

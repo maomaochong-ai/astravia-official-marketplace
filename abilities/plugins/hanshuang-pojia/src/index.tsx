@@ -299,6 +299,14 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 		saveMyCases: (cases, cwd) => writeJson(ctx.storage, storageEntry("cases", cwd).path, cases),
 		labMode: () => readJson<LabState>(ctx.storage, LAB_STATE_PATH),
 		probeRecord: () => readJson<ProbeRecord>(ctx.storage, PROBE_STATE_PATH),
+		hostModel: async () => {
+			try {
+				const raw = await ctx.storage.readFile("workbench/host-model.json", "utf8");
+				return raw ? (JSON.parse(raw) as never) : null;
+			} catch {
+				return null;
+			}
+		},
 		saveLabMode: state => {
 			// 面板开关是写穿路径：缓存先更新，否则下一条消息仍按旧值注入。
 			cacheLabState(ctx, state);

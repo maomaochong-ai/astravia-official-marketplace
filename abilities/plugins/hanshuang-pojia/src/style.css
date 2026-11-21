@@ -301,7 +301,16 @@
 	background: color-mix(in oklab, var(--fb-accent) 22%, transparent);
 }
 
-.fb-page {
+/*
+ * 页面容器。
+ *
+ * 用 `:where()` 把特异性降到 0：本文件在构建产物里排在 Tailwind 工具类**之后**，
+ * 若用 `.fb-page`（0,1,0）直接写 `display` / `flex-direction`，就会盖掉页面上的
+ * `grid` / `@min-[880px]:flex-row` —— 这正是样本页「左栏 260px、右栏却跑到下面」与
+ * 设置页「两栏变上下」的真实原因：同特异度、后出现者胜。
+ * 降为 0 后：页面不给这些属性时用这里，给了就听页面的。
+ */
+:where(.fb-page) {
 	display: flex;
 	flex-direction: column;
 	flex: 1 1 auto;
@@ -325,7 +334,52 @@
 .fb-page > :not(.fb-fill):not(.fb-fill-scroll) {
 	flex: 0 0 auto;
 }
+/*
+/*
+ * 样本页两栏：左选择器固定 240–300，右说明吃剩余。
+ *
+ * 与设置页同一套做法（`minmax` 而不是容器查询）。窄面板下变成单列：
+ * 左栏在上、右栏在下，两边的滚动区都还有上限。
+ */
+.fb-samples {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	grid-template-rows: auto minmax(0, 1fr);
+	min-height: 0;
+}
 
+.fb-samples-picker {
+	max-height: min(46vh, 420px);
+}
+
+/* 面板够宽（约 820px 以上）才并排：再窄左栏会挤得只剩文件名几个字。 */
+@container (min-width: 820px) {
+	.fb-samples {
+		grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+		grid-template-rows: minmax(0, 1fr);
+	}
+	.fb-samples-picker {
+		max-height: none;
+	}
+}
+
+ * 设置页两栏：左 tab 固定 88–132px，右卡吃剩余高度。
+ *
+ * 不用容器查询是故意的：面板宽度由宿主的活动栏决定，容器查询的参照宽度与用户看到的
+ * 常常差一截，结果就是「该两栏却堆在顶部」。这里只用 minmax：窄了左栏自己收窄，
+ * 四个分组各三个字，始终放得下。
+ */
+.fb-settings {
+	display: grid;
+	grid-template-columns: minmax(88px, 132px) minmax(0, 1fr);
+	grid-template-rows: minmax(0, 1fr);
+	min-height: 0;
+}
+
+.fb-settings-tabs {
+	max-height: 100%;
+	overflow-y: auto;
+}
 /* 页面上唯一吃掉剩余高度的容器：它贴到底部，内部自己滚。 */
 .fb-fill {
 	flex: 1 1 auto;
@@ -336,6 +390,19 @@
 	flex: 1 1 auto;
 	min-height: 0;
 	overflow-y: auto;
+}
+/*
+ * 两行封顶。
+ *
+ * Tailwind 的 `line-clamp-*` 需要 `-webkit-box` 与 `overflow: hidden`，在内联元素上不生效
+ * —— 于是「加了类却还是溢出」。这里给一个块级工具类，只做这一件事。
+ */
+.fb-line-clamp-2 {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	overflow: hidden;
+	overflow-wrap: anywhere;
 }
 
 /* 窄面板：只改三个变量，后面所有宽度自动跟着降。 */

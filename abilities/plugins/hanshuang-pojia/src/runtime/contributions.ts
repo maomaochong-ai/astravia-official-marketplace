@@ -1,6 +1,7 @@
 import { readJsonFile, writeJsonFile } from "@astravia-org/plugin-sdk";
 import type { ConversationScenario, Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { KERNEL_BLOCK_ID, KERNEL_PRIORITY, buildKernelBlock } from "../domain/kernel";
+import { HOST_MODEL_PATH } from "../domain/refusal-probe";
 import { LAB_DEFAULT, LAB_OFF, parseLabCommand, type LabState } from "../domain/lab-mode";
 import { LAB_STATE_PATH } from "../features/workbench/hooks/use-lab";
 import { SYSTEM_PROMPT_BLOCK_ID, SYSTEM_PROMPT_BODY, SYSTEM_PROMPT_PRIORITY } from "../domain/system-prompt.generated";
@@ -296,6 +297,38 @@ function promptContexts(prompt: string): string[] {
  *
  * 每个贡献单独 try：旧宿主没有这些 API，或用户没授予对应权限时只跳过它。
  */
+/**
+ * 记下宿主当前在用的模型，给拒答梯度的「要测谁」预填。
+ *
+ * 这是插件唯一能看到「用户在用什么模型」的地方：SDK 的 models API 只暴露插件自己发布的
+ * provider，读不到用户自己配的那些；而 system prompt 的上下文带着 model.provider /
+ * model.id / model.api。baseUrl 与密钥哪里都拿不到 —— 所以面板只预填另外三项，
+ * 端点是用户必须自己填一次的。
+ *
+ * 只存非机密三项，落在插件作用域；写失败不影响注入。
+ */
+async function rememberHostModel(
+	ctx: PluginContext,
+	model: { provider?: string; id?: string; api?: string } | undefined,
+): Promise<void> {
+	const provider = model?.provider?.trim();
+	const id = model?.id?.trim();
+	if (!provider || !id) return;
+	const api = model?.api?.trim() ?? "";
+	const snapshot = {
+		provider,
+		id,
+		// 「openai-completions / openai-responses」都归 openai；含 anthropic 的走另一套。
+		apiStyle: /anthropic/i.test(api) ? "anthropic" : "openai",
+		at: new Date().toISOString(),
+	};
+	try {
+		await ctx.storage.writeFile(HOST_MODEL_PATH, JSON.stringify(snapshot), "utf8");
+	} catch {
+		/* 只读存储或配额满：面板少了预填，其他都不受影响。 */
+	}
+}
+
 export function registerRuntimeContributions(ctx: PluginContext): Disposable[] {
 	const disposables: Disposable[] = [];
 
@@ -307,6 +340,8 @@ export function registerRuntimeContributions(ctx: PluginContext): Disposable[] {
 				handler: async context => {
 					try {
 						logSafetyEndpointOnce(context?.model ?? {});
+						// 顺手把宿主当前模型记给面板（拒答梯度要测谁）。
+						await rememberHostModel(ctx, context?.model);
 					} catch {
 						/* 观测失败不影响注入 */
 					}

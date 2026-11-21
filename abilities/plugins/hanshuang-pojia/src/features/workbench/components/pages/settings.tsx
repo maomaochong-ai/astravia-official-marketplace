@@ -99,13 +99,18 @@ export function SettingsPage({ model }: PageProps) {
 					</button>
 				}
 			/>
-			<div className="fb-page grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 @min-[760px]:grid-cols-[144px_minmax(0,1fr)] @min-[760px]:grid-rows-[minmax(0,1fr)]">
+			{/*
+			 * 两栏：左 tab、右卡片。宽度由 CSS 类 `.fb-settings` 给，不用容器查询 ——
+			 * 面板是活动栏里的一格，容器查询的参照宽度常常不是用户看到的那个，
+			 * 于是会「该两栏却堆在顶部」。四项各三个字，竖着放永远放得下。
+			 */}
+			<div className="fb-page fb-settings">
 				{/* 左：分组菜单。窄面板变成一行横向标签，不用另做一套交互。 */}
 				<nav
 					role="tablist"
 					aria-orientation="vertical"
 					aria-label={t("page.settings.title")}
-					className="flex shrink-0 flex-row gap-1 overflow-x-auto rounded-xl bg-surface-2 p-1 ring-1 ring-line-subtle @min-[760px]:flex-col @min-[760px]:overflow-visible"
+					className="fb-settings-tabs flex shrink-0 flex-col gap-1 self-start rounded-xl bg-surface-2 p-1 ring-1 ring-line-subtle"
 				>
 					{TABS.map(item => (
 						<button
@@ -115,7 +120,7 @@ export function SettingsPage({ model }: PageProps) {
 							role="tab"
 							aria-selected={tab === item}
 							data-testid={`settings-tab-${item}`}
-							className={`shrink-0 rounded-md px-2.5 py-1.5 text-left text-[11.5px] transition-colors ${
+							className={`w-full shrink-0 rounded-md px-2.5 py-1.5 text-left text-[11.5px] transition-colors ${
 								tab === item ? "bg-accent-soft font-medium text-accent" : "text-text-2 hover:bg-surface-hover hover:text-text"
 							}`}
 						>

@@ -60,8 +60,9 @@ describe("the central area fills the panel instead of leaving a gap at the botto
 	it("the page column grows, and one card may take the remaining height", () => {
 		const css = read("src/style.css");
 		// .fb-page 撑满：内容短时卡片贴到底部，不再在最后一关下面留一条底色。
-		expect(css).toMatch(/\.fb-page\s*\{[^}]*flex:\s*1 1 auto/);
-		expect(css).toMatch(/\.fb-page\s*\{[^}]*min-height:\s*0/);
+		// 特异性降为 0（`:where`）：本文件排在工具类之后，用 .fb-page 会盖掉页面的 grid/flex-row。
+		expect(css).toMatch(/:where\(\.fb-page\)\s*\{[^}]*flex:\s*1 1 auto/);
+		expect(css).toMatch(/:where\(\.fb-page\)\s*\{[^}]*min-height:\s*0/);
 		// .fb-fill 是「吃掉剩余高度」的那张卡；卡体滚动交给 .fb-fill-scroll。
 		expect(css).toMatch(/\.fb-fill\s*\{[^}]*flex:\s*1 1 auto/);
 		expect(css).toMatch(/\.fb-fill-scroll\s*\{[^}]*overflow-y:\s*auto/);

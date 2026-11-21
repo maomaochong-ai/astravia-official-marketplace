@@ -7,6 +7,7 @@ import {
 	profileReady,
 	probesFor,
 	rewritesFor,
+	type HostModelSnapshot,
 	type ProbeProfile,
 	type ProbeRecord,
 	type RefusalProbe,
@@ -16,6 +17,8 @@ import { Icon } from "../shell/icon";
 
 export interface ProbeRefusalCardProps {
 	record: ProbeRecord | null;
+	/** 宿主当前模型（provider / id / api 风格）。端点读不到，见 domain 注释。 */
+	hostModel: HostModelSnapshot | null;
 	/** 要测谁：端点 / 模型 / 风格 / 语言 / 档数。面板持有，非机密。 */
 	profile: ProbeProfile;
 	patchProfile(patch: Partial<ProbeProfile>): void;
@@ -55,7 +58,7 @@ const VERDICT_KEY: Record<string, string> = {
  *  5. **改写法再测**。每条被拦的档位都能展开成三档可发送的改写文本，按同一档重测，
  *     并把结论与上一份记录对比 —— 「改了有没有用」是这套功能唯一要回答的问题。
  */
-export function ProbeRefusalCard({ record, profile, patchProfile, onBrief, onDiscuss, refresh }: ProbeRefusalCardProps) {
+export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onBrief, onDiscuss, refresh }: ProbeRefusalCardProps) {
 	const { t } = useTranslation();
 	const [ladder, setLadder] = useState<"standard" | "custom">("standard");
 	const [custom, setCustom] = useState("");
@@ -101,6 +104,25 @@ export function ProbeRefusalCard({ record, profile, patchProfile, onBrief, onDis
 		>
 			{/* ① 要测谁：表单式两列，窄面板自动降单列。 */}
 			<div className="border-b border-line-subtle px-3 py-2">
+				{/* 宿主当前模型：能自动读到的三项先填好，用户只剩端点要填。 */}
+				{hostModel ? (
+					<div className="mb-1.5 flex flex-wrap items-center gap-1.5 rounded-md bg-surface-3/60 px-2 py-1">
+						<span className="shrink-0 text-[10.5px] text-text-4">{t("probe.host.detected")}</span>
+						<span className="min-w-0 flex-1 fb-wrap font-mono text-[10.5px] text-text-2">
+							{hostModel.provider} / {hostModel.id}
+							<span className="ms-1 text-text-4">· {hostModel.apiStyle}</span>
+						</span>
+						<button
+							type="button"
+							onClick={() =>
+								patchProfile({ model: hostModel.id, apiStyle: hostModel.apiStyle, authHeader: hostModel.apiStyle === "anthropic" ? "x-api-key" : "Authorization" })
+							}
+							className="shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-[10.5px] font-medium text-accent transition-colors hover:brightness-110"
+						>
+							{t("probe.host.use")}
+						</button>
+					</div>
+				) : null}
 				<div className="pb-1 text-[9.5px] uppercase tracking-wider text-text-4">{t("probe.profile.title")}</div>
 				<div className="grid gap-1.5 @min-[420px]:grid-cols-2">
 					<label className="fb-field">
@@ -168,6 +190,8 @@ export function ProbeRefusalCard({ record, profile, patchProfile, onBrief, onDis
 				{ready ? null : <p className="mt-1 text-[10.5px] leading-relaxed text-risk-medium">{t("probe.needProfile")}</p>}
 				{/* 密钥不在这里：写进来就会进对话记录。 */}
 				<p className="mt-1 text-[10.5px] leading-relaxed text-text-4">{t("probe.profile.keyNote")}</p>
+				{/* 端点为什么必须手填一次：SDK 不给，说了才不像是漏做。 */}
+				<p className="mt-0.5 text-[10.5px] leading-relaxed text-text-4">{t("probe.host.note")}</p>
 			</div>
 
 			{/* ② 选梯度 */}

@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { WorkbenchBridge } from "../../features/workbench/bridge";
 import { WorkbenchScreen } from "../../features/workbench/components/workbench-screen";
 
@@ -41,6 +43,7 @@ function makeBridge(): WorkbenchBridge {
 		labMode: vi.fn(async () => null),
 		saveLabMode: vi.fn(async () => true),
 		probeRecord: vi.fn(async () => null),
+		hostModel: vi.fn(async () => null),
 		library: vi.fn(async () => null),
 		saveLibrary: vi.fn(async () => true),
 		settings: vi.fn(async () => null),
@@ -67,12 +70,15 @@ afterEach(cleanup);
 describe("samples / findings / strings / disasm sidebars", () => {
 	it("gives the sample picker a bounded height on a narrow panel", async () => {
 		await open("samples");
-		// 左栏卡片必须自带高度上限：放在 grid 里 `fill` 不生效，文件一多就把右栏推走。
+		// 左栏卡片必须自带高度上限（文件一多不能把右栏推走）。
+		// 上限从行内工具类移进 `.fb-samples-picker`：一份限制同时管宽屏解除，
+		// 也不再依赖容器查询工具类能否盖过 `.fb-page`。
 		const picker = screen.getByText("page.samples.picker").closest("section");
-		expect(picker?.className).toContain("max-h-[46vh]");
+		expect(picker?.className).toContain("fb-samples-picker");
+		const css = readFileSync(join(__dirname, "..", "..", "..", "src/style.css"), "utf8");
+		expect(css).toMatch(/\.fb-samples-picker\s*\{[^}]*max-height:\s*min\(46vh/);
 		// 宽屏才解除上限并固定成窄列。
-		expect(picker?.className).toContain("@min-[880px]:w-[260px]");
-		expect(picker?.className).toContain("@min-[880px]:max-h-none");
+		expect(css).toMatch(/@container \(min-width: 820px\)[\s\S]{0,240}grid-template-columns/);
 	});
 
 	it("offers a way out of the findings empty state", async () => {

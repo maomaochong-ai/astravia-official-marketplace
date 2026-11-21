@@ -120,19 +120,21 @@ export function GuidePage({ model }: PageProps) {
 											onClick={() => setActive(stage)}
 											aria-current={selected ? "step" : undefined}
 											title={`${t(`guide.stage.${stage}.title`)} · ${STAGE_PAGES[stage].map(pageLabel).join(" / ")}`}
-											className={`flex w-[150px] flex-col gap-1 rounded-lg border px-2.5 py-2 text-left transition-colors ${
+											// overflow-hidden：圆角要真的裁住内容；min-w-0：flex 子项默认 min-width:auto 会顶破宽度。
+											className={`flex w-[150px] min-w-0 flex-col gap-1 overflow-hidden rounded-lg border px-2.5 py-2 text-left transition-colors ${
 												selected ? "border-accent/50 bg-accent-soft" : "border-line-subtle bg-surface hover:bg-surface-hover"
 											}`}
 										>
-											<span className="flex items-center gap-1.5">
+											<span className="flex min-w-0 items-center gap-1.5">
 												<span aria-hidden className="flex size-4 shrink-0 items-center justify-center rounded-full bg-surface-4 font-mono text-[9.5px] text-text-2">
 													{index + 1}
 												</span>
-												<span className={`truncate text-[11.5px] font-medium ${selected ? "text-accent" : "text-text"}`}>
+												{/* 不再 truncate：段名是这一档唯一的识别信息，截成「语义核…」没有意义。 */}
+												<span className={`min-w-0 flex-1 fb-wrap text-[11.5px] font-medium leading-snug ${selected ? "text-accent" : "text-text"}`}>
 													{t(`guide.stage.${stage}.title`)}
 												</span>
 											</span>
-											<span className="line-clamp-2 text-[10.5px] leading-snug text-text-4">
+											<span className="fb-line-clamp-2 block min-w-0 text-[10.5px] leading-snug text-text-4">
 												{STAGE_PAGES[stage].map(pageLabel).join(" / ")}
 											</span>
 										</button>

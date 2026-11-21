@@ -1,6 +1,7 @@
 import type { PluginFsEntry } from "@astravia-org/plugin-sdk";
 import type { LabState } from "../../domain/lab-mode";
 import type { ProbeRecord } from "../../domain/refusal-probe";
+import type { HostModelSnapshot } from "../../domain/refusal-probe";
 import type { ReportMode, TriageReport } from "../../domain/report/report";
 import type { TriageSample } from "../../domain/triage";
 import type { MyCase } from "../../domain/my-cases";
@@ -43,6 +44,8 @@ export interface WorkbenchBridge {
 	saveLabMode(state: LabState): Promise<boolean>;
 	/** 上一次 `probe_refusal` 的落盘记录；没有就是 null。 */
 	probeRecord(): Promise<ProbeRecord | null>;
+	/** 宿主当前模型快照（provider / id / api 风格）；没读到过就是 null。 */
+	hostModel(): Promise<HostModelSnapshot | null>;
 	saveReport(report: TriageReport, mode: ReportMode, format: "markdown" | "json"): Promise<string | null>;
 	/** 工作区 `reports/` 下的报告文件（对话里产出的那些）。 */
 	listReports(): Promise<ReportFile[]>;

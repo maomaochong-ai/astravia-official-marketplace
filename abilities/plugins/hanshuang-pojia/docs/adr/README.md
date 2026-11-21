@@ -28,6 +28,7 @@
 | 0017 | [cross-sidebar-consistency](./0017-cross-sidebar-consistency.md) | 七档字号、一种统计列宽、一种焦点色；超长正文只截渲染 |
 | 0018 | [probe-actionability](./0018-probe-actionability.md) | 建议必须可执行；重测要能对比；页头只留一个主动作 |
 | 0019 | [probe-first-class-and-real-cost](./0019-probe-first-class-and-real-cost.md) | 拒答梯度升为一等公民；卡顿的真实成本在工具表 schema |
+| 0020 | [host-model-detection-and-cascade-layout](./0020-host-model-detection-and-cascade-layout.md) | 宿主模型自动预填；`:where` 修层叠事故 |
 
 ## 引用边界
 

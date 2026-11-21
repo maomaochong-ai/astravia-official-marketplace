@@ -206,6 +206,7 @@ export function PromptsPage({ model }: PageProps) {
 					{/* 拒答梯度：面板负责「要测谁 + 选梯度」，执行交给宿主 AI（面板没有凭据）。 */}
 					<ProbeRefusalCard
 						record={model.probe.record}
+						hostModel={model.probe.hostModel}
 						profile={model.probe.profile}
 						patchProfile={model.probe.patchProfile}
 						refresh={model.probe.refresh}

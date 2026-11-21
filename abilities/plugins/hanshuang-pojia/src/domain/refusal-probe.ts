@@ -212,6 +212,22 @@ export const PROBE_PROFILE_PATH = "workbench/probe-profile.json";
 export const PROBE_STATE_PATH = "workbench/probe-refusal.json";
 
 /**
+ * 宿主当前模型快照的落点：运行时侧写、面板读。
+ *
+ * 只含 provider / model id / api 风格 —— 没有 baseUrl（SDK 不给）、没有密钥（永远不存）。
+ */
+export const HOST_MODEL_PATH = "workbench/host-model.json";
+
+/** 运行时写、面板读的宿主模型快照。 */
+export interface HostModelSnapshot {
+	provider: string;
+	id: string;
+	apiStyle: ProbeApiStyle;
+	/** ISO 时间：面板要显示「什么时候读到的」。 */
+	at: string;
+}
+
+/**
  * 探测档案：面板持有的「要测谁」。
  *
  * 只存**非机密**字段：端点、模型、认证头名、请求风格、语言、档数。
