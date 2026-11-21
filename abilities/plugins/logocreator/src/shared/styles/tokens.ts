@@ -18,17 +18,29 @@ export const TEXTAREA =
 	"w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-[12px] leading-relaxed text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring";
 
 export const BUTTON_PRIMARY =
-	"inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary px-3.5 text-[13px] font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50";
+	"inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-[13px] font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50";
 
 export const BUTTON_SECONDARY =
-	"inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-[12px] font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50";
+	"inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-2 text-[12px] font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50";
 
 
 export const CHIP =
-	"inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors";
+	"inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-medium transition-colors";
 
 export const CHIP_IDLE = "border-border bg-background text-muted-foreground hover:border-foreground/25 hover:text-foreground";
 
 export const CHIP_ACTIVE = "border-primary bg-primary/10 text-foreground";
 
 export const FOCUS_RING = "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background";
+
+/**
+ * Notes and favourites use one semantic colour, not the brand accent: a pin must stay
+ * distinguishable from whatever palette the user picked for the mark. Amber is chosen
+ * once here so the five call sites cannot drift apart, and so a future theme swap has
+ * exactly one place to change.
+ */
+export const NOTE_DOT = "bg-amber-500";
+export const NOTE_SOFT = "bg-amber-500/10";
+export const NOTE_RING = "border-amber-500";
+export const NOTE_INK = "text-amber-600";
+export const NOTE_STAR = "text-amber-500";

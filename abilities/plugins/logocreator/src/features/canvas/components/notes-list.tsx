@@ -1,7 +1,7 @@
 import type { JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { CanvasNote } from "../../../domain/notes";
-import { BUTTON_SECONDARY, FOCUS_RING } from "../../../shared/styles/tokens";
+import { BUTTON_SECONDARY, FOCUS_RING, NOTE_DOT, NOTE_SOFT } from "../../../shared/styles/tokens";
 import { IconCheck } from "../../../shared/components/icons";
 
 export interface NotesListProps {
@@ -43,8 +43,8 @@ export function NotesList({ notes, onRemove, onHandToAgent, busy }: NotesListPro
 			</div>
 			<ul className="space-y-1">
 				{pending.map((note, index) => (
-					<li key={note.id} className="flex items-start gap-1.5 rounded-lg bg-amber-500/10 px-2 py-1">
-						<span className="mt-[1px] flex size-4 shrink-0 items-center justify-center rounded-full bg-amber-500 text-[9px] font-semibold text-white">
+					<li key={note.id} className={`flex items-start gap-1.5 rounded-lg ${NOTE_SOFT} px-2 py-1`}>
+						<span className={`mt-[1px] flex size-4 shrink-0 items-center justify-center rounded-full ${NOTE_DOT} text-[9px] font-semibold text-white`}>
 							{index + 1}
 						</span>
 						<span className="min-w-0 flex-1 break-words text-[11px] leading-snug text-foreground">{note.text}</span>

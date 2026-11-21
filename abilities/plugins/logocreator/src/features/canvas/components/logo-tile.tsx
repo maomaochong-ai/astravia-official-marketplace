@@ -2,7 +2,7 @@ import type { JSX } from "react";
 import type { DesignRecord } from "../../../domain/history-store";
 import { formatRelativeTime } from "../../../shared/formatters/bytes";
 import { IconCopy, IconPalette, IconStar, IconTrash, IconVector } from "../../../shared/components/icons";
-import { FOCUS_RING } from "../../../shared/styles/tokens";
+import { FOCUS_RING, NOTE_STAR } from "../../../shared/styles/tokens";
 import { LogoPreview } from "./logo-preview";
 
 export interface LogoTileProps {
@@ -41,7 +41,7 @@ function IconButton({
 				onClick();
 			}}
 			className={`flex size-6 items-center justify-center rounded-md transition-colors ${
-				active ? "text-amber-500" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+				active ? NOTE_STAR : "text-muted-foreground hover:bg-muted hover:text-foreground"
 			}`}
 		>
 			{children}
@@ -94,10 +94,10 @@ export function LogoTile({
 
 			<figcaption className="flex flex-col gap-1 px-2 py-1.5">
 				<div className="flex items-center justify-between gap-1">
-					<span className="truncate text-[11.5px] font-medium text-foreground" title={`${label} · ${record.subject}`}>
+					<span className="truncate text-[12px] font-medium text-foreground" title={`${label} · ${record.subject}`}>
 						{label}
 					</span>
-					<span className="shrink-0 text-[9.5px] text-muted-foreground">
+					<span className="shrink-0 text-[10px] text-muted-foreground">
 						{formatRelativeTime(record.createdAt, locale)}
 					</span>
 				</div>

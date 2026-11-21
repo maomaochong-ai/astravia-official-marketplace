@@ -60,7 +60,7 @@ export function ColourPicker({ value, autoHex, onChange, swatches, labels }: Col
 				onClick={() => onChange(AUTO)}
 				aria-pressed={isAuto}
 				title={labels.auto}
-				className={`${FOCUS_RING} flex h-7 items-center gap-1.5 rounded-full border px-2 text-[10.5px] font-medium transition-colors ${
+				className={`${FOCUS_RING} flex h-7 items-center gap-1.5 rounded-full border px-2 text-[11px] font-medium transition-colors ${
 					isAuto ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
 				}`}
 			>
@@ -112,7 +112,7 @@ export function ColourPicker({ value, autoHex, onChange, swatches, labels }: Col
 				type="button"
 				onClick={() => fileRef.current?.click()}
 				disabled={busy}
-				className={`${FOCUS_RING} flex h-7 items-center gap-1 rounded-full border border-border px-2 text-[10.5px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50`}
+				className={`${FOCUS_RING} flex h-7 items-center gap-1 rounded-full border border-border px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50`}
 				title={labels.fromImage}
 			>
 				{busy ? "…" : labels.fromImage}

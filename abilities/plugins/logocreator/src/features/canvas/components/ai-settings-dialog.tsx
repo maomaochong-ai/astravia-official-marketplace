@@ -65,7 +65,7 @@ export function AiSettingsDialog({
 						{refreshing ? t("ai.refreshing") : t("ai.refresh")}
 					</button>
 					<span className="flex-1" />
-					<span className={`text-[10.5px] ${providers.length > 0 ? "text-emerald-600" : "text-muted-foreground"}`}>
+					<span className={`text-[11px] text-muted-foreground`}>
 						{providers.length > 0 ? t("ai.ready", { count: providers.length }) : denied ? t("ai.deniedShort") : t("ai.none")}
 					</span>
 				</div>
@@ -74,8 +74,8 @@ export function AiSettingsDialog({
 			<div className="space-y-3">
 				{providers.length === 0 ? (
 					<p
-						className={`rounded-lg px-3 py-2 text-[11.5px] leading-relaxed ${
-							denied ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" : "bg-muted/60 text-muted-foreground"
+						className={`rounded-lg px-3 py-2 text-[12px] leading-relaxed ${
+							denied ? "bg-destructive/10 text-destructive" : "bg-muted/60 text-muted-foreground"
 						}`}
 					>
 						{denied ? t("ai.denied") : t("ai.noneBody")}
@@ -92,7 +92,7 @@ export function AiSettingsDialog({
 											type="button"
 											onClick={() => onChooseProvider(provider.id)}
 											aria-pressed={selected}
-											className={`${FOCUS_RING} flex w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-left transition-colors ${
+											className={`${FOCUS_RING} flex w-full items-center justify-between gap-2 rounded-lg border px-2 py-1.5 text-left transition-colors ${
 												selected ? "border-primary bg-primary/10" : "border-border hover:border-foreground/25"
 											}`}
 										>
@@ -115,10 +115,10 @@ export function AiSettingsDialog({
 					</div>
 				)}
 
-				<p className="rounded-lg bg-muted/60 px-2.5 py-2 text-[10.5px] leading-relaxed text-muted-foreground">
+				<p className="rounded-lg bg-muted/60 px-2 py-2 text-[11px] leading-relaxed text-muted-foreground">
 					{t("ai.cost")}
 				</p>
-				<p className="text-[10.5px] leading-relaxed text-muted-foreground">{t("ai.engineNote")}</p>
+				<p className="text-[11px] leading-relaxed text-muted-foreground">{t("ai.engineNote")}</p>
 			</div>
 		</ModalDialog>
 	);

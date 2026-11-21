@@ -1,4 +1,5 @@
 import type { JSX } from "react";
+import { NOTE_DOT } from "../../../shared/styles/tokens";
 import type { DesignRecord } from "../../../domain/history-store";
 import { LogoPreview } from "./logo-preview";
 import { LogoTile } from "./logo-tile";
@@ -71,7 +72,7 @@ export function ResultGrid({
 					>
 						<LogoPreview record={record} alt={label(record)} className="size-full object-contain" />
 						{record.favorite ? (
-							<span className="absolute right-0.5 top-0.5 size-1.5 rounded-full bg-amber-500" aria-hidden />
+							<span className={`absolute right-0.5 top-0.5 size-1.5 rounded-full ${NOTE_DOT}`} aria-hidden />
 						) : null}
 					</button>
 				))}

@@ -100,7 +100,7 @@ export function CanvasControls({
 								type="button"
 								onClick={() => patch({ surface: option.id })}
 								aria-pressed={active}
-								className={`flex h-7 items-center gap-1.5 rounded-full border px-2 text-[10.5px] font-medium transition-colors ${
+								className={`flex h-7 items-center gap-1.5 rounded-full border px-2 text-[11px] font-medium transition-colors ${
 									active ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
 								}`}
 							>
@@ -127,7 +127,7 @@ export function CanvasControls({
 				aiMode={aiMode}
 			/>
 
-			<div className={`${CARD} bg-muted/30 px-2.5 py-2 text-[10.5px] leading-snug text-muted-foreground`}>
+			<div className={`${CARD} bg-muted/30 px-2 py-2 text-[11px] leading-snug text-muted-foreground`}>
 				{t("hint.localEngine")}
 			</div>
 		</div>

@@ -47,14 +47,14 @@ export function DetailControls({ spec, onPatch, variations, onVariations, subjec
 					placeholder={t("placeholder.intent")}
 					aria-label={t("label.intent")}
 				/>
-				<p className="mt-1 text-[10.5px] text-muted-foreground">
+				<p className="mt-1 text-[11px] text-muted-foreground">
 					{t("label.subject")}{" "}
 					<span className="font-medium text-foreground">{subject.replace("abstract:", t("label.abstractShort"))}</span>
 				</p>
 			</div>
 
 			<div className="flex flex-wrap items-center justify-between gap-2">
-				<label className="flex cursor-pointer items-center gap-2 text-[11.5px] text-foreground">
+				<label className="flex cursor-pointer items-center gap-2 text-[12px] text-foreground">
 					<input
 						type="checkbox"
 						checked={spec.monochrome}
@@ -64,7 +64,7 @@ export function DetailControls({ spec, onPatch, variations, onVariations, subjec
 					{t("label.monochrome")}
 				</label>
 
-				<label className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+				<label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
 					{t("label.variations")}
 					<input
 						type="number"
@@ -79,7 +79,7 @@ export function DetailControls({ spec, onPatch, variations, onVariations, subjec
 			</div>
 
 			{aiMode ? (
-				<p className="rounded-lg bg-muted/60 px-2.5 py-1.5 text-[10.5px] leading-snug text-muted-foreground">
+				<p className="rounded-lg bg-muted/60 px-2 py-1.5 text-[11px] leading-snug text-muted-foreground">
 					{t("hint.aiMode")}
 				</p>
 			) : null}

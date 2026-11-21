@@ -3,7 +3,7 @@ import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { CanvasNote, NoteScope } from "../../../domain/notes";
 import { partAt } from "../../../domain/note-parts";
 import type { LogoSpec } from "../../../domain/spec";
-import { BUTTON_PRIMARY, FOCUS_RING, TEXTAREA } from "../../../shared/styles/tokens";
+import { BUTTON_PRIMARY, FOCUS_RING, NOTE_DOT, NOTE_RING, TEXTAREA } from "../../../shared/styles/tokens";
 
 export interface CanvasSurfaceProps {
 	previewUrl: string;
@@ -84,7 +84,7 @@ export function CanvasSurface({ previewUrl, alt, notes, dark, onPlace, spec, ras
 				{pins.map((note, index) => (
 					<span
 						key={note.id}
-						className="absolute flex size-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-amber-500 text-[10px] font-semibold text-white shadow ring-2 ring-white/70"
+						className={`absolute flex size-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full ${NOTE_DOT} text-[10px] font-semibold text-white shadow ring-2 ring-white/70`}
 						style={{ left: `${note.x * 100}%`, top: `${note.y * 100}%` }}
 						title={note.text}
 					>
@@ -93,7 +93,7 @@ export function CanvasSurface({ previewUrl, alt, notes, dark, onPlace, spec, ras
 				))}
 				{draft ? (
 					<span
-						className="absolute size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed border-amber-500"
+						className={`absolute size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed ${NOTE_RING}`}
 						style={{ left: `${draft.x * 100}%`, top: `${draft.y * 100}%` }}
 					/>
 				) : null}
@@ -114,7 +114,7 @@ export function CanvasSurface({ previewUrl, alt, notes, dark, onPlace, spec, ras
 								role="radio"
 								aria-checked={scope === option.id}
 								onClick={() => setScope(option.id)}
-								className={`rounded-full border px-2 py-0.5 text-[10.5px] font-medium transition-colors ${
+								className={`rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors ${
 									scope === option.id
 										? "border-primary bg-primary/10 text-foreground"
 										: "border-border text-muted-foreground hover:text-foreground"

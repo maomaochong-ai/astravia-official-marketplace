@@ -68,7 +68,7 @@ export function CanvasInspector({
 							role="tab"
 							aria-selected={tab === entry.id}
 							onClick={() => onTab(entry.id)}
-							className={`${FOCUS_RING} rounded-md px-2 py-1 text-[11.5px] font-medium transition-colors ${
+							className={`${FOCUS_RING} rounded-md px-2 py-1 text-[12px] font-medium transition-colors ${
 								tab === entry.id ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
 							}`}
 						>
@@ -98,7 +98,7 @@ export function CanvasInspector({
 				) : (
 					<div className="space-y-3">
 						<NotesList notes={notes} onRemove={onRemoveNote} onHandToAgent={onHandToAgent} busy={busy} />
-						<p className="text-[10.5px] leading-relaxed text-muted-foreground">{t("notes.emptyHint")}</p>
+						<p className="text-[11px] leading-relaxed text-muted-foreground">{t("notes.emptyHint")}</p>
 					</div>
 				)}
 			</div>

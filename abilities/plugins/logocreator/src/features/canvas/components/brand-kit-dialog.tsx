@@ -100,12 +100,12 @@ export function BrandKitDialog({ record, onClose, t }: BrandKitDialogProps): JSX
 						{t("export.copySvg")}
 					</button>
 					<span className="flex-1" />
-					{kit ? <span className="text-[10.5px] text-muted-foreground">{t("kit.fileCount", { count: kit.files.length })}</span> : null}
+					{kit ? <span className="text-[11px] text-muted-foreground">{t("kit.fileCount", { count: kit.files.length })}</span> : null}
 				</div>
 			}
 		>
 			{record && record.engine !== "local" ? (
-				<p className="rounded-lg bg-muted/60 px-3 py-2 text-[11.5px] leading-relaxed text-muted-foreground">
+				<p className="rounded-lg bg-muted/60 px-3 py-2 text-[12px] leading-relaxed text-muted-foreground">
 					{t("kit.aiNote")}
 				</p>
 			) : null}
@@ -139,7 +139,7 @@ export function BrandKitDialog({ record, onClose, t }: BrandKitDialogProps): JSX
 
 			{record && record.engine === "local" && variants ? (
 				<div className="mt-3 space-y-1.5">
-					<span className="flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
+					<span className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
 						<IconImageSize className="size-3" />
 						{t("kit.saveSvg")} / PNG / WebP
 					</span>
@@ -183,21 +183,21 @@ export function BrandKitDialog({ record, onClose, t }: BrandKitDialogProps): JSX
 						{paletteLines(kit.palette).map((hex) => (
 							<span
 								key={hex}
-								className="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-[10.5px] font-medium text-foreground"
+								className="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-foreground"
 							>
 								<span className="size-3 rounded-full ring-1 ring-inset ring-black/10" style={{ background: hex }} aria-hidden />
 								{hex}
 							</span>
 						))}
 					</div>
-					<ul className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10.5px] text-muted-foreground">
+					<ul className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
 						{kit.files.map((file) => (
 							<li key={file.path} className="truncate" title={file.path}>
 								{file.path}
 							</li>
 						))}
 					</ul>
-					<p className="text-[10.5px] leading-snug text-muted-foreground">{t("kit.guideHint")}</p>
+					<p className="text-[11px] leading-snug text-muted-foreground">{t("kit.guideHint")}</p>
 				</div>
 			) : null}
 		</ModalDialog>

@@ -1,7 +1,7 @@
 import { useMemo, useState, type JSX } from "react";
 import type { DesignRecord } from "../../../domain/history-store";
 import { formatRelativeTime } from "../../../shared/formatters/bytes";
-import { BUTTON_SECONDARY, FOCUS_RING, INPUT } from "../../../shared/styles/tokens";
+import { BUTTON_SECONDARY, FOCUS_RING, INPUT, NOTE_INK, NOTE_RING, NOTE_SOFT, NOTE_STAR } from "../../../shared/styles/tokens";
 import { ModalDialog } from "../../../shared/components/modal-dialog";
 import { IconStar, IconTrash } from "../../../shared/components/icons";
 
@@ -69,7 +69,7 @@ export function HistorySheet({
 					<span className="flex-1" />
 					{confirmClear ? (
 						<>
-							<span className="text-[10.5px] text-muted-foreground">{t("history.clearConfirm")}</span>
+							<span className="text-[11px] text-muted-foreground">{t("history.clearConfirm")}</span>
 							<button
 								type="button"
 								onClick={() => {
@@ -109,8 +109,8 @@ export function HistorySheet({
 					type="button"
 					onClick={() => setFilter(filter === "all" ? "favorites" : "all")}
 					aria-pressed={filter === "favorites"}
-					className={`${FOCUS_RING} h-8 shrink-0 rounded-lg border px-2.5 text-[11px] font-medium transition-colors ${
-						filter === "favorites" ? "border-amber-400 bg-amber-400/10 text-amber-600" : "border-border text-muted-foreground"
+					className={`${FOCUS_RING} h-8 shrink-0 rounded-lg border px-2 text-[11px] font-medium transition-colors ${
+						filter === "favorites" ? `${NOTE_RING} ${NOTE_SOFT} ${NOTE_INK}` : "border-border text-muted-foreground"
 					}`}
 				>
 					{t("history.favorites")}
@@ -118,7 +118,7 @@ export function HistorySheet({
 			</div>
 
 			{visible.length === 0 ? (
-				<p className="py-6 text-center text-[11.5px] text-muted-foreground">{t("history.empty")}</p>
+				<p className="py-6 text-center text-[12px] text-muted-foreground">{t("history.empty")}</p>
 			) : (
 				<ul className="divide-y divide-border/50">
 					{visible.map((record) => (
@@ -145,7 +145,7 @@ export function HistorySheet({
 								aria-pressed={record.favorite}
 								aria-label={t("tile.favorite")}
 								className={`${FOCUS_RING} flex size-6 items-center justify-center rounded-md ${
-									record.favorite ? "text-amber-500" : "text-muted-foreground hover:text-foreground"
+									record.favorite ? NOTE_STAR : "text-muted-foreground hover:text-foreground"
 								}`}
 							>
 								<IconStar filled={record.favorite} className="size-3.5" />

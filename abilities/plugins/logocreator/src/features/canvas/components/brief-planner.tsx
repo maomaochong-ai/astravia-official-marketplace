@@ -52,7 +52,7 @@ export function BriefPlanner({ onPlan }: BriefPlannerProps): JSX.Element {
 					type="button"
 					onClick={() => void run()}
 					disabled={busy || !brief.trim()}
-					className={`${BUTTON_PRIMARY} ${FOCUS_RING} h-8 px-2.5 text-[12px]`}
+					className={`${BUTTON_PRIMARY} ${FOCUS_RING} h-8 px-2 text-[12px]`}
 				>
 					{busy ? t("action.working") : t("brief.action")}
 				</button>
@@ -61,7 +61,7 @@ export function BriefPlanner({ onPlan }: BriefPlannerProps): JSX.Element {
 			{planned.length > 0 ? (
 				<ul className="space-y-1">
 					{planned.map((candidate) => (
-						<li key={candidate.spec.seed} className="rounded-md bg-muted/50 px-2 py-1 text-[10.5px] leading-snug">
+						<li key={candidate.spec.seed} className="rounded-md bg-muted/50 px-2 py-1 text-[11px] leading-snug">
 							<span className="font-medium text-foreground">
 								{candidate.type} · {candidate.style}
 							</span>
