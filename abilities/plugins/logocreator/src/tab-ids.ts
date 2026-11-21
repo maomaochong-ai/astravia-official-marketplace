@@ -14,3 +14,4 @@ export const TOOL_BRAND_KIT = "logocreator_brand_kit";
 export const TOOL_CATALOG = "logocreator_catalog";
 export const TOOL_NOTES = "logocreator_notes";
 export const TOOL_PLAN = "logocreator_plan";
+export const TOOL_IMAGE = "logocreator_image";

@@ -14,6 +14,7 @@ import { useLogoForm } from "../hooks/use-logo-form";
 import { savePngFile, saveSvgFile } from "../services/export-files";
 import { claimPendingDesignId, onPendingDesignChanged, peekPendingDesignId } from "../pending-design";
 import { publishCanvasSpec } from "../canvas-prompt";
+import { useRasterUrl } from "../hooks/use-raster-url";
 import { AiSettingsDialog } from "./ai-settings-dialog";
 import { BrandKitDialog } from "./brand-kit-dialog";
 import { CanvasDock } from "./canvas-dock";
@@ -181,6 +182,8 @@ export function LogoCanvas(): JSX.Element {
 	};
 
 	const selectedRecord = selectedId ? history.items.find((item) => item.id === selectedId) : undefined;
+	// Raster designs are drawn from their blob; vector ones from the spec.
+	const rasterUrl = useRasterUrl(selectedRecord);
 
 	return (
 		<div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-background text-foreground">
@@ -194,6 +197,7 @@ export function LogoCanvas(): JSX.Element {
 							notes={visibleNotes}
 							dark={form.spec.surface === "dark"}
 							spec={form.spec}
+						rasterUrl={rasterUrl}
 						onPlace={async (point, text, scope, part) =>
 							notes.add({ designId: selectedId, text, ...point, scope, part })
 						}

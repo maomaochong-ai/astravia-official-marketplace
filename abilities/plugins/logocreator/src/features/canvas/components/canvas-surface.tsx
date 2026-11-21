@@ -15,6 +15,11 @@ export interface CanvasSurfaceProps {
 	onPlace: (point: { x: number; y: number }, text: string, scope: NoteScope, part: ReturnType<typeof partAt>) => Promise<boolean>;
 	/** Needed to resolve a pin to a structural part (mark / wordmark / tagline). */
 	spec: LogoSpec;
+	/**
+	 * When the open design came from the image path, this is its PNG. The stage has to
+	 * draw *that*: re-rendering the spec as vectors would show a different mark.
+	 */
+	rasterUrl?: string | null;
 }
 
 /**
@@ -31,7 +36,7 @@ export interface CanvasSurfaceProps {
  * while the form scrolls (it is what you are editing); the list is a checklist and
  * can live below the fold with the other panels.
  */
-export function CanvasSurface({ previewUrl, alt, notes, dark, onPlace, spec }: CanvasSurfaceProps): JSX.Element {
+export function CanvasSurface({ previewUrl, alt, notes, dark, onPlace, spec, rasterUrl }: CanvasSurfaceProps): JSX.Element {
 	const { t } = useTranslation();
 	const [draft, setDraft] = useState<{ x: number; y: number } | null>(null);
 	const [text, setText] = useState("");
@@ -75,7 +80,7 @@ export function CanvasSurface({ previewUrl, alt, notes, dark, onPlace, spec }: C
 					if (event.key === "Enter" || event.key === " ") setDraft({ x: 0.5, y: 0.5 });
 				}}
 			>
-				<img src={previewUrl} alt={alt} className="block w-full" draggable={false} />
+				<img src={rasterUrl ?? previewUrl} alt={alt} className="block w-full" draggable={false} />
 				{pins.map((note, index) => (
 					<span
 						key={note.id}

@@ -64,7 +64,10 @@ function hasTextToImage(provider: { capabilities: readonly { operation: string; 
 		(capability) =>
 			capability.operation === "generate" &&
 			capability.kind === "image" &&
-			(capability.modes ?? []).includes("text-to-image"),
+			// The host's own provider advertises `modes: ["text-to-image","image-to-image"]`
+			// and no `models` array (`astravia-image-provider.ts`). A capability that omits
+			// `modes` entirely still means "can generate an image", so accept it too.
+			((capability.modes ?? []).includes("text-to-image") || (capability.modes ?? []).length === 0),
 	);
 }
 
@@ -159,6 +162,13 @@ export async function generateMarksWithHost(ctx: PluginContext, request: HostGen
 				...(provider.modelId ? { modelId: provider.modelId } : {}),
 				dimensions: { width: 1024, height: 1024 },
 			});
+
+			// A provider may refuse synchronously (bad prompt, not signed in). Waiting on a
+			// job that is already failed only adds a round trip.
+			if (job.status === "failed") {
+				failures.push(describeCode(job.error?.code, job.error?.message ?? "The image job was rejected."));
+				continue;
+			}
 
 			const settled = await ctx.jobs.wait(job);
 			if (settled.status !== "succeeded") {

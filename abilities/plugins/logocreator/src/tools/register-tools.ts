@@ -2,6 +2,7 @@ import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { createBrandKitTool } from "./brand-kit";
 import { createCatalogTool } from "./catalog";
 import { createDesignTool } from "./design-logo";
+import { createImageTool } from "./image";
 import { createNotesTool } from "./notes";
 import { createPlanTool } from "./plan";
 
@@ -19,5 +20,6 @@ export function registerTools(ctx: PluginContext): Disposable[] {
 		ctx.agent.registerTool(createCatalogTool()),
 		ctx.agent.registerTool(createNotesTool()),
 		ctx.agent.registerTool(createPlanTool()),
+		ctx.agent.registerTool(createImageTool()),
 	];
 }
