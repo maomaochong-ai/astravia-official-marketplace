@@ -7,6 +7,7 @@ import { setPluginContext } from "./plugin-context";
 import { IconGenerate, IconImageSize } from "./shared/components/icons";
 import { activeScopeKey, canvasInstructions, setActiveConversation, setCanvasEngaged } from "./features/canvas/canvas-prompt";
 import { IMAGE_CARD_TYPE, INPUT_ACTION_ID, INPUT_ACTION_LABEL_KEY, TAB_LABEL_KEY } from "./contributions";
+import { ROUTER_BLOCK_ID, routerPrompt } from "./features/canvas/router-prompt";
 import { LogoImageCard } from "./features/message/logo-image-card";
 import { LOGO_TAB_ID } from "./tab-ids";
 import { registerTools } from "./tools/register-tools";
@@ -75,6 +76,28 @@ export default definePlugin({
 				component: PanelShell,
 			}),
 		);
+
+		/**
+		 * Tell every turn that these tools exist.
+		 *
+		 * The reference design plugin does the same thing and it is the missing half of
+		 * "say it in the conversation and the canvas fills up": a skill only loads when the
+		 * user picks it, so without a prompt block the model had no reason to reach for
+		 * `logocreator_design` and answered in prose instead. The block is short and
+		 * routes only; the procedure lives in the skill.
+		 */
+		if (ctx.permissions.has("agent.tools.register")) {
+			try {
+				owned.push(
+					ctx.agent.registerSystemPromptProvider({
+						id: "logocreator:router",
+						handler: () => [{ type: "addBlock", block: { id: ROUTER_BLOCK_ID, content: routerPrompt(), priority: 40 } }],
+					}),
+				);
+			} catch (error) {
+				console.warn("[logocreator] the router prompt could not be registered", error);
+			}
+		}
 
 		// Raster results appear under the message that produced them, with a skeleton while
 		// the job runs. Without this, the tool's images only existed in the panel and the

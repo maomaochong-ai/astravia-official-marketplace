@@ -18,6 +18,10 @@ export interface CanvasInspectorProps {
 	notes: CanvasNote[];
 	onRemoveNote: (id: string) => void;
 	onHandToAgent: () => void;
+	/** Why the hand-off is unavailable; shown under the button. */
+	blockedReason?: string | null;
+	/** A session will be created for this send. */
+	needsSession?: boolean;
 	busy: boolean;
 }
 
@@ -42,6 +46,8 @@ export function CanvasInspector({
 	notes,
 	onRemoveNote,
 	onHandToAgent,
+	blockedReason,
+	needsSession,
 	busy,
 }: CanvasInspectorProps): JSX.Element | null {
 	const { t } = useTranslation();
@@ -49,9 +55,11 @@ export function CanvasInspector({
 
 	return (
 		<aside
-			// Width is clamped both ways: below ~15rem the two-tab header starts wrapping
-			// mid-word, above 20rem it eats the stage on a narrow panel.
-			className="absolute inset-y-0 right-0 z-30 flex w-[clamp(15rem,88%,20rem)] min-w-0 flex-col border-l border-border/70 bg-background shadow-xl"
+			// Docked on the left, matching the host: panels that come in from alternating
+			// sides make the user re-find the same controls twice.
+			// Width is clamped both ways: below ~15rem the two-tab header wraps mid-word,
+			// above 20rem it eats the stage on a narrow panel.
+			className="absolute inset-y-0 left-0 z-30 flex w-[clamp(15rem,88%,20rem)] min-w-0 flex-col border-r border-border/70 bg-background shadow-xl"
 			aria-label={t("inspector.title")}
 		>
 			<header className="flex min-w-0 items-center gap-1 border-b border-border/60 px-2 py-1.5">
@@ -97,7 +105,14 @@ export function CanvasInspector({
 					</div>
 				) : (
 					<div className="space-y-3">
-						<NotesList notes={notes} onRemove={onRemoveNote} onHandToAgent={onHandToAgent} busy={busy} />
+						<NotesList
+							notes={notes}
+							onRemove={onRemoveNote}
+							onHandToAgent={onHandToAgent}
+							blockedReason={blockedReason}
+							needsSession={needsSession}
+							busy={busy}
+						/>
 						<p className="text-[11px] leading-relaxed text-muted-foreground">{t("notes.emptyHint")}</p>
 					</div>
 				)}

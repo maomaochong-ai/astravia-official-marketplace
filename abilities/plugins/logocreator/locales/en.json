@@ -218,5 +218,12 @@
   "notify.copyFailed": "The image could not be copied",
   "placeholder.title": "Start with a name, or one sentence",
   "placeholder.body": "Type the brand name on the right, or describe the mark — the engine draws 26 subjects in 8 styles, offline.",
-  "placeholder.meta": "6 structures · 8 styles · 26 subjects"
+  "placeholder.meta": "6 structures · 8 styles · 26 subjects",
+  "notes.handoff.noNotes": "Nothing pending.",
+  "notes.handoff.noWorkspace": "No project is open, so there is nowhere to start a conversation.",
+  "notes.handoff.otherWorkspace": "This conversation belongs to another project — switch back first.",
+  "notes.handoff.streaming": "The agent is running; it picks the notes up when it checks its work.",
+  "notes.handoff.willCreate": "A conversation will be created for this project, then the notes are sent",
+  "notes.handoff.failed": "The notes could not be sent to the conversation",
+  "canvas.resetView": "Back to 100%"
 }

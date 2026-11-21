@@ -2084,7 +2084,7 @@
       "slug": "logocreator",
       "name": "LogoCreator",
       "description": "A logo canvas in Astravia with two production lines: a local vector engine for print-ready marks, and the host's own image providers for anything the engine cannot draw. Raster results appear inline in the conversation with open-in-canvas, copy and edit-this-image.",
-      "version": "0.5.1",
+      "version": "0.6.0",
       "configVersion": 1,
       "author": "Astravia",
       "category": "Design",
@@ -2103,7 +2103,7 @@
       "detail": {
         "i18n": {
           "zh": {
-            "name": "Logo设计",
+            "name": "logo设计",
             "description": "Astravia 里的标志画布，两条产线：本地矢量引擎出可印刷的图形，宿主自带的图像服务出引擎画不了的形象。图像结果直接出现在对话里，可就地打开画布、复制，或作为『改这张』的目标。",
             "tags": [
               "标志",

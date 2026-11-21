@@ -129,7 +129,9 @@ describe("canvas notes", () => {
 		Object.defineProperty(surface, "getBoundingClientRect", {
 			value: () => ({ left: 0, top: 0, width: 400, height: 400, right: 400, bottom: 400, x: 0, y: 0, toJSON: () => ({}) }),
 		});
-		fireEvent.click(surface, { clientX: 100, clientY: 300 });
+		// A press that does not move is the note gesture now (a drag pans).
+		fireEvent.pointerDown(surface, { clientX: 100, clientY: 300, pointerId: 1, button: 0 });
+		fireEvent.pointerUp(surface, { clientX: 100, clientY: 300, pointerId: 1, button: 0 });
 
 		const box = (await screen.findByLabelText(copy("notes.placeholder"))) as HTMLTextAreaElement;
 		fireEvent.change(box, { target: { value: "make the leaf wider" } });
@@ -148,10 +150,14 @@ describe("canvas notes", () => {
 
 		await waitFor(() => expect(sendPrompt).toHaveBeenCalledTimes(1));
 		const prompt = String(sendPrompt.mock.calls[0]?.[0] ?? "");
-		expect(prompt).toContain("make the leaf wider");
-		expect(prompt).toContain("Fern & Field");
-		// The note is closed only after the send landed.
-		await waitFor(() => expect(JSON.parse(files["notes.json"]).items[0].status).toBe("resolved"));
+		// The hand-off points at the ledger instead of pasting today's notes: a pasted
+		// snapshot locks the agent to what existed at send time, so anything the user pins
+		// while it works is invisible (the reference plugin learned this the hard way).
+		expect(prompt).toContain("logocreator_notes");
+		expect(prompt).toContain("resolve");
+		expect(prompt).not.toContain("make the leaf wider");
+		// Marked as handed over, so the debounce cannot send it twice.
+		await waitFor(() => expect(JSON.parse(files["notes.json"]).items[0].dispatchedAt).toBeGreaterThan(0));
 	});
 
 	it("offers no hand-off control until something is pinned", async () => {

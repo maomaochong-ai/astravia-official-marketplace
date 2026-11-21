@@ -66,7 +66,8 @@ describe("the dock", () => {
 
 describe("the inspector", () => {
 	it("overlaps the stage from the right instead of shrinking it", () => {
-		at(inspector, 'absolute inset-y-0 right-0');
+		// Docked left, like the host's own panels.
+		at(inspector, "absolute inset-y-0 left-0");
 		// Two tabs, one rail: design settings or the note list.
 		expect(inspector).toContain('t("inspector.tabDesign")');
 		expect(inspector).toContain('t("inspector.tabNotes")');

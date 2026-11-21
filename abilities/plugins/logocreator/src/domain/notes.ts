@@ -48,6 +48,13 @@ export interface CanvasNote {
 	status: NoteStatus;
 	/** Set when a run consumed it, so the same note is not applied twice. */
 	resolvedAt?: number;
+	/**
+	 * When this note was handed to the conversation. Distinct from `resolvedAt`: a
+	 * dispatch says "the agent has been told", a resolve says "the agent changed it".
+	 * Auto-dispatch keys off this so a note is never sent twice and a note added
+	 * mid-run is never forgotten.
+	 */
+	dispatchedAt?: number;
 }
 
 type NotesFile = PersistedList<CanvasNote>;
@@ -79,6 +86,9 @@ export function coerceNote(raw: unknown): CanvasNote | null {
 		createdAt: Number.isFinite(createdAt) ? createdAt : Date.now(),
 		status: value.status === "resolved" ? "resolved" : "pending",
 		...(value.status === "resolved" ? { resolvedAt: Number(value.resolvedAt) || Date.now() } : {}),
+		...(Number.isFinite(Number(value.dispatchedAt)) && Number(value.dispatchedAt) > 0
+			? { dispatchedAt: Number(value.dispatchedAt) }
+			: {}),
 	};
 }
 
@@ -127,6 +137,28 @@ export class NoteStore {
 
 	list(): CanvasNote[] {
 		return this.items;
+	}
+
+	/** Pending and not yet handed over — the set auto-dispatch works from. */
+	undispatched(designId?: string | null): CanvasNote[] {
+		return this.pending(designId).filter((note) => note.dispatchedAt === undefined);
+	}
+
+	/**
+	 * Record the hand-off. Called *before* the send resolves: a failed send then leaves
+	 * the note pending-but-dispatched, and the user's manual button can still re-send.
+	 */
+	async markDispatched(ids: readonly string[]): Promise<void> {
+		await this.ready();
+		const wanted = new Set(ids);
+		const now = Date.now();
+		let changed = 0;
+		this.items = this.items.map((note) => {
+			if (!wanted.has(note.id) || note.dispatchedAt !== undefined) return note;
+			changed += 1;
+			return { ...note, dispatchedAt: now } as CanvasNote;
+		});
+		if (changed > 0) await this.persist();
 	}
 
 	pending(designId?: string | null): CanvasNote[] {

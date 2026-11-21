@@ -10,6 +10,13 @@ export interface NotesListProps {
 	onHandToAgent: () => void;
 	/** A run is in flight; sending a second turn would interleave. */
 	busy: boolean;
+	/**
+	 * Why the hand-off is unavailable, already localised. Shown instead of a silently
+	 * disabled button: "没有活跃会话" and "会话在别的项目" need different actions.
+	 */
+	blockedReason?: string | null;
+	/** A session will be created for this send — worth saying before the click. */
+	needsSession?: boolean;
 }
 
 /**
@@ -19,7 +26,14 @@ export interface NotesListProps {
  * asking the agent to act on it are one intention, and a hand-off button sitting
  * next to the generate button reads as a second way to *design*, which it is not.
  */
-export function NotesList({ notes, onRemove, onHandToAgent, busy }: NotesListProps): JSX.Element | null {
+export function NotesList({
+	notes,
+	onRemove,
+	onHandToAgent,
+	busy,
+	blockedReason,
+	needsSession,
+}: NotesListProps): JSX.Element | null {
 	const { t } = useTranslation();
 	const pending = notes.filter((note) => note.status === "pending");
 	if (pending.length === 0) return null;
@@ -35,12 +49,14 @@ export function NotesList({ notes, onRemove, onHandToAgent, busy }: NotesListPro
 					onClick={onHandToAgent}
 					disabled={busy}
 					aria-label={t("notes.handToAgent")}
+					title={blockedReason ?? (needsSession ? t("notes.handoff.willCreate") : t("notes.handToAgent"))}
 					className={`${BUTTON_SECONDARY} ${FOCUS_RING} h-7 text-[11px]`}
 				>
 					<IconCheck className="size-3" />
 					{t("notes.handToAgent")}
 				</button>
 			</div>
+			{blockedReason ? <p className="text-[10px] leading-snug text-muted-foreground">{blockedReason}</p> : null}
 			<ul className="space-y-1">
 				{pending.map((note, index) => (
 					<li key={note.id} className={`flex items-start gap-1.5 rounded-lg ${NOTE_SOFT} px-2 py-1`}>

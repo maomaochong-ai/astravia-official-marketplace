@@ -15,6 +15,8 @@ import { savePngFile, saveSvgFile } from "../services/export-files";
 import { claimPendingDesignId, onPendingDesignChanged, peekPendingDesignId } from "../pending-design";
 import { publishCanvasSpec } from "../canvas-prompt";
 import { useRasterUrl } from "../hooks/use-raster-url";
+import { useNotesHandoff } from "../hooks/use-notes-handoff";
+import { cachedRender } from "../preview-cache";
 import { AiSettingsDialog } from "./ai-settings-dialog";
 import { BrandKitDialog } from "./brand-kit-dialog";
 import { CanvasDock } from "./canvas-dock";
@@ -62,6 +64,9 @@ export function LogoCanvas(): JSX.Element {
 		aiDone: (count) => t("notify.aiDone", { count }),
 		aiPartial: (failed) => t("notify.aiPartial", { failed }),
 	});
+	// Reference-aligned hand-off: it knows when to create a session, when the agent is
+		// already running, and when the conversation belongs to another project.
+	const handoff = useNotesHandoff(cwd);
 	const notes = useCanvasNotes({
 		sendFailed: t("error.notesSend"),
 		addFailed: t("error.notesAdd"),
@@ -80,7 +85,9 @@ export function LogoCanvas(): JSX.Element {
 	const subject = useMemo(() => resolveMark(form.spec).subject, [form.spec]);
 	// Typing stays at caret speed; the mark repaints on the next idle slot.
 	const deferredSpec = useDeferredValue(form.spec);
-	const preview = useMemo(() => previewUrl(renderLogo(deferredSpec).svg), [deferredSpec]);
+	// Cached by spec: the stage and the rail ask for the same renders repeatedly, and
+	// each miss costs an SVG build plus a URI-encoded copy of it.
+	const preview = useMemo(() => cachedRender(deferredSpec).url, [deferredSpec]);
 	const canGenerate = Boolean(form.spec.brandName.trim()) || form.spec.type === "wordmark";
 	const visibleNotes = notes.notes.filter((note) => note.designId === null || note.designId === selectedId);
 	const pendingCount = visibleNotes.filter((note) => note.status === "pending").length;
@@ -223,7 +230,11 @@ export function LogoCanvas(): JSX.Element {
 				{/* Title slot: the design's own name, editable in place (reference keeps a
 				    rename field here too). No engine badge — this plugin runs on the host's
 				    own models and has no engine of its own to advertise. */}
-				<div className="absolute left-3 top-3 z-40 flex max-w-[calc(100%-5.5rem)] items-center gap-1">
+				<div
+					className={`absolute left-3 top-3 z-40 flex max-w-[calc(100%-5.5rem)] items-center gap-1 transition-opacity ${
+						inspectorOpen ? "pointer-events-none opacity-0" : "opacity-100"
+					}`}
+				>
 					{editingName ? (
 						<input
 							autoFocus
@@ -255,7 +266,11 @@ export function LogoCanvas(): JSX.Element {
 				</div>
 
 				{/* Action rail, floating top-right. */}
-				<div className="absolute right-2 top-2 z-40 flex items-center gap-0.5 rounded-lg border border-border/70 bg-popover/95 p-0.5 shadow-sm">
+				<div
+					className={`absolute right-2 top-2 z-40 flex items-center gap-0.5 rounded-lg border border-border/70 bg-popover/95 p-0.5 shadow-sm transition-opacity ${
+						inspectorOpen ? "pointer-events-none opacity-0" : "opacity-100"
+					}`}
+				>
 					<button
 						type="button"
 						onClick={() => setHistoryOpen(true)}
@@ -344,7 +359,6 @@ export function LogoCanvas(): JSX.Element {
 					onClose={() => setInspectorOpen(false)}
 					controls={{
 						spec: form.spec,
-						previewSpec: deferredSpec,
 						patch: form.patch,
 						activePreset: form.activePreset,
 						applyPreset: form.applyPreset,
@@ -361,7 +375,9 @@ export function LogoCanvas(): JSX.Element {
 					onPlan={handlePlan}
 					notes={visibleNotes}
 					onRemoveNote={(id) => void notes.remove(id)}
-					onHandToAgent={() => void notes.handToAgent(selectedId, form.spec.brandName)}
+					onHandToAgent={() => void handoff.sendAll()}
+					blockedReason={handoff.blockedReason}
+					needsSession={handoff.needsSession}
 					busy={generation.running}
 				/>
 			</div>

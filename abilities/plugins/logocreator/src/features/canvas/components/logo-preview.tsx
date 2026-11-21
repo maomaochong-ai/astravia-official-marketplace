@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type JSX } from "react";
 import { renderLogo } from "../../../domain/engine/compose";
 import type { DesignRecord } from "../../../domain/history-store";
-import { previewUrl } from "../../../domain/render-png";
+import { cachedRender } from "../preview-cache";
 import { getPluginContext } from "../../../plugin-context";
 
 /**
@@ -37,7 +37,7 @@ export interface LogoPreviewProps {
 
 export function LogoPreview({ record, className, alt }: LogoPreviewProps): JSX.Element {
 	const localUrl = useMemo(
-		() => (record.engine === "local" ? previewUrl(renderLogo(record.spec).svg) : null),
+		() => (record.engine === "local" ? cachedRender(record.spec).url : null),
 		[record.engine, record.spec],
 	);
 	const [aiUrl, setAiUrl] = useState<string | null>(null);

@@ -13,8 +13,6 @@ import { TypePicker } from "./type-picker";
 
 export interface CanvasControlsProps {
 	spec: LogoSpec;
-	/** Deferred copy for the style tiles, so eight renders never ride on one keystroke. */
-	previewSpec?: LogoSpec;
 	patch: (next: Partial<LogoSpec>) => void;
 	activePreset: string | null;
 	applyPreset: (preset: (typeof STARTER_PRESETS)[number]) => void;
@@ -34,7 +32,6 @@ export interface CanvasControlsProps {
  */
 export function CanvasControls({
 	spec,
-	previewSpec,
 	patch,
 	activePreset,
 	applyPreset,
@@ -63,7 +60,7 @@ export function CanvasControls({
 
 			<div>
 				<span className={SECTION_LABEL}>{t("label.style")}</span>
-				<StylePicker value={spec.style} spec={previewSpec ?? spec} onChange={(style) => patch({ style })} />
+				<StylePicker value={spec.style} onChange={(style) => patch({ style })} />
 			</div>
 
 			<div>
