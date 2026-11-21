@@ -43,7 +43,11 @@ describe("the panel does not start itself with every conversation", () => {
 	it("registers the activity tab as not initially visible, and still keeps the ways in", () => {
 		const index = read("src/index.tsx");
 		expect(index).toMatch(/initiallyVisible:\s*false/);
-		expect(index).toContain('openActivityTab("hanshuang-pojia")');
+		// tab id 收在 TAB_ID 常量里：注册、attach、从开关跳转三处必须同一个值。
+		expect(index).toMatch(/const TAB_ID = "hanshuang-pojia"/);
+		expect(index).toContain("openActivityTab(TAB_ID)");
+		// 显式 attach：用户点过减号留下的 detach 记录优先于 initiallyVisible。
+		expect(index).toContain("setActivityTabVisible(TAB_ID, true)");
 	});
 });
 

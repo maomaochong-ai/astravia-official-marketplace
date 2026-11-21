@@ -329,55 +329,90 @@ function WorkbenchTab() {
 	);
 }
 
+/** tab id：注册、显式 attach、从输入框开关跳转都用同一个常量。 */
+const TAB_ID = "hanshuang-pojia";
+
+/**
+ * 可见范围。`scope_use` 是 fail-closed：没列出的场景里 tab 会被直接过滤掉，
+ * 所以 CLI / IM 会话也要写进来（只写 conversation/project 时，那些会话里看不到它）。
+ */
+const SCOPES = ["conversation", "project", "im-claw", "cli"] as const;
+
 export default definePlugin({
 	activate(ctx) {
 		setRuntime(ctx);
 		// 新 ctx 意味着上一条既有订阅已经失效：先释放，避免监听器越积越多。
 		resetBridge();
-		const disposables = registerTools(ctx);
-		disposables.push(...registerRuntimeContributions(ctx));
 
-		// 输入框开关：行内条目 + 激活后的胶囊（与其它插件一致的形态）。职责只有一个：
-		// 把工作台标签叫到前台。工具与提示词贡献在 registerTools /
-		// registerRuntimeContributions 里已各自注册，不因这个开关重复或停用——
-		// 关掉开关只是收回入口，不卸载工具。
-		if (ctx.permissions.has("ui.slot.input-action")) {
-			try {
-				disposables.push(
-					ctx.ui.registerInputAction({
-						id: "hanshuang-pojia:workbench",
-						label: "%action.workbench%",
-						defaultActive: false,
-						scope_use: ["conversation", "project"],
-						onToggle(active) {
-							if (active !== true) return;
-							try {
-								ctx.ui.openActivityTab("hanshuang-pojia");
-							} catch (error) {
-								console.error("[hanshuang-pojia] open tab from composer failed", error);
-							}
-						},
-					}),
-				);
-			} catch (error) {
-				console.error("[hanshuang-pojia] input action registration failed", error);
-			}
+		const disposables: { dispose(): void }[] = [];
+
+		/**
+		 * 注册顺序是正确性问题，不是风格问题。
+		 *
+		 * tab 是这个插件全部的可见存在。它以前排在 registerTools / registerRuntimeContributions
+		 * 之后，而那两个都碰宿主 bridge：bridge 没就绪就抛，activate 直接中断，
+		 * 用户看到的是「装好了，但 + 列表里没有它」。而现在：
+		 *
+		 *   1. tab 第一，独占一个 guard；
+		 *   2. 后续每步各自 guard，一步失败不回收前面已注册的东西；
+		 *   3. 注册后再显式 setActivityTabVisible(true)：用户点过减号会留下 detach 记录，
+		 *      而显式记录优先于 initiallyVisible，不主动 attach 就永久消失；
+		 *   4. scope_use 是 fail-closed，只写 conversation/project 会让 CLI / IM 会话看不到它。
+		 */
+		try {
+			disposables.push(
+				ctx.ui.registerActivityTab({
+					id: TAB_ID,
+					label: "%tab.label%",
+					component: WorkbenchTab,
+					scope_use: SCOPES,
+					order: 42,
+					// 不默认常驻：宿主每开一个会话都会把默认可见的标签挂上去，
+					// 十几次会话就是十几次静默启动。入口仍在三处：+ 列表、输入框开关、工具调用。
+					initiallyVisible: false,
+				}),
+			);
+			// 清掉历史 detach 记录，让 + 列表里一定能看到它。
+			ctx.ui.setActivityTabVisible(TAB_ID, true);
+			console.log("[hanshuang-pojia] activity tab registered");
+		} catch (error) {
+			// 唯一不能静默失败的一步：tab 没注册，插件就等于没装。
+			console.error("[hanshuang-pojia] activity tab registration failed", error);
 		}
 
 		try {
-			ctx.ui.registerActivityTab({
-				id: "hanshuang-pojia",
-				label: "%tab.label%",
-				component: WorkbenchTab,
-				scope_use: ["conversation", "project"],
-				order: 42,
-				// 不再默认常驻：宿主每次打开一个会话都会把「默认可见」的标签页挂上去，
-				// 十几次会话就是十几次静默启动（面板自己还有 storage/会话订阅的副作用）。
-				// 入口仍在三处：侧栏「+」列表、输入框开关（点了会 openActivityTab）、工具调用。
-				initiallyVisible: false,
-			});
+			disposables.push(...registerTools(ctx));
 		} catch (error) {
-			console.error("[hanshuang-pojia] activity tab registration failed", error);
+			console.error("[hanshuang-pojia] tool registration failed", error);
+		}
+
+		try {
+			disposables.push(...registerRuntimeContributions(ctx));
+		} catch (error) {
+			console.error("[hanshuang-pojia] runtime contributions failed", error);
+		}
+
+		// 输入框开关：行内条目 + 激活后的胶囊。职责只有一个——把工作台标签叫到前台；
+		// 关掉开关只是收回入口，不卸载工具。
+		try {
+			disposables.push(
+				ctx.ui.registerInputAction({
+					id: "hanshuang-pojia:workbench",
+					label: "%action.workbench%",
+					defaultActive: false,
+					scope_use: SCOPES,
+					onToggle(active) {
+						if (active !== true) return;
+						try {
+							ctx.ui.openActivityTab(TAB_ID);
+						} catch (error) {
+							console.error("[hanshuang-pojia] open tab from composer failed", error);
+						}
+					},
+				}),
+			);
+		} catch (error) {
+			console.error("[hanshuang-pojia] input action registration failed", error);
 		}
 
 		return () => {

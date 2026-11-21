@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import type { ReactElement } from "react";
 import type { WorkbenchBridge } from "../bridge";
 import { useWorkbench } from "../hooks/use-workbench";
+import { PageBoundary } from "./shell/page-boundary";
 import { getActivePrompt } from "../../../domain/prompt-library";
 import { SHIPPED_PRECEDENTS } from "../../../domain/case/precedents";
 import { deriveLiveStatus } from "../live-status";
@@ -150,7 +151,15 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 					/>
 				)}
 				<main className="fb-main fb-scroll">
-					<Page {...props} />
+					{/*
+					 * 页面级边界，而不是只有顶层一个：某一页抛错时，侧栏/顶栏仍然可用，
+					 * 而且能把「哪一页」报出来。只有一个顶层边界时，任何一页抛错都是整块
+					 * 「面板渲染失败」，用户既回不去也没法告诉我们发生在哪。
+					 * key 跟页面 id 绑定：切页会重建边界，一次错误不会把所有页都锁死。
+					 */}
+					<PageBoundary key={model.page} page={model.page}>
+						<Page {...props} />
+					</PageBoundary>
 				</main>
 			</div>
 			<HandoffDialog
