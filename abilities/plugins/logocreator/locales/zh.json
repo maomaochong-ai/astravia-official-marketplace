@@ -215,5 +215,8 @@
   "card.editTarget": "改这张图",
   "card.copy": "复制图片",
   "card.rasterNote": "位图 —— 只能导出 PNG，无法放大。",
-  "notify.copyFailed": "图片复制失败"
+  "notify.copyFailed": "图片复制失败",
+  "placeholder.title": "填个名字，或说一句话",
+  "placeholder.body": "右侧输入品牌名，或直接描述想要的图形 —— 引擎离线就能画 26 个题材、8 种风格。",
+  "placeholder.meta": "6 种结构 · 8 种风格 · 26 个题材"
 }

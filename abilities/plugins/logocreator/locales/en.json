@@ -215,5 +215,8 @@
   "card.editTarget": "Edit this image",
   "card.copy": "Copy the image",
   "card.rasterNote": "Raster image — PNG only, cannot be enlarged.",
-  "notify.copyFailed": "The image could not be copied"
+  "notify.copyFailed": "The image could not be copied",
+  "placeholder.title": "Start with a name, or one sentence",
+  "placeholder.body": "Type the brand name on the right, or describe the mark — the engine draws 26 subjects in 8 styles, offline.",
+  "placeholder.meta": "6 structures · 8 styles · 26 subjects"
 }
