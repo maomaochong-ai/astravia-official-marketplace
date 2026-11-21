@@ -168,6 +168,8 @@
   "notes.add": "Pin the note",
   "notes.cancel": "Cancel",
   "notes.hint": "Pinned notes are sent to the agent in order",
+  "action.needName": "Type a brand name to design it.",
+  "notes.listTitle": "Pinned notes ({{count}})",
   "notes.remove": "Delete this note",
   "notes.handToAgent": "Send the notes to the agent",
   "tool.notes.label": "Canvas notes",

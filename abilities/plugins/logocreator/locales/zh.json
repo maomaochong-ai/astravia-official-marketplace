@@ -168,6 +168,8 @@
   "notes.add": "留下备注",
   "notes.cancel": "取消",
   "notes.hint": "备注会按顺序交给 Agent",
+  "action.needName": "先填一个品牌名，再开始设计。",
+  "notes.listTitle": "画布备注（{{count}}）",
   "notes.remove": "删除这条备注",
   "notes.handToAgent": "把备注交给 Agent",
   "tool.notes.label": "画布备注",
