@@ -62,6 +62,19 @@ const orphans = production.filter((file) => {
 
 // ── zombie exports ──────────────────────────────────────────────────────────
 const testText = tests.map(read).join("\n");
+/**
+ * Names that are *supposed* to have no production consumer: test seams that reset
+ * module-level state between cases. Listing them is the difference between "a seam"
+ * and "a zombie", and it keeps the report actionable instead of noisy.
+ */
+const TEST_SEAMS = new Set([
+	"clearPendingDesigns",
+	"clearCanvasPromptState",
+	"isCanvasEngaged",
+	"catalogKey",
+	"CONTRIBUTION_LABEL_KEYS",
+	"GLYPH_COUNT",
+]);
 const zombies = [];
 const testOnly = [];
 
@@ -75,6 +88,7 @@ for (const file of production) {
 			// `-1` removes the declaration itself.
 			const usedHere = countWord(text, name) - 1;
 			if (usedElsewhere + usedHere > 0) continue;
+			if (TEST_SEAMS.has(name)) continue;
 			if (countWord(testText, name) > 0) testOnly.push(`${relative(SRC, file)}: ${name}`);
 			else zombies.push(`${relative(SRC, file)}: ${name}`);
 		}

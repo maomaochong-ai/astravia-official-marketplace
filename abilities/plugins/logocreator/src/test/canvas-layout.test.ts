@@ -84,3 +84,21 @@ describe("dialogs stay inside the panel", () => {
 		expect(canvas).toContain("relative flex h-full min-h-0 w-full flex-col overflow-hidden");
 	});
 });
+
+describe("the tab strip icon", () => {
+	const registration = readFileSync(join(ROOT, "src/index.tsx"), "utf8");
+
+	it("is an explicit 16 px glyph, not the inherited plugin artwork", () => {
+		// Both contribution surfaces: the activity tab and the composer chip.
+		expect(registration).toContain("icon: <TabMark />");
+		expect(registration).toContain("<TabMark className=\"size-3.5\" />");
+	});
+
+	it("draws the glyph in currentColor so it follows the tab state", () => {
+		const mark = readFileSync(join(ROOT, "src/shared/components/tab-mark.tsx"), "utf8");
+		expect(mark).toContain("currentColor");
+		// No raster: an <img> is exactly the 16 px-scaled photo problem.
+		expect(mark).not.toMatch(/<img\s+src=/);
+		expect(mark).toContain('viewBox="0 0 24 24"');
+	});
+});

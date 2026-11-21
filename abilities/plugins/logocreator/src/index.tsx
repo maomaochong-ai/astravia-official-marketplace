@@ -4,7 +4,8 @@ import type { JSX } from "react";
 import "./style.css";
 import { LogoCanvas } from "./features/canvas/components/logo-canvas";
 import { setPluginContext } from "./plugin-context";
-import { setCanvasEngaged, canvasInstructions } from "./features/canvas/canvas-prompt";
+import { TabMark } from "./shared/components/tab-mark";
+import { activeScopeKey, canvasInstructions, setActiveConversation, setCanvasEngaged } from "./features/canvas/canvas-prompt";
 import { INPUT_ACTION_ID, INPUT_ACTION_LABEL_KEY, TAB_LABEL_KEY } from "./contributions";
 import { LOGO_TAB_ID } from "./tab-ids";
 import { registerTools } from "./tools/register-tools";
@@ -45,6 +46,15 @@ export default definePlugin({
 
 		const owned: Disposable[] = [];
 
+		// The host asks whichever input action is active *in the sending session*; keep
+		// our own scope pointer on that same conversation so a decoration can never come
+		// from the panel of a different one. The listener is replayed once on subscribe.
+		owned.push(
+			ctx.conversation.on((event) => {
+				if (event.type === "conversation-changed") setActiveConversation(event.conversation.cwd);
+			}),
+		);
+
 		// `initiallyVisible: true` is the whole point: this plugin exists to show a
 		// studio, so the tab belongs on the strip. `initiallyVisible: false` (the
 		// reference plugin's choice) is right for a canvas that only makes sense once
@@ -54,6 +64,9 @@ export default definePlugin({
 			ctx.ui.registerActivityTab({
 				id: LOGO_TAB_ID,
 				label: TAB_LABEL_KEY,
+				// An explicit glyph: the inherited plugin icon is a 512 px photo, which
+				// at the strip's 16 px reads as a rectangle (see TabMark).
+				icon: <TabMark />,
 				order: 26,
 				scope_use: ["conversation", "project"],
 				initiallyVisible: true,
@@ -71,10 +84,13 @@ export default definePlugin({
 						// between the toggle state and the tab.
 						id: INPUT_ACTION_ID,
 						label: INPUT_ACTION_LABEL_KEY,
+						icon: <TabMark className="size-3.5" />,
 						defaultActive: false,
 						scope_use: ["conversation", "project"],
 						onToggle: (active) => {
-							setCanvasEngaged(active);
+							// No cwd here: the host owns the per-session toggle state, and the
+							// active scope is kept current by the conversation subscription above.
+							setCanvasEngaged(activeScopeKey(), active);
 							// Both directions keep the tab in sync: turning the toggle on is a
 							// request to look at the studio, turning it off must not close it
 							// (the panel may be holding work nobody asked to discard).
@@ -103,7 +119,7 @@ export default definePlugin({
 		}
 
 		return () => {
-			setCanvasEngaged(false);
+			setCanvasEngaged(activeScopeKey(), false);
 			for (const disposable of owned) disposable.dispose();
 		};
 	},

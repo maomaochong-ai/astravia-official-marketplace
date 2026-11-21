@@ -38,17 +38,18 @@ function DockSlot({ label, icon, onClick, active, disabled, badge, primary }: Sl
 			aria-pressed={active}
 			aria-label={label}
 			title={label}
-			className={`${FOCUS_RING} relative flex size-9 items-center justify-center rounded-lg transition-colors ${
+			className={`${FOCUS_RING} relative flex size-8 shrink-0 items-center justify-center rounded-[22%] border border-transparent transition-colors ${
 				primary
 					? "bg-primary text-primary-foreground hover:opacity-90"
 					: active
-						? "bg-primary/15 text-foreground"
-						: "text-muted-foreground hover:bg-accent hover:text-foreground"
+						? "bg-primary/12 text-primary"
+						: "bg-muted/55 text-foreground hover:bg-muted"
 			} disabled:pointer-events-none disabled:opacity-40`}
 		>
 			{icon}
 			{badge !== undefined && badge > 0 ? (
-				<span className="absolute -right-1 -top-1 flex min-w-[14px] items-center justify-center rounded-full bg-amber-500 px-[3px] text-[9px] font-semibold leading-[14px] tabular-nums text-white">
+				<span className="absolute -right-1 -top-1 flex min-w-[14px] items-center justify-center rounded-full px-[3px] text-[9px] font-semibold leading-[14px] tabular-nums text-white"
+						style={{ background: "#2563eb", boxShadow: "0 1px 3px -1px rgba(0,0,0,.4)" }}>
 					{badge > 99 ? "99+" : badge}
 				</span>
 			) : null}
@@ -84,7 +85,7 @@ export function CanvasDock({
 
 	return (
 		<div className="pointer-events-none absolute bottom-3 left-1/2 z-40 -translate-x-1/2">
-			<div className="pointer-events-auto flex items-center gap-0.5 rounded-xl border border-border/70 bg-popover p-1 shadow-lg">
+			<div className="pointer-events-auto flex items-end gap-1 rounded-2xl border border-border/80 bg-popover px-2 py-1.5 shadow-md">
 				<DockSlot
 					primary
 					label={

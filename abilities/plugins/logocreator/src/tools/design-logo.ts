@@ -92,7 +92,9 @@ export function createDesignTool(): PluginAgentToolRegistration<DesignToolPayloa
 			// halves matter: opening a tab onto the *previous* design reads as "the tool
 			// did nothing", and the reference plugin learned the same lesson (its
 			// `setPendingDesignPath` / `claimCanvasReveal` pair).
-			if (lastDesignId) setPendingDesignId(lastDesignId);
+			// Scoped by this call's own session, so a run in one conversation cannot surface
+			// a design in another conversation's panel.
+			if (lastDesignId) setPendingDesignId(session.cwd, lastDesignId);
 			try {
 				const ui = getPluginContext().ui;
 				ui.setActivityTabVisible(LOGO_TAB_ID, true, { cwd: session.cwd });

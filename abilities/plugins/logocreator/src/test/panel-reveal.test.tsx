@@ -20,6 +20,8 @@ import { setPendingDesignId } from "../features/canvas/pending-design";
  */
 
 const ROOT = process.cwd();
+/** The conversation both the tool and the panel belong to in these tests. */
+const CWD = "C:/repo/demo";
 const locales = {
 	en: JSON.parse(readFileSync(join(ROOT, "locales/en.json"), "utf8")),
 	zh: JSON.parse(readFileSync(join(ROOT, "locales/zh.json"), "utf8")),
@@ -116,7 +118,7 @@ function renderPanel() {
 beforeEach(() => {
 	__setPluginHostBridge({
 		useLocale: () => "en",
-		useActiveConversation: () => ({}) as never,
+		useActiveConversation: () => ({ id: "s1", cwd: CWD, sessionPath: null, model: null, isStreaming: false }) as never,
 		useConversationMessages: () => [],
 		usePromptAttachment: () => null,
 		useSidebarState: () => ({ visible: true, collapsed: false, narrow: false }),
@@ -132,7 +134,7 @@ describe("the conversation → canvas reveal", () => {
 		// its id behind. The panel must show that one, not the newest.
 		const ctx = fakeContext([record("newest", "Vellum", 2_000), record("from-tool", "Fern & Field", 1_000)]);
 		setPluginContext(ctx);
-		setPendingDesignId("from-tool");
+		setPendingDesignId(CWD, "from-tool");
 
 		renderPanel();
 
@@ -152,7 +154,7 @@ describe("the conversation → canvas reveal", () => {
 	it("claims a pending design only once", async () => {
 		const ctx = fakeContext([record("one", "First", 1_000)]);
 		setPluginContext(ctx);
-		setPendingDesignId("one");
+		setPendingDesignId(CWD, "one");
 
 		const first = renderPanel();
 		await waitFor(() => expect(screen.getAllByText("First").length).toBeGreaterThan(0));

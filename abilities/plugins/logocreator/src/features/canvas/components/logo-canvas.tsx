@@ -1,5 +1,5 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type JSX } from "react";
-import { useTranslation } from "@astravia-org/plugin-sdk";
+import { useActiveConversation, useTranslation } from "@astravia-org/plugin-sdk";
 import { renderLogo, resolveMark } from "../../../domain/engine/compose";
 import type { DesignRecord } from "../../../domain/history-store";
 import { kitSlug } from "../../../domain/brand-kit";
@@ -48,6 +48,9 @@ function Icon({ path }: { path: string }): JSX.Element {
  */
 export function LogoCanvas(): JSX.Element {
 	const { t, locale } = useTranslation();
+	// The panel belongs to one conversation. Everything that can reach the *wrong*
+	// conversation (pending hand-off, composer decoration) is keyed by this cwd.
+	const cwd = useActiveConversation().cwd;
 	const form = useLogoForm();
 	const history = useDesignHistory({
 		saveFailed: t("error.historyLoad"),
@@ -91,18 +94,18 @@ export function LogoCanvas(): JSX.Element {
 	// tab again must not clobber half-finished work, so only an empty form is seeded.
 	const claimedRef = useRef<string | null>(null);
 	const revealPending = useCallback(() => {
-		const pendingId = claimPendingDesignId();
+		const pendingId = claimPendingDesignId(cwd);
 		if (!pendingId || claimedRef.current === pendingId) return;
 		const record = history.items.find((item) => item.id === pendingId);
 		if (!record) return;
 		claimedRef.current = pendingId;
 		form.load(record.spec);
 		setSelectedId(record.id);
-	}, [history.items, form]);
+	}, [cwd, history.items, form]);
 
 	useEffect(() => {
 		if (!history.ready) return;
-		if (peekPendingDesignId()) {
+		if (peekPendingDesignId(cwd)) {
 			revealPending();
 			return;
 		}
@@ -113,14 +116,14 @@ export function LogoCanvas(): JSX.Element {
 			setSelectedId(latest.id);
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [history.ready, history.items.length]);
+	}, [cwd, history.ready, history.items.length]);
 
 	useEffect(() => onPendingDesignChanged(revealPending), [revealPending]);
 
 	// Publish the open design so the composer chip can carry it into a prompt.
 	useEffect(() => {
-		publishCanvasSpec(form.spec);
-	}, [form.spec]);
+		publishCanvasSpec(cwd, form.spec);
+	}, [cwd, form.spec]);
 
 	const openInspector = (tab: "design" | "notes") => {
 		setInspectorTab(tab);

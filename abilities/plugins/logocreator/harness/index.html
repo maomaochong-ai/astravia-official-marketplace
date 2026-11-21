@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh">
+	<head>
+		<meta charset="utf-8" />
+		<title>LogoCreator — panel harness</title>
+	</head>
+	<body class="bg-neutral-800">
+		<!-- Three panels side by side: empty, with history, notes open. Tests the
+		     layout at the real 420 px panel width instead of guessing. -->
+		<div class="flex h-[760px] gap-6 p-6">
+			<frame-slot label="空状态 (420)" width="420" state="empty"></frame-slot>
+			<frame-slot label="有历史 (420)" width="420" state="history"></frame-slot>
+			<frame-slot label="窄面板 (360)" width="360" state="history"></frame-slot>
+		</div>
+		<script type="module" src="./main.tsx"></script>
+	</body>
+</html>
