@@ -202,5 +202,7 @@
   "brief.title": "一句话起步",
   "brief.placeholder": "山上的茶馆，安静一点，要有叶子",
   "brief.action": "生成 3 个方向",
-  "brief.hint": "不需要接入任何图像服务：按描述定结构、风格与配色，本地直接出图。"
+  "brief.hint": "不需要接入任何图像服务：按描述定结构、风格与配色，本地直接出图。",
+  "tool.image.label": "生成图像标志",
+  "notify.aiNoProvider": "没有可用的图像服务：先在 Astravia 设置里接一个，或改用矢量引擎（能画 26 种题材）。"
 }
