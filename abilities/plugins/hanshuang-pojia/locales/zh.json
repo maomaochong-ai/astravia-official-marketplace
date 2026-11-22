@@ -1038,5 +1038,10 @@
   "settings.data.select": "选择 {{key}}",
   "settings.data.clearSelected": "清理选中（{{count}}）",
   "settings.data.selectAll": "全选",
-  "settings.data.selectNone": "取消选择"
+  "settings.data.selectNone": "取消选择",
+  "probe.source.conversation": "对话",
+  "probe.source.record": "记录",
+  "probe.stale": "记录来自 {{model}}",
+  "probe.staleHint": "宿主已切换模型，这份记录是上一个模型的结论；按它判断会误导。",
+  "probe.counter.send": "发送"
 }
