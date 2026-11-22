@@ -3,6 +3,7 @@ import type { ConversationScenario, Disposable, PluginContext } from "@astravia-
 import { KERNEL_BLOCK_ID, KERNEL_PRIORITY, buildKernelBlock } from "../domain/kernel";
 import { HOST_MODEL_PATH } from "../domain/refusal-probe";
 import { LAB_DEFAULT, LAB_OFF, parseLabCommand, type LabState } from "../domain/lab-mode";
+import { planAutoProbe } from "../domain/auto-probe";
 import { LAB_STATE_PATH } from "../features/workbench/hooks/use-lab";
 import { SYSTEM_PROMPT_BLOCK_ID, SYSTEM_PROMPT_BODY, SYSTEM_PROMPT_PRIORITY } from "../domain/system-prompt.generated";
 import { type RefusalSignal, planRecovery } from "../domain/refusal";
@@ -127,6 +128,10 @@ interface TurnMemory {
 	prompt: string;
 	/** 本回合已经用过的改写档位：案例库推荐的那一档踩过就不再踩。 */
 	tried: ReshapeTier[];
+	/** 本回合用的模型 id；自动梯度的简报要带上它。 */
+	model: string | null;
+	/** 本回合已经自动派过几次梯度（节流用）。 */
+	autoProbed: number;
 }
 
 const recoveryByTurn = new Map<string, TurnMemory>();
@@ -140,8 +145,38 @@ function rememberPrompt(turnId: string, prompt: string): void {
 		count: previous?.count ?? 0,
 		prompt,
 		tried: previous?.tried ?? [],
+		model: previous?.model ?? null,
+		autoProbed: previous?.autoProbed ?? 0,
 	});
 	trimTurnMemory();
+}
+
+/**
+ * 记一次自动梯度派发。
+ *
+ * 计数与「换问法」分开：改写链最多 3 次，自动梯度只 1 次——一张表就够看出第几档开始拦，
+ * 多测只是烧用户自己的额度。
+ */
+function markAutoProbe(turnId: string, key: string, targetClass: string): void {
+	const previous = recoveryByTurn.get(turnId);
+	recoveryByTurn.set(turnId, {
+		key,
+		count: previous?.count ?? 0,
+		prompt: previous?.prompt ?? "",
+		tried: previous?.tried ?? [],
+		model: previous?.model ?? null,
+		autoProbed: (previous?.autoProbed ?? 0) + 1,
+	});
+	trimTurnMemory();
+	void targetClass;
+}
+
+/** 最近一次看到的宿主模型 id。自动梯度的简报要带它，否则表里对不上是哪个模型。 */
+let lastHostModelId: string | null = null;
+
+/** provider 每轮都会调一次；同一个模型不重复写。 */
+function rememberTurnModel(model: string | null): void {
+	if (model) lastHostModelId = model;
 }
 
 /** 回写续跑结果，保留原话与已试档位。 */
@@ -153,6 +188,8 @@ function rememberRecovery(turnId: string, key: string, prompt: string, tier: Res
 		count: (previous?.count ?? 0) + 1,
 		prompt,
 		tried: tier && !tried.includes(tier) ? [...tried, tier] : tried,
+		model: previous?.model ?? null,
+		autoProbed: previous?.autoProbed ?? 0,
 	});
 	trimTurnMemory();
 }
@@ -342,6 +379,7 @@ export function registerRuntimeContributions(ctx: PluginContext): Disposable[] {
 						logSafetyEndpointOnce(context?.model ?? {});
 						// 顺手把宿主当前模型记给面板（拒答梯度要测谁）。
 						await rememberHostModel(ctx, context?.model);
+						rememberTurnModel(context?.model?.id ?? null);
 					} catch {
 						/* 观测失败不影响注入 */
 					}
@@ -470,10 +508,46 @@ export function registerRuntimeContributions(ctx: PluginContext): Disposable[] {
 						terminal: outcome === null,
 					});
 
-					if (!outcome) return;
+					/**
+					 * 拒绝之后先自动跑一遍梯度。
+					 *
+					 * 用户要的是「模型拒了，插件自己去测、自己拿到策略、自己继续」。这一层只负责
+					 * 派活：把按目标类别生成的梯度交给 agent（它才持有端点与模型），并要求结论以
+					 * `<probe-report>` 带回来 —— 面板据此实时更新梯度表。
+					 *
+					 * 节流一次：一张表就够看出第几档开始拦；多测只是烧额度。
+					 */
+					const auto = planAutoProbe({
+						prompt,
+						signal: verdict.signal,
+						model: lastHostModelId,
+						attempted: previous?.autoProbed ?? 0,
+					});
+
+					const fragments: string[] = [];
+					if (auto) {
+						fragments.push(auto.fragment);
+						markAutoProbe(event.turnId, auto.key, auto.targetClass);
+						// 面板先知道「这一轮会自动测一次」，表格顶部的等待态据此显示。
+						publishRefusal({
+							kind: verdict.signal.kind,
+							evidence: verdict.signal.evidence,
+							attempted,
+							terminal: false,
+							autoProbe: { targetClass: auto.targetClass, rungs: auto.rungs },
+						});
+					}
+
+					if (!outcome) {
+						// 没有可改写的一句时，自动梯度自己就是一个合格的续跑理由。
+						return fragments.length > 0
+							? { action: "continue-agent" as const, continuationFragments: fragments }
+							: undefined;
+					}
 					rememberRecovery(event.turnId, outcome.idempotencyKey, prompt, outcome.strategy);
+					fragments.push(outcome.fragment);
 					// 宿主对 Stop 续跑另有硬上限（max-stop-continuations）。
-					return { action: "continue-agent" as const, continuationFragments: [outcome.fragment] };
+					return { action: "continue-agent" as const, continuationFragments: fragments };
 				},
 			}),
 		);

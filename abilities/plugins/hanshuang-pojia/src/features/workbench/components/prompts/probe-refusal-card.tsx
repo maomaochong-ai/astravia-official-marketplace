@@ -30,6 +30,13 @@ export interface ProbeRefusalCardProps {
 	onBrief(brief: string): void;
 	/** 把当前对照表交给对话，继续分析。 */
 	onDiscuss(): void;
+	/**
+	 * 宿主刚为哪一句自动派了一次梯度（来自 Stop hook 的 refusal 事件）。
+	 *
+	 * 拒绝之后插件会自动测一遍；面板要把这件事说出来，否则用户只看到表格突然多出几行，
+	 * 不知道是谁在测。
+	 */
+	autoProbe?: { targetClass: string; rungs: number } | null;
 	/** 对话里解析出来的实时对照（有则优先于文件记录）。 */
 	live?: { model?: string; summary?: string; rows: { level: number; name?: string; verdict: string; kind?: string | null; text?: string; advice?: string }[] } | null;
 	refresh(): void;
@@ -64,7 +71,17 @@ const VERDICT_KEY: Record<string, string> = {
  *  5. **改写法再测**。每条被拦的档位都能展开成三档可发送的改写文本，按同一档重测，
  *     并把结论与上一份记录对比 —— 「改了有没有用」是这套功能唯一要回答的问题。
  */
-export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onBrief, onDiscuss, live = null, refresh }: ProbeRefusalCardProps) {
+export function ProbeRefusalCard({
+	record,
+	hostModel,
+	profile,
+	patchProfile,
+	onBrief,
+	onDiscuss,
+	live = null,
+	autoProbe = null,
+	refresh,
+}: ProbeRefusalCardProps) {
 	const { t } = useTranslation();
 	const [ladder, setLadder] = useState<"standard" | "custom">("standard");
 	const [custom, setCustom] = useState("");
@@ -346,6 +363,23 @@ export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onB
 					</ol>
 				)}
 			</div>
+
+			{/* 自动探测的状态条：谁在测、测几档。不占表格的位置 —— 数据还是从记录/对话来。 */}
+			{autoProbe ? (
+				<div className="flex items-center gap-1.5 border-t border-line-subtle bg-accent-soft/30 px-3 py-1.5 text-[10.5px] text-text-2">
+					<Icon name="refresh" className="size-3 shrink-0" />
+					<span className="min-w-0 flex-1 fb-wrap">
+						{t("probe.auto.running", { cls: autoProbe.targetClass, count: autoProbe.rungs })}
+					</span>
+					<button
+						type="button"
+						onClick={refresh}
+						className="shrink-0 rounded border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+					>
+						{t("probe.auto.refresh")}
+					</button>
+				</div>
+			) : null}
 
 			{record === null && liveRows.length === 0 ? (
 				<div className="px-3 py-3">

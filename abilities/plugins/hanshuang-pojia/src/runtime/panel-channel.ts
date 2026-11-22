@@ -35,6 +35,13 @@ export interface PanelRefusalEvent {
 	attempted: number;
 	/** 改写链已经用尽，本轮不会再续。 */
 	terminal: boolean;
+	/**
+	 * 这一轮已经为它自动派了一次梯度。
+	 *
+	 * 面板据此在梯度卡片上显示「正在按 <类别> 自动测 N 档」——否则用户只会看到表突然多出
+	 * 几行，不知道是谁在测。
+	 */
+	autoProbe?: { targetClass: string; rungs: number };
 	/** 触发时间（ISO）。 */
 	at: string;
 }
@@ -138,6 +145,7 @@ export function publishRefusal(event: Omit<PanelRefusalEvent, "type" | "at"> & {
 		evidence: event.evidence,
 		attempted: event.attempted,
 		terminal: event.terminal,
+		...(event.autoProbe ? { autoProbe: event.autoProbe } : {}),
 	});
 }
 

@@ -17,7 +17,7 @@ import { hasSystemTemplate, SYSTEM_PROMPT_TEMPLATE } from "../../../../domain/pr
 import type { PageProps } from "./overview";
 import { InjectPage } from "./inject";
 import { ProbeRefusalCard } from "../prompts/probe-refusal-card";
-import { useLiveProbeReport } from "../../hooks/use-live-probe";
+import { useAutoProbeStatus } from "../../hooks/use-live-probe";
 import { ImportMenu } from "../prompts/import-menu";
 import { PACKS } from "../../../../domain/inject/packs";
 
@@ -35,8 +35,8 @@ type View = "prompts" | "inject";
  * 修改前自动备份，可一键还原；导入与系统契约入口只在库视图出现。
  */
 export function PromptsPage({ model }: PageProps) {
-	// 对话里附带的实时对照：有它就不必等工具写文件。
-	const liveProbeReport = useLiveProbeReport();
+	// 对话里附带的实时对照 + 「刚为哪句自动派了梯度」的状态。
+	const { live: liveProbeReport, autoProbe } = useAutoProbeStatus();
 	const { t } = useTranslation();
 	const [view, setView] = useState<View>("prompts");
 	// 注入视图的提示词包：卡片与目标矩阵共用，避免「切了包但计划没变」。
@@ -209,6 +209,7 @@ export function PromptsPage({ model }: PageProps) {
 					{/* 拒答梯度：面板负责「要测谁 + 选梯度」，执行交给宿主 AI（面板没有凭据）。 */}
 					<ProbeRefusalCard
 				live={liveProbeReport}
+				autoProbe={autoProbe}
 						record={model.probe.record}
 						hostModel={model.probe.hostModel}
 						profile={model.probe.profile}
