@@ -1045,5 +1045,7 @@
   "probe.col.target": "Object",
   "probe.col.targetHint": "Which class this target belongs to; the standard ladder is generated per class.",
   "probe.rewrite.reset": "Reset shape",
-  "probe.discussHint": "Hand the current ladder and results to the conversation (works with an empty table too)"
+  "probe.discussHint": "Hand the current ladder and results to the conversation (works with an empty table too)",
+  "probe.auto.running": "Auto-probing {{count}} rungs for “{{cls}}” — this table updates when the results land",
+  "probe.auto.refresh": "Fetch results"
 }
