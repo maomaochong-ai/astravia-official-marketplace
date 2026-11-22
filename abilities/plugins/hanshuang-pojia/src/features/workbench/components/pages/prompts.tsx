@@ -202,26 +202,33 @@ export function PromptsPage({ model }: PageProps) {
 				}}
 			/>
 
+			{/*
+			 * 拒答梯度对照：**两个视图都显示**。
+			 *
+			 * 它原本只住在注入视图里，而提示词页默认停在库视图——用户打开面板看到的是一排提示词卡，
+			 * 表格根本不存在。它不是注入的子步骤，是这一页的一等公民，所以提到视图分支之前。
+			 */}
+			<div className="fb-page">
+				<ProbeRefusalCard
+					live={liveProbeReport}
+					autoProbe={autoProbe}
+					record={model.probe.record}
+					profile={model.probe.profile}
+					patchProfile={model.probe.patchProfile}
+					refresh={model.probe.refresh}
+					// 简报由 domain 生成：参数、要看哪些字段、结果要什么形状都在里面，
+					// 所以宿主不必追问，也不会把密钥回显到对话里。
+					onBrief={brief => model.askText(brief)}
+					onDiscuss={() =>
+						model.askText("按面板里的拒答梯度对照表，告诉我每一档为什么被拦，并按对应改写档位给出可直接发出的改写版本。")
+					}
+				/>
+			</div>
+
 			{view === "inject" ? (
 				<div className="fb-page">
-					{/* 上：最终写进 AGENTS.md 的块；中：拒答梯度对照；下：目标矩阵与安装脚本。 */}
+					{/* 上：最终写进 AGENTS.md 的块；下：目标矩阵与安装脚本。拒答梯度在上面那块独立卡片里。 */}
 					<InjectBlockCard library={library} notify={model.notify} packId={packId} onPackChange={setPackId} />
-					{/* 拒答梯度：面板负责「要测谁 + 选梯度」，执行交给宿主 AI（面板没有凭据）。 */}
-					<ProbeRefusalCard
-				live={liveProbeReport}
-				autoProbe={autoProbe}
-						record={model.probe.record}
-						hostModel={model.probe.hostModel}
-						profile={model.probe.profile}
-						patchProfile={model.probe.patchProfile}
-						refresh={model.probe.refresh}
-						// 简报由 domain 生成：参数、要看哪些字段、结果要什么形状都在里面，
-						// 所以宿主不必追问，也不会把密钥回显到对话里。
-						onBrief={brief => model.askText(brief)}
-						onDiscuss={() =>
-							model.askText("按面板里的拒答梯度对照表，告诉我每一档为什么被拦，并按对应改写档位给出可直接发出的改写版本。")
-						}
-					/>
 					<InjectPage model={model} embedded packId={packId} />
 				</div>
 			) : (

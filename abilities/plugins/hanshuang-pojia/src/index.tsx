@@ -295,17 +295,8 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 		},
 		saveMyCases: (cases, cwd) => writeJson(ctx.storage, storageEntry("cases", cwd).path, cases),
 		labMode: () => readJson<LabState>(ctx.storage, LAB_STATE_PATH),
-		// 探测记录与宿主模型快照都是「这次对话测的是谁」，按会话分文件。
+		// 探测记录按会话分文件：它描述「这次对话测的是谁」。
 		probeRecord: sessionId => readJson<ProbeRecord>(ctx.storage, storageEntry("probeRecord", null, sessionId).path),
-		hostModel: async sessionId => {
-			try {
-				const entry = storageEntry("hostModel", null, sessionId);
-				const raw = await ctx.storage.readFile(entry.path, "utf8");
-				return raw ? (JSON.parse(raw) as never) : null;
-			} catch {
-				return null;
-			}
-		},
 		saveLabMode: state => {
 			// 面板开关是写穿路径：缓存先更新，否则下一条消息仍按旧值注入。
 			cacheLabState(ctx, state);

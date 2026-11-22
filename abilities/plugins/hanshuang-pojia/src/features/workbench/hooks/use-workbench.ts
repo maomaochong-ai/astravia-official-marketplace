@@ -9,7 +9,6 @@ import { scopeForSample } from "../../../domain/sample-scope";
 import {
 	EMPTY_PROFILE,
 	PROBE_PROFILE_PATH,
-	type HostModelSnapshot,
 	type ProbeProfile,
 	type ProbeRecord,
 } from "../../../domain/refusal-probe";
@@ -170,8 +169,6 @@ export interface WorkbenchModel {
 		/** 要测谁：端点 / 模型 / 风格 / 语言 / 档数。非机密，插件作用域持久化。 */
 		profile: ProbeProfile;
 		patchProfile(patch: Partial<ProbeProfile>): void;
-		/** 宿主当前模型（provider / id / api 风格）；null = 还没读到。 */
-		hostModel: HostModelSnapshot | null;
 	};
 	/** 把注入/卸载脚本落到工作区 `.hanshuang/inject/`；返回相对路径或 null。 */
 	saveInjectScript(name: string, content: string): Promise<string | null>;
@@ -193,10 +190,8 @@ export interface WorkbenchModel {
 	/** 导入进度 0–1；null 表示没在导入。 */
 	importProgress: number | null;
 	ask(action: PromptAction, extra?: Partial<PromptContext>): void;
-	/** 把一句已经拼好的话直接送进去：发送前编辑过的文本走这里。 */
+	/** 把一句已经拼好的话直接送进去（各页面的动作都走这里）。 */
 	askText(text: string): void;
-	/** 同一句的预兑文本：对话框先用它填初值，用户改完再 askText。 */
-	previewPrompt(action: PromptAction, extra?: Partial<PromptContext>): string;
 	/** 清理插件自己写的文件；返回是否全部删成。 */
 	clearStorage(scope: StorageScope | "all"): Promise<boolean>;
 	/**
@@ -488,18 +483,6 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		};
 	}, [bridge]);
 
-	// 宿主模型快照：运行时每轮写、这里进提示词页时读一次。
-	const [hostModel, setHostModel] = useState<HostModelSnapshot | null>(null);
-	useEffect(() => {
-		if (page !== "prompts") return;
-		let alive = true;
-		void bridge.hostModel(sessionId).then(snapshot => {
-			if (alive) setHostModel(snapshot);
-		});
-		return () => {
-			alive = false;
-		};
-	}, [bridge, page]);
 
 	const patchProfile = useCallback((patch: Partial<ProbeProfile>) => {
 		setProbeProfile(previous => ({ ...previous, ...patch }));
@@ -561,12 +544,6 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		[chat, promptTarget],
 	);
 
-	// 发送前编辑：先算出同一段文本给对话框当初值，用户改完再原样送进去。
-	// 两者共用 buildPrompt，所以“预览的内容”就是“不编辑时发的内容”。
-	const previewPrompt = useCallback(
-		(action: PromptAction, extra: Partial<PromptContext> = {}) => buildPrompt(action, { target: promptTarget, ...extra }),
-		[promptTarget],
-	);
 
 	const askText = useCallback((text: string) => chat.ask(text), [chat]);
 
@@ -837,7 +814,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		setStaticView,
 		patchKnowledge,
 		myCases,
-		probe: { record: probeRecord, refresh: refreshProbe, profile: probeProfile, patchProfile, hostModel },
+		probe: { record: probeRecord, refresh: refreshProbe, profile: probeProfile, patchProfile },
 		saveInjectScript: (name, content) => bridge.saveInjectScript(name, content),
 		listReports: () => bridge.listReports(),
 		readReport: path => bridge.readReport(path),
@@ -852,7 +829,6 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		importProgress,
 		ask,
 		askText,
-		previewPrompt,
 		clearStorage,
 		clearPaths,
 		storageUsage,

@@ -4,7 +4,6 @@ import {
 	LIVE_REPORT_CLOSE,
 	LIVE_REPORT_OPEN,
 	buildProbeBrief,
-	followHostModel,
 	parseLiveReport,
 	probeTargets,
 	rewritesFor,
@@ -99,25 +98,11 @@ describe("the panel reads the table out of the conversation", () => {
 	});
 });
 
-describe("switching the host model", () => {
-	it("follows the new model when the field was auto-filled", () => {
-		const profile = { ...EMPTY_PROFILE, model: "old-model" };
-		const next = followHostModel(profile, "old-model", "new-model");
-		expect(next.model).toBe("new-model");
-	});
-
-	it("fills an empty field", () => {
-		const next = followHostModel({ ...EMPTY_PROFILE, model: "" }, null, "new-model");
-		expect(next.model).toBe("new-model");
-	});
-
-	it("never overwrites a model the user typed", () => {
+describe("the model field is manual only", () => {
+	it("keeps whatever the user typed — nothing reads the host model any more", () => {
 		const profile = { ...EMPTY_PROFILE, model: "my-own-endpoint-model" };
-		expect(followHostModel(profile, "old-model", "new-model").model).toBe("my-own-endpoint-model");
-	});
-
-	it("is a no-op when the model did not change", () => {
-		const profile = { ...EMPTY_PROFILE, model: "same" };
-		expect(followHostModel(profile, "same", "same")).toBe(profile);
+		// 这一栏现在只由 patchProfile 改：没有 followHostModel 这种旁路，也就不会被一次换模型静静覆写。
+		expect(profile.model).toBe("my-own-endpoint-model");
+		expect("followHostModel" in EMPTY_PROFILE).toBe(false);
 	});
 });

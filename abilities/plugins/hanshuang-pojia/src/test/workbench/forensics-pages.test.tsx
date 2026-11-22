@@ -43,7 +43,6 @@ function makeBridge(): WorkbenchBridge {
 		labMode: vi.fn(async () => null),
 		saveLabMode: vi.fn(async () => true),
 		probeRecord: vi.fn(async () => null),
-		hostModel: vi.fn(async () => null),
 		library: vi.fn(async () => null),
 		saveLibrary: vi.fn(async () => true),
 		settings: vi.fn(async () => null),

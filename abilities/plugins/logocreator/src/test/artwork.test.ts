@@ -6,12 +6,13 @@ import { describe, expect, it } from "vitest";
 /**
  * Artwork contract.
  *
- * The catalogue card icon and the agent avatar are the *same* mark rendered twice;
- * if they drift, one surface shows a caterpillar and another shows last week's
- * logo. These checks pin the things the host actually enforces
- * (`plugin-agent-presets.ts`: extension whitelist + 512 KB ceiling per avatar;
- * marketplace: ≤ 8 MB per image) plus the square shape the round avatar slot
- * expects.
+ * The plugin icon **is** upstream's mark (`app/icon.svg`, copied verbatim). The tab, the
+ * ability card and the marketplace card all read that one file — `plugin.json#icon` is the
+ * only source, and the activity tab asks the host for `ctx.plugin.iconUrl` instead of
+ * carrying its own glyph. So there is exactly one icon to keep square and small.
+ *
+ * The agent avatar is a separate thing on purpose: it is the character the owner chose for
+ * the assistant, not the product mark.
  */
 
 const ROOT = process.cwd();
@@ -60,16 +61,20 @@ function imageInfo(bytes: Buffer): Info | null {
 describe("artwork", () => {
 	it("uses the same file for the card icon and the ability icon", () => {
 		expect(ability.icon).toBe(plugin.icon);
-		expect(plugin.icon).toBe("assets/icon.png");
+		expect(plugin.icon).toBe("assets/icon.svg");
 	});
 
-	it("ships a square plugin icon big enough for a retina card", () => {
-		const bytes = readFileSync(join(ROOT, plugin.icon));
-		expect(bytes.byteLength).toBeLessThan(MAX_ASSET_BYTES);
-		const info = imageInfo(bytes);
-		expect(info?.format).toBe("png");
-		expect(info?.width).toBe(info?.height);
-		expect(info?.width).toBeGreaterThanOrEqual(512);
+	it("ships upstream's mark as a square svg inside the size ceiling", () => {
+		const text = readFileSync(join(ROOT, plugin.icon), "utf8");
+		expect(Buffer.byteLength(text)).toBeLessThan(MAX_ASSET_BYTES);
+		// Square viewBox: the host draws its own rounded container, so the art must not
+		// arrive pre-cropped to a different aspect.
+		const viewBox = /viewBox="([^"]+)"/.exec(text)?.[1]?.split(/\s+/).map(Number) ?? [];
+		expect(viewBox).toHaveLength(4);
+		expect(viewBox[2]).toBe(viewBox[3]);
+		// The upstream tile is identifiable by its gradient id; a swapped-in stock icon
+		// would fail this line, which is the point.
+		expect(text).toContain("lc-tile");
 	});
 
 	it("ships the agent avatar in a host-accepted format under the ceiling", () => {
@@ -86,9 +91,8 @@ describe("artwork", () => {
 	});
 
 	it("keeps no second icon around", () => {
-		// One mark or none: a leftover svg/png beside it wins on whichever surface
-		// falls back to a directory scan, and then the plugin looks inconsistent.
-		expect(plugin.icon).toBe("assets/icon.png");
-		expect(readdirSync(join(ROOT, "assets"))).toEqual(["icon.png"]);
+		// One mark or none: a leftover png beside the svg wins on whichever surface falls
+		// back to a directory scan, and then the plugin looks inconsistent.
+		expect(readdirSync(join(ROOT, "assets"))).toEqual(["icon.svg"]);
 	});
 });

@@ -369,7 +369,14 @@ export function CasesPage({ model, embedded = false }: PageProps & { embedded?: 
 						bodyClassName="p-0"
 						fill
 					>
-						<div data-testid="cases-reader" className="flex h-full min-h-0 flex-col overflow-y-auto">
+						{/*
+						 * 阅读区：**只有一个滚动容器**，就是正文那一块。
+						 *
+						 * 上一版这里写了 `h-full + overflow-y-auto`，正文自己又带一层 `overflow-y-auto`：
+						 * 两个滚动容器嵌套时，外层吃掉高度、内层的高度又等于内容高，滚轮落在内层上什么也不动。
+						 * 现在外层只负责把高度传下去（flex-1 + min-h-0），滚动交给正文。
+						 */}
+						<div data-testid="cases-reader" className="flex min-h-0 flex-1 flex-col">
 							{record ? (
 								<CaseReader record={record} docs={docs} />
 							) : precedent ? (

@@ -17,6 +17,14 @@ export interface GenerateOptions {
 	 * state — the vector path would run while the button said "image".
 	 */
 	mode?: EngineMode;
+	/**
+	 * A previously generated image to regenerate from (image-to-image).
+	 *
+	 * The agent tool has had this since 0.6.0; the panel did not, so "take this mark and
+	 * change it" was only possible from the conversation. Passing it forces one result —
+	 * two variations of one edit is two different edits.
+	 */
+	reference?: string;
 }
 
 export interface GenerationApi {
@@ -122,8 +130,10 @@ export function useGeneration(messages: {
 					}
 					const { images, failures } = await generateMarksWithHost(ctx, {
 						spec,
-						count,
+						// An edit produces one result by definition.
+						count: options.reference ? 1 : count,
 						providerId: settings.providerId,
+						...(options.reference ? { referenceBlobId: options.reference } : {}),
 					});
 					let lastId: string | null = null;
 					for (const image of images) {

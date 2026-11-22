@@ -89,11 +89,15 @@ describe("dialogs stay inside the panel", () => {
 describe("the tab strip icon", () => {
 	const registration = readFileSync(join(ROOT, "src/index.tsx"), "utf8");
 
-	it("is an explicit 16 px glyph, not the inherited plugin artwork", () => {
-		// Both contribution surfaces: the activity tab and the composer chip.
-		expect(registration).toContain("icon: <IconGenerate");
-		expect(registration.match(/icon: <IconGenerate/g)?.length).toBe(2);
+	it("uses the plugin's own mark, resolved by the host", () => {
+		// 上一版在这里放了一枚自绘字形：tab 上是星形、能力卡上是另一张图，用户看到两个 logo。
+		// 现在唯一来源是 plugin.json#icon → ctx.plugin.iconUrl。
+		expect(registration).toContain("ctx.plugin.iconUrl");
+		expect(registration).toMatch(/<img src=\{ctx\.plugin\.iconUrl\}/);
+		// 字形只剩一个兼容回退（读不到 iconUrl 的旧宿主），不再有两处。
+		expect(registration.match(/<IconGenerate/g)?.length).toBe(1);
 	});
+
 
 	it("comes from the shared glyph set, drawn in currentColor", () => {
 		// One set for the chip, the rail and the dock: a single stroke weight on a single

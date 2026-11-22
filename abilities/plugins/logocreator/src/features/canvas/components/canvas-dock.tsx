@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { IconExport, IconGenerate, IconImageSize, IconNote, IconShuffle, IconSliders } from "../../../shared/components/icons";
+import { IconExport, IconGenerate, IconImageSize, IconNote, IconReference, IconShuffle, IconSliders } from "../../../shared/components/icons";
 import { FOCUS_RING } from "../../../shared/styles/tokens";
 
 export interface CanvasDockProps {
@@ -17,6 +17,8 @@ export interface CanvasDockProps {
 	imageAvailable: boolean;
 	/** Runs the raster path in-panel: the same work the agent does via the tool. */
 	onGenerateImage: () => void;
+	/** Present only when the selected design is an AI image: regenerate from it. */
+	onGenerateFromReference?: () => void;
 	onOpenNotes: () => void;
 	onToggleInspector: () => void;
 	onOpenKit: () => void;
@@ -77,6 +79,7 @@ export function CanvasDock({
 	running,
 	mode,
 	imageAvailable,
+	onGenerateFromReference,
 	onGenerateImage,
 	pendingNotes,
 	inspectorOpen,
@@ -110,12 +113,24 @@ export function CanvasDock({
 				{imageAvailable ? (
 					// The raster path is offered only when the host can actually run it, so the
 					// button never leads to an error the user cannot act on.
-					<DockSlot
-						label={t("dock.image")}
-						disabled={running || !canGenerate}
-						onClick={onGenerateImage}
-						icon={<IconImageSize />}
-					/>
+					<>
+						<DockSlot
+							label={t("dock.image")}
+							disabled={running || !canGenerate}
+							onClick={onGenerateImage}
+							icon={<IconImageSize />}
+						/>
+						{onGenerateFromReference ? (
+							// 「改这一张」：面板里的 image-to-image。以前只有对话里的工具能做，
+							// 而用户看着画布想改的时机比在对话里多。
+							<DockSlot
+								label={t("dock.reference")}
+								disabled={running}
+								onClick={onGenerateFromReference}
+								icon={<IconReference />}
+							/>
+						) : null}
+					</>
 				) : null}
 				<DockSlot
 					label={t("action.surprise")}

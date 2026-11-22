@@ -1,7 +1,6 @@
 import type { PluginFsEntry } from "@astravia-org/plugin-sdk";
 import type { LabState } from "../../domain/lab-mode";
 import type { ProbeRecord } from "../../domain/refusal-probe";
-import type { HostModelSnapshot } from "../../domain/refusal-probe";
 import type { ReportMode, TriageReport } from "../../domain/report/report";
 import type { TriageSample } from "../../domain/triage";
 import type { MyCase } from "../../domain/my-cases";
@@ -49,8 +48,6 @@ export interface WorkbenchBridge {
 	 * 就是串会话。
 	 */
 	probeRecord(sessionId: string | null): Promise<ProbeRecord | null>;
-	/** 宿主当前模型快照（provider / id / api 风格）；没读到过就是 null。按会话。 */
-	hostModel(sessionId: string | null): Promise<HostModelSnapshot | null>;
 	saveReport(report: TriageReport, mode: ReportMode, format: "markdown" | "json"): Promise<string | null>;
 	/** 工作区 `reports/` 下的报告文件（对话里产出的那些）。 */
 	listReports(): Promise<ReportFile[]>;

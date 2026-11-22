@@ -70,16 +70,3 @@ export function useAutoProbeStatus(): { live: LiveProbeReport | null; autoProbe:
 	return { live, autoProbe };
 }
 
-/** 只在宿主模型 id 真的变化时给一次回调，用来同步「要测谁」。 */
-export function useHostModelChange(
-	hostModelId: string | null,
-	onChange: (next: string, previous: string | null) => void,
-): void {
-	const previous = useRef<string | null>(hostModelId);
-	useEffect(() => {
-		if (previous.current === hostModelId) return;
-		const before = previous.current;
-		previous.current = hostModelId;
-		if (hostModelId) onChange(hostModelId, before);
-	}, [hostModelId, onChange]);
-}

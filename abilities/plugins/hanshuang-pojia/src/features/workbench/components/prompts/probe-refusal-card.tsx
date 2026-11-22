@@ -1,8 +1,7 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useState } from "react";
 import {
 	adviceFor,
-	followHostModel,
 	buildProbeBrief,
 	customLadder,
 	profileReady,
@@ -10,19 +9,16 @@ import {
 	probesForClass,
 	rungRewrite,
 	rewritesFor,
-	type HostModelSnapshot,
 	type ProbeProfile,
 	type ProbeRecord,
 	type RefusalProbe,
 } from "../../../../domain/refusal-probe";
-import { classLabel, stepForLevel, targetClassOf } from "../../../../domain/probe-ladder";
+import { classLabel, shapeForLevel, shapeLabel, stepForLevel, targetClassOf } from "../../../../domain/probe-ladder";
 import { Card } from "../shell/card";
 import { Icon } from "../shell/icon";
 
 export interface ProbeRefusalCardProps {
 	record: ProbeRecord | null;
-	/** 宿主当前模型（provider / id / api 风格）。端点读不到，见 domain 注释。 */
-	hostModel: HostModelSnapshot | null;
 	/** 要测谁：端点 / 模型 / 风格 / 语言 / 档数。面板持有，非机密。 */
 	profile: ProbeProfile;
 	patchProfile(patch: Partial<ProbeProfile>): void;
@@ -73,7 +69,6 @@ const VERDICT_KEY: Record<string, string> = {
  */
 export function ProbeRefusalCard({
 	record,
-	hostModel,
 	profile,
 	patchProfile,
 	onBrief,
@@ -91,18 +86,6 @@ export function ProbeRefusalCard({
 	const [drafts, setDrafts] = useState<Record<number, string>>({});
 	const draftFor = (level: number, source: string): string => drafts[level] ?? rungRewrite(source, level).text;
 
-	// 宿主换模型后，「要测谁」跟着换 —— 否则表格顶部写着新模型、要测的却是旧的。
-	// 只在用户没手改过 model 时才跟随（followHostModel 的判据）。
-	const lastHost = useRef<string | null>(hostModel?.id ?? null);
-	useEffect(() => {
-		const next = hostModel?.id ?? null;
-		if (lastHost.current === next) return;
-		const before = lastHost.current;
-		lastHost.current = next;
-		if (!next) return;
-		const followed = followHostModel(profile, before, next);
-		if (followed.model !== profile.model) patchProfile(followed);
-	}, [hostModel?.id, profile, patchProfile]);
 
 	/**
 	 * 表格的数据源。
@@ -160,6 +143,73 @@ export function ProbeRefusalCard({
 	const current = rewriteFor === null ? null : rejected.find(row => row.probe.level === rewriteFor);
 	const previous = record?.previous;
 
+	/** 这一轮没有结论：表格仍然列出来，只是判定列写「未测」。 */
+	const unrun = record === null && liveRows.length === 0;
+
+	/** 一行对照。三种输入（记录 / 实时 / 还没跑）合成同一形状，表格只需一种渲染。 */
+	interface TableRow {
+		level: number;
+		name: string;
+		expect: "answer" | "risky" | null;
+		verdict: string | null;
+		kind: string | null;
+		shape: string | null;
+		note: string | null;
+		tiers: readonly string[];
+		text: string | null;
+		step: string | null;
+	}
+
+	/*
+	 * 行从哪来：
+	 *   · 有记录 → 那次探测的每一档（含措施档位）；
+	 *   · 只有实时对照（对话里刚跑的、还没落盘）→ live 行；
+	 *   · 两者都没有 → 这一轮**要跑**的档位，判定留空。
+	 * 上一版最后两种情况都落到「没有可判定的行」，表格因此看不见。
+	 */
+	const tableRows: TableRow[] =
+		advice.length > 0
+			? advice.map(item => {
+					const row = rejected.find(entry => entry.probe.level === item.level);
+					return {
+						level: item.level,
+						name: row?.probe.name ?? t(`probe.level.${item.level}`),
+						expect: row?.probe.expect ?? null,
+						verdict: item.verdict,
+						kind: item.kind ?? null,
+						shape: row ? rungRewrite(row.probe.text, row.probe.level).label : null,
+						note: item.note,
+						tiers: item.tiers,
+						text: row?.probe.text ?? null,
+						step: stepForLevel(item.level).step,
+					};
+				})
+			: liveRows.length > 0
+				? liveRows.map(row => ({
+						level: row.level,
+						name: row.name ?? t(`probe.level.${row.level}`),
+						expect: null,
+						verdict: row.verdict,
+						kind: row.kind ?? null,
+						shape: row.text ? rungRewrite(row.text, row.level).label : null,
+						note: row.advice ?? null,
+						tiers: [],
+						text: row.text ?? null,
+						step: stepForLevel(row.level).step,
+					}))
+				: rungs.map(rung => ({
+						level: rung.level,
+						name: rung.name,
+						expect: rung.expect,
+						verdict: null,
+						kind: null,
+						shape: shapeLabel(shapeForLevel(rung.level)),
+						note: null,
+						tiers: [],
+						text: rung.text,
+						step: stepForLevel(rung.level).step,
+					}));
+
 	const run = () => onBrief(buildProbeBrief(profile, ladder === "custom" ? { custom } : {}));
 
 	return (
@@ -191,25 +241,7 @@ export function ProbeRefusalCard({
 		>
 			{/* ① 要测谁：表单式两列，窄面板自动降单列。 */}
 			<div className="border-b border-line-subtle px-3 py-2">
-				{/* 宿主当前模型：能自动读到的三项先填好，用户只剩端点要填。 */}
-				{hostModel ? (
-					<div className="mb-1.5 flex flex-wrap items-center gap-1.5 rounded-md bg-surface-3/60 px-2 py-1">
-						<span className="shrink-0 text-[10.5px] text-text-4">{t("probe.host.detected")}</span>
-						<span className="min-w-0 flex-1 fb-wrap font-mono text-[10.5px] text-text-2">
-							{hostModel.provider} / {hostModel.id}
-							<span className="ms-1 text-text-4">· {hostModel.apiStyle}</span>
-						</span>
-						<button
-							type="button"
-							onClick={() =>
-								patchProfile({ model: hostModel.id, apiStyle: hostModel.apiStyle, authHeader: hostModel.apiStyle === "anthropic" ? "x-api-key" : "Authorization" })
-							}
-							className="shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-[10.5px] font-medium text-accent transition-colors hover:brightness-110"
-						>
-							{t("probe.host.use")}
-						</button>
-					</div>
-				) : null}
+				{/* 模型只能手填：面板拿不到宿主的 provider/model，也不该拿一份读不到的快照假装能读。 */}
 				<div className="pb-1 text-[9.5px] uppercase tracking-wider text-text-4">{t("probe.profile.title")}</div>
 				<div className="grid gap-1.5 @min-[420px]:grid-cols-2">
 					<label className="fb-field">
@@ -277,8 +309,7 @@ export function ProbeRefusalCard({
 				{ready ? null : <p className="mt-1 text-[10.5px] leading-relaxed text-risk-medium">{t("probe.needProfile")}</p>}
 				{/* 密钥不在这里：写进来就会进对话记录。 */}
 				<p className="mt-1 text-[10.5px] leading-relaxed text-text-4">{t("probe.profile.keyNote")}</p>
-				{/* 端点为什么必须手填一次：SDK 不给，说了才不像是漏做。 */}
-				<p className="mt-0.5 text-[10.5px] leading-relaxed text-text-4">{t("probe.host.note")}</p>
+				<p className="mt-0.5 text-[10.5px] leading-relaxed text-text-4">{t("probe.profile.manualNote")}</p>
 			</div>
 
 			{/* ② 选梯度 */}
@@ -381,230 +412,219 @@ export function ProbeRefusalCard({
 				</div>
 			) : null}
 
-			{record === null && liveRows.length === 0 ? (
-				<div className="px-3 py-3">
-					<p className="text-[11.5px] leading-relaxed text-text-3">{t("probe.empty")}</p>
-					<p className="mt-1 text-[10.5px] leading-relaxed text-text-4">{t("probe.emptyHint")}</p>
-					{/* 「测出来的结果显示在哪儿」是这套功能最常被问的一句，直接写在空态里。 */}
-					<p className="mt-1.5 rounded-md bg-surface-3/60 px-2 py-1 text-[10.5px] leading-relaxed text-text-3">
-						<span className="font-medium text-text-2">{t("probe.where.title")}</span> {t("probe.where.body")}
-					</p>
+			{/*
+			 * 来源行 + 对照表：**始终渲染**。
+			 *
+			 * 上一版把整块表格包在「有记录或有实时对照」里，于是两种最常见的场景看不到表：
+			 *   · 刚打开、一次都没跑过；
+			 *   · 只在对话里跑过（有实时对照、没落盘记录）—— 那张表当时还会显示「没有可判定的行」。
+			 * 表格同时回答「测过什么」与「接下来测什么」，不该因为没数据就整块消失。
+			 */}
+			<div className="flex flex-wrap items-baseline gap-2 border-b border-line-subtle px-3 py-2 text-[10.5px]">
+				<span className="shrink-0 rounded bg-surface-3 px-1 py-0.5 text-[9.5px] uppercase tracking-wider text-text-4">
+					{unrun ? t("probe.source.none") : liveRows.length > 0 ? t("probe.source.conversation") : t("probe.source.record")}
+				</span>
+				<span className="font-mono text-text-2">{live?.model ?? record?.model ?? (profile.model.trim() || "—")}</span>
+				{/* 记录来自另一个模型时明说：手填之后，「另一个」就是与表单里那个不一致。 */}
+				{record && profile.model.trim().length > 0 && record.model !== profile.model.trim() ? (
+					<span className="rounded bg-risk-medium/10 px-1 py-0.5 text-[9.5px] text-risk-medium" title={t("probe.staleHint")}>
+						{t("probe.stale", { model: profile.model.trim() })}
+					</span>
+				) : null}
+				{record ? (
+					<>
+						<span className="text-text-4">·</span>
+						<span className="fb-wrap font-mono text-text-4">{record.host}</span>
+						<span className="text-text-4">·</span>
+						<span className="text-text-4">{record.at.slice(0, 19).replace("T", " ")}</span>
+					</>
+				) : null}
+				{/* 对象类别：整张表的前提。这句目标属于哪一类，决定标准梯度怎么问。 */}
+				<span
+					className="shrink-0 rounded bg-surface-3 px-1 py-0.5 text-[9.5px] text-text-3"
+					title={t("probe.col.targetHint")}
+				>
+					{t("probe.col.target")}：{targetClass}
+				</span>
+				<span className="min-w-0 flex-1 fb-wrap text-end text-text-2">{live?.summary ?? record?.summary.headline ?? ""}</span>
+			</div>
+
+			{previous && record ? (
+				// 与上次对比：改了写法再测，唯一要回答的就是这一行。
+				<div className="flex flex-wrap items-center gap-1.5 border-b border-line-subtle bg-surface-3/50 px-3 py-1.5 text-[10.5px]">
+					<span className="shrink-0 text-text-4">{t("probe.compare")}</span>
+					{(previous.firstRefusal ?? 99) <= (record.summary.firstRefusal ?? 99) ? (
+						<span className="fb-wrap text-risk-high">
+							{t("probe.compare.worse", { prev: previous.firstRefusal ?? "—", now: record.summary.firstRefusal ?? "—" })}
+						</span>
+					) : (
+						<span className="fb-wrap text-risk-low">
+							{t("probe.compare.better", { prev: previous.firstRefusal ?? "—", now: record.summary.firstRefusal ?? "—" })}
+						</span>
+					)}
 				</div>
-			) : (
-				<>
-					<div className="flex flex-wrap items-baseline gap-2 border-b border-line-subtle px-3 py-2 text-[10.5px]">
-						{/* 来源：对话里刚解析出来的，还是工具写的那份文件。用户永远知道在看哪一份。 */}
-						<span className="shrink-0 rounded bg-surface-3 px-1 py-0.5 text-[9.5px] uppercase tracking-wider text-text-4">
-							{liveRows.length > 0 ? t("probe.source.conversation") : t("probe.source.record")}
-						</span>
-						<span className="font-mono text-text-2">{live?.model ?? record?.model ?? profile.model}</span>
-						{/* 记录来自别的模型时明说：按旧模型的结论做判断是误导。 */}
-						{hostModel && (live?.model ?? record?.model) !== hostModel.id ? (
-							<span className="rounded bg-risk-medium/10 px-1 py-0.5 text-[9.5px] text-risk-medium" title={t("probe.staleHint")}>
-								{t("probe.stale", { model: hostModel.id })}
-							</span>
-						) : null}
-						{record ? (
-							<>
-								<span className="text-text-4">·</span>
-								<span className="fb-wrap font-mono text-text-4">{record.host}</span>
-								<span className="text-text-4">·</span>
-								<span className="text-text-4">{record.at.slice(0, 19).replace("T", " ")}</span>
-							</>
-						) : null}
-						{/* 对象类别：整张表的前提。这句目标属于哪一类，决定标准梯度怎么问。 */}
-						<span
-							className="shrink-0 rounded bg-surface-3 px-1 py-0.5 text-[9.5px] text-text-3"
-							title={t("probe.col.targetHint")}
-						>
-							{t("probe.col.target")}：{targetClass}
-						</span>
-						<span className="min-w-0 flex-1 fb-wrap text-end text-text-2">{live?.summary ?? record?.summary.headline ?? ""}</span>
+			) : null}
+
+			{/* 表格区自己滚：笔记本矮屏下不再把卡片下半截顶出界面。 */}
+			<div data-testid="probe-table" className="fb-scroll m-2 max-h-[var(--fb-h-sm)] overflow-auto rounded-lg ring-1 ring-line-subtle">
+				{unrun ? (
+					<div className="border-b border-line-subtle bg-surface-3/50 px-2.5 py-1.5 text-[10.5px] leading-relaxed text-text-3">
+						<span className="font-medium text-text-2">{t("probe.where.title")}</span> {t("probe.emptyHint")}
 					</div>
-
-					{previous ? (
-						// 与上次对比：改了写法再测，唯一要回答的就是这一行。
-						<div className="flex flex-wrap items-center gap-1.5 border-b border-line-subtle bg-surface-3/50 px-3 py-1.5 text-[10.5px]">
-							<span className="shrink-0 text-text-4">{t("probe.compare")}</span>
-							{(previous.firstRefusal ?? 99) <= (record.summary.firstRefusal ?? 99) ? (
-								<span className="fb-wrap text-risk-high">
-									{t("probe.compare.worse", { prev: previous.firstRefusal ?? "—", now: record.summary.firstRefusal ?? "—" })}
-								</span>
-							) : (
-								<span className="fb-wrap text-risk-low">
-									{t("probe.compare.better", { prev: previous.firstRefusal ?? "—", now: record.summary.firstRefusal ?? "—" })}
-								</span>
-							)}
-						</div>
-					) : null}
-
-					{/* 表格区自己滚：笔记本矮屏下不再把卡片下半截顶出界面。 */}
-					<div className="fb-scroll m-2 max-h-[var(--fb-h-sm)] overflow-auto rounded-lg ring-1 ring-line-subtle">
-						{advice.length === 0 ? (
-							// 有记录但一条都没拿到可判定的回复（全部请求失败）：不能渲染空表，那看起来像被裁了。
-							<div className="px-3 py-4 text-[10.5px] leading-relaxed text-text-4">{t("probe.rowsEmpty")}</div>
-						) : (
-							<table className="w-full border-collapse text-left text-[11.5px]">
-								<thead className="bg-surface-3">
-									<tr>
-										<th className="border-b border-line-subtle px-2.5 py-1 font-semibold text-text">{t("probe.col.level")}</th>
-										<th className="border-b border-line-subtle px-2.5 py-1 font-semibold text-text">{t("probe.col.probe")}</th>
-										<th className="border-b border-line-subtle px-2.5 py-1 font-semibold text-text">{t("probe.col.expect")}</th>
-										<th className="border-b border-line-subtle px-2.5 py-1 font-semibold text-text">{t("probe.col.verdict")}</th>
-										<th className="border-b border-line-subtle px-2.5 py-1 font-semibold text-text">{t("probe.col.kind")}</th>
-										<th className="border-b border-line-subtle px-2.5 py-1 font-semibold text-text">{t("probe.col.shape")}</th>
-										<th className="border-b border-line-subtle px-2.5 py-1 font-semibold text-text">{t("probe.col.advice")}</th>
-									</tr>
-								</thead>
-								<tbody>
-									{advice.map(item => {
-										const row = rejected.find(entry => entry.probe.level === item.level);
-										const open = rewriteFor === item.level;
-										return (
-											// key 挂在 Fragment 上：map 的返回值必须有 key。
-											<Fragment key={item.level}>
-												<tr className="even:bg-surface-2">
-													<td className="border-b border-line-subtle px-2.5 py-1 font-mono tabular-nums text-text-2">{item.level}</td>
-													{/* 用记录里的档位名：标准四档与自定义梯度都自带名字，按数字取 locale
-													    只对标准档成立（自定义档会显示成标准档的名字）。 */}
-													<td
-														className="border-b border-line-subtle px-2.5 py-1 text-text-2"
-														title={row ? t("probe.col.step") + "：" + stepForLevel(row.probe.level).step + "\n" + (row.probe.text ?? "") : undefined}
+				) : null}
+				<table className="w-full border-collapse text-left text-[11.5px]">
+					<thead className="bg-surface-3">
+						<tr>
+							<th className="border-b border-line-subtle px-2.5 py-1 font-semibold text-text">{t("probe.col.level")}</th>
+							<th className="border-b border-line-subtle px-2.5 py-1 font-semibold text-text">{t("probe.col.probe")}</th>
+							<th className="border-b border-line-subtle px-2.5 py-1 font-semibold text-text">{t("probe.col.expect")}</th>
+							<th className="border-b border-line-subtle px-2.5 py-1 font-semibold text-text">{t("probe.col.verdict")}</th>
+							<th className="border-b border-line-subtle px-2.5 py-1 font-semibold text-text">{t("probe.col.kind")}</th>
+							<th className="border-b border-line-subtle px-2.5 py-1 font-semibold text-text">{t("probe.col.shape")}</th>
+							<th className="border-b border-line-subtle px-2.5 py-1 font-semibold text-text">{t("probe.col.advice")}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{tableRows.map(row => {
+							const open = rewriteFor === row.level;
+							return (
+								// key 挂在 Fragment 上：map 的返回值必须有 key。
+								<Fragment key={row.level}>
+									<tr className="even:bg-surface-2" data-verdict={row.verdict ?? "pending"}>
+										<td className="border-b border-line-subtle px-2.5 py-1 font-mono tabular-nums text-text-2">{row.level}</td>
+										{/* 用梯度里的档位名：标准与自定义都自带名字，按数字取 locale 只对标准档成立。 */}
+										<td
+											className="border-b border-line-subtle px-2.5 py-1 text-text-2"
+											title={row.step ? `${t("probe.col.step")}：${row.step}${row.text ? `\n${row.text}` : ""}` : undefined}
+										>
+											{row.name}
+										</td>
+										{/* 期望列：第 3、4 档本来就可能被拦；没有它，读者会把「如预期」当故障。 */}
+										<td className="border-b border-line-subtle px-2.5 py-1 text-[10.5px] text-text-4">
+											{row.expect ? t(`probe.expect.${row.expect}`) : "—"}
+										</td>
+										<td className={`border-b border-line-subtle px-2.5 py-1 font-medium ${row.verdict ? (VERDICT_TONE[row.verdict] ?? "text-text-3") : "text-text-4"}`}>
+											{row.verdict ? t(VERDICT_KEY[row.verdict] ?? "probe.verdict.pending") : t("probe.verdict.pending")}
+										</td>
+										<td className="border-b border-line-subtle px-2.5 py-1 font-mono text-[9.5px] text-text-3">{row.kind ?? "—"}</td>
+										{/* 句式：这一档的问法。整列一个名字，就说明改写真的换了形状。 */}
+										<td className="border-b border-line-subtle px-2.5 py-1 text-[10.5px] text-text-3">{row.shape ?? "—"}</td>
+										<td className="border-b border-line-subtle px-2.5 py-1 text-[10.5px] leading-relaxed text-text-3">
+											{row.tiers.length > 0 && row.text ? (
+												<span className="flex flex-wrap items-center gap-1">
+													<span className="fb-wrap">{row.note}</span>
+													<button
+														type="button"
+														aria-expanded={open}
+														onClick={() => setRewriteFor(open ? null : row.level)}
+														className="shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-[10.5px] font-medium text-accent transition-colors hover:brightness-110"
 													>
-														{row?.probe.name ?? t(`probe.level.${item.level}`)}
-													</td>
-													{/* 期望列：第 3、4 档本来就可能被拦；没有它，读者会把「如预期」当故障。 */}
-													<td className="border-b border-line-subtle px-2.5 py-1 text-[10.5px] text-text-4">
-														{row ? t(`probe.expect.${row.probe.expect}`) : "—"}
-													</td>
-													<td className={`border-b border-line-subtle px-2.5 py-1 font-medium ${VERDICT_TONE[item.verdict]}`}>
-														{t(VERDICT_KEY[item.verdict])}
-													</td>
-												<td className="border-b border-line-subtle px-2.5 py-1 font-mono text-[9.5px] text-text-3">{item.kind ?? "—"}</td>
-												{/* 句式：这一档的问法。整列一个名字，就说明改写真的换了形状。 */}
-												<td className="border-b border-line-subtle px-2.5 py-1 text-[10.5px] text-text-3">
-													{row ? rungRewrite(row.probe.text, row.probe.level).label : "—"}
-												</td>
-													<td className="border-b border-line-subtle px-2.5 py-1 text-[10.5px] leading-relaxed text-text-3">
-														{item.tiers.length > 0 && row ? (
-															<span className="flex flex-wrap items-center gap-1">
-																<span className="fb-wrap">{item.note}</span>
-																<button
-																	type="button"
-																	aria-expanded={open}
-																	onClick={() => setRewriteFor(open ? null : item.level)}
-																	className="shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-[10.5px] font-medium text-accent transition-colors hover:brightness-110"
-																>
-																	{open ? t("probe.rewrite.hide") : t("probe.rewrite.show")}
-																</button>
-															</span>
-														) : (
-															item.note
-														)}
-													</td>
-												</tr>
-												{open && current ? (
-													<tr className="bg-accent-soft/40">
-												<td colSpan={7} className="border-b border-line-subtle px-2.5 py-2">
-															<div className="flex flex-wrap items-center gap-2 pb-1">
-																<span className="text-[10.5px] font-medium text-text-2">{t("probe.rewrite.title")}</span>
-																{/* 句式标签：这一档用的是哪种问法，切换即可看出「内容被拦」还是「句式被拦」。 */}
-																<span className="rounded bg-surface-3 px-1 py-0.5 text-[9.5px] text-text-3">
-																	{rungRewrite(current.probe.text, current.probe.level).label}
-																</span>
-																<button
-																	type="button"
-																	onClick={() => setDrafts(prev => ({ ...prev, [current.probe.level]: rungRewrite(current.probe.text, current.probe.level).text }))}
-																	className="rounded border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
-																>
-																	{t("probe.rewrite.reset")}
-																</button>
-																<button
-																	type="button"
-																	onClick={() =>
-																		onBrief(
-																			buildProbeBrief(profile, {
-																				retest: draftFor(current.probe.level, current.probe.text),
-																			}),
-																		)
-																	}
-																	className="ms-auto rounded bg-text px-1.5 py-0.5 text-[10.5px] font-medium text-surface transition-opacity hover:opacity-90"
-																>
-																	{t("probe.rewrite.retest")}
-																</button>
-															</div>
-															{/* 可编辑：改写是结论，用户往往要按自己的口径微调再发。 */}
-															<textarea
-																value={draftFor(current.probe.level, current.probe.text)}
-																onChange={event =>
-																	setDrafts(prev => ({ ...prev, [current.probe.level]: event.target.value }))
-																}
-																rows={4}
-																aria-label={t("probe.rewrite.title")}
-																className="fb-wrap w-full resize-y rounded border border-line-subtle bg-surface px-2 py-1 font-mono text-[9.5px] leading-relaxed text-text-2 outline-none focus:border-accent"
-															/>
-														</td>
-													</tr>
-												) : null}
-											</Fragment>
-										);
-									})}
-								</tbody>
-							</table>
-						)}
-					</div>
+														{open ? t("probe.rewrite.hide") : t("probe.rewrite.show")}
+													</button>
+												</span>
+											) : (
+												(row.note ?? "—")
+											)}
+										</td>
+									</tr>
+									{open && current ? (
+										<tr className="bg-accent-soft/40">
+											<td colSpan={7} className="border-b border-line-subtle px-2.5 py-2">
+												<div className="flex flex-wrap items-center gap-2 pb-1">
+													<span className="text-[10.5px] font-medium text-text-2">{t("probe.rewrite.title")}</span>
+													{/* 句式标签：这一档用的是哪种问法，切换即可看出「内容被拦」还是「句式被拦」。 */}
+													<span className="rounded bg-surface-3 px-1 py-0.5 text-[9.5px] text-text-3">
+														{rungRewrite(current.probe.text, current.probe.level).label}
+													</span>
+													<button
+														type="button"
+														onClick={() => setDrafts(prev => ({ ...prev, [current.probe.level]: rungRewrite(current.probe.text, current.probe.level).text }))}
+														className="rounded border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+													>
+														{t("probe.rewrite.reset")}
+													</button>
+													<button
+														type="button"
+														onClick={() =>
+															onBrief(
+																buildProbeBrief(profile, {
+																	retest: draftFor(current.probe.level, current.probe.text),
+																}),
+															)
+														}
+														className="ms-auto rounded bg-text px-1.5 py-0.5 text-[10.5px] font-medium text-surface transition-opacity hover:opacity-90"
+													>
+														{t("probe.rewrite.retest")}
+													</button>
+												</div>
+												{/* 可编辑：改写是结论，用户往往要按自己的口径微调再发。 */}
+												<textarea
+													value={draftFor(current.probe.level, current.probe.text)}
+													onChange={event =>
+														setDrafts(prev => ({ ...prev, [current.probe.level]: event.target.value }))
+													}
+													rows={4}
+													aria-label={t("probe.rewrite.title")}
+													className="fb-wrap w-full resize-y rounded border border-line-subtle bg-surface px-2 py-1 font-mono text-[9.5px] leading-relaxed text-text-2 outline-none focus:border-accent"
+												/>
+											</td>
+										</tr>
+									) : null}
+								</Fragment>
+							);
+						})}
+					</tbody>
+				</table>
+			</div>
 
-					{/* 拒答措施：从记录里读，不重新推导 —— 措施是那次探测的结论之一。 */}
-					<div className="border-t border-line-subtle px-3 py-2">
-						<div className="flex items-baseline gap-1.5">
-							<span className="text-[9.5px] uppercase tracking-wider text-text-4">{t("probe.counter.title")}</span>
-							<span className="min-w-0 flex-1 fb-wrap text-[10.5px] text-text-4">{t("probe.counter.hint")}</span>
-							{/* 手动批量：与自动第二阶段同一份改写文本，只是由用户按下去。 */}
-							<button
-								type="button"
-								onClick={() => {
-									const blocked = liveCounter.slice(0, 3);
-									for (const item of blocked) onBrief(buildProbeBrief(profile, { retest: item.rewrite }));
-								}}
-								disabled={liveCounter.length === 0}
-								title={t("probe.counter.retestAllHint")}
-								className="shrink-0 rounded border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-40"
-							>
-								{t("probe.counter.retestAll")}
-							</button>
-						</div>
-						{liveCounter.length === 0 ? (
-							<p className="mt-1 text-[10.5px] text-text-3">{t("probe.counter.none")}</p>
-						) : (
-							<ul className="mt-1 space-y-0.5">
-								{liveCounter.map(item => {
-										const row = item.blocked;
-										return (
-										<li key={item.level} className="flex min-w-0 items-baseline gap-1.5 text-[10.5px]">
-											<span className="shrink-0 font-mono text-text-4">{item.level}</span>
-											<span className="min-w-0 flex-1 fb-wrap text-text-2">
-												{/* 被拦的是哪一句：自定义梯度下这是用户自己的话，必须能对上。 */}
-												{row ? <span className="me-1 font-mono text-[9.5px] text-text-4">{row.slice(0, 60)}</span> : null}
-												{item.note}
-											</span>
-											{/* 措施可以直接发回对话继续执行：可执行，而不只是可读。 */}
-											<button
-												type="button"
-												onClick={() => onBrief(buildProbeBrief(profile, { retest: item.rewrite }))}
-												title={item.rewrite}
-												className="shrink-0 rounded border border-line-subtle px-1.5 py-0.5 text-[9.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
-											>
-												{t("probe.counter.send")}
-											</button>
-										</li>
-										);
-									})}
-							</ul>
-						)}
-					</div>
-
-				</>
-			)}
+			{/* 拒答措施：从记录里读，不重新推导 —— 措施是那次探测的结论之一。 */}
+			<div className="border-t border-line-subtle px-3 py-2">
+				<div className="flex items-baseline gap-1.5">
+					<span className="text-[9.5px] uppercase tracking-wider text-text-4">{t("probe.counter.title")}</span>
+					<span className="min-w-0 flex-1 fb-wrap text-[10.5px] text-text-4">{t("probe.counter.hint")}</span>
+					{/* 手动批量：与自动第二阶段同一份改写文本，只是由用户按下去。 */}
+					<button
+						type="button"
+						onClick={() => {
+							const blocked = liveCounter.slice(0, 3);
+							for (const item of blocked) onBrief(buildProbeBrief(profile, { retest: item.rewrite }));
+						}}
+						disabled={liveCounter.length === 0}
+						title={t("probe.counter.retestAllHint")}
+						className="shrink-0 rounded border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-40"
+					>
+						{t("probe.counter.retestAll")}
+					</button>
+				</div>
+				{liveCounter.length === 0 ? (
+					<p className="mt-1 text-[10.5px] text-text-3">{t("probe.counter.none")}</p>
+				) : (
+					<ul className="mt-1 space-y-0.5">
+						{liveCounter.map(item => {
+							const blockedText = item.blocked;
+							return (
+								<li key={item.level} className="flex min-w-0 items-baseline gap-1.5 text-[10.5px]">
+									<span className="shrink-0 font-mono text-text-4">{item.level}</span>
+									<span className="min-w-0 flex-1 fb-wrap text-text-2">
+										{/* 被拦的是哪一句：自定义梯度下这是用户自己的话，必须能对上。 */}
+										{blockedText ? <span className="me-1 font-mono text-[9.5px] text-text-4">{blockedText.slice(0, 60)}</span> : null}
+										{item.note}
+									</span>
+									{/* 措施可以直接发回对话继续执行：可执行，而不只是可读。 */}
+									<button
+										type="button"
+										onClick={() => onBrief(buildProbeBrief(profile, { retest: item.rewrite }))}
+										title={item.rewrite}
+										className="shrink-0 rounded border border-line-subtle px-1.5 py-0.5 text-[9.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+									>
+										{t("probe.counter.send")}
+									</button>
+								</li>
+							);
+						})}
+					</ul>
+				)}
+			</div>
 
 			{/**
 			 * 「交给对话继续分析」固定在卡片底部，不随表格的有无消失。

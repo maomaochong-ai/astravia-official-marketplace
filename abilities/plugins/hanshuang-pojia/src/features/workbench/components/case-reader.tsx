@@ -21,7 +21,8 @@ export function CaseReader({ record, docs }: CaseReaderProps) {
 
 	return (
 		<>
-			<div className="flex min-w-0 flex-wrap items-center gap-1.5 px-3.5 pt-2.5">
+			{/* 前置块一律 shrink-0：否则空间紧时它们会被压扁，正文那一块却撑成内容高、永远不够滚。 */}
+			<div className="flex shrink-0 min-w-0 flex-wrap items-center gap-1.5 px-3.5 pt-2.5">
 				<span className="min-w-0 fb-wrap font-mono text-[10.5px] text-text-4" title={record.path}>
 					{record.path}
 				</span>
@@ -32,12 +33,14 @@ export function CaseReader({ record, docs }: CaseReaderProps) {
 				<Tag tone="neutral">{t("cases.detail.evidence", { count: record.evidenceCount })}</Tag>
 			</div>
 
-			<div className="mt-2.5 grid gap-2.5 px-3.5 pb-2.5 @min-[560px]:grid-cols-2">
+			<div className="mt-2.5 grid shrink-0 gap-2.5 px-3.5 pb-2.5 @min-[560px]:grid-cols-2">
 				<List title={t("cases.detail.inScope")} items={record.inScope} />
 				<List title={t("cases.detail.deliverables")} items={record.deliverables} />
 			</div>
 
-			<DocTabs items={docs.files.map(file => ({ id: file.id, label: file.label, hint: file.id }))} value={docs.active} onChange={docs.select} testId="case-doc-tabs" />
+			<div className="shrink-0">
+				<DocTabs items={docs.files.map(file => ({ id: file.id, label: file.label, hint: file.id }))} value={docs.active} onChange={docs.select} testId="case-doc-tabs" />
+			</div>
 
 			{docs.files.length === 0 ? (
 				<div className="px-3.5 py-6 text-center text-[11.5px] text-text-4">{t("cases.reader.nofiles")}</div>

@@ -11,6 +11,10 @@ import type { JSX } from "react";
  * The set is deliberately small and semantic: one glyph per verb the panel offers.
  * Six earlier dock glyphs were raw path soup with mismatched weights, which is why
  * the dock read as "ugly" rather than as a toolbar.
+ *
+ * Note: this set is for the **inside** of the panel. The activity tab and the composer
+ * badge use the plugin's own brand mark (`ctx.plugin.iconUrl`) — a brand surface should
+ * not be drawn with a generic glyph from here.
  */
 
 export interface IconProps {
@@ -212,6 +216,21 @@ export function IconImageSize(props: IconProps): JSX.Element {
 	);
 }
 
+
+/** Reference / image-to-image: a picture with an arrow back into it. */
+export function IconReference(props: IconProps): JSX.Element {
+	return (
+		<Glyph {...props}>
+			<>
+				<rect x="3" y="4.5" width="12" height="15" rx="2" />
+				<path d="M4.2 15.5l3.1-3 2.4 2.3 2-1.9 2.3 2.2" />
+				<circle cx="11" cy="9" r="1.1" />
+				<path d="M17 9.5h4v5h-4" />
+				<path d="M21 14.5l-2-2.5 2-2.5" />
+			</>
+		</Glyph>
+	);
+}
 /** Vector file. */
 export function IconVector(props: IconProps): JSX.Element {
 	return (

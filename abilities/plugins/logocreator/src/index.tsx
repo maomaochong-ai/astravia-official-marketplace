@@ -1,8 +1,9 @@
-import { definePlugin, type Disposable, type PluginContext } from "@astravia-org/plugin-sdk";
-import type { JSX } from "react";
+import { definePlugin, useTranslation, type Disposable, type PluginContext } from "@astravia-org/plugin-sdk";
+import { useState, type JSX } from "react";
 // Tailwind pipeline only — business CSS here would leak into the host page.
 import "./style.css";
 import { LogoCanvas } from "./features/canvas/components/logo-canvas";
+import { PanelBoundary } from "./features/panel/panel-boundary";
 import { LogoImageCard } from "./features/message/logo-image-card";
 import { setPluginContext } from "./plugin-context";
 import { activeScopeKey, canvasInstructions, setActiveConversation, setCanvasEngaged } from "./features/canvas/canvas-prompt";
@@ -38,8 +39,28 @@ function missingPermissions(ctx: PluginContext): string[] {
 	return GATED.filter((permission) => !ctx.permissions.has(permission));
 }
 
+/**
+ * The tab's root: an error boundary around the canvas.
+ *
+ * The canvas reads history, notes, settings and the provider list at mount. On a machine
+ * where one of those files is corrupt or storage is read-only, the old build rendered an
+ * empty frame — "the tab is installed but broken" with nothing to report. The boundary
+ * turns that into a message, one reset button, and a log line.
+ */
 function PanelShell(): JSX.Element {
-	return <LogoCanvas />;
+	const [resetKey, setResetKey] = useState(0);
+	const { t } = useTranslation();
+	return (
+		<PanelBoundary
+			resetKey={resetKey}
+			onReset={() => setResetKey((value) => value + 1)}
+			title={t("panel.crashTitle")}
+			hint={t("panel.crashHint")}
+			actionLabel={t("panel.crashRetry")}
+		>
+			<LogoCanvas />
+		</PanelBoundary>
+	);
 }
 
 export default definePlugin({
@@ -65,31 +86,77 @@ export default definePlugin({
 			}
 		};
 
-		// ── 1. the tab, before anything that can throw on its own ──────────────
+		/**
+		 * The tab.
+		 *
+		 * Three things here are load-bearing:
+		 *
+		 *  1. **The icon is the plugin's own mark.** The host resolves `plugin.json#icon` into
+		 *     `ctx.plugin.iconUrl`; carrying a hand-drawn glyph made the tab show one logo while
+		 *     the ability card showed another. One icon, one source.
+		 *  2. **A registration that throws is retried with the smallest payload.** An unsupported
+		 *     option taking the whole call down inside our own guard is how "installed but no tab"
+		 *     happened: nothing failed loudly, the tab just was not there.
+		 *  3. **Visible per conversation.** Attach records are keyed by the session cwd, and at app
+		 *     start there may be no displayed conversation yet — so the unconditional
+		 *     `setActivityTabVisible(true)` can land on nothing. Re-asserted on every change below.
+		 */
+		const tabIcon = ctx.plugin.iconUrl ? (
+			<img src={ctx.plugin.iconUrl} alt="" className="size-4 shrink-0 object-contain" draggable={false} />
+		) : (
+			<IconGenerate className="size-4" />
+		);
+
 		step("activity tab", () => {
-			owned.push(
+			const register = (): Disposable =>
 				ctx.ui.registerActivityTab({
 					id: LOGO_TAB_ID,
 					label: TAB_LABEL_KEY,
-					// An explicit glyph: the inherited plugin icon is a 512 px photo, which at
-					// the strip's 16 px reads as a rectangle.
-					icon: <IconGenerate className="size-4" />,
+					icon: tabIcon,
 					order: 26,
 					scope_use: [...SCOPES],
 					initiallyVisible: true,
 					retention: "warm",
 					component: PanelShell,
-				}),
-			);
+				});
+
+			let disposable: Disposable;
+			try {
+				disposable = register();
+			} catch (error) {
+				console.warn("[logocreator] full tab registration rejected, retrying minimal", error);
+				disposable = ctx.ui.registerActivityTab({
+					id: LOGO_TAB_ID,
+					label: TAB_LABEL_KEY,
+					scope_use: [...SCOPES],
+					component: PanelShell,
+				});
+			}
+			owned.push(disposable);
 			// Clear a stale detach record left by a previous "hide this tab" click.
-			ctx.ui.setActivityTabVisible(LOGO_TAB_ID, true);
+			try {
+				ctx.ui.setActivityTabVisible(LOGO_TAB_ID, true);
+			} catch {
+				/* 没有活跃会话时就是 no-op；下面的 conversation-changed 会补上。 */
+			}
 		});
 
 		// ── 2. keep our scope pointer on the conversation the host is showing ──
+		//      and make sure the tab really is on the strip for that conversation.
 		step("conversation subscription", () => {
 			owned.push(
 				ctx.conversation.on((event) => {
-					if (event.type === "conversation-changed") setActiveConversation(event.conversation.cwd);
+					if (event.type !== "conversation-changed") return;
+					const { cwd } = event.conversation;
+					setActiveConversation(cwd);
+					// Attach records are per cwd; without this a tab hidden once stays hidden in
+					// every later conversation even though `initiallyVisible` is true.
+					if (!cwd) return;
+					try {
+						ctx.ui.setActivityTabVisible(LOGO_TAB_ID, true, { cwd });
+					} catch {
+						/* 旧宿主不接第三参：保持原行为，不因此中断事件订阅。 */
+					}
 				}),
 			);
 		});
@@ -132,8 +199,8 @@ export default definePlugin({
 						// the plugin id — `logocreator:logocreator:brand` broke the state jumps.
 						id: INPUT_ACTION_ID,
 						label: INPUT_ACTION_LABEL_KEY,
-						icon: <IconGenerate className="size-3.5" />,
-						defaultActive: false,
+						// 同一个商标：徽标也是品牌面，不该在 tab 上是产品 logo、在输入栏上又是另一枚。
+						icon: tabIcon,
 						scope_use: [...SCOPES],
 						onToggle: (active) => {
 							setCanvasEngaged(activeScopeKey(), active);

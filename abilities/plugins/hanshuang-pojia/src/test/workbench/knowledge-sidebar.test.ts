@@ -58,4 +58,34 @@ describe("one filter control across the knowledge views", () => {
 		expect(menu).toContain("border-accent/40 bg-accent-soft text-accent");
 		expect(menu).toContain("border-line-subtle text-text-2 hover:bg-surface-hover");
 	});
+
+});
+
+describe("the case reader scrolls", () => {
+	const cases = read("src/features/workbench/components/pages/cases.tsx");
+	const reader = read("src/features/workbench/components/case-reader.tsx");
+	const precedent = read("src/features/workbench/components/precedent-reader.tsx");
+
+	it("has exactly one scroll container: the body", () => {
+		// 外层曾经同时写 h-full 与 overflow-y-auto，正文又自带一层滚动：滚轮落在内层上什么也不动。
+		const wrapper = /data-testid="cases-reader" className="([^"]+)"/.exec(cases)?.[1] ?? "";
+		expect(wrapper).toContain("min-h-0");
+		expect(wrapper).toContain("flex-1");
+		expect(wrapper).not.toContain("overflow-y-auto");
+		expect(wrapper).not.toContain("h-full");
+	});
+
+	it("keeps the prelude from eating the body's height", () => {
+		// 前置块不 shrink-0 时会被压扁，而正文那块撑成内容高 —— 看起来就是「不能滚」。
+		expect(reader).toMatch(/className="flex shrink-0 min-w-0 flex-wrap/);
+		expect(reader).toMatch(/className="mt-2\.5 grid shrink-0/);
+		expect(reader).toContain("fb-fill-scroll min-h-0 overflow-y-auto");
+	});
+
+	it("keeps the precedent reader's body as the only scroller too", () => {
+		expect(precedent).toContain("fb-scroll min-h-0 flex-1 overflow-y-auto");
+		// 每个前置 section 都 shrink-0。
+		const preludes = precedent.match(/className="[^"]*shrink-0[^"]*"/g) ?? [];
+		expect(preludes.length).toBeGreaterThanOrEqual(4);
+	});
 });

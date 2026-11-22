@@ -13,6 +13,7 @@ import { useGeneration } from "../hooks/use-generation";
 import { useLogoForm } from "../hooks/use-logo-form";
 import { savePngFile, saveSvgFile } from "../services/export-files";
 import { claimPendingDesignId, onPendingDesignChanged, peekPendingDesignId } from "../pending-design";
+import { getHistoryStore } from "../../../plugin-context";
 import { publishCanvasSpec } from "../canvas-prompt";
 import { useRasterUrl } from "../hooks/use-raster-url";
 import { useNotesHandoff } from "../hooks/use-notes-handoff";
@@ -99,6 +100,8 @@ export function LogoCanvas(): JSX.Element {
 	// A tool created a design while the panel was closed → show that one. Opening the
 	// tab again must not clobber half-finished work, so only an empty form is seeded.
 	const claimedRef = useRef<string | null>(null);
+	/** Pending ids we already waited on; a hand-off that never resolves is dropped, not kept. */
+	const waitedRef = useRef<Set<string>>(new Set());
 	const revealPending = useCallback(() => {
 		// Peek, look the record up, and only then consume.
 		//
@@ -110,8 +113,22 @@ export function LogoCanvas(): JSX.Element {
 		const pendingId = peekPendingDesignId(cwd);
 		if (!pendingId || claimedRef.current === pendingId) return;
 		const record = history.items.find((item) => item.id === pendingId);
-		if (!record) return;
+		if (!record) {
+			// The store has not caught up (or the tool died between writing the id and the
+			// record). Wait once for the next emit; if nothing arrives, drop the hand-off so a
+			// later generation is not blocked by a stale one.
+			if (!waitedRef.current.has(pendingId)) {
+				waitedRef.current.add(pendingId);
+				setTimeout(() => {
+					if (peekPendingDesignId(cwd) === pendingId && !getHistoryStore().get(pendingId)) {
+						claimPendingDesignId(cwd);
+					}
+				}, 4000);
+			}
+			return;
+		}
 		claimedRef.current = pendingId;
+		waitedRef.current.delete(pendingId);
 		claimPendingDesignId(cwd);
 		form.load(record.spec);
 		setSelectedId(record.id);
@@ -131,6 +148,26 @@ export function LogoCanvas(): JSX.Element {
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [cwd, history.ready, history.items.length]);
+
+	/**
+	 * A design that arrives while the panel is open.
+	 *
+	 * The hand-off above covers "tool wrote it, then opened the tab". This covers the other
+	 * half: the tab was already open when the agent generated something. Nothing selected yet
+	 * (or the selection is an older record) → follow the newest **AI** record, because that is
+	 * the one the conversation just produced. A deliberate selection of a vector design is
+	 * never stolen: it has a brand name in the form and the check stops.
+	 */
+	useEffect(() => {
+		if (!history.ready || peekPendingDesignId(cwd)) return;
+		const newest = history.items[0];
+		if (!newest || newest.engine !== "ai") return;
+		if (newest.id === selectedId) return;
+		if (form.spec.brandName.trim() && selectedId) return;
+		form.load(newest.spec);
+		setSelectedId(newest.id);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [cwd, history.ready, history.items[0]?.id]);
 
 	useEffect(() => onPendingDesignChanged(revealPending), [revealPending]);
 
@@ -343,6 +380,16 @@ export function LogoCanvas(): JSX.Element {
 						// calling generate in the same tick would still run the vector path.
 						void generation.generate(form.spec, { mode: "ai" });
 					}}
+					// Only when the open design is an AI image: a vector design has no bitmap to edit.
+					onGenerateFromReference={
+						selectedRecord?.engine === "ai" && selectedRecord.blobId
+							? () => {
+									const reference = selectedRecord.blobId;
+									if (!reference) return;
+									void generation.generate(form.spec, { mode: "ai", reference });
+								}
+							: undefined
+					}
 					onSurprise={() => void generation.generate(form.spec, { surprise: true })}
 					onOpenNotes={() => openInspector("notes")}
 					onToggleInspector={() => (inspectorOpen ? setInspectorOpen(false) : openInspector("design"))}

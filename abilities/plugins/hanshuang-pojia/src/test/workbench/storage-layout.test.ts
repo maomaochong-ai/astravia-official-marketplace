@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import { pathsToClear, storageEntries, storageEntry, workspaceKey } from "../../domain/storage-layout";
 
 describe("存储路径：会话自己一份，案例按工作区，偏好跟着插件", () => {
-	it("报告、探测记录、宿主模型按会话分文件", () => {
-		// ADR 0023：这三样都描述「这次对话」，跨会话看到别人的，就是串会话。
-		for (const key of ["library", "probeRecord", "hostModel"] as const) {
+	it("report and probe record are per conversation, so switching sessions cannot leak them", () => {
+		// ADR 0023：这两样都描述「这次对话」，跨会话看到别人的，就是串会话。
+		for (const key of ["library", "probeRecord"] as const) {
 			const a = storageEntry(key, "/work/alpha", "session-a");
 			const b = storageEntry(key, "/work/alpha", "session-b");
 			expect(a.path).not.toBe(b.path);

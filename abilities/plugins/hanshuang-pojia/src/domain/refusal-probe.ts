@@ -273,26 +273,6 @@ export function parseLiveReport(source: string): LiveProbeReport | null {
 /** 面板展示的来源：对话里解析出来的，还是工具写的那份文件。 */
 export type ReportSource = "conversation" | "record";
 
-/**
- * 宿主模型变了之后，面板里的「要测谁」跟着变，但只在用户没手动改过模型时。
- *
- * 判据：`profile.model` 为空，或它正好等于**上一个**宿主模型 —— 说明那一格一直是自动填的。
- * 用户自己敲过的模型不动，否则会把他正在测的端点悄悄换掉。
- */
-export function followHostModel(
-	profile: ProbeProfile,
-	previousHostModel: string | null,
-	nextHostModel: string | null,
-): ProbeProfile {
-	if (!nextHostModel || nextHostModel === previousHostModel) return profile;
-	const untouched = profile.model.trim().length === 0 || profile.model.trim() === (previousHostModel ?? "");
-	if (!untouched) return profile;
-	return {
-		...profile,
-		model: nextHostModel,
-		authHeader: profile.apiStyle === "anthropic" ? "x-api-key" : "Authorization",
-	};
-}
 
 /** Markdown 对照表：一档一行，证据列是命中的原句片段。 */
 export function renderTable(results: readonly ProbeResult[]): string {
@@ -324,20 +304,13 @@ export const PROBE_PROFILE_PATH = "workbench/probe-profile.json";
 export const PROBE_STATE_PATH = "workbench/probe-refusal.json";
 
 /**
- * 宿主当前模型快照的落点：运行时侧写、面板读。
+ * 为什么模型只能手填一次。
  *
- * 只含 provider / model id / api 风格 —— 没有 baseUrl（SDK 不给）、没有密钥（永远不存）。
+ * 面板不在主进程里，拿不到宿主实际调用的 provider / model；早先试过读一份快照文件，
+ * 但没人写它（写它的那一段从来没落过地），于是那一栏永远是空的，表格顶部却写着另一个模型的结论。
+ * 现在只保留一句说明：产品端不再假装能读，也不再自动覆盖用户敲的模型。
  */
-export const HOST_MODEL_PATH = "workbench/host-model.json";
 
-/** 运行时写、面板读的宿主模型快照。 */
-export interface HostModelSnapshot {
-	provider: string;
-	id: string;
-	apiStyle: ProbeApiStyle;
-	/** ISO 时间：面板要显示「什么时候读到的」。 */
-	at: string;
-}
 
 /**
  * 探测档案：面板持有的「要测谁」。

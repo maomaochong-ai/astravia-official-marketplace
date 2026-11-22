@@ -5,11 +5,6 @@ import { Icon } from "./icon";
 export interface TopBarProps {
 	page: PageId;
 	chat: ChatState;
-	sending: boolean;
-	/** 顶部白色主按钮：把当前样本交给对话。 */
-	onSend(): void;
-	canSend: boolean;
-	/** 实验环境开关：开着时提示块会带上交付规范，所以必须在界面上看得见。 */
 }
 
 const DOT: Record<ChatState["status"], string> = {
@@ -18,8 +13,8 @@ const DOT: Record<ChatState["status"], string> = {
 	streaming: "bg-purple fb-pulse",
 };
 
-/** 面包屑 + 宿主对话状态 + 主操作。设计稿的紫色徽标在这里承担「回程」可见性。 */
-export function TopBar({ page, chat, sending, onSend, canSend }: TopBarProps) {
+/** 面包屑 + 宿主对话状态。顶栏不放「发送到对话」：具体动作在各自页面里，带上下文。 */
+export function TopBar({ page, chat }: TopBarProps) {
 	const { t } = useTranslation();
 	const label =
 		chat.status === "streaming"
@@ -50,15 +45,6 @@ export function TopBar({ page, chat, sending, onSend, canSend }: TopBarProps) {
 				<span className={`hidden text-[10.5px] @min-[640px]:inline ${chat.status === "disconnected" ? "text-text-3" : "text-purple"}`}>{label}</span>
 			</div>
 
-			<button
-				type="button"
-				onClick={onSend}
-				disabled={!canSend || sending}
-				className="flex shrink-0 items-center gap-1.5 rounded-md bg-text px-2 py-1 text-[11.5px] font-medium text-surface transition-opacity hover:opacity-90 disabled:opacity-40"
-			>
-				<Icon name={sending ? "refresh" : "send"} className={`size-3 ${sending ? "motion-safe:animate-spin" : ""}`} />
-				<span className="hidden @min-[520px]:inline">{t("chat.sendAction")}</span>
-			</button>
 		</header>
 	);
 }

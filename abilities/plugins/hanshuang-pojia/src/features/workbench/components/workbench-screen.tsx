@@ -1,5 +1,5 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { ReactElement } from "react";
 import type { WorkbenchBridge } from "../bridge";
 import { useWorkbench } from "../hooks/use-workbench";
@@ -28,7 +28,6 @@ import { StringsPage } from "./pages/strings";
 import { PromptsPage } from "./pages/prompts";
 import { InjectPage } from "./pages/inject";
 import { HandoffDialog } from "./workbench/handoff-dialog";
-import { SendPromptDialog } from "./workbench/send-prompt-dialog";
 import { StaticPage } from "./pages/static";
 /**
  * 页面必须静态导入，不能用 React.lazy（ADR 0009 D2 已回滚，见 2.17.2）。
@@ -106,20 +105,12 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 	const [collapsed, setCollapsed] = useSidebarCollapsed();
 	const rail = collapsed;
 
-	// 发送前确认：先算出「不编辑时会发什么」，再让用户在对话框里改。
-	const [pending, setPending] = useState<string | null>(null);
 	const { t } = useTranslation();
 
 	// data-panel-root：浮层钳位用 —— 右键菜单要在面板内收边，不能拿 viewport 当边界。
 	return (
 		<div data-panel-root className="fb-root @container flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface text-text">
-			<TopBar
-				page={model.page}
-				chat={model.chat.state}
-				sending={model.chat.sending}
-				canSend={model.cwd !== null}
-				onSend={() => setPending(model.previewPrompt("continue"))}
-			/>
+			<TopBar page={model.page} chat={model.chat.state} />
 			<InjectStatusBar library={model.promptLibrary} />
 			<div className="flex min-h-0 flex-1">
 				<Sidebar
@@ -167,15 +158,6 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 				busy={model.chat.sending}
 				onClose={model.closeHandoff}
 				onSend={model.sendHandoff}
-			/>
-			{/* 发送前编辑：初值与不编辑时完全一致（同一个 buildPrompt）。 */}
-			<SendPromptDialog
-				open={pending !== null}
-				initial={pending ?? ""}
-				label={t("chat.preview.label.continue")}
-				onClose={() => setPending(null)}
-				onSend={text => model.askText(text)}
-				onSaveDraft={text => model.recordDraft(text, ["draft"])}
 			/>
 		</div>
 	);
