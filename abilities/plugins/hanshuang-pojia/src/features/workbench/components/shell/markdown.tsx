@@ -4,7 +4,7 @@
  * 不解析 HTML、不执行脚本、不加载远程资源——文档来自包内，任何可执行能力都是多余的攻击面。
  */
 
-import { useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 import { parseMarkdown, type MdBlock, type MdInline } from "../../services/markdown";
 
 function Inlines({ nodes }: { nodes: MdInline[] }) {
@@ -129,14 +129,40 @@ function Block({ block }: { block: MdBlock }) {
 	}
 }
 
-/** 把一篇 Markdown 渲染成与工作台其它页面同一套排版。 */
-export function Markdown({ source }: { source: string }) {
+/**
+ * 一屏先渲染多少块。
+ *
+ * 200 块约等于 30 KB 正文：足够覆盖随包的绝大多数文档（中位 6 KB），而单次挂载的
+ * 元素数量落在 React 一帧能处理完的量级。超长文档由读者点一次「展开全部」。
+ */
+const FIRST_WINDOW = 200;
+
+/**
+ * 把一篇 Markdown 渲染成与工作台其它页面同一套排版。
+ *
+ * `memo` 是必要的，不是优化：面板每次状态变化（点一下、切筛选、拖宽）都会重渲染
+ * 页面，而一篇 88k 字符的文档会渲染成上万元素；不 memo 就等于「点一下重建一万个
+ * 节点」—— Windows 上表现为点哪儿都卡一下，重时直接 Not responding。
+ */
+export const Markdown = memo(function Markdown({ source }: { source: string }) {
 	const blocks = useMemo(() => parseMarkdown(source), [source]);
+	const [expanded, setExpanded] = useState(false);
+	const visible = expanded ? blocks : blocks.slice(0, FIRST_WINDOW);
+
 	return (
 		<div className="fb-prose flex flex-col gap-3">
-			{blocks.map((block, index) => (
+			{visible.map((block, index) => (
 				<Block key={index} block={block} />
 			))}
+			{expanded || blocks.length <= FIRST_WINDOW ? null : (
+				<button
+					type="button"
+					onClick={() => setExpanded(true)}
+					className="self-start rounded-md border border-line-subtle px-2 py-1 text-[11.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+				>
+					展开全部（余下 {blocks.length - FIRST_WINDOW} 段）
+				</button>
+			)}
 		</div>
 	);
-}
+});

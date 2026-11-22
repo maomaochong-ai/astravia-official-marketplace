@@ -6,11 +6,13 @@
  * —— 页面写的落点和真实落点不是同一个文件。用户按页面上的路径去清，清不掉。
  *
  * 三个作用域是产品决定，不是实现细节：
- *   - `session`：本次对话里的草稿。换一个会话看不见，这是「串会话」的最后一道防线；
- *     草稿要么被发出去，要么由用户显式「沉淀到我的案例」，不会自己跨会话。
- *   - `workspace`：这个工作区里的**产物**（样本库、我的案例）。同一工作区的会话共享，
+ *   - `session`：本次对话自己的东西 —— 草稿、报告库、探测记录、宿主模型快照。
+ *     换一个会话看不见，这是「串会话」的最后一道防线；跨会话的唯一合法通道是用户
+ *     显式「沉淀到我的案例」。
+ *   - `workspace`：这个工作区里的**成果沉淀**（我的案例）。同一工作区的会话共享，
  *     换一个项目看不见。
- *   - `plugin`：用户自己的**偏好与收藏**（设置、提示词库、实验环境开关）。换项目仍带着走。
+ *   - `plugin`：用户自己的**偏好与收藏**（设置、提示词库、备份、实验环境开关）。
+ *     换项目仍带着走。
  */
 
 export type StorageScope = "session" | "workspace" | "plugin";
@@ -25,7 +27,16 @@ export interface StorageEntry {
 	legacyPath: string | null;
 }
 
-export type StorageKey = "drafts" | "library" | "cases" | "settings" | "labMode" | "prompts" | "promptBackups";
+export type StorageKey =
+	| "drafts"
+	| "library"
+	| "probeRecord"
+	| "hostModel"
+	| "cases"
+	| "settings"
+	| "labMode"
+	| "prompts"
+	| "promptBackups";
 
 const ROOT = "workbench";
 const WORKSPACES = `${ROOT}/workspaces`;
@@ -94,7 +105,11 @@ function sessionFile(file: string, sessionId: string | null | undefined): string
 export function storageEntries(cwd: string | null | undefined, sessionId?: string | null): StorageEntry[] {
 	return [
 		{ key: "drafts", scope: "session", path: sessionFile("drafts", sessionId), legacyPath: null },
-		{ key: "library", scope: "workspace", path: workspaceFile("library", cwd), legacyPath: `${ROOT}/library.json` },
+		// 报告属于产生它的那次对话：换会话再看到上一段的报告，就是「串会话」本身。
+		{ key: "library", scope: "session", path: sessionFile("library", sessionId), legacyPath: null },
+		// 旧位置仍列出来，只为了能清掉（不清就永远占着地方，用户还以为会话里那份还在）。
+		{ key: "probeRecord", scope: "session", path: sessionFile("probe", sessionId), legacyPath: null },
+		{ key: "hostModel", scope: "session", path: sessionFile("host-model", sessionId), legacyPath: null },
 		{ key: "cases", scope: "workspace", path: workspaceFile("cases", cwd), legacyPath: `${ROOT}/cases.json` },
 		{ key: "settings", scope: "plugin", path: `${ROOT}/settings.json`, legacyPath: null },
 		{ key: "labMode", scope: "plugin", path: `${ROOT}/lab-mode.json`, legacyPath: null },

@@ -59,7 +59,11 @@ function normalizeEntry(value: LibraryEntry): LibraryEntry | null {
 	return value;
 }
 
-export function useLibrary(bridge: WorkbenchBridge, cwd: string | null): LibraryModel {
+/**
+ * @param sessionId 报告按会话分文件（ADR 0023）。换会话必须重读，否则面板里会留着
+ *   上一段对话的报告 —— 这正是「串会话」最直观的一种。
+ */
+export function useLibrary(bridge: WorkbenchBridge, cwd: string | null, sessionId: string | null): LibraryModel {
 	const [settings, setSettings] = useState<WorkbenchSettings>(DEFAULT_SETTINGS);
 	const [entries, setEntries] = useState<LibraryEntry[]>([]);
 	const [reports, setReports] = useState<Record<string, TriageReport>>({});
@@ -71,7 +75,7 @@ export function useLibrary(bridge: WorkbenchBridge, cwd: string | null): Library
 
 	useEffect(() => {
 		let cancelled = false;
-		Promise.all([bridge.settings(), bridge.library(cwd)])
+		Promise.all([bridge.settings(), bridge.library(cwd, sessionId)])
 			.then(([storedSettings, storedLibrary]) => {
 				if (cancelled) return;
 				setSettings(current => {
@@ -110,7 +114,7 @@ export function useLibrary(bridge: WorkbenchBridge, cwd: string | null): Library
 		const signature = JSON.stringify([settings, settings.persistLibrary ? entries : null]);
 		if (signature === lastWrite.current) return;
 		lastWrite.current = signature;
-		Promise.all([bridge.saveSettings(settings), settings.persistLibrary ? bridge.saveLibrary(entries, cwd) : Promise.resolve(true)])
+		Promise.all([bridge.saveSettings(settings), settings.persistLibrary ? bridge.saveLibrary(entries, cwd, sessionId) : Promise.resolve(true)])
 			.then(([settingsSaved, librarySaved]) => setPersisted(settingsSaved && librarySaved))
 			.catch(() => setPersisted(false));
 	}, [bridge, cwd, entries, loaded, settings]);

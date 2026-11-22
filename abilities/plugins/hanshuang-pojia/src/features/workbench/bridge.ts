@@ -42,10 +42,15 @@ export interface WorkbenchBridge {
 	/** 实验环境开关的状态；对话里的 `lab：` 与面板开关写同一份。 */
 	labMode(): Promise<LabState | null>;
 	saveLabMode(state: LabState): Promise<boolean>;
-	/** 上一次 `probe_refusal` 的落盘记录；没有就是 null。 */
-	probeRecord(): Promise<ProbeRecord | null>;
-	/** 宿主当前模型快照（provider / id / api 风格）；没读到过就是 null。 */
-	hostModel(): Promise<HostModelSnapshot | null>;
+	/**
+	 * 上一次 `probe_refusal` 的落盘记录；没有就是 null。
+	 *
+	 * 按会话读（ADR 0023）：一次探测的结论属于产生它的那次对话，换会话看到别人的结论
+	 * 就是串会话。
+	 */
+	probeRecord(sessionId: string | null): Promise<ProbeRecord | null>;
+	/** 宿主当前模型快照（provider / id / api 风格）；没读到过就是 null。按会话。 */
+	hostModel(sessionId: string | null): Promise<HostModelSnapshot | null>;
 	saveReport(report: TriageReport, mode: ReportMode, format: "markdown" | "json"): Promise<string | null>;
 	/** 工作区 `reports/` 下的报告文件（对话里产出的那些）。 */
 	listReports(): Promise<ReportFile[]>;
@@ -69,8 +74,8 @@ export interface WorkbenchBridge {
 	settings(): Promise<WorkbenchSettings | null>;
 	saveSettings(settings: WorkbenchSettings): Promise<boolean>;
 	/** 样本库按工作区分文件：换一个项目不该看到上一个项目的分析结果。 */
-	library(cwd: string | null): Promise<LibraryEntry[] | null>;
-	saveLibrary(entries: readonly LibraryEntry[], cwd: string | null): Promise<boolean>;
+	library(cwd: string | null, sessionId: string | null): Promise<LibraryEntry[] | null>;
+	saveLibrary(entries: readonly LibraryEntry[], cwd: string | null, sessionId: string | null): Promise<boolean>;
 	/** 我的案例（面板自己沉淀的）：同样按工作区隔离。 */
 	myCases(cwd: string | null): Promise<MyCase[] | null>;
 	saveMyCases(cases: readonly MyCase[], cwd: string | null): Promise<boolean>;

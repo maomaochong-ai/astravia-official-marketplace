@@ -2,15 +2,26 @@ import { describe, expect, it } from "vitest";
 
 import { pathsToClear, storageEntries, storageEntry, workspaceKey } from "../../domain/storage-layout";
 
-describe("存储路径：产物按工作区分，偏好跟着插件", () => {
-	it("样本库与我的案例按工作区分文件", () => {
-		const a = storageEntry("library", "/work/alpha");
-		const b = storageEntry("library", "/work/beta");
+describe("存储路径：会话自己一份，案例按工作区，偏好跟着插件", () => {
+	it("报告、探测记录、宿主模型按会话分文件", () => {
+		// ADR 0023：这三样都描述「这次对话」，跨会话看到别人的，就是串会话。
+		for (const key of ["library", "probeRecord", "hostModel"] as const) {
+			const a = storageEntry(key, "/work/alpha", "session-a");
+			const b = storageEntry(key, "/work/alpha", "session-b");
+			expect(a.path).not.toBe(b.path);
+			expect(a.scope).toBe("session");
+			expect(a.path.startsWith("workbench/sessions/")).toBe(true);
+			// 同一会话换工作区仍然同一份：它属于对话，不属于项目。
+			expect(storageEntry(key, "/work/beta", "session-a").path).toBe(a.path);
+		}
+	});
+
+	it("我的案例仍按工作区分文件（用户显式沉淀的产物）", () => {
+		const a = storageEntry("cases", "/work/alpha", "session-a");
+		const b = storageEntry("cases", "/work/beta", "session-a");
 		expect(a.path).not.toBe(b.path);
 		expect(a.scope).toBe("workspace");
 		expect(a.path.startsWith("workbench/workspaces/")).toBe(true);
-		// 旧位置要留着：升级后第一次打开要能读回原来的样本库。
-		expect(a.legacyPath).toBe("workbench/library.json");
 	});
 
 	it("设置、提示词库、实验环境开关是插件级的，换工作区不变", () => {
@@ -20,10 +31,12 @@ describe("存储路径：产物按工作区分，偏好跟着插件", () => {
 		}
 	});
 
-	it("没有 cwd 时落在一个固定的默认分区", () => {
+	it("没有 cwd / 没有会话 id 时落在固定的默认分区，不猜", () => {
 		expect(workspaceKey(null)).toBe("default");
 		expect(workspaceKey("")).toBe("default");
-		expect(storageEntry("library", null).path).toContain("/default/");
+		expect(storageEntry("cases", null).path).toContain("/default/");
+		// 没有会话 id 就进 unsessioned：宁可看到空，也不要把上一段的结果端过来。
+		expect(storageEntry("library", null, null).path).toContain("/unsessioned/");
 	});
 });
 
@@ -49,20 +62,27 @@ describe("工作区键：可读但不撞", () => {
 });
 
 describe("清理范围", () => {
-	it("只清产物时不动偏好", () => {
-		const paths = pathsToClear("/work/alpha", "workspace");
-		expect(paths.some(path => path.includes("library"))).toBe(true);
+	it("只清本工作区时不动偏好，也不动会话数据", () => {
+		const paths = pathsToClear("/work/alpha", "workspace", "session-a");
+		expect(paths.some(path => path.includes("cases"))).toBe(true);
 		expect(paths.some(path => path.includes("prompt-library"))).toBe(false);
 		expect(paths.some(path => path.includes("settings"))).toBe(false);
+		expect(paths.some(path => path.includes("/sessions/"))).toBe(false);
+	});
+
+	it("只清本会话时不碰项目里的案例", () => {
+		const paths = pathsToClear("/work/alpha", "session", "session-a");
+		expect(paths.every(path => path.includes("/sessions/"))).toBe(true);
+		expect(paths.some(path => path.includes("library"))).toBe(true);
 	});
 
 	it("全清包含每一个已知路径与旧位置", () => {
-		const paths = pathsToClear("/work/alpha", "all");
-		const expected = storageEntries("/work/alpha").reduce(
+		const paths = pathsToClear("/work/alpha", "all", "session-a");
+		const expected = storageEntries("/work/alpha", "session-a").reduce(
 			(total, entry) => total + (entry.legacyPath ? 2 : 1),
 			0,
 		);
 		expect(paths).toHaveLength(expected);
-		expect(paths).toContain("workbench/library.json");
+		expect(paths).toContain("workbench/cases.json");
 	});
 });

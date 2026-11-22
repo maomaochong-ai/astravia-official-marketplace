@@ -14,11 +14,14 @@ export function looksLikeNoSession(error: unknown): boolean {
 }
 
 /**
- * 开一个新会话再把话送进去。`navigate` 保持默认（true）：用户点「发到对话」
- * 就是要看到那段对话，停在插件页只会让人以为没发出去。
+ * 开一个新会话再把话送进去。
+ *
+ * `navigate: false` 是刻意的：面板本身是侧栏，对话就在它旁边。用默认值（true）时宿主
+ * 会先跳到对话页、插件 tab 再把自己挂回来 —— 用户看到的就是「tab 闪一下」。会话照常创建
+ * 并被设为活跃，只是不动路由，所以发出去的那句话仍然落在正确的会话里。
  */
 export async function startSession(conversation: PluginConversationApi, prompt: string, cwd: string): Promise<ChatOutcome> {
-	await conversation.createSession(cwd);
+	await conversation.createSession(cwd, { navigate: false });
 	const created = await conversation.sendPrompt(prompt);
 	if (created.status === "failed") throw new Error(created.error?.message ?? "sendPrompt failed");
 	return "opened";

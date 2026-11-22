@@ -17,7 +17,7 @@ import { loadSample } from "./tools/lib/read-sample";
 import { isPluginTool } from "./tools/ids";
 import { publishTaskEvent } from "./runtime/panel-channel";
 import type { LabState } from "./domain/lab-mode";
-import { PROBE_STATE_PATH, type ProbeRecord } from "./domain/refusal-probe";
+import type { ProbeRecord } from "./domain/refusal-probe";
 import { LAB_STATE_PATH } from "./features/workbench/hooks/use-lab";
 import { cacheLabState, registerRuntimeContributions } from "./runtime/contributions";
 import "./style.css";
@@ -281,14 +281,11 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 		},
 		settings: () => readJson<WorkbenchSettings>(ctx.storage, storageEntry("settings", null).path),
 		saveSettings: settings => writeJson(ctx.storage, storageEntry("settings", null).path, settings),
-		// 产物按工作区分文件，并回落到旧路径：升级后第一次打开还能看到原来的样本库。
-		library: async cwd => {
-			const entry = storageEntry("library", cwd);
-			const scoped = await readJson<LibraryEntry[]>(ctx.storage, entry.path);
-			if (scoped) return scoped;
-			return entry.legacyPath ? readJson<LibraryEntry[]>(ctx.storage, entry.legacyPath) : null;
-		},
-		saveLibrary: (entries, cwd) => writeJson(ctx.storage, storageEntry("library", cwd).path, entries),
+		// 报告按**会话**分文件（ADR 0023）：换会话再看到上一段的报告就是串会话。
+		// 旧的扁平路径不回落 —— 它没有会话身份，读它等于把 A 会话的结果端给 B。
+		library: (cwd, sessionId) => readJson<LibraryEntry[]>(ctx.storage, storageEntry("library", cwd, sessionId).path),
+		saveLibrary: (entries, cwd, sessionId) =>
+			writeJson(ctx.storage, storageEntry("library", cwd, sessionId).path, entries),
 		myCases: async cwd => {
 			const entry = storageEntry("cases", cwd);
 			const scoped = await readJson<unknown>(ctx.storage, entry.path);
@@ -298,10 +295,12 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 		},
 		saveMyCases: (cases, cwd) => writeJson(ctx.storage, storageEntry("cases", cwd).path, cases),
 		labMode: () => readJson<LabState>(ctx.storage, LAB_STATE_PATH),
-		probeRecord: () => readJson<ProbeRecord>(ctx.storage, PROBE_STATE_PATH),
-		hostModel: async () => {
+		// 探测记录与宿主模型快照都是「这次对话测的是谁」，按会话分文件。
+		probeRecord: sessionId => readJson<ProbeRecord>(ctx.storage, storageEntry("probeRecord", null, sessionId).path),
+		hostModel: async sessionId => {
 			try {
-				const raw = await ctx.storage.readFile("workbench/host-model.json", "utf8");
+				const entry = storageEntry("hostModel", null, sessionId);
+				const raw = await ctx.storage.readFile(entry.path, "utf8");
 				return raw ? (JSON.parse(raw) as never) : null;
 			} catch {
 				return null;

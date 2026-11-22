@@ -193,6 +193,14 @@ export interface WorkbenchModel {
 	previewPrompt(action: PromptAction, extra?: Partial<PromptContext>): string;
 	/** 清理插件自己写的文件；返回是否全部删成。 */
 	clearStorage(scope: StorageScope | "all"): Promise<boolean>;
+	/**
+	 * 按路径清理：勾选式删除用。
+	 *
+	 * 与 `clearStorage` 分开而不是让它收一个路径数组：范围式清理要经过
+	 * `pathsToClear` 补旧位置，勾选式清理的路径已经由调用方展开好了 —— 混成一个函数
+	 * 就分不清「谁负责补 legacy」。
+	 */
+	clearPaths(paths: readonly string[]): Promise<boolean>;
 	/** 每个作用域真实占了多少：文件数与字节数，来自宿主的 list + 快照，不是估算。 */
 	storageUsage(): Promise<StorageUsageRow[]>;
 	/** 把一段草稿存进我的案例：用户显式沉淀，不是自动搬运。 */
@@ -217,10 +225,11 @@ function toSamples(entries: PluginFsEntry[]): PluginFsEntry[] {
 export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, options: { active?: boolean } = {}): WorkbenchModel {
 	const { t } = useTranslation();
 	const active = options.active !== false;
-	const library = useLibrary(bridge, cwd);
 	const chat = useChat(bridge, cwd, active);
 	// 所有会话作用域的存储都以它分区：宿主 replay 的 conversation-changed 一到达就有值。
 	const sessionId = chat.state.sessionId;
+	// 报告按会话分文件，所以它在 chat 之后：会话 id 来自 chat 的状态。
+	const library = useLibrary(bridge, cwd, sessionId);
 	const lab = useLab(bridge);
 	const promptLib = usePromptLibrary(bridge);
 
@@ -477,7 +486,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 	useEffect(() => {
 		if (page !== "prompts") return;
 		let alive = true;
-		void bridge.hostModel().then(snapshot => {
+		void bridge.hostModel(sessionId).then(snapshot => {
 			if (alive) setHostModel(snapshot);
 		});
 		return () => {
@@ -495,7 +504,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		void bridge.writeState(PROBE_PROFILE_PATH, probeProfile).catch(() => undefined);
 	}, [bridge, probeProfile]);
 	const refreshProbe = useCallback(() => {
-		void bridge.probeRecord().then(setProbeRecord);
+		void bridge.probeRecord(sessionId).then(setProbeRecord);
 	}, [bridge]);
 	useEffect(() => {
 		if (page === "prompts") refreshProbe();
@@ -586,6 +595,8 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 	}, [sessionId]);
 
 	// 清理：只删插件自己写的文件，路径由 storage-layout 统一给出（含旧位置）。
+	const clearPaths = useCallback((paths: readonly string[]) => bridge.removeState([...paths]), [bridge]);
+
 	const clearStorage = useCallback(
 		// 会话作用域必须带上当前 sessionId，否则会去清一个不存在的分区。
 		(scope: StorageScope | "all") => bridge.removeState(pathsToClear(cwd, scope, sessionId)),
@@ -835,6 +846,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		askText,
 		previewPrompt,
 		clearStorage,
+		clearPaths,
 		storageUsage,
 		recordDraft,
 		notify: bridge.notify,

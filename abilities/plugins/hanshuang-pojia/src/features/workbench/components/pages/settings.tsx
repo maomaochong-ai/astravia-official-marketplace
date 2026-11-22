@@ -73,10 +73,29 @@ export function SettingsPage({ model }: PageProps) {
 	};
 	// 占用逐项问宿主，不估算：用户看到的是真实文件数与字节数。
 	const [usage, setUsage] = useState<StorageUsageRow[] | null>(null);
+	/**
+	 * 勾选的条目（storage key）。空 = 没选。
+	 *
+	 * 清理会删文件，所以两段式：先勾，再按一次「清理选中」。范围按钮保留，因为它们回答
+	 * 另一种问题（「这个会话全清掉」），勾选回答「就删这三项」。
+	 */
+	const [selected, setSelected] = useState<string[]>([]);
 	const loadUsage = () => {
 		void model.storageUsage().then(setUsage);
 	};
 	useEffect(loadUsage, []);
+	/** 按条目清理：把勾中的 storage key 展开成真实路径（含旧位置）再删。 */
+	const clearKeys = async (keys: readonly string[]) => {
+		if (keys.length === 0) return;
+		const paths = storageEntries(model.cwd, model.sessionId)
+			.filter(entry => keys.includes(entry.key))
+			.flatMap(entry => (entry.legacyPath ? [entry.path, entry.legacyPath] : [entry.path]));
+		const done = paths.length > 0 ? await model.clearPaths(paths) : false;
+		setClearState(done ? "settings.data.cleared" : "settings.data.clearFailed");
+		setSelected([]);
+		loadUsage();
+	};
+
 	const clear = async (scope: "session" | "workspace" | "all") => {
 		const done = await model.clearStorage(scope);
 		setClearState(done ? "settings.data.cleared" : "settings.data.clearFailed");
@@ -283,6 +302,18 @@ export function SettingsPage({ model }: PageProps) {
 							</div>
 							{(usage ?? []).map(row => (
 								<div key={row.key} className="flex items-baseline gap-2 px-3.5 py-1.5">
+									{/* 勾选：条目是语义的（一件事一行），不是文件名。 */}
+									<input
+										type="checkbox"
+										checked={selected.includes(row.key)}
+										onChange={() =>
+											setSelected(current =>
+												current.includes(row.key) ? current.filter(key => key !== row.key) : [...current, row.key],
+											)
+										}
+										aria-label={t("settings.data.select", { key: row.key })}
+										className="mt-[3px] size-3 shrink-0 accent-[var(--risk-high)]"
+									/>
 									<span className="w-20 shrink-0 text-[10.5px] text-text-4">{t(`settings.data.scope.${row.scope}`)}</span>
 									<span className="min-w-0 flex-1 break-all font-mono text-[10.5px] leading-snug text-text-2" title={row.path}>
 										{row.path}
@@ -305,7 +336,35 @@ export function SettingsPage({ model }: PageProps) {
 									))
 								: null}
 							<div className="flex flex-wrap items-center gap-2 px-3.5 py-2.5">
-								{/* 清理会删文件：三档都先武装，再执行。 */}
+								{/* 勾选式清理：只删勾中的条目。 */}
+								<button
+									type="button"
+									disabled={selected.length === 0}
+									onClick={() => void clearKeys(selected)}
+									className="rounded-md border border-risk-high/40 bg-risk-high/10 px-2.5 py-1.5 text-[11.5px] font-medium text-risk-high transition-colors hover:bg-risk-high/15 disabled:opacity-40"
+								>
+									{t("settings.data.clearSelected", { count: selected.length })}
+								</button>
+								<button
+									type="button"
+									disabled={(usage ?? []).length === 0}
+									onClick={() => setSelected((usage ?? []).map(row => row.key))}
+									className="rounded-md border border-line-subtle px-2.5 py-1.5 text-[11.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-40"
+								>
+									{t("settings.data.selectAll")}
+								</button>
+								{selected.length > 0 ? (
+									<button
+										type="button"
+										onClick={() => setSelected([])}
+										className="rounded-md px-1.5 py-1.5 text-[11.5px] text-text-4 transition-colors hover:text-text"
+									>
+										{t("settings.data.selectNone")}
+									</button>
+								) : null}
+								<span className="w-px self-stretch bg-line-subtle" aria-hidden />
+								{/* 范围式清理保留：它回答「这一整档都清掉」。 */}
+								{armed === null ? null : null}
 								<button
 									type="button"
 									aria-pressed={armed === "session"}

@@ -339,7 +339,11 @@ export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onB
 											<Fragment key={item.level}>
 												<tr className="even:bg-surface-2">
 													<td className="border-b border-line-subtle px-2.5 py-1 font-mono tabular-nums text-text-2">{item.level}</td>
-													<td className="border-b border-line-subtle px-2.5 py-1 text-text-2">{t(`probe.level.${item.level}`)}</td>
+													{/* 用记录里的档位名：标准四档与自定义梯度都自带名字，按数字取 locale
+													    只对标准档成立（自定义档会显示成标准档的名字）。 */}
+													<td className="border-b border-line-subtle px-2.5 py-1 text-text-2" title={row?.probe.text}>
+														{row?.probe.name ?? t(`probe.level.${item.level}`)}
+													</td>
 													{/* 期望列：第 3、4 档本来就可能被拦；没有它，读者会把「如预期」当故障。 */}
 													<td className="border-b border-line-subtle px-2.5 py-1 text-[10.5px] text-text-4">
 														{row ? t(`probe.expect.${row.probe.expect}`) : "—"}
@@ -409,15 +413,22 @@ export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onB
 							<ul className="mt-1 space-y-0.5">
 								{(record.advice ?? [])
 									.filter(item => item.verdict !== "answered")
-									.map(item => (
+									.map(item => {
+										const row = record.rows.find(entry => entry.probe.level === item.level);
+										return (
 										<li key={item.level} className="flex min-w-0 items-baseline gap-1.5 text-[10.5px]">
 											<span className="shrink-0 font-mono text-text-4">{item.level}</span>
-											<span className="min-w-0 flex-1 fb-wrap text-text-2">{item.note}</span>
+											<span className="min-w-0 flex-1 fb-wrap text-text-2">
+												{/* 被拦的是哪一句：自定义梯度下这是用户自己的话，必须能对上。 */}
+												{row ? <span className="me-1 font-mono text-[9.5px] text-text-4">{row.probe.text.slice(0, 60)}</span> : null}
+												{item.note}
+											</span>
 											{item.tiers.length > 0 ? (
 												<span className="shrink-0 font-mono text-[9.5px] text-accent">{item.tiers.join(" → ")}</span>
 											) : null}
 										</li>
-									))}
+										);
+									})}
 							</ul>
 						)}
 					</div>

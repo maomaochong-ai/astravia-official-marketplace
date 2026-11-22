@@ -53,7 +53,9 @@ describe("deliverPrompt", () => {
 		const { api, sendPrompt, createSession } = fakeConversation();
 		await expect(deliverPrompt(api, "hi", "/work", null)).resolves.toBe("opened");
 		// 直接新建：createSession 先于 sendPrompt，且没有先吃一次必然失败的发送。
-		expect(createSession).toHaveBeenCalledWith("/work");
+		// `navigate: false` 是「tab 不再闪一下」的那一半：会话照常创建并设为活跃，
+		// 但宿主不跳走，插件 tab 也就不需要再把自己挂回来。
+		expect(createSession).toHaveBeenCalledWith("/work", { navigate: false });
 		expect(sendPrompt).toHaveBeenCalledTimes(1);
 	});
 
