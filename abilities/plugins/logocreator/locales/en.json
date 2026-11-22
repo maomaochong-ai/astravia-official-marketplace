@@ -150,7 +150,7 @@
   "notify.saveFailed": "The file could not be saved",
   "notify.saved": "Saved to {{path}}",
   "panel.ai": "AI settings",
-  "panel.crashHint": "The history, the notes or the image settings contain data that cannot be read. Retry first; if that fails, clear this plugin's storage and reopen.",
+  "panel.crashHint": "The history, the notes or a plugin permission could not be read. Retry first; if the message says “permission denied”, re-authorise this plugin in Settings → Abilities → Plugins.",
   "panel.crashRetry": "Retry",
   "panel.crashTitle": "LogoCreator could not render",
   "panel.history": "History",

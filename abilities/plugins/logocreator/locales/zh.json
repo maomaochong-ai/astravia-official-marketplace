@@ -150,7 +150,7 @@
   "notify.saveFailed": "文件保存失败",
   "notify.saved": "已保存到 {{path}}",
   "panel.ai": "AI 设置",
-  "panel.crashHint": "历史、备注或图像设置里有读不出来的数据。先点重试；仍不行就清掉这个插件的存储再打开。",
+  "panel.crashHint": "历史、备注或插件权限里有一项读不出来。先点重试；如果错误里写着「permission denied」，去 设置 → 能力 → 插件 重新授权这个插件。",
   "panel.crashRetry": "重试",
   "panel.crashTitle": "LogoCreator 面板没能渲染",
   "panel.history": "历史",
