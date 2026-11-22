@@ -6,11 +6,15 @@ import { CaseReader } from "../case-reader";
 import { PrecedentReader } from "../precedent-reader";
 import { AiButton } from "../shell/ai-button";
 import { Card } from "../shell/card";
+import { ContextMenu } from "../shell/context-menu";
 import { FilterMenu } from "../shell/filter-menu";
 import { Icon } from "../shell/icon";
 import { PageHeader } from "../shell/page-header";
 import { SegmentedControl } from "../shell/segmented-control";
 import { Tag } from "../shell/tag";
+import { usePanelMenu } from "../../hooks/use-panel-menu";
+import { caseIndexMarkdown, precedentIndexMarkdown, precedentPackageMarkdown } from "../../services/case-export";
+import { downloadMarkdown, safeFileName } from "../../services/download";
 import type { PageProps } from "./overview";
 
 /** 一次列举完：榜单只做过滤与排序，不做分页。 */
@@ -71,6 +75,110 @@ export function CasesPage({ model, embedded = false }: PageProps & { embedded?: 
 		cases.select(null);
 		setListOpen(false);
 	};
+
+	/**
+	 * 右键菜单：左侧两份清单都挂了，因为它们是同一件事的两种来源。
+	 *
+	 * 菜单只放「在面板里做不完的事」—— 打开、导出、复制路径、交给对话。
+	 * 已经在按钮上的「按它开一个案例」在菜单里也留一份：右键是更顺手的入口，
+	 * 但它不是另一条路径（走同一份 buildPrompt）。
+	 */
+	const menu = usePanelMenu();
+
+	const copyPath = (text: string) => {
+		navigator.clipboard?.writeText(text).then(
+			() => model.notify(t("menu.copied"), "success"),
+			() => model.notify(t("menu.copyFailed"), "error"),
+		);
+	};
+
+	const exportPrecedentPackage = (target: string) => {
+		const item = findPrecedent(target);
+		if (!item) return;
+		void precedentPackageMarkdown(item).then(text => {
+			const name = safeFileName(`precedent-${item.slug}`, "md");
+			downloadMarkdown(name, text);
+			model.notify(t("menu.exported", { name }), "success");
+		});
+	};
+
+	const exportPrecedentListing = () => {
+		if (precedents.length === 0) {
+			model.notify(t("menu.empty"), "info");
+			return;
+		}
+		const name = safeFileName("precedents", "md");
+		downloadMarkdown(name, precedentIndexMarkdown(precedents, t("cases.tab.precedent")));
+		model.notify(t("menu.exported", { name }), "success");
+	};
+
+	const exportCaseListing = () => {
+		if (found.length === 0) {
+			model.notify(t("menu.empty"), "info");
+			return;
+		}
+		const name = safeFileName("cases", "md");
+		const rows = found.map(item => ({ name: item.name, path: item.path, inScope: item.inScope.length, evidenceCount: item.evidenceCount }));
+		downloadMarkdown(name, caseIndexMarkdown(rows, t("cases.tab.mine")));
+		model.notify(t("menu.exported", { name }), "success");
+	};
+
+	const openPrecedentMenu = (event: React.MouseEvent<HTMLElement>, target: string) => {
+		const item = findPrecedent(target);
+		if (!item) return;
+		menu.openAt(event, {
+			heading: `cases/${item.slug}/`,
+			groups: [
+				{ id: "open", items: [{ id: "open", label: t("menu.open"), icon: "eye", run: () => openPrecedent(item.slug) }] },
+				{
+					id: "export",
+					items: [
+						{
+							id: "package",
+							label: t("menu.exportPackage"),
+							icon: "save",
+							hint: String(item.docs.length),
+							run: () => exportPrecedentPackage(item.slug),
+						},
+						{ id: "listing", label: t("menu.exportIndex"), icon: "save", hint: String(precedents.length), run: exportPrecedentListing },
+					],
+				},
+				{
+					id: "more",
+					items: [
+						{ id: "scaffold", label: t("cases.precedent.open"), icon: "sparkle", run: () => model.ask("case-open", { other: item.slug }) },
+						{ id: "copy", label: t("menu.copyPath"), icon: "copy", run: () => copyPath(`cases/${item.slug}/`) },
+					],
+				},
+			],
+		});
+	};
+
+	const openCaseMenu = (event: React.MouseEvent<HTMLElement>, path: string) => {
+		menu.openAt(event, {
+			heading: path,
+			groups: [
+				{ id: "open", items: [{ id: "open", label: t("menu.open"), icon: "eye", run: () => openCase(path) }] },
+				{
+					id: "export",
+					items: [{ id: "listing", label: t("menu.exportIndex"), icon: "save", hint: String(found.length), run: exportCaseListing }],
+				},
+				{
+					id: "more",
+					items: [
+						{
+							id: "ask",
+							label: t("menu.askAbout"),
+							icon: "send",
+							run: () => model.askText(`读一下案例 ${path} 下的 scope.md 与 timeline.md，告诉我目前到了哪一步、下一步该验什么。`),
+						},
+						{ id: "copy", label: t("menu.copyPath"), icon: "copy", run: () => copyPath(path) },
+					],
+				},
+			],
+		});
+	};
+
 
 	return (
 		<>
@@ -165,6 +273,7 @@ export function CasesPage({ model, embedded = false }: PageProps & { embedded?: 
 													key={item.slug}
 													type="button"
 													onClick={() => openPrecedent(item.slug)}
+													onContextMenu={event => openPrecedentMenu(event, item.slug)}
 													aria-pressed={active}
 													title={`cases/${item.slug}/`}
 													className={`flex w-full items-start gap-2 border-b border-line-subtle px-2.5 py-1.5 text-left last:border-0 ${
@@ -211,6 +320,7 @@ export function CasesPage({ model, embedded = false }: PageProps & { embedded?: 
 												key={item.path}
 												type="button"
 												onClick={() => openCase(item.path)}
+												onContextMenu={event => openCaseMenu(event, item.path)}
 												aria-pressed={active}
 												title={item.path}
 												className={`flex w-full items-center gap-2 border-b border-line-subtle px-2.5 py-1.5 text-left last:border-0 ${
@@ -284,6 +394,9 @@ export function CasesPage({ model, embedded = false }: PageProps & { embedded?: 
 					</Card>
 				</div>
 			</div>
+
+			{/* 菜单是面板的兄弟节点：不在列表的滚动容器里，因此不会被 overflow 裁掉。 */}
+			<ContextMenu menu={menu.menu} onClose={menu.close} />
 		</>
 	);
 }

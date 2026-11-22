@@ -38,6 +38,7 @@ import { useLab, type LabModel } from "./use-lab";
 import { setAgentPage } from "../../../runtime/panel-channel";
 import { useLibrary } from "./use-library";
 import { useActivity, type ActivityModel } from "./use-activity";
+import { buildTimeline, type Timeline } from "../timeline";
 import { useTaskStream, type TaskStreamModel } from "./use-task-stream";
 import { usePromptLibrary, type PromptLibraryModel } from "./use-prompt-library";
 
@@ -122,6 +123,11 @@ export interface WorkbenchModel {
 	lab: LabModel;
 	activity: ActivityModel;
 	stream: TaskStreamModel;
+	/**
+	 * 会话时间线：由 `stream.entries` 派生，一次算好三处共用（侧栏徽标、活动页、发现页观测）。
+	 * 三处各算一遍不仅浪费，更危险的是任意一处改了判据就会与另两处说出不同的话。
+	 */
+	timeline: Timeline;
 
 	promptLibrary: PromptLibraryModel["library"];
 	promptBackups: PromptLibraryModel["backups"];
@@ -259,6 +265,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 	const { settings, remember } = library;
 	const activity = useActivity(bridge, active);
 	const stream = useTaskStream(bridge, active);
+	const timeline = useMemo(() => buildTimeline(stream.entries), [stream.entries]);
 
 	const refreshFiles = useCallback(() => {
 		if (!cwd) {
@@ -809,6 +816,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		lab,
 		activity,
 		stream,
+		timeline,
 		promptLibrary: promptLib.library,
 		promptBackups: promptLib.backups,
 		createPrompt: promptLib.createPrompt,

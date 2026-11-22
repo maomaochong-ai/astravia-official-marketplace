@@ -78,7 +78,7 @@ lines.forEach((line, index) => {
 });
 
 // ── 4. 关键布局类必须在场
-for (const selector of [":where(.fb-page)", ".fb-settings", ".fb-settings-body", ".fb-samples", ".fb-samples-picker", ".fb-line-clamp-2"]) {
+for (const selector of [":where(.fb-page)", ".fb-settings", ".fb-settings-body", ".fb-samples", ".fb-samples-list", ".fb-samples-detail", ".fb-line-clamp-2"]) {
 	if (!css.includes(selector)) problems.push(`missing selector: ${selector}`);
 }
 

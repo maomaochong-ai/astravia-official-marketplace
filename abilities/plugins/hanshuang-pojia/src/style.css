@@ -129,11 +129,17 @@
 	--fb-risk-medium-deep: light-dark(#9a3a00, #e25507);
 	--fb-risk-low: light-dark(#0b7a37, #40c977);
 	/*
-	 * 强调色不能取宿主的 `--accent`：它在宿主里是**前景色**（深色主题 rgb(226,232,248)，
-	 * 另一处是 foreground 10% 的合成），拿来做选中态会得到一片近白或几乎透明，
-	 * 看起来就是「选中了但图标是灰的」。所以自己定：浅色主题蓝，深色主题亮蓝。
+	 * 强调色跟宿主的 `--primary` 走，只调明度。
+	 *
+	 * 早先这里写死成 #1f6feb / #7cb0ff：宿主主色是靛蓝 rgb(99,102,241)，面板里却是
+	 * 另一族蓝。两者并排出现时（顶栏开关、侧栏选中态与宿主自己的按钮同屏），看起来
+	 * 就是两套设计 —— 这正是「活动面板配色和插件自身协调不了」的根源。
+	 *
+	 * 用 color-mix 而不是再写一组固定值：宿主浅色主题的主色更深、深色主题的更深一档也
+	 * 偏暗，混一点前景色正好把两端拉回可读范围，换主题不用再改这里。
+	 * 取不到 `--primary` 时退回前景色：得到灰阶强调，仍比「透明」可读。
 	 */
-	--fb-accent: light-dark(#1f6feb, #7cb0ff);
+	--fb-accent: color-mix(in oklab, var(--primary, var(--foreground)) 78%, var(--foreground));
 	--fb-accent-soft: color-mix(in oklab, var(--fb-accent) 18%, transparent);
 	--fb-risk-low-deep: light-dark(#075f2a, #00a240);
 	--fb-purple: light-dark(#7b3ec4, #c27aff);
@@ -217,55 +223,53 @@
 	padding: var(--fb-pad);
 }
 
-/* 活动页的终端观感：深底 + 等宽 + 无衬线数字，配色仍取主题的 accent / risk 三色。 */
+/*
+ * 活动流：中性底 + 行间留白。三条都是被指出来的问题：
+ *
+ *   1. 底色掺了 12% 强调色，得到一块偏蓝的「终端」底。面板其余部分都是中性 surface 阶，
+ *      这一块看起来像另一个应用嵌进来。现在只用 surface 阶的深浅差表达“凹陷”，
+ *      强调色只出现在交互态（选中、悬停）。
+ *   2. 每行左侧有一条 2px 竖线，按状态换色。20 行就是 20 条彩条，与侧栏选中态、
+ *      卡片描边互相抢；状态本来就有符号与名字颜色，不需要再来一条线。
+ *   3. 行内边距 3px、行间无间隔：两条两行的记录贴在一起，读不出一条还是两条。
+ *      改成 5px 内边距 + 2px 行距，分组之间再空一段。
+ */
 .fb-terminal {
-	background: color-mix(in oklab, var(--color-surface, #0a101d) 88%, var(--fb-accent) 12%);
+	background: color-mix(in oklab, var(--fb-surface-2) 82%, var(--fb-surface) 18%);
 	font-variant-ligatures: none;
 }
 
-/*
- * 一行两段：head（时间 / 状态 / 工具名 / 耗时）+ body（摘要、提示）。
- *
- * 这里曾经是三列 grid（`62px 14px minmax(0,1fr)`），对应「时间｜符号｜正文」的单行旧结构。
- * 改成两行结构后只换了子节点、没换 grid，于是 head 被塞进 62px、body 塞进 14px ——
- * 表现出来就是「摘要只剩一列字」。布局归 `.fb-log`（块），这里只管终端观感。
- */
+/* 一行两段：head（时间 / 符号 / 工具名 / 耗时）+ body（摘要、提示）。 */
 .fb-terminal .fb-log {
-	border-inline-start: 2px solid transparent;
-	padding-inline-start: 8px;
+	padding: 5px 8px;
+	border-radius: 6px;
 	font-variant-numeric: tabular-nums;
 }
 
-.fb-terminal .fb-log:hover {
-	background: color-mix(in oklab, var(--fb-accent) 10%, transparent);
+.fb-terminal .fb-log + .fb-log {
+	margin-top: 2px;
 }
 
-/* 状态只靠左侧色条与符号：把工具名也染成风险色会让一屏全是绿字。 */
-.fb-terminal .fb-log[data-tone="ok"] {
-	border-inline-start-color: var(--color-risk-low, #4ade80);
+.fb-terminal .fb-log:hover {
+	background: var(--color-surface-hover, rgb(255 255 255 / 0.06));
 }
+
+/* 状态只出现在符号与工具名上：整行染成绿字／红字会让一屏看不出重点。 */
 .fb-terminal .fb-log[data-tone="ok"] .fb-log-mark {
 	color: var(--color-risk-low, #4ade80);
 }
 
-.fb-terminal .fb-log[data-tone="err"] {
-	border-inline-start-color: var(--color-risk-high, #fb7185);
-}
 .fb-terminal .fb-log[data-tone="err"] .fb-log-mark,
 .fb-terminal .fb-log[data-tone="err"] .fb-log-name {
 	color: var(--color-risk-high, #fb7185);
 }
 
+/* 正在跑的那一条用底色标出来：一屏里只有它还在变。 */
 .fb-terminal .fb-log[data-tone="run"] {
-	border-inline-start-color: var(--color-risk-medium, #fb923c);
+	background: color-mix(in oklab, var(--color-risk-medium, #fb923c) 7%, transparent);
 }
 .fb-terminal .fb-log[data-tone="run"] .fb-log-mark {
 	color: var(--color-risk-medium, #fb923c);
-}
-
-/* 没有调用生命周期、只有结果的条目：不假定成败，就不上色。 */
-.fb-terminal .fb-log[data-tone="idle"] {
-	border-inline-start-color: var(--color-line-strong, #334155);
 }
 
 .fb-terminal .fb-log-name {
@@ -281,12 +285,17 @@
 	flex-wrap: wrap;
 	gap: 2px 6px;
 	padding: 3px 8px;
-	margin-bottom: 2px;
+	margin-bottom: 4px;
 	font-size: 9.5px;
 	letter-spacing: 0.02em;
 	color: var(--color-text-4, #94a3b8);
-	background: color-mix(in oklab, var(--color-surface, #0a101d) 86%, var(--fb-accent) 6%);
+	background: color-mix(in oklab, var(--fb-surface-2) 90%, var(--fb-surface) 10%);
 	border-radius: 4px;
+}
+
+/* 组与组之间要明显大于行间距，否则 40 行读成一片。只给间距，不再加一条线。 */
+.fb-terminal section + section {
+	margin-top: 12px;
 }
 
 .fb-resize {
@@ -335,30 +344,52 @@
 	flex: 0 0 auto;
 }
 /*
- * 样本页两栏：左选择器固定 240–300，右说明吃剩余。
+ * 样本页：一张卡里的两个格（列表 / 说明）。
  *
- * 与设置页同一套做法（`minmax` 而不是容器查询）。窄面板下变成单列：
- * 左栏在上、右栏在下，两边的滚动区都还有上限。
+ * 上一版是两个格子里各放卡片：说明那边只有三五行，格子剩下的高度全空着 ——
+ * 就是「拖宽之后卡片底部大量无用空间」。现在说明自己就是一个整列的格，
+ * 内容短时空白属于列本身，看上去是边栏，不是「卡片没长满」。
+ *
+ * 用 `grid-template-areas` 而不是两份 JSX：一份 DOM、两种排布，
+ * 不会出现「宽屏改了、窄屏忘了」。
  */
 .fb-samples {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr);
-	grid-template-rows: auto minmax(0, 1fr);
+	grid-template-rows: minmax(0, 1fr) auto;
+	grid-template-areas:
+		"list"
+		"detail";
+	flex: 1 1 auto;
+	min-height: 0;
+	min-width: 0;
+}
+
+/* 列表那一格：吃满剩余高度、自己滚。不再是「一张有高度上限的卡」。 */
+.fb-samples-list {
+	grid-area: list;
 	min-height: 0;
 }
 
-.fb-samples-picker {
-	max-height: min(46vh, 420px);
+/* 窄面板：说明落到页脚。给高度上限，否则它会把列表挤没。 */
+.fb-samples-detail {
+	grid-area: detail;
+	min-height: 0;
+	max-height: min(40vh, 340px);
+	border-top: 1px solid var(--fb-line-subtle);
 }
 
-/* 面板够宽（约 820px 以上）才并排：再窄左栏会挤得只剩文件名几个字。 */
-@container (min-width: 820px) {
+/* 面板够宽才并排：再窄说明列会被挤成一句话一行。 */
+@container (min-width: 760px) {
 	.fb-samples {
-		grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+		grid-template-columns: minmax(0, 1fr) minmax(232px, 320px);
 		grid-template-rows: minmax(0, 1fr);
+		grid-template-areas: "list detail";
 	}
-	.fb-samples-picker {
+	.fb-samples-detail {
 		max-height: none;
+		border-top: 0;
+		border-inline-start: 1px solid var(--fb-line-subtle);
 	}
 }
 
@@ -607,7 +638,7 @@
  * 第二行摘要（可换行、完整显示）。
  */
 .fb-log {
-	padding: 3px 10px;
+	padding: 5px 8px;
 	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	font-size: 10.5px;
 	line-height: 1.6;
@@ -627,7 +658,6 @@
 	min-width: 0;
 	overflow-wrap: anywhere;
 	word-break: break-word;
-	font-size: 10px;
 	color: var(--color-text-4, #94a3b8);
 }
 

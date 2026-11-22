@@ -7,7 +7,6 @@ import { PageBoundary } from "./shell/page-boundary";
 import { getActivePrompt } from "../../../domain/prompt-library";
 import { SHIPPED_PRECEDENTS } from "../../../domain/case/precedents";
 import { deriveLiveStatus } from "../live-status";
-import { buildTimeline } from "../timeline";
 import { SIDEBAR_MAX, SIDEBAR_MIN, SplitHandle, useSidebarWidth } from "../hooks/use-sidebar-width";
 import { useSidebarCollapsed } from "../hooks/use-sidebar-collapsed";
 import { Sidebar } from "./shell/sidebar";
@@ -88,8 +87,8 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 		[model.chat.state, model.stream.entries, model.stream.active, model.report, model.promptLibrary, model.activity.entries],
 	);
 
-	// 会话信息链：事件流在组件外压成「一轮几次、各用多久、谁报错」，侧栏与活动页共用。
-	const timeline = useMemo(() => buildTimeline(model.stream.entries), [model.stream.entries]);
+	// 会话信息链：在 model 里压过一次（一轮几次、各用多久、谁报错），三处共用同一个对象。
+	const timeline = model.timeline;
 
 	// 侧栏徽标：新鲜对象会让 Sidebar 的 memo 失效。
 	const counts = useMemo(

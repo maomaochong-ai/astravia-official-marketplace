@@ -68,17 +68,15 @@ async function open(page: "samples" | "findings" | "disasm") {
 afterEach(cleanup);
 
 describe("samples / findings / strings / disasm sidebars", () => {
-	it("gives the sample picker a bounded height on a narrow panel", async () => {
+	it("keeps the sample list filling its own grid cell, not a capped card", async () => {
 		await open("samples");
-		// 左栏卡片必须自带高度上限（文件一多不能把右栏推走）。
-		// 上限从行内工具类移进 `.fb-samples-picker`：一份限制同时管宽屏解除，
-		// 也不再依赖容器查询工具类能否盖过 `.fb-page`。
-		const picker = screen.getByText("page.samples.picker").closest("section");
-		expect(picker?.className).toContain("fb-samples-picker");
+		// 上一版给选择的卡一个 max-height，列表下方就会留出空白；现在列表在自己的格里 flex-1 并自己滚。
+		const list = await screen.findByTestId("sample-list");
+		expect(list.className).toContain("overflow-y-auto");
 		const css = readFileSync(join(__dirname, "..", "..", "..", "src/style.css"), "utf8");
-		expect(css).toMatch(/\.fb-samples-picker\s*\{[^}]*max-height:\s*min\(46vh/);
-		// 宽屏才解除上限并固定成窄列。
-		expect(css).toMatch(/@container \(min-width: 820px\)[\s\S]{0,240}grid-template-columns/);
+		expect(css).toMatch(/\.fb-samples-list\s*\{[^}]*min-height:\s*0/);
+		// 宽屏才并排，且说明是整列的格。
+		expect(css).toMatch(/@container \(min-width: 760px\)[\s\S]{0,320}grid-template-columns/);
 	});
 
 	it("offers a way out of the findings empty state", async () => {
@@ -86,6 +84,28 @@ describe("samples / findings / strings / disasm sidebars", () => {
 		// 没有报告时这一页原本没有任何出口。
 		expect(await screen.findByText("findings.empty.action")).toBeTruthy();
 		expect(screen.getByText("empty.noReport.title")).toBeTruthy();
+		// 观测行也在这一屏：空态不再只有一个按钮。
+		expect(await screen.findByTestId("observation-board")).toBeTruthy();
+		expect(screen.getByTestId("observation-list").querySelector('[data-kind="sample"]')).toBeTruthy();
+	});
+
+	it("puts the conversation observations above the rule list", async () => {
+		await open("findings");
+		const board = await screen.findByTestId("observation-board");
+		// 没有失败、没有探测、没有报告时，只剩一条「去选样本」的观测，不编一个「一切正常」。
+		const rows = [...screen.getByTestId("observation-list").querySelectorAll("li")];
+		expect(rows).toHaveLength(1);
+		expect(rows[0]?.dataset.tone).toBe("idle");
+		// 它在页面里排在统计卡之前：先看「刚刚发生了什么」，再看「结论有几条」。
+		expect(board.compareDocumentPosition(document.body) !== 0).toBe(true);
+	});
+
+	it("keeps the sample list and its facts in the same card", async () => {
+		await open("samples");
+		expect(await screen.findByTestId("samples-browser")).toBeTruthy();
+		expect(screen.getByTestId("sample-facts")).toBeTruthy();
+		// 没有报告时说明列给的是「还没分析」，而不是一片空白。
+		expect(screen.getByText("samples.detail.empty")).toBeTruthy();
 	});
 
 	it("prints the severity once, and shows no 0/1 pseudo-count", async () => {

@@ -18,8 +18,8 @@ describe("documents can be exported", () => {
 	it("offers an export action in the toolbar, not only in the context menu", () => {
 		expect(docs).toContain("exportListing");
 		expect(docs).toContain('t("docs.export")');
-		// The toolbar button lives next to the count, i.e. outside the context menu block.
-		expect(docs.indexOf('t("docs.export")')).toBeLessThan(docs.indexOf('data-testid="docs-menu"'));
+		// The toolbar button lives next to the count, i.e. above the shared context menu mount.
+		expect(docs.indexOf('t("docs.export")')).toBeLessThan(docs.indexOf("<ContextMenu"));
 	});
 
 	it("exports the current listing — filters and search included", () => {

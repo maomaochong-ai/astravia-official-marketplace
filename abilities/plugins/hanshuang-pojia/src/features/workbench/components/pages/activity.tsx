@@ -1,7 +1,7 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useEffect, useMemo, useState } from "react";
 import type { WorkbenchModel } from "../../hooks/use-workbench";
-import { buildTimeline, formatDuration, mergeActivity, type ActivityRow, type TurnSummary } from "../../timeline";
+import { formatDuration, mergeActivity, type ActivityRow, type TurnSummary } from "../../timeline";
 import { Card } from "../shell/card";
 import { FilterChips } from "../shell/filter-chips";
 import { Icon } from "../shell/icon";
@@ -82,7 +82,7 @@ export function ActivityPage({ model }: ActivityPageProps) {
 	const [armed, setArmed] = useState(false);
 	const [openRow, setOpenRow] = useState<ActivityRow | null>(null);
 
-	const timeline = useMemo(() => buildTimeline(model.stream.entries), [model.stream.entries]);
+	const timeline = model.timeline;
 	const all = useMemo(
 		() => mergeActivity(timeline.spans, model.activity.entries, timeline.turns),
 		[timeline, model.activity.entries],

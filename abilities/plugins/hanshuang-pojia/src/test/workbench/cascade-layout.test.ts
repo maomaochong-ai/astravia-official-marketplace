@@ -34,10 +34,14 @@ describe("page layout is not decided by cascade accidents", () => {
 		expect(page).not.toContain("@min-[760px]:flex-col");
 	});
 
-	it("gives the samples page a wide-screen two-column template with a bounded picker", () => {
+	it("puts the sample list and its facts in one card, two grid areas", () => {
 		const css = read("src/style.css");
-		expect(css).toMatch(/\.fb-samples-picker\s*\{[^}]*max-height:\s*min\(46vh/);
-		expect(css).toMatch(/@container \(min-width: 820px\)[\s\S]{0,260}\.fb-samples\s*\{[^}]*grid-template-columns/);
+		// 列表不再有高度上限：它吃满所在格并自己滚（上一版的 max-height 就是「底部留白」的来源）。
+		expect(css).toMatch(/\.fb-samples-list\s*\{[^}]*grid-area:\s*list/);
+		expect(css).toMatch(/\.fb-samples-detail\s*\{[^}]*grid-area:\s*detail/);
+		// 窄面板：说明在页脚并带高度上限；宽面板：并排成窄列。
+		expect(css).toMatch(/\.fb-samples-detail\s*\{[^}]*max-height:\s*min\(40vh/);
+		expect(css).toMatch(/@container \(min-width: 760px\)[\s\S]{0,320}grid-template-columns/);
 	});
 });
 

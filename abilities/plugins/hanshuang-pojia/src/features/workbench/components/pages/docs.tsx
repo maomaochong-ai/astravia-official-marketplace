@@ -4,11 +4,14 @@ import { AiButton } from "../shell/ai-button";
 import { Card } from "../shell/card";
 import { Icon } from "../shell/icon";
 import { Markdown } from "../shell/markdown";
+import { ContextMenu } from "../shell/context-menu";
 import { PageHeader } from "../shell/page-header";
 import { Spinner } from "../shell/spinner";
 import type { DocEntry } from "../../services/docs";
 import type { PageProps } from "./overview";
 import { DOC_GROUPS } from "../../services/docs";
+import { usePanelMenu } from "../../hooks/use-panel-menu";
+import { downloadMarkdown, safeFileName } from "../../services/download";
 
 /**
  * 文档体积。四舍五入到整 KB 时，几百字节的小文件会显示成「0 KB」——
@@ -19,21 +22,7 @@ function kilobytes(bytes: number): string {
 	return `${Math.round(bytes / 1024)} KB`;
 }
 
-/**
- * 交给浏览器下载一段 Markdown。不经过宿主，所以不需要额外权限；
- * 面板与下载都在渲染进程里，URL 用完立即回收。
- */
-function downloadMarkdown(filename: string, text: string): void {
-	const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
-	const url = URL.createObjectURL(blob);
-	const anchor = document.createElement("a");
-	anchor.href = url;
-	anchor.download = filename;
-	anchor.click();
-	URL.revokeObjectURL(url);
-}
-
-/**
+/*
  * 文档页：**整宽的目录列表**，点一条开弹窗读正文。
  *
  * 上一版把「目录 + 正文」做成两栏，窄面板下正文被挤成一条、返回按钮又只翻了个布尔量，
@@ -42,6 +31,7 @@ function downloadMarkdown(filename: string, text: string): void {
  *   · 点一行开弹窗，弹窗里是完整正文 + 层级返回（返回目录 / 上一条 / 下一条）；
  *   · 搜索覆盖正文（不再需要「标题 / 全文」两档切换，那个切换实际没人用）。
  */
+
 export function DocsPage({ model, embedded = false }: PageProps & { embedded?: boolean }) {
 	const { t } = useTranslation();
 	const { docs, chat } = model;
@@ -59,29 +49,8 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 	const [openId, setOpenId] = useState<string | null>(null);
 	// 连读：把本段拼成一份正文。null = 未开启（单篇模式）。
 	const [reading, setReading] = useState<{ ids: string[]; text: string } | null>(null);
-	// 右键菜单：只存坐标与目标 id，动作都在渲染时决定。
-	const [menu, setMenu] = useState<{ left: number; top: number; id: string } | null>(null);
-	/**
-	 * 右键坐标换成「相对面板」的坐标。
-	 *
-	 * 之前用的是 fixed + clientX/Y：面板贴在窗口右侧时，菜单会画到宿主界面上。
-	 * 现在换成 absolute（与预览弹窗同一基准 = 面板根的定位上下文），并在面板内收边：
-	 * 菜单永远落在这一格里，既不越界，也不会被文档列表的滚动容器裁掉（它是 .fb-page 的兄弟）。
-	 */
-	const openMenuAt = (event: React.MouseEvent<HTMLElement>, id: string) => {
-		event.preventDefault();
-		const root = (event.currentTarget as HTMLElement).closest<HTMLElement>("[data-panel-root]");
-		const rect = root?.getBoundingClientRect();
-		const WIDTH = 176;
-		const HEIGHT = 168;
-		const left = event.clientX - (rect?.left ?? 0);
-		const top = event.clientY - (rect?.top ?? 0);
-		setMenu({
-			left: Math.max(8, Math.min(left, (rect?.width ?? 320) - WIDTH - 8)),
-			top: Math.max(8, Math.min(top, (rect?.height ?? 480) - HEIGHT - 8)),
-			id,
-		});
-	};
+	// 右键菜单：坐标钳位与键盘交给共享的 ContextMenu（与案例库同一套）。
+	const menu = usePanelMenu();
 
 	/**
 	 * 导出整份清单：把当前筛选下的每篇正文拼成一份 .md。
@@ -101,8 +70,9 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 			.map(part => `<!-- ${part.id} -->\n\n${part.text}`)
 			.join("\n\n---\n\n");
 		if (!body.trim()) return;
-		const name = (topic ?? group ?? "docs") as string;
-		downloadMarkdown(`${name}.md`, `# ${filterLabel}\n\n${body}`);
+		const name = safeFileName((topic ?? group ?? "docs") as string, "md");
+		downloadMarkdown(name, `# ${filterLabel}\n\n${body}`);
+		model.notify(t("menu.exported", { name }), "success");
 	};
 
 	/** 导出：把正文写成一个 .md，交给浏览器下载。不经过宿主，所以不需要额外权限。 */
@@ -112,7 +82,71 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 		// 正文来自域层（会按需解 gzip 包），不猜资源 URL。
 		const text = await docs.readDocument(id).catch(() => null);
 		if (!text) return;
-		downloadMarkdown(`${entry.id.split("/").pop() ?? "doc"}.md`, text);
+		const name = safeFileName(entry.id.split("/").pop() ?? "doc", "md");
+		downloadMarkdown(name, text);
+		model.notify(t("menu.exported", { name }), "success");
+	};
+
+	/**
+	 * 一棵文档树上的右键菜单。
+	 *
+	 * 分组是「先看、再带走、再问、最后杂项」—— 一列 5 个不分组的菜单，用户得逐行读；
+	 * 分组之后只需要扫组名。导出分两档：这一篇，还是当前这一屏（含筛选与搜索）。
+	 */
+	const openDocMenu = (event: React.MouseEvent<HTMLElement>, id: string) => {
+		const entry = docs.byId(id);
+		menu.openAt(event, {
+			heading: entry?.path ?? id,
+			groups: [
+				{ id: "open", items: [{ id: "preview", label: t("docs.menu.preview"), icon: "eye", run: () => setOpenId(id) }] },
+				{
+					id: "export",
+					items: [
+						{ id: "export", label: t("docs.menu.export"), icon: "save", run: () => void exportEntry(id) },
+						{
+							id: "export-listing",
+							label: t("menu.exportIndex"),
+							icon: "save",
+							hint: String(listing?.length ?? total),
+							run: () => void exportListing(),
+						},
+					],
+				},
+				{
+					id: "chat",
+					items: [
+						{
+							id: "explain",
+							label: t("docs.menu.explain"),
+							icon: "send",
+							run: () => model.askText(`用 read_doc 读 ${id}，把它的方法步骤讲清楚：每一步的输入、产出与判据。`),
+						},
+						{
+							id: "apply",
+							label: t("docs.menu.apply"),
+							icon: "play",
+							run: () => model.askText(`按文档 ${id} 的步骤在当前样本上实际做一遍；每步给出可复核的命令或偏移。`),
+						},
+					],
+				},
+				{
+					id: "more",
+					items: [
+						{
+							id: "copy",
+							label: t("menu.copyPath"),
+							icon: "copy",
+							run: () => {
+								navigator.clipboard?.writeText(id).then(
+									() => model.notify(t("menu.copied"), "success"),
+									() => model.notify(t("menu.copyFailed"), "error"),
+								);
+							},
+						},
+					],
+				},
+			],
+		});
 	};
 
 	const groupCounts = docs.groups.map(item => ({ id: item.id, count: item.topics.reduce((sum, entry) => sum + entry.entries.length, 0) }));
@@ -298,7 +332,7 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 										key={hit.entry.id}
 										type="button"
 										onClick={() => setOpenId(hit.entry.id)}
-										onContextMenu={event => openMenuAt(event, hit.entry.id)}
+										onContextMenu={event => openDocMenu(event, hit.entry.id)}
 										className="flex w-full flex-col gap-0.5 border-b border-line-subtle px-3 py-1.5 text-left last:border-0 hover:bg-surface-hover"
 									>
 										<span className="w-full fb-wrap text-[11.5px] text-text">{hit.entry.title}</span>
@@ -324,7 +358,7 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 													data-doc-id={doc.id}
 													type="button"
 													onClick={() => setOpenId(doc.id)}
-													onContextMenu={event => openMenuAt(event, doc.id)}
+												onContextMenu={event => openDocMenu(event, doc.id)}
 													className="flex w-full items-center gap-2 px-3 py-1 text-left hover:bg-surface-hover"
 												>
 													<span className="min-w-0 flex-1 fb-wrap text-[11.5px] text-text">{doc.title}</span>
@@ -340,39 +374,8 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 				</Card>
 			</div>
 
-			{/* 右键菜单：文档树上的四条常用动作，都在面板内完成。 */}
-			{menu ? (
-				<>
-					<div className="absolute inset-0 z-40" onClick={() => setMenu(null)} onContextMenu={event => { event.preventDefault(); setMenu(null); }} />
-					<div
-						className="absolute z-50 w-44 overflow-hidden rounded-lg bg-surface-2 py-1 shadow-lg ring-1 ring-line-strong"
-						style={{ left: menu.left, top: menu.top }}
-						data-testid="docs-menu"
-					>
-						{(
-							[
-								["preview", () => setOpenId(menu.id)],
-								["export", () => void exportEntry(menu.id)],
-								["explain", () => model.askText(`用 read_doc 读 ${menu.id}，把它的方法步骤讲清楚：每一步的输入、产出与判据。`)],
-								["apply", () => model.askText(`按文档 ${menu.id} 的步骤在当前样本上实际做一遍；每步给出可复核的命令或偏移。`)],
-							] as const
-						).map(([key, run]) => (
-							<button
-								key={key}
-								type="button"
-								onClick={() => {
-									run();
-									setMenu(null);
-								}}
-								className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11.5px] text-text-2 transition-colors hover:bg-accent-soft hover:text-accent"
-							>
-								<Icon name={key === "export" ? "save" : key === "preview" ? "book" : key === "apply" ? "play" : "send"} className="size-3 shrink-0 text-text-4" />
-								{t(`docs.menu.${key}`)}
-							</button>
-						))}
-					</div>
-				</>
-			) : null}
+			{/* 右键菜单：动作分组与键盘都由共享组件负责，与案例库同一套。 */}
+			<ContextMenu menu={menu.menu} onClose={menu.close} />
 
 			<DocPreview
 				open={openId !== null}
