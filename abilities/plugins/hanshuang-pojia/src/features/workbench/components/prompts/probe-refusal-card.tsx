@@ -1,14 +1,16 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import {
 	adviceFor,
 	buildProbeBrief,
 	customLadder,
+	followHostModel,
 	profileReady,
 	probesFor,
 	probesForClass,
 	rungRewrite,
 	rewritesFor,
+	type HostModelSnapshot,
 	type ProbeProfile,
 	type ProbeRecord,
 	type RefusalProbe,
@@ -21,6 +23,8 @@ export interface ProbeRefusalCardProps {
 	record: ProbeRecord | null;
 	/** 要测谁：端点 / 模型 / 风格 / 语言 / 档数。面板持有，非机密。 */
 	profile: ProbeProfile;
+	/** 宿主当前在用的模型（运行时每轮写、面板读）；null = 这个会话还没跑过一轮。 */
+	hostModel?: HostModelSnapshot | null;
 	patchProfile(patch: Partial<ProbeProfile>): void;
 	/** 把简报交给宿主对话执行（面板没有凭据，也不该有）。 */
 	onBrief(brief: string): void;
@@ -70,6 +74,7 @@ const VERDICT_KEY: Record<string, string> = {
 export function ProbeRefusalCard({
 	record,
 	profile,
+	hostModel = null,
 	patchProfile,
 	onBrief,
 	onDiscuss,
@@ -85,6 +90,43 @@ export function ProbeRefusalCard({
 	/** 某一档的改写草稿（用户可编辑后再发）。key = level。 */
 	const [drafts, setDrafts] = useState<Record<number, string>>({});
 	const draftFor = (level: number, source: string): string => drafts[level] ?? rungRewrite(source, level).text;
+
+	/**
+	 * 跟上宿主：换模型时自动把「要测谁」改成新的那个。
+	 *
+	 * 只在那一格还是自动填的时候（空 / 等于上一个宿主模型）才跟随 —— 用户自己敲过的值不动，
+	 * 否则会把他正在对照的另一个端点静静换掉。判据在 `followHostModel`，有单测。
+	 */
+	const lastHost = useRef<string | null>(hostModel?.id ?? null);
+	useEffect(() => {
+		const next = hostModel?.id ?? null;
+		if (lastHost.current === next) return;
+		const before = lastHost.current;
+		lastHost.current = next;
+		if (!next) return;
+		const followed = followHostModel(profile, before, next);
+		if (followed.model !== profile.model) patchProfile(followed);
+	}, [hostModel?.id, profile, patchProfile]);
+
+	/**
+	 * 首帧就把宿主模型填进去。
+	 *
+	 * 用户要的是「直接拿当前模型测」：第一次打开面板时那一格通常还是空的，让 effect 等一次
+	 * 宿主模型变化才填，就等于要他先手动敲一遍。
+	 */
+	const seeded = useRef(false);
+	useEffect(() => {
+		if (seeded.current) return;
+		if (!hostModel?.id) return;
+		seeded.current = true;
+		if (profile.model.trim().length > 0) return;
+		patchProfile({
+			model: hostModel.id,
+			apiStyle: hostModel.apiStyle,
+			authHeader: hostModel.apiStyle === "anthropic" ? "x-api-key" : "Authorization",
+		});
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [hostModel?.id]);
 
 
 	/**
@@ -241,7 +283,44 @@ export function ProbeRefusalCard({
 		>
 			{/* ① 要测谁：表单式两列，窄面板自动降单列。 */}
 			<div className="border-b border-line-subtle px-3 py-2">
-				{/* 模型只能手填：面板拿不到宿主的 provider/model，也不该拿一份读不到的快照假装能读。 */}
+				{/*
+				 * 宿主当前模型：运行时每轮写、面板读。
+				 *
+				 * 它就在表单上方而不是一句说明：用户要的是「拿当前模型直接测」，
+				 * 所以先告诉他宿主在用哪个，再给一个按钮把它填进去。探测不到时也直说（这个会话还没跑过一轮），
+				 * 而不是默默留空让人以为插件坏了。
+				 */}
+				<div className="mb-1.5 flex flex-wrap items-center gap-1.5 rounded-md bg-surface-3/60 px-2 py-1">
+					<span className="shrink-0 text-[10.5px] text-text-4">{t("probe.host.detected")}</span>
+					{hostModel ? (
+						<>
+							<span className="min-w-0 flex-1 fb-wrap font-mono text-[10.5px] text-text-2" title={`${hostModel.provider} / ${hostModel.id}${hostModel.api ? ` · ${hostModel.api}` : ""}`}>
+								{hostModel.provider} / {hostModel.id}
+								<span className="ms-1 text-text-4">· {hostModel.apiStyle}</span>
+							</span>
+							{profile.model.trim() === hostModel.id ? (
+								<span className="shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-[10.5px] font-medium text-accent">{t("probe.host.inUse")}</span>
+							) : (
+								<button
+									type="button"
+									onClick={() =>
+										patchProfile({
+											model: hostModel.id,
+											apiStyle: hostModel.apiStyle,
+											authHeader: hostModel.apiStyle === "anthropic" ? "x-api-key" : "Authorization",
+										})
+									}
+									title={t("probe.host.useHint")}
+									className="shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-[10.5px] font-medium text-accent transition-colors hover:brightness-110"
+								>
+									{t("probe.host.use")}
+								</button>
+							)}
+						</>
+					) : (
+						<span className="min-w-0 flex-1 fb-wrap text-[10.5px] text-text-4">{t("probe.host.missing")}</span>
+					)}
+				</div>
 				<div className="pb-1 text-[9.5px] uppercase tracking-wider text-text-4">{t("probe.profile.title")}</div>
 				<div className="grid gap-1.5 @min-[420px]:grid-cols-2">
 					<label className="fb-field">
@@ -309,7 +388,7 @@ export function ProbeRefusalCard({
 				{ready ? null : <p className="mt-1 text-[10.5px] leading-relaxed text-risk-medium">{t("probe.needProfile")}</p>}
 				{/* 密钥不在这里：写进来就会进对话记录。 */}
 				<p className="mt-1 text-[10.5px] leading-relaxed text-text-4">{t("probe.profile.keyNote")}</p>
-				<p className="mt-0.5 text-[10.5px] leading-relaxed text-text-4">{t("probe.profile.manualNote")}</p>
+				<p className="mt-0.5 text-[10.5px] leading-relaxed text-text-4">{t("probe.host.note")}</p>
 			</div>
 
 			{/* ② 选梯度 */}
@@ -425,10 +504,10 @@ export function ProbeRefusalCard({
 					{unrun ? t("probe.source.none") : liveRows.length > 0 ? t("probe.source.conversation") : t("probe.source.record")}
 				</span>
 				<span className="font-mono text-text-2">{live?.model ?? record?.model ?? (profile.model.trim() || "—")}</span>
-				{/* 记录来自另一个模型时明说：手填之后，「另一个」就是与表单里那个不一致。 */}
-				{record && profile.model.trim().length > 0 && record.model !== profile.model.trim() ? (
+				{/* 记录来自另一个模型时明说：宿主换了模型，这份结论是上一个的。参数是**记录**那个模型。 */}
+				{record && hostModel && record.model !== hostModel.id ? (
 					<span className="rounded bg-risk-medium/10 px-1 py-0.5 text-[9.5px] text-risk-medium" title={t("probe.staleHint")}>
-						{t("probe.stale", { model: profile.model.trim() })}
+						{t("probe.stale", { model: record.model })}
 					</span>
 				) : null}
 				{record ? (

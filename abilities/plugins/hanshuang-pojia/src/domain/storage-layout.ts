@@ -31,6 +31,7 @@ export type StorageKey =
 	| "drafts"
 	| "library"
 	| "probeRecord"
+	| "hostModel"
 	| "cases"
 	| "settings"
 	| "labMode"
@@ -108,6 +109,8 @@ export function storageEntries(cwd: string | null | undefined, sessionId?: strin
 		{ key: "library", scope: "session", path: sessionFile("library", sessionId), legacyPath: null },
 		// 旧位置仍列出来，只为了能清掉（不清就永远占着地方，用户还以为会话里那份还在）。
 		{ key: "probeRecord", scope: "session", path: sessionFile("probe", sessionId), legacyPath: null },
+		// 宿主当前模型快照：运行时按**这个会话**写，面板按同一个会话读。
+		{ key: "hostModel", scope: "session", path: sessionFile("host-model", sessionId), legacyPath: null },
 		{ key: "cases", scope: "workspace", path: workspaceFile("cases", cwd), legacyPath: `${ROOT}/cases.json` },
 		{ key: "settings", scope: "plugin", path: `${ROOT}/settings.json`, legacyPath: null },
 		{ key: "labMode", scope: "plugin", path: `${ROOT}/lab-mode.json`, legacyPath: null },

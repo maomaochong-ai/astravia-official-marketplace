@@ -216,6 +216,8 @@ export function PromptsPage({ model }: PageProps) {
 					profile={model.probe.profile}
 					patchProfile={model.probe.patchProfile}
 					refresh={model.probe.refresh}
+					// 宿主当前模型：检测到就直接显示，并提供「用这个」一键填入。
+					hostModel={model.probe.hostModel}
 					// 简报由 domain 生成：参数、要看哪些字段、结果要什么形状都在里面，
 					// 所以宿主不必追问，也不会把密钥回显到对话里。
 					onBrief={brief => model.askText(brief)}

@@ -4,6 +4,7 @@ import {
 	LIVE_REPORT_CLOSE,
 	LIVE_REPORT_OPEN,
 	buildProbeBrief,
+	followHostModel,
 	parseLiveReport,
 	probeTargets,
 	rewritesFor,
@@ -98,11 +99,30 @@ describe("the panel reads the table out of the conversation", () => {
 	});
 });
 
-describe("the model field is manual only", () => {
-	it("keeps whatever the user typed — nothing reads the host model any more", () => {
+describe("the ladder follows the host model", () => {
+	it("adopts the new host model when the field was auto-filled", () => {
+		const profile = { ...EMPTY_PROFILE, model: "old-model" };
+		// 用户打开面板就是为了「拿当前模型直接测」，所以宿主换模型时跟着换。
+		expect(followHostModel(profile, "old-model", "new-model").model).toBe("new-model");
+	});
+
+	it("fills an empty field", () => {
+		expect(followHostModel({ ...EMPTY_PROFILE, model: "" }, null, "new-model").model).toBe("new-model");
+	});
+
+	it("never overwrites a model the user typed", () => {
+		// 他可能在做对照实验，静静换掉等于换了对象。
 		const profile = { ...EMPTY_PROFILE, model: "my-own-endpoint-model" };
-		// 这一栏现在只由 patchProfile 改：没有 followHostModel 这种旁路，也就不会被一次换模型静静覆写。
-		expect(profile.model).toBe("my-own-endpoint-model");
-		expect("followHostModel" in EMPTY_PROFILE).toBe(false);
+		expect(followHostModel(profile, "old-model", "new-model").model).toBe("my-own-endpoint-model");
+	});
+
+	it("is a no-op when the model did not change", () => {
+		const profile = { ...EMPTY_PROFILE, model: "same" };
+		expect(followHostModel(profile, "same", "same")).toBe(profile);
+	});
+
+	it("keeps the auth header consistent with the API style it already had", () => {
+		const profile = { ...EMPTY_PROFILE, model: "old", apiStyle: "anthropic" as const };
+		expect(followHostModel(profile, "old", "new").authHeader).toBe("x-api-key");
 	});
 });

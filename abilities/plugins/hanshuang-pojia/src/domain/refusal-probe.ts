@@ -304,12 +304,46 @@ export const PROBE_PROFILE_PATH = "workbench/probe-profile.json";
 export const PROBE_STATE_PATH = "workbench/probe-refusal.json";
 
 /**
- * 为什么模型只能手填一次。
+ * 宿主当前在用哪个模型。
  *
- * 面板不在主进程里，拿不到宿主实际调用的 provider / model；早先试过读一份快照文件，
- * 但没人写它（写它的那一段从来没落过地），于是那一栏永远是空的，表格顶部却写着另一个模型的结论。
- * 现在只保留一句说明：产品端不再假装能读，也不再自动覆盖用户敲的模型。
+ * 面板本身读不到：SDK 的 models API 只列插件自己发布的 provider，宿主真正配的那些不在里面。
+ * 唯一能看到的地方是 system prompt provider 的上下文：`context.model.{provider,id,api}`
+ * 与 `context.session.{id,cwd}`。所以运行时每轮写一份快照，面板读同一份。
+ *
+ * **写入位置必须与面板读取位置逐字一致**，这是上一版坏掉的唯一原因：写的是插件作用域的单文件
+ * （`workbench/host-model.json`），读的是按会话分文件（`workbench/sessions/<id>/host-model.json`）——
+ * 两边从来没对上过，于是那一栏永远是空的。现在两侧都走 `storageEntry("hostModel", …)`。
  */
+export interface HostModelSnapshot {
+	provider: string;
+	id: string;
+	apiStyle: ProbeApiStyle;
+	/** 原样的 `model.api`，方便排查（openai-completions / anthropic-messages…）。 */
+	api?: string;
+	/** ISO 时间：面板要能回答「什么时候探测到的」。 */
+	at: string;
+}
+
+/**
+ * 宿主换了模型时，「要测谁」跟着换 —— 但只在那格还是自动填的时候。
+ *
+ * 判据：`profile.model` 为空，或它正好等于**上一个**宿主模型。用户自己敲过的值不动：
+ * 他可能在用小号端点做对照，静默改掉就等于换了实验对象。
+ */
+export function followHostModel(
+	profile: ProbeProfile,
+	previousHostModel: string | null,
+	nextHostModel: string | null,
+): ProbeProfile {
+	if (!nextHostModel || nextHostModel === previousHostModel) return profile;
+	const untouched = profile.model.trim().length === 0 || profile.model.trim() === (previousHostModel ?? "");
+	if (!untouched) return profile;
+	return {
+		...profile,
+		model: nextHostModel,
+		authHeader: profile.apiStyle === "anthropic" ? "x-api-key" : "Authorization",
+	};
+}
 
 
 /**

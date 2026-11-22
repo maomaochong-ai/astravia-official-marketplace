@@ -1,7 +1,7 @@
 import { readJsonFile, writeJsonFile } from "@astravia-org/plugin-sdk";
 import type { ConversationScenario, Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { KERNEL_BLOCK_ID, KERNEL_PRIORITY, buildKernelBlock } from "../domain/kernel";
-import type { ProbeRecord } from "../domain/refusal-probe";
+import type { HostModelSnapshot, ProbeRecord } from "../domain/refusal-probe";
 import { LAB_DEFAULT, LAB_OFF, parseLabCommand, type LabState } from "../domain/lab-mode";
 import { planAutoProbe, planAutoRetest } from "../domain/auto-probe";
 import { LAB_STATE_PATH } from "../features/workbench/hooks/use-lab";
@@ -334,6 +334,40 @@ function promptContexts(prompt: string): string[] {
  *
  * 每个贡献单独 try：旧宿主没有这些 API，或用户没授予对应权限时只跳过它。
  */
+/**
+ * 把宿主当前模型写成面板读得到的快照。
+ *
+ * 上下文里有 `session.{id,cwd}` 与 `model.{provider,id,api}`，所以能写到**这个会话**的文件；
+ * 面板用同一个 `storageEntry("hostModel", …)` 读。上一次这条链路失效就是因为两边写了不同路径：
+ * 运行时用插件作用域的 `workbench/host-model.json`，面板读 `workbench/sessions/<id>/host-model.json`。
+ *
+ * 只存非机密的四项；写失败不影响注入。
+ */
+async function rememberHostModel(
+	ctx: PluginContext,
+	context: { session?: { id?: string; cwd?: string }; model?: { provider?: string; id?: string; api?: string } } | undefined,
+): Promise<void> {
+	const sessionId = context?.session?.id;
+	const provider = context?.model?.provider?.trim();
+	const id = context?.model?.id?.trim();
+	if (!sessionId || !provider || !id) return;
+	const api = context?.model?.api?.trim() ?? "";
+	const snapshot: HostModelSnapshot = {
+		provider,
+		id,
+		// 「openai-completions / openai-responses」都归 openai；含 anthropic 的走另一套。
+		apiStyle: /anthropic/i.test(api) ? "anthropic" : "openai",
+		api,
+		at: new Date().toISOString(),
+	};
+	const entry = storageEntry("hostModel", context?.session?.cwd ?? null, sessionId);
+	try {
+		await writeJsonFile(ctx.storage, entry.path, snapshot);
+	} catch {
+		/* 只读存储或配额满：面板少一份预填，其他都不受影响。 */
+	}
+}
+
 export function registerRuntimeContributions(ctx: PluginContext): Disposable[] {
 	const disposables: Disposable[] = [];
 
@@ -345,8 +379,10 @@ export function registerRuntimeContributions(ctx: PluginContext): Disposable[] {
 				handler: async context => {
 					try {
 						logSafetyEndpointOnce(context?.model ?? {});
-						// 只记模型 id 供提示块用；不再写「给面板预填」的快照（模型由用户手填）。
 						rememberTurnModel(context?.model?.id ?? null);
+						// 把宿主此刻用的模型记给面板（拒答梯度要「用当前模型直接测」）。
+						// 写入位置与会话绑定：面板按同一个 sessionId 读，两边走同一个 storageEntry。
+						await rememberHostModel(ctx, context);
 					} catch {
 						/* 观测失败不影响注入 */
 					}

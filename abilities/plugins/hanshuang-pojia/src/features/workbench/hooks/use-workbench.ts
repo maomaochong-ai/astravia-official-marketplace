@@ -9,6 +9,7 @@ import { scopeForSample } from "../../../domain/sample-scope";
 import {
 	EMPTY_PROFILE,
 	PROBE_PROFILE_PATH,
+	type HostModelSnapshot,
 	type ProbeProfile,
 	type ProbeRecord,
 } from "../../../domain/refusal-probe";
@@ -169,6 +170,8 @@ export interface WorkbenchModel {
 		/** 要测谁：端点 / 模型 / 风格 / 语言 / 档数。非机密，插件作用域持久化。 */
 		profile: ProbeProfile;
 		patchProfile(patch: Partial<ProbeProfile>): void;
+		/** 宿主当前在用的模型（runtime 写、面板读）；null = 还没探测到。 */
+		hostModel: HostModelSnapshot | null;
 	};
 	/** 把注入/卸载脚本落到工作区 `.hanshuang/inject/`；返回相对路径或 null。 */
 	saveInjectScript(name: string, content: string): Promise<string | null>;
@@ -483,6 +486,23 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		};
 	}, [bridge]);
 
+	/**
+	 * 宿主当前模型：进提示词页、切换会话、或点刷新时各读一次。
+	 *
+	 * 快照由运行时每轮写；这里只读。读不到就留 null，卡片显示「尚未探测到」并允许手填，
+	 * 而不是编一个模型名出来。
+	 */
+	const [hostModel, setHostModel] = useState<HostModelSnapshot | null>(null);
+	const loadHostModel = useCallback(() => {
+		void bridge
+			.hostModel(sessionId)
+			.then(snapshot => setHostModel(snapshot))
+			.catch(() => setHostModel(null));
+	}, [bridge, sessionId]);
+	useEffect(() => {
+		if (page !== "prompts") return;
+		loadHostModel();
+	}, [page, loadHostModel]);
 
 	const patchProfile = useCallback((patch: Partial<ProbeProfile>) => {
 		setProbeProfile(previous => ({ ...previous, ...patch }));
@@ -493,9 +513,11 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		if (!probeProfileLoaded.current) return;
 		void bridge.writeState(PROBE_PROFILE_PATH, probeProfile).catch(() => undefined);
 	}, [bridge, probeProfile]);
+	// 刷新：记录与宿主模型一起重读。两件事都回答「现在该测谁」。
 	const refreshProbe = useCallback(() => {
 		void bridge.probeRecord(sessionId).then(setProbeRecord);
-	}, [bridge]);
+		loadHostModel();
+	}, [bridge, sessionId, loadHostModel]);
 	useEffect(() => {
 		if (page === "prompts") refreshProbe();
 	}, [page, refreshProbe]);
@@ -814,7 +836,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		setStaticView,
 		patchKnowledge,
 		myCases,
-		probe: { record: probeRecord, refresh: refreshProbe, profile: probeProfile, patchProfile },
+		probe: { record: probeRecord, refresh: refreshProbe, profile: probeProfile, patchProfile, hostModel },
 		saveInjectScript: (name, content) => bridge.saveInjectScript(name, content),
 		listReports: () => bridge.listReports(),
 		readReport: path => bridge.readReport(path),

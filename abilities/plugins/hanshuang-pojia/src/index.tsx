@@ -17,7 +17,7 @@ import { loadSample } from "./tools/lib/read-sample";
 import { isPluginTool } from "./tools/ids";
 import { publishTaskEvent } from "./runtime/panel-channel";
 import type { LabState } from "./domain/lab-mode";
-import type { ProbeRecord } from "./domain/refusal-probe";
+import type { HostModelSnapshot, ProbeRecord } from "./domain/refusal-probe";
 import { LAB_STATE_PATH } from "./features/workbench/hooks/use-lab";
 import { cacheLabState, registerRuntimeContributions } from "./runtime/contributions";
 import "./style.css";
@@ -295,8 +295,9 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 		},
 		saveMyCases: (cases, cwd) => writeJson(ctx.storage, storageEntry("cases", cwd).path, cases),
 		labMode: () => readJson<LabState>(ctx.storage, LAB_STATE_PATH),
-		// 探测记录按会话分文件：它描述「这次对话测的是谁」。
+		// 探测记录与宿主模型快照都是「这次对话测的是谁」，按会话分文件。
 		probeRecord: sessionId => readJson<ProbeRecord>(ctx.storage, storageEntry("probeRecord", null, sessionId).path),
+		hostModel: sessionId => readJson<HostModelSnapshot>(ctx.storage, storageEntry("hostModel", null, sessionId).path),
 		saveLabMode: state => {
 			// 面板开关是写穿路径：缓存先更新，否则下一条消息仍按旧值注入。
 			cacheLabState(ctx, state);
