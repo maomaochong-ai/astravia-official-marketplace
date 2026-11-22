@@ -553,19 +553,27 @@ export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onB
 						)}
 					</div>
 
-					<div className="flex flex-wrap items-center gap-2 border-t border-line-subtle px-3 py-2">
-						<span className="text-[10.5px] text-text-4">{t("probe.advice.count", { count: actionable.length })}</span>
-						<button
-							type="button"
-							onClick={onDiscuss}
-							className="ml-auto inline-flex items-center gap-1 rounded-md border border-line-subtle px-2 py-1 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
-						>
-							<Icon name="send" className="size-3" />
-							{t("probe.discuss")}
-						</button>
-					</div>
 				</>
 			)}
+
+			{/**
+			 * 「交给对话继续分析」固定在卡片底部，不随表格的有无消失。
+			 *
+			 * 它曾放在「有记录」分支里：刚打开、还没跑过任何一次时整条按钮不存在，用户以为功能被删了。
+			 * 表格空着也能讨论——「我按这套梯度测了但没结果，帮我看」正是最常见的提问。
+			 */}
+			<div className="flex flex-wrap items-center gap-2 border-t border-line-subtle px-3 py-2">
+				<span className="text-[10.5px] text-text-4">{t("probe.advice.count", { count: actionable.length })}</span>
+				<button
+					type="button"
+					onClick={onDiscuss}
+					title={t("probe.discussHint")}
+					className="ms-auto inline-flex items-center gap-1 rounded-md border border-line-subtle px-2 py-1 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+				>
+					<Icon name="send" className="size-3" />
+					{t("probe.discuss")}
+				</button>
+			</div>
 		</Card>
 	);
 }

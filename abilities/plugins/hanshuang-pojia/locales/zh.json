@@ -1044,5 +1044,6 @@
   "probe.col.shape": "句式",
   "probe.col.target": "对象",
   "probe.col.targetHint": "这句目标属于哪一类；标准梯度按类别生成，所以四档才不会全都不适用。",
-  "probe.rewrite.reset": "恢复默认句式"
+  "probe.rewrite.reset": "恢复默认句式",
+  "probe.discussHint": "把当前梯度与已得到的结论交给宿主对话继续分析（表格空着也能问）"
 }

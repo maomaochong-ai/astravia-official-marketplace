@@ -1044,5 +1044,6 @@
   "probe.col.shape": "Shape",
   "probe.col.target": "Object",
   "probe.col.targetHint": "Which class this target belongs to; the standard ladder is generated per class.",
-  "probe.rewrite.reset": "Reset shape"
+  "probe.rewrite.reset": "Reset shape",
+  "probe.discussHint": "Hand the current ladder and results to the conversation (works with an empty table too)"
 }
