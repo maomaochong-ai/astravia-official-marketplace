@@ -1,7 +1,7 @@
 {
   "id": "logocreator",
   "name": "%name%",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "icon": "assets/icon.svg",
   "defaultLocale": "zh",
   "pluginApiVersion": "^2.4.0",
@@ -21,6 +21,7 @@
     "agent.tools.register",
     "agent.toolHandler.execute",
     "agent.skills.control",
+    "agent.session.read",
     "agent.session.write",
     "storage.read",
     "storage.write",

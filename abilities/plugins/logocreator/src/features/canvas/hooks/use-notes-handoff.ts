@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useTranslation } from "@astravia-org/plugin-sdk";
+import { useActiveConversation, useTranslation } from "@astravia-org/plugin-sdk";
 import { getNoteStore, getPluginContext } from "../../../plugin-context";
 
 /**
@@ -43,27 +43,40 @@ function dispatchPrompt(): string {
 
 export function useNotesHandoff(cwd: string | null): NotesHandoff {
 	const { t } = useTranslation();
-	const [conversation, setConversation] = useState<{ id: string | null; cwd: string | null; isStreaming: boolean } | null>(
-		null,
-	);
 	const [version, setVersion] = useState(0);
 
+	/**
+	 * 会话事件的订阅是**可降级**的。
+	 *
+	 * `conversation.on` 需要 `agent.session.read`，而升级不会自动授予新权限。
+	 * 上一版在 effect 里直接调它：被拒时抛错，React 把 effect 的错误交给最近的错误边界，
+	 * 整块面板于是变成「面板没能渲染：Plugin permission denied: agent.session.read」—— 一个权限问题
+	 * 被放大成整个 tab 不可用。
+	 *
+	 * 现在：订阅失败只意味着少了 turn 级的实时推送，会话状态改由 `useActiveConversation()`
+	 * （纯 hook，不需要额外权限）提供。两者指向同一个宿主 store，所以信息不会错，只是粒度粗一档。
+	 */
+	const active = useActiveConversation();
+	const [live, setLive] = useState<{ id: string | null; cwd: string | null; isStreaming: boolean } | null>(null);
 	useEffect(() => {
-		const handle = getPluginContext().conversation.on((event) => {
-			if (event.type === "conversation-changed") {
-				setConversation({
-					id: event.conversation.id,
-					cwd: event.conversation.cwd,
-					isStreaming: event.conversation.isStreaming,
-				});
-			} else if (event.type === "turn-start") {
-				setConversation((current) => (current ? { ...current, isStreaming: true } : current));
-			} else if (event.type === "turn-end") {
-				setConversation((current) => (current ? { ...current, isStreaming: false } : current));
-			}
-		});
-		return () => handle.dispose();
+		let handle: { dispose(): void } | null = null;
+		try {
+			handle = getPluginContext().conversation.on((event) => {
+				if (event.type === "conversation-changed") {
+					setLive({ id: event.conversation.id, cwd: event.conversation.cwd, isStreaming: event.conversation.isStreaming });
+				} else if (event.type === "turn-start") {
+					setLive((current) => (current ? { ...current, isStreaming: true } : current));
+				} else if (event.type === "turn-end") {
+					setLive((current) => (current ? { ...current, isStreaming: false } : current));
+				}
+			});
+		} catch (error) {
+			console.warn("[logocreator] conversation events unavailable, falling back to the active-conversation hook", error);
+		}
+		return () => handle?.dispose();
 	}, []);
+
+	const conversation = live ?? { id: active.id, cwd: active.cwd, isStreaming: active.isStreaming };
 
 	useEffect(() => {
 		const store = getNoteStore();

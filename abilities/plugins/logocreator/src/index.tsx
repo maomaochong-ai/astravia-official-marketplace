@@ -143,23 +143,34 @@ export default definePlugin({
 
 		// ── 2. keep our scope pointer on the conversation the host is showing ──
 		//      and make sure the tab really is on the strip for that conversation.
-		step("conversation subscription", () => {
-			owned.push(
-				ctx.conversation.on((event) => {
-					if (event.type !== "conversation-changed") return;
-					const { cwd } = event.conversation;
-					setActiveConversation(cwd);
-					// Attach records are per cwd; without this a tab hidden once stays hidden in
-					// every later conversation even though `initiallyVisible` is true.
-					if (!cwd) return;
-					try {
-						ctx.ui.setActivityTabVisible(LOGO_TAB_ID, true, { cwd });
-					} catch {
-						/* 旧宿主不接第三参：保持原行为，不因此中断事件订阅。 */
-					}
-				}),
+		//
+		//      这条订阅需要 `agent.session.read`，而升级不会自动授予新权限。没有它也能用：
+		//      面板自己走 `useActiveConversation()`（不需要额外权限）。所以这里只在有权限时订，
+		//      没权限时一句话说清楚该去哪儿授权，而不是让它静默失败。
+		if (!ctx.permissions.has("agent.session.read")) {
+			console.warn(
+				"[logocreator] agent.session.read not granted: the tab will not follow conversation switches until you re-authorise the plugin " +
+					"(Settings → Abilities → Plugins), and a hidden tab will not be restored per conversation.",
 			);
-		});
+		} else {
+			step("conversation subscription", () => {
+				owned.push(
+					ctx.conversation.on((event) => {
+						if (event.type !== "conversation-changed") return;
+						const { cwd } = event.conversation;
+						setActiveConversation(cwd);
+						// Attach records are per cwd; without this a tab hidden once stays hidden in
+						// every later conversation even though `initiallyVisible` is true.
+						if (!cwd) return;
+						try {
+							ctx.ui.setActivityTabVisible(LOGO_TAB_ID, true, { cwd });
+						} catch {
+							/* 旧宿主不接第三参：保持原行为，不因此中断事件订阅。 */
+						}
+					}),
+				);
+			});
+		}
 
 		// ── 3. tell every turn these tools exist ──────────────────────────────
 		if (ctx.permissions.has("agent.tools.register")) {

@@ -77,3 +77,25 @@ describe("image-to-image in the panel", () => {
 		expect(dock).toContain('t("dock.reference")');
 	});
 });
+
+
+describe("a denied permission must not take the panel down", () => {
+	const handoff = read("src/features/canvas/hooks/use-notes-handoff.ts");
+	const manifest = JSON.parse(read("plugin.json")) as { permissions: string[] };
+
+	it("declares agent.session.read, which the event subscription needs", () => {
+		expect(manifest.permissions).toContain("agent.session.read");
+	});
+
+	it("survives a rejected conversation.on by falling back to the hook", () => {
+		// 升级不自动授予新权限：这里抛错会被 React 当成渲染错误，整块 tab 变成「面板没能渲染」。
+		expect(handoff).toMatch(/try \{[\s\S]{0,500}conversation\.on\(/);
+		expect(handoff).toMatch(/catch \(error\)[\s\S]{0,400}falling back/);
+		expect(handoff).toContain("useActiveConversation");
+	});
+
+	it("warns at activation when the permission is missing, instead of failing silently", () => {
+		expect(index).toMatch(/permissions\.has\("agent\.session\.read"\)/);
+		expect(index).toContain("agent.session.read not granted");
+	});
+});
