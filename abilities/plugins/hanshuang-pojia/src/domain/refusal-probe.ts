@@ -247,6 +247,20 @@ export interface ProbeProfile {
 	lang: ProbeLang;
 	/** 跑到第几档；0 = 全部。 */
 	level: number;
+	/**
+	 * 用户存下来的自定义梯度（一行一档）。
+	 *
+	 * 「我这句话会不会被拦」是日常真正卡住人的问题，而每一次都要重打一遍整段话。
+	 * 存在档案里（同样不含密钥），列表里直接可选。
+	 */
+	savedLadders?: ProbeSavedLadder[];
+}
+
+export interface ProbeSavedLadder {
+	/** 显示名，默认取第一行前 24 字。 */
+	name: string;
+	/** 原始文本，一行一档。 */
+	text: string;
 }
 
 export type ProbeApiStyle = "openai" | "anthropic";
@@ -258,6 +272,7 @@ export const EMPTY_PROFILE: ProbeProfile = {
 	authHeader: "Authorization",
 	lang: "zh",
 	level: 4,
+	savedLadders: [],
 };
 
 /** 档案可执行性：缺端点或缺模型就只能先去填。 */
@@ -349,6 +364,13 @@ export interface ProbeRecord {
 	summary: ProbeSummary;
 	rows: ProbeResult[];
 	/**
+	 * 本次每一档的处理措施（只对真被拦的档位生成）。
+	 *
+	 * 与 `rows` 一起落盘而不是渲染时临时算：措施是这次探测的**结论**之一，
+	 * 关掉面板再从文件读就要能看见，否则用户只留下「第 3 档被拒」，没有「那怎么办」。
+	 */
+	advice?: ProbeAdvice[];
+	/**
 	 * 上一次的结论（同一模型 + 同一端点）。
 	 *
 	 * 这套功能的用处只有一句：「改了写法有没有用」。只存最后一次时，重测完就看不到改之前
@@ -362,7 +384,13 @@ export function toRecord(
 	meta: { at: string; model: string; host: string; lang: ProbeLang; previous?: ProbeSummary },
 	results: readonly ProbeResult[],
 ): ProbeRecord {
-	return { ...meta, summary: summarise(results), rows: [...results] };
+	return {
+		...meta,
+		summary: summarise(results),
+		rows: [...results],
+		// 只留需要动作的档位：全通过时这个数组是空的，卡片据此说「本次没有需要处理的档位」。
+		advice: adviceFor(results).filter(item => item.tiers.length > 0 || item.verdict !== "answered"),
+	};
 }
 
 /**

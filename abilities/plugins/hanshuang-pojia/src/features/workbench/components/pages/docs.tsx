@@ -20,6 +20,20 @@ function kilobytes(bytes: number): string {
 }
 
 /**
+ * 交给浏览器下载一段 Markdown。不经过宿主，所以不需要额外权限；
+ * 面板与下载都在渲染进程里，URL 用完立即回收。
+ */
+function downloadMarkdown(filename: string, text: string): void {
+	const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
+	const url = URL.createObjectURL(blob);
+	const anchor = document.createElement("a");
+	anchor.href = url;
+	anchor.download = filename;
+	anchor.click();
+	URL.revokeObjectURL(url);
+}
+
+/**
  * 文档页：**整宽的目录列表**，点一条开弹窗读正文。
  *
  * 上一版把「目录 + 正文」做成两栏，窄面板下正文被挤成一条、返回按钮又只翻了个布尔量，
@@ -69,6 +83,28 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 		});
 	};
 
+	/**
+	 * 导出整份清单：把当前筛选下的每篇正文拼成一份 .md。
+	 *
+	 * 单篇导出只存在于右键菜单里——菜单是「知道它在那儿才找得到」的入口，而「把这一组
+	 * 带走」是最常见的诉求。所以工具栏上放一个按钮，导的是**当前可见列表**：
+	 * 筛选了什么就导什么，搜索结果也照此办理。
+	 */
+	const exportListing = async () => {
+		const ids = listing ? listing.map(hit => hit.entry.id) : visibleGroups.flatMap(item => item.topics.flatMap(topic => topic.entries.map(doc => doc.id)));
+		if (ids.length === 0) return;
+		const parts = await Promise.all(
+			ids.map(id => docs.readDocument(id).then(text => ({ id, text })).catch(() => null)),
+		);
+		const body = parts
+			.filter((part): part is { id: string; text: string } => part !== null)
+			.map(part => `<!-- ${part.id} -->\n\n${part.text}`)
+			.join("\n\n---\n\n");
+		if (!body.trim()) return;
+		const name = (topic ?? group ?? "docs") as string;
+		downloadMarkdown(`${name}.md`, `# ${filterLabel}\n\n${body}`);
+	};
+
 	/** 导出：把正文写成一个 .md，交给浏览器下载。不经过宿主，所以不需要额外权限。 */
 	const exportEntry = async (id: string) => {
 		const entry = docs.byId(id);
@@ -76,13 +112,7 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 		// 正文来自域层（会按需解 gzip 包），不猜资源 URL。
 		const text = await docs.readDocument(id).catch(() => null);
 		if (!text) return;
-		const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
-		const url = URL.createObjectURL(blob);
-		const anchor = document.createElement("a");
-		anchor.href = url;
-		anchor.download = `${entry.id.split("/").pop() ?? "doc"}.md`;
-		anchor.click();
-		URL.revokeObjectURL(url);
+		downloadMarkdown(`${entry.id.split("/").pop() ?? "doc"}.md`, text);
 	};
 
 	const groupCounts = docs.groups.map(item => ({ id: item.id, count: item.topics.reduce((sum, entry) => sum + entry.entries.length, 0) }));
@@ -112,11 +142,23 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 	// 外部 select（例如先例页的「战例研究」）之后要能直接看到正文：
 	// 只看「选中项变了」这一次，不对「openId 为空」做出反应 —— 否则关掉弹窗会立即被重开。
 	//
-	// 首帧就把当前 selected 记成「已处理」：否则进页就被当成一次外部选中，
-	// 弹窗会在用户还没点任何东西时自己打开（注：useDocs 在加载后会默认选中第一篇）。
-	const openedFor = useRef<string | null>(docs.selected?.id ?? null);
+	// 首帧先把「当前选中」记下来，再只在**之后**的选中上开弹窗。
+	//
+	// 上一版把初始值写成 `docs.selected?.id ?? null`：索引是异步加载的，首帧
+	// `selected` 还是 null，于是 useDocs 加载完后自己选中的第一篇被当成「外部选中」，
+	// 弹窗在用户没点任何东西时就弹了出来。这里用两个 ref 把「已播种」与「已打开的 id」
+	// 分开：播种只发生一次，且不触发打开。
+	const seeded = useRef(false);
+	const openedFor = useRef<string | null>(null);
 	useEffect(() => {
 		const id = docs.selected?.id ?? null;
+		if (!seeded.current) {
+			// 首帧只播种，不开窗：这一条是 useDocs 加载完后自己选中的。
+			seeded.current = true;
+			openedFor.current = id;
+			return;
+		}
+		// 之后的选中变化都来自外部跳转（先例页的「战例研究」等），那时应当直接看正文。
 		if (id && openedFor.current !== id) {
 			openedFor.current = id;
 			setOpenId(id);
@@ -221,6 +263,16 @@ export function DocsPage({ model, embedded = false }: PageProps & { embedded?: b
 						</div>
 					</details>
 
+					{/* 导出：导的是**当前可见清单**（筛选/搜索结果照此办理），不是整个语料。 */}
+					<button
+						type="button"
+						onClick={() => void exportListing()}
+						title={t("docs.exportHint")}
+						className="flex shrink-0 items-center gap-1 rounded-md border border-line-subtle px-1.5 py-1 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+					>
+						<Icon name="save" className="size-3" />
+						{t("docs.export")}
+					</button>
 					<span className="ms-auto flex shrink-0 items-center gap-1 font-mono text-[10.5px] text-text-4">
 						{docs.searching ? <Spinner className="size-3" /> : null}
 						{listing ? listing.length : docs.totals.documents}

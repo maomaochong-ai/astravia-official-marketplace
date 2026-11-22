@@ -60,6 +60,20 @@ export function InjectPage({ model, embedded = false, packId: packIdProp }: Page
 	}, [packId]);
 
 	const target = INJECT_TARGETS.find(item => item.id === targetId) ?? INJECT_TARGETS[0];
+
+	/**
+	 * 复制正文：宿主配置可能不在本机（远程 / 容器），那时脚本跑不了，粘贴是唯一路径。
+	 * 复制失败不静默——剪贴板权限在部分窗口里是被拒的。
+	 */
+	const copyBody = async () => {
+		if (body === null) return;
+		try {
+			await navigator.clipboard.writeText(body);
+			model.notify(t("inject.copy.done"), "success");
+		} catch {
+			model.notify(t("inject.copy.failed"), "error");
+		}
+	};
 	const plan = useMemo(
 		() => (target ? planFor(target, { packLabel: packId, body: body ?? "" }) : null),
 		[target, packId, body],
@@ -100,7 +114,23 @@ export function InjectPage({ model, embedded = false, packId: packIdProp }: Page
 					<span className="ms-auto font-mono text-[10.5px] text-text-4">
 						{body === null ? t("inject.pack.loading") : t("inject.pack.chars", { count: PACKS.find(pack => pack.id === packId)?.chars ?? 0 })}
 					</span>
+					<button
+						type="button"
+						onClick={() => void copyBody()}
+						disabled={body === null}
+						title={t("inject.copyHint")}
+						className="flex items-center gap-1 rounded-md border border-line-subtle px-1.5 py-1 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-40"
+					>
+						<Icon name="save" className="size-3" />
+						{t("inject.copy")}
+					</button>
 				</div>
+
+				{/* 注入到别的宿主之后，本插件的 lab 开关对那份文本完全不起作用：
+				    宿主读不到这里的存储。这条必须写在动手之前，否则用户会以为「没打 lab 就白装」。 */}
+				<p className="shrink-0 rounded-md bg-surface-3/60 px-2 py-1 text-[10.5px] leading-relaxed text-text-3">
+					<span className="font-medium text-text-2">{t("inject.lab.title")}</span> {t("inject.lab.body")}
+				</p>
 				<div className="fb-fill grid min-h-0 gap-2.5 grid-rows-[minmax(0,45%)_minmax(0,1fr)] @min-[900px]:grid-cols-[minmax(280px,360px)_minmax(0,1fr)] @min-[900px]:grid-rows-[minmax(0,1fr)]">
 					<Card
 						title={t("inject.targets.title")}

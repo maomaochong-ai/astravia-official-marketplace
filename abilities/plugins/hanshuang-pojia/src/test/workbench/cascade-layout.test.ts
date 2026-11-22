@@ -42,11 +42,16 @@ describe("page layout is not decided by cascade accidents", () => {
 });
 
 describe("knowledge reader opens on demand only", () => {
-	it("marks the initially selected doc as already handled", () => {
+	it("seeds the first selection without opening the preview", () => {
 		const page = read("src/features/workbench/components/pages/docs.tsx");
-		// 首帧就记住当前 selected：否则加载后默认选中第一篇会被当成「外部选中」，
-		// 弹窗在用户没点任何东西时自己打开。
-		expect(page).toContain("useRef<string | null>(docs.selected?.id ?? null)");
+		// 判据是行为，不是某一句写法：首帧只播种（seeded → 记下 id 后 return），
+		// 之后的选中变化才开窗。上一版把播种值取成首帧的 `docs.selected?.id`，
+		// 而索引异步加载、首帧为 null，于是「加载后自动选中第一篇」被当成外部选中。
+		expect(page).toMatch(/if \(!seeded\.current\) \{[\s\S]{0,200}?return;/);
+		expect(page).toContain("seeded.current = true");
+		// 播种段里不允许出现开窗。
+		const seed = /if \(!seeded\.current\) \{([\s\S]{0,240}?)\}/.exec(page)?.[1] ?? "";
+		expect(seed).not.toContain("setOpenId");
 	});
 
 	it("does not render a sub-topic row for an empty topic id", () => {

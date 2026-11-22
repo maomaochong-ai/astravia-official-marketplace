@@ -6,7 +6,7 @@ import { CaseReader } from "../case-reader";
 import { PrecedentReader } from "../precedent-reader";
 import { AiButton } from "../shell/ai-button";
 import { Card } from "../shell/card";
-import { FilterChips } from "../shell/filter-chips";
+import { FilterMenu } from "../shell/filter-menu";
 import { Icon } from "../shell/icon";
 import { PageHeader } from "../shell/page-header";
 import { SegmentedControl } from "../shell/segmented-control";
@@ -115,13 +115,16 @@ export function CasesPage({ model, embedded = false }: PageProps & { embedded?: 
 						/>
 					</div>
 					{source === "precedent" ? (
-						<FilterChips
+						// 与文档页同一个控件：同一栏里两套筛选形态，用户读不出它们是同一件事。
+						<FilterMenu<string>
+							placeholder={t("cases.filter")}
+							allId="all"
+							value={category}
+							onChange={next => setCategory(next ?? "all")}
 							items={[
 								{ id: "all", label: t("cases.category.all"), count: SHIPPED_PRECEDENTS.length },
 								...categoryCounts.map(([id, count]) => ({ id, label: t(`cases.category.${id}`), count })),
 							]}
-							value={category}
-							onChange={setCategory}
 						/>
 					) : null}
 					<span className="ms-auto shrink-0 font-mono text-[10.5px] text-text-4">

@@ -214,13 +214,56 @@ export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onB
 					<span className="ms-auto font-mono text-[9.5px] text-text-4">{rungs.length}</span>
 				</div>
 				{ladder === "custom" ? (
-					<textarea
-						value={custom}
-						onChange={event => setCustom(event.target.value)}
-						rows={3}
-						placeholder={t("probe.ladder.customPlaceholder")}
-						className="mt-1.5 w-full resize-y rounded-md border border-line-subtle bg-surface px-2 py-1 font-mono text-[10.5px] leading-relaxed text-text outline-none focus:border-accent"
-					/>
+					<>
+						<textarea
+							value={custom}
+							onChange={event => setCustom(event.target.value)}
+							rows={3}
+							placeholder={t("probe.ladder.customPlaceholder")}
+							className="mt-1.5 w-full resize-y rounded-md border border-line-subtle bg-surface px-2 py-1 font-mono text-[10.5px] leading-relaxed text-text outline-none focus:border-accent"
+						/>
+						{/* 存下来的梯度：每次重打一遍整段话是这套功能最实际的摩擦点。 */}
+						<div className="mt-1 flex flex-wrap items-center gap-1">
+							<span className="text-[9.5px] uppercase tracking-wider text-text-4">{t("probe.ladder.saved")}</span>
+							{(profile.savedLadders ?? []).map(entry => (
+								<span key={entry.name} className="inline-flex items-center gap-0.5 rounded border border-line-subtle">
+									<button
+										type="button"
+										onClick={() => setCustom(entry.text)}
+										title={entry.text}
+										className="rounded-s px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+									>
+										{entry.name}
+									</button>
+									<button
+										type="button"
+										aria-label={t("probe.ladder.remove")}
+										title={t("probe.ladder.remove")}
+										onClick={() =>
+											patchProfile({ savedLadders: (profile.savedLadders ?? []).filter(item => item.name !== entry.name) })
+										}
+										className="rounded-e border-s border-line-subtle px-1 py-0.5 text-[10.5px] text-text-4 hover:text-risk-high"
+									>
+										×
+									</button>
+								</span>
+							))}
+							<button
+								type="button"
+								disabled={custom.trim().length === 0}
+								onClick={() => {
+									const text0 = custom.trim();
+									if (!text0) return;
+									const name = text0.split(/\r?\n/)[0]?.trim().slice(0, 24) || `${(profile.savedLadders ?? []).length + 1}`;
+									const kept = (profile.savedLadders ?? []).filter(item => item.name !== name);
+									patchProfile({ savedLadders: [...kept, { name, text: text0 }] });
+								}}
+								className="rounded border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-40"
+							>
+								{t("probe.ladder.save")}
+							</button>
+						</div>
+					</>
 				) : (
 					<ol className="mt-1.5 space-y-0.5">
 						{rungs.map(rung => (
@@ -238,6 +281,10 @@ export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onB
 				<div className="px-3 py-3">
 					<p className="text-[11.5px] leading-relaxed text-text-3">{t("probe.empty")}</p>
 					<p className="mt-1 text-[10.5px] leading-relaxed text-text-4">{t("probe.emptyHint")}</p>
+					{/* 「测出来的结果显示在哪儿」是这套功能最常被问的一句，直接写在空态里。 */}
+					<p className="mt-1.5 rounded-md bg-surface-3/60 px-2 py-1 text-[10.5px] leading-relaxed text-text-3">
+						<span className="font-medium text-text-2">{t("probe.where.title")}</span> {t("probe.where.body")}
+					</p>
 				</div>
 			) : (
 				<>
@@ -347,6 +394,31 @@ export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onB
 									})}
 								</tbody>
 							</table>
+						)}
+					</div>
+
+					{/* 拒答措施：从记录里读，不重新推导 —— 措施是那次探测的结论之一。 */}
+					<div className="border-t border-line-subtle px-3 py-2">
+						<div className="flex items-baseline gap-1.5">
+							<span className="text-[9.5px] uppercase tracking-wider text-text-4">{t("probe.counter.title")}</span>
+							<span className="min-w-0 flex-1 fb-wrap text-[10.5px] text-text-4">{t("probe.counter.hint")}</span>
+						</div>
+						{(record.advice ?? []).filter(item => item.verdict !== "answered").length === 0 ? (
+							<p className="mt-1 text-[10.5px] text-text-3">{t("probe.counter.none")}</p>
+						) : (
+							<ul className="mt-1 space-y-0.5">
+								{(record.advice ?? [])
+									.filter(item => item.verdict !== "answered")
+									.map(item => (
+										<li key={item.level} className="flex min-w-0 items-baseline gap-1.5 text-[10.5px]">
+											<span className="shrink-0 font-mono text-text-4">{item.level}</span>
+											<span className="min-w-0 flex-1 fb-wrap text-text-2">{item.note}</span>
+											{item.tiers.length > 0 ? (
+												<span className="shrink-0 font-mono text-[9.5px] text-accent">{item.tiers.join(" → ")}</span>
+											) : null}
+										</li>
+									))}
+							</ul>
 						)}
 					</div>
 
