@@ -1047,5 +1047,8 @@
   "probe.rewrite.reset": "Reset shape",
   "probe.discussHint": "Hand the current ladder and results to the conversation (works with an empty table too)",
   "probe.auto.running": "Auto-probing {{count}} rungs for “{{cls}}” — this table updates when the results land",
-  "probe.auto.refresh": "Fetch results"
+  "probe.auto.refresh": "Fetch results",
+  "probe.counter.retestAll": "Retest all",
+  "probe.counter.retestAllHint": "Re-send every blocked rung with a different shape (same text the second auto stage uses)",
+  "probe.col.step": "Method step"
 }
