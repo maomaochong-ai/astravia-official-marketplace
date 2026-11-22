@@ -633,11 +633,8 @@
   "probe.profile.modelPlaceholder": "e.g. deepseek-v4-flash-free",
   "probe.profile.title": "What to probe",
   "probe.refreshHint": "Re-read the stored record",
-  "probe.reshape.review-checklist": "checklist reframe",
-  "probe.reshape.review-en": "rewrite in English",
-  "probe.reshape.review-framed": "review framing",
   "probe.rewrite.hide": "Hide",
-  "probe.rewrite.retest": "re-test",
+  "probe.rewrite.retest": "Send to retest",
   "probe.rewrite.show": "Show rewrite",
   "probe.rewrite.title": "Re-test with:",
   "probe.rowsEmpty": "This probe produced no judgeable reply (every request failed). Check the stderr of probe_refusal in the chat — usually the endpoint or the allowlist.",
@@ -1043,5 +1040,9 @@
   "probe.source.record": "Record",
   "probe.stale": "from {{model}}",
   "probe.staleHint": "The host model changed; this record is the previous model's result.",
-  "probe.counter.send": "Send"
+  "probe.counter.send": "Send",
+  "probe.col.shape": "Shape",
+  "probe.col.target": "Object",
+  "probe.col.targetHint": "Which class this target belongs to; the standard ladder is generated per class.",
+  "probe.rewrite.reset": "Reset shape"
 }

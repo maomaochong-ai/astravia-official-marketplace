@@ -7,12 +7,15 @@ import {
 	customLadder,
 	profileReady,
 	probesFor,
+	probesForClass,
+	rungRewrite,
 	rewritesFor,
 	type HostModelSnapshot,
 	type ProbeProfile,
 	type ProbeRecord,
 	type RefusalProbe,
 } from "../../../../domain/refusal-probe";
+import { classLabel, targetClassOf } from "../../../../domain/probe-ladder";
 import { Card } from "../shell/card";
 import { Icon } from "../shell/icon";
 
@@ -67,6 +70,9 @@ export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onB
 	const [custom, setCustom] = useState("");
 	// 展开哪一档的改写。同时只开一条：改写文本很长，全展开就没法比对。
 	const [rewriteFor, setRewriteFor] = useState<number | null>(null);
+	/** 某一档的改写草稿（用户可编辑后再发）。key = level。 */
+	const [drafts, setDrafts] = useState<Record<number, string>>({});
+	const draftFor = (level: number, source: string): string => drafts[level] ?? rungRewrite(source, level).text;
 
 	// 宿主换模型后，「要测谁」跟着换 —— 否则表格顶部写着新模型、要测的却是旧的。
 	// 只在用户没手改过 model 时才跟随（followHostModel 的判据）。
@@ -116,7 +122,21 @@ export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onB
 			}));
 	})();
 	const ready = profileReady(profile);
-	const rungs: readonly RefusalProbe[] = ladder === "custom" ? customLadder(custom) : probesFor(profile.lang, profile.level === 0 ? undefined : profile.level);
+	/**
+	 * 梯度的来源。
+	 *
+	 * 自定义梯度按用户的行；标准梯度按**目标类别**（站点/接口/客户端/文件）生成 ——
+	 * 固定的「概念→SQL 注入→本地许可→补丁」四档，对一句网站会员限制全不对题。
+	 * 目标取「自定义梯度首行」或表里的 model/intent，找不到就退回通用四档。
+	 */
+	const targetBasis = (custom.trim() || liveRows[0]?.text || profile.model || "").trim();
+	const rungs: readonly RefusalProbe[] =
+		ladder === "custom"
+			? customLadder(custom)
+			: targetBasis.length > 0
+				? probesForClass(targetBasis, profile.level === 0 ? undefined : profile.level)
+				: probesFor(profile.lang, profile.level === 0 ? undefined : profile.level);
+	const targetClass = classLabel(targetClassOf(targetBasis));
 	const advice = record ? adviceFor(record.rows) : [];
 	const actionable = advice.filter(item => item.tiers.length > 0);
 	const rejected = record?.rows.filter(row => row.verdict !== "answered") ?? [];
@@ -358,6 +378,13 @@ export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onB
 								<span className="text-text-4">{record.at.slice(0, 19).replace("T", " ")}</span>
 							</>
 						) : null}
+						{/* 对象类别：整张表的前提。这句目标属于哪一类，决定标准梯度怎么问。 */}
+						<span
+							className="shrink-0 rounded bg-surface-3 px-1 py-0.5 text-[9.5px] text-text-3"
+							title={t("probe.col.targetHint")}
+						>
+							{t("probe.col.target")}：{targetClass}
+						</span>
 						<span className="min-w-0 flex-1 fb-wrap text-end text-text-2">{live?.summary ?? record?.summary.headline ?? ""}</span>
 					</div>
 
@@ -391,6 +418,7 @@ export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onB
 										<th className="border-b border-line-subtle px-2.5 py-1 font-semibold text-text">{t("probe.col.expect")}</th>
 										<th className="border-b border-line-subtle px-2.5 py-1 font-semibold text-text">{t("probe.col.verdict")}</th>
 										<th className="border-b border-line-subtle px-2.5 py-1 font-semibold text-text">{t("probe.col.kind")}</th>
+										<th className="border-b border-line-subtle px-2.5 py-1 font-semibold text-text">{t("probe.col.shape")}</th>
 										<th className="border-b border-line-subtle px-2.5 py-1 font-semibold text-text">{t("probe.col.advice")}</th>
 									</tr>
 								</thead>
@@ -415,7 +443,11 @@ export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onB
 													<td className={`border-b border-line-subtle px-2.5 py-1 font-medium ${VERDICT_TONE[item.verdict]}`}>
 														{t(VERDICT_KEY[item.verdict])}
 													</td>
-													<td className="border-b border-line-subtle px-2.5 py-1 font-mono text-[9.5px] text-text-3">{item.kind ?? "—"}</td>
+												<td className="border-b border-line-subtle px-2.5 py-1 font-mono text-[9.5px] text-text-3">{item.kind ?? "—"}</td>
+												{/* 句式：这一档的问法。整列一个名字，就说明改写真的换了形状。 */}
+												<td className="border-b border-line-subtle px-2.5 py-1 text-[10.5px] text-text-3">
+													{row ? rungRewrite(row.probe.text, row.probe.level).label : "—"}
+												</td>
 													<td className="border-b border-line-subtle px-2.5 py-1 text-[10.5px] leading-relaxed text-text-3">
 														{item.tiers.length > 0 && row ? (
 															<span className="flex flex-wrap items-center gap-1">
@@ -436,24 +468,44 @@ export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onB
 												</tr>
 												{open && current ? (
 													<tr className="bg-accent-soft/40">
-														<td colSpan={6} className="border-b border-line-subtle px-2.5 py-2">
+												<td colSpan={7} className="border-b border-line-subtle px-2.5 py-2">
 															<div className="flex flex-wrap items-center gap-2 pb-1">
 																<span className="text-[10.5px] font-medium text-text-2">{t("probe.rewrite.title")}</span>
-																{rewritesFor(current.probe.text).map(option => (
-																	<button
-																		key={option.tier}
-																		type="button"
-																		onClick={() => onBrief(buildProbeBrief(profile, { retest: option.text }))}
-																		title={option.text}
-																		className="rounded border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
-																	>
-																		{t(`probe.reshape.${option.tier}`)} · {t("probe.rewrite.retest")}
-																	</button>
-																))}
+																{/* 句式标签：这一档用的是哪种问法，切换即可看出「内容被拦」还是「句式被拦」。 */}
+																<span className="rounded bg-surface-3 px-1 py-0.5 text-[9.5px] text-text-3">
+																	{rungRewrite(current.probe.text, current.probe.level).label}
+																</span>
+																<button
+																	type="button"
+																	onClick={() => setDrafts(prev => ({ ...prev, [current.probe.level]: rungRewrite(current.probe.text, current.probe.level).text }))}
+																	className="rounded border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+																>
+																	{t("probe.rewrite.reset")}
+																</button>
+																<button
+																	type="button"
+																	onClick={() =>
+																		onBrief(
+																			buildProbeBrief(profile, {
+																				retest: draftFor(current.probe.level, current.probe.text),
+																			}),
+																		)
+																	}
+																	className="ms-auto rounded bg-text px-1.5 py-0.5 text-[10.5px] font-medium text-surface transition-opacity hover:opacity-90"
+																>
+																	{t("probe.rewrite.retest")}
+																</button>
 															</div>
-															<pre className="fb-wrap max-h-[var(--fb-h-xs)] overflow-auto whitespace-pre-wrap break-words font-mono text-[9.5px] leading-relaxed text-text-3">
-																{rewritesFor(current.probe.text)[0]?.text ?? ""}
-															</pre>
+															{/* 可编辑：改写是结论，用户往往要按自己的口径微调再发。 */}
+															<textarea
+																value={draftFor(current.probe.level, current.probe.text)}
+																onChange={event =>
+																	setDrafts(prev => ({ ...prev, [current.probe.level]: event.target.value }))
+																}
+																rows={4}
+																aria-label={t("probe.rewrite.title")}
+																className="fb-wrap w-full resize-y rounded border border-line-subtle bg-surface px-2 py-1 font-mono text-[9.5px] leading-relaxed text-text-2 outline-none focus:border-accent"
+															/>
 														</td>
 													</tr>
 												) : null}
