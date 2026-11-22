@@ -633,11 +633,8 @@
   "probe.profile.modelPlaceholder": "如 deepseek-v4-flash-free",
   "probe.profile.title": "要测谁",
   "probe.refreshHint": "重新读取落盘记录",
-  "probe.reshape.review-checklist": "清单式重述",
-  "probe.reshape.review-en": "英文重写",
-  "probe.reshape.review-framed": "评审框架",
   "probe.rewrite.hide": "收起",
-  "probe.rewrite.retest": "重测",
+  "probe.rewrite.retest": "发送去重测",
   "probe.rewrite.show": "看改写",
   "probe.rewrite.title": "按这个说法重测：",
   "probe.rowsEmpty": "这一次探测没有拿到可判定的回复（请求全部失败）。看对话里 probe_refusal 的 stderr，多半是端点或白名单问题。",
@@ -1043,5 +1040,9 @@
   "probe.source.record": "记录",
   "probe.stale": "记录来自 {{model}}",
   "probe.staleHint": "宿主已切换模型，这份记录是上一个模型的结论；按它判断会误导。",
-  "probe.counter.send": "发送"
+  "probe.counter.send": "发送",
+  "probe.col.shape": "句式",
+  "probe.col.target": "对象",
+  "probe.col.targetHint": "这句目标属于哪一类；标准梯度按类别生成，所以四档才不会全都不适用。",
+  "probe.rewrite.reset": "恢复默认句式"
 }
