@@ -20,9 +20,12 @@ describe("auto probe after a refusal", () => {
 		const plan = planAutoProbe({ prompt: WEB, signal: SIGNAL, model: "gpt-x", attempted: 0 });
 		expect(plan).not.toBeNull();
 		expect(plan?.targetClass).toBe("web");
-		expect(plan?.rungs).toBe(4);
-		// 四档的名字都在片段里，agent 才不需要自己编。
-		expect(plan?.fragment).toContain("权益");
+		expect(plan?.rungs).toBe(6);
+		// 六档的名字都在片段里，agent 才不需要自己编。
+		expect(plan?.fragment).toContain("判定点定位");
+		expect(plan?.fragment).toContain("严重性两问");
+		// 句子正文仍点名目标与「权益」语义（站点类别专有措辞）。
+		expect(plan?.fragment).toMatch(/权益|放行/);
 		expect(plan?.fragment).toContain("www.aqiyi.com");
 	});
 

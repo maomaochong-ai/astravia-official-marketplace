@@ -1,9 +1,9 @@
 import { readJsonFile, writeJsonFile } from "@astravia-org/plugin-sdk";
 import type { ConversationScenario, Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { KERNEL_BLOCK_ID, KERNEL_PRIORITY, buildKernelBlock } from "../domain/kernel";
-import { HOST_MODEL_PATH } from "../domain/refusal-probe";
+import { HOST_MODEL_PATH, type ProbeRecord } from "../domain/refusal-probe";
 import { LAB_DEFAULT, LAB_OFF, parseLabCommand, type LabState } from "../domain/lab-mode";
-import { planAutoProbe } from "../domain/auto-probe";
+import { planAutoProbe, planAutoRetest } from "../domain/auto-probe";
 import { LAB_STATE_PATH } from "../features/workbench/hooks/use-lab";
 import { SYSTEM_PROMPT_BLOCK_ID, SYSTEM_PROMPT_BODY, SYSTEM_PROMPT_PRIORITY } from "../domain/system-prompt.generated";
 import { type RefusalSignal, planRecovery } from "../domain/refusal";
@@ -524,7 +524,35 @@ export function registerRuntimeContributions(ctx: PluginContext): Disposable[] {
 						attempted: previous?.autoProbed ?? 0,
 					});
 
+					/**
+					 * 第二阶段：上一次已经建过表，就为被拦的那几档自动换句式重测一轮。
+					 *
+					 * 只在拿得到记录时才做。读不到（没会话 id / 文件还没写）就跳过 —— 不猜。
+					 */
+					const autoAttempted = previous?.autoProbed ?? 0;
+					let retest = null as ReturnType<typeof planAutoRetest>;
+					if (autoAttempted >= 1) {
+						try {
+							const entry = storageEntry("probeRecord", event.cwd ?? null, event.sessionId ?? null);
+							const stored = await readJsonFile<ProbeRecord>(ctx.storage, entry.path);
+							retest = planAutoRetest({ record: stored, attempted: autoAttempted });
+						} catch {
+							retest = null;
+						}
+					}
+
 					const fragments: string[] = [];
+					if (retest) {
+						fragments.push(retest.fragment);
+						markAutoProbe(event.turnId, retest.key, "retest");
+						publishRefusal({
+							kind: verdict.signal.kind,
+							evidence: verdict.signal.evidence,
+							attempted,
+							terminal: false,
+							autoProbe: { targetClass: "重测", rungs: retest.levels.length },
+						});
+					}
 					if (auto) {
 						fragments.push(auto.fragment);
 						markAutoProbe(event.turnId, auto.key, auto.targetClass);

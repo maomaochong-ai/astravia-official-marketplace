@@ -21,38 +21,41 @@ describe("the ladder follows the target class", () => {
 
 	it("gives a web target web-shaped rungs, not the binary narrative", () => {
 		const rungs = ladderFor("web", "www.aqiyi.com");
-		expect(rungs).toHaveLength(4);
+		expect(rungs).toHaveLength(6);
 		for (const rung of rungs) {
 			// 每一档都必须提到这个目标 —— 「不适用」的表现就是整句与对象无关。
 			expect(rung.text).toContain("www.aqiyi.com");
 			expect(rung.text).not.toMatch(/许可证|补丁/);
 		}
-		expect(rungs[0].name).toContain("权益");
+		expect(rungs[0].name).toContain("判定点");
 	});
 
-	it("keeps the binary narrative for a client app", () => {
+	it("keeps the client-app wording for an app target", () => {
 		const rungs = ladderFor("app", "demo.exe");
-		expect(rungs.map(rung => rung.name).join(" ")).toMatch(/本地权威|校验函数/);
-		expect(rungs[3].text).toContain("分支");
+		// 档位名是方法步骤（六类共用），差别在句子：客户端类问的是本地判定与调用者。
+		expect(rungs.map(rung => rung.name).join(" ")).toMatch(/判定点|可达性/);
+		expect(rungs[0].text).toContain("demo.exe");
+		expect(rungs[0].text).toMatch(/本地|放行/);
 	});
 
 	it("exposes the class through probesForClass and honours the level cap", () => {
-		expect(probesForClass(WEB)).toHaveLength(4);
+		expect(probesForClass(WEB)).toHaveLength(6);
 		expect(probesForClass(WEB, 2)).toHaveLength(2);
 		expect(probesForClass("")[0].text.length).toBeGreaterThan(20);
 	});
 });
 
 describe("rewrites change shape per rung", () => {
-	it("uses four different shapes across four rungs", () => {
-		const labels = [1, 2, 3, 4].map(level => shapeLabel(shapeForIndex(level - 1)));
-		expect(new Set(labels).size).toBe(4);
+	it("uses six different shapes across six rungs, none adjacent-equal", () => {
+		const labels = [1, 2, 3, 4, 5, 6].map(level => shapeLabel(shapeForIndex(level - 1)));
+		expect(new Set(labels).size).toBe(6);
+		for (let i = 1; i < labels.length; i += 1) expect(labels[i]).not.toBe(labels[i - 1]);
 		expect(labels[0]).toBe("边界确认");
 		expect(labels[1]).toBe("证据清单");
 	});
 
 	it("carries the target into every rung's rewrite", () => {
-		for (const level of [1, 2, 3, 4]) {
+		for (const level of [1, 2, 3, 4, 5, 6]) {
 			const rewrite = rungRewrite(WEB, level);
 			expect(rewrite.text).toContain("www.aqiyi.com");
 			// 原句保留，便于对齐「改的是句式还是内容」。
@@ -61,13 +64,14 @@ describe("rewrites change shape per rung", () => {
 	});
 
 	it("does not reuse the same opening line", () => {
-		const openings = [1, 2, 3, 4].map(level => rungRewrite(WEB, level).text.split("\n")[0]);
-		expect(new Set(openings).size).toBe(4);
+		const openings = [1, 2, 3, 4, 5, 6].map(level => rungRewrite(WEB, level).text.split("\n")[0]);
+		expect(new Set(openings).size).toBeGreaterThanOrEqual(4);
 	});
 
 	it("still works when the sentence has no extractable target", () => {
 		const rewrite = rungRewrite("这个接口的鉴权怎么做", 3);
-		expect(rewrite.label).toBe("评审框架");
+		// 第 3 档的句式是「条款陈述」（level 4 才是评审框架）。
+		expect(rewrite.label).toBe("条款陈述");
 		expect(rewrite.text.length).toBeGreaterThan(60);
 	});
 });

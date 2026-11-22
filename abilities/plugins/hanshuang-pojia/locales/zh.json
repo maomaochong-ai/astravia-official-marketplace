@@ -1047,5 +1047,8 @@
   "probe.rewrite.reset": "恢复默认句式",
   "probe.discussHint": "把当前梯度与已得到的结论交给宿主对话继续分析（表格空着也能问）",
   "probe.auto.running": "已按「{{cls}}」自动测 {{count}} 档 —— 结果回来后本表自动更新",
-  "probe.auto.refresh": "取结果"
+  "probe.auto.refresh": "取结果",
+  "probe.counter.retestAll": "全部重测",
+  "probe.counter.retestAllHint": "把被拦的档位各换一种句式发出去重测（与自动第二阶段同一份文本）",
+  "probe.col.step": "方法步骤"
 }

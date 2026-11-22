@@ -15,7 +15,7 @@ import {
 	type ProbeRecord,
 	type RefusalProbe,
 } from "../../../../domain/refusal-probe";
-import { classLabel, targetClassOf } from "../../../../domain/probe-ladder";
+import { classLabel, stepForLevel, targetClassOf } from "../../../../domain/probe-ladder";
 import { Card } from "../shell/card";
 import { Icon } from "../shell/icon";
 
@@ -467,7 +467,10 @@ export function ProbeRefusalCard({
 													<td className="border-b border-line-subtle px-2.5 py-1 font-mono tabular-nums text-text-2">{item.level}</td>
 													{/* 用记录里的档位名：标准四档与自定义梯度都自带名字，按数字取 locale
 													    只对标准档成立（自定义档会显示成标准档的名字）。 */}
-													<td className="border-b border-line-subtle px-2.5 py-1 text-text-2" title={row?.probe.text}>
+													<td
+														className="border-b border-line-subtle px-2.5 py-1 text-text-2"
+														title={row ? t("probe.col.step") + "：" + stepForLevel(row.probe.level).step + "\n" + (row.probe.text ?? "") : undefined}
+													>
 														{row?.probe.name ?? t(`probe.level.${item.level}`)}
 													</td>
 													{/* 期望列：第 3、4 档本来就可能被拦；没有它，读者会把「如预期」当故障。 */}
@@ -556,6 +559,19 @@ export function ProbeRefusalCard({
 						<div className="flex items-baseline gap-1.5">
 							<span className="text-[9.5px] uppercase tracking-wider text-text-4">{t("probe.counter.title")}</span>
 							<span className="min-w-0 flex-1 fb-wrap text-[10.5px] text-text-4">{t("probe.counter.hint")}</span>
+							{/* 手动批量：与自动第二阶段同一份改写文本，只是由用户按下去。 */}
+							<button
+								type="button"
+								onClick={() => {
+									const blocked = liveCounter.slice(0, 3);
+									for (const item of blocked) onBrief(buildProbeBrief(profile, { retest: item.rewrite }));
+								}}
+								disabled={liveCounter.length === 0}
+								title={t("probe.counter.retestAllHint")}
+								className="shrink-0 rounded border border-line-subtle px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-40"
+							>
+								{t("probe.counter.retestAll")}
+							</button>
 						</div>
 						{liveCounter.length === 0 ? (
 							<p className="mt-1 text-[10.5px] text-text-3">{t("probe.counter.none")}</p>
