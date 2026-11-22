@@ -13,9 +13,10 @@ files with that repository.
 - **The colour-contrast helpers' contract** (WCAG relative luminance and contrast
   ratio) — standard formulas, reimplemented here with tests.
 
-Upstream's own logo is **not** shipped here. `assets/icon.png` is the mark the
-plugin owner supplied for this ability (see below), so the plugin is identifiable
-as itself rather than as the upstream product.
+The plugin icon **is** upstream's own mark: `assets/icon.svg` is `app/icon.svg` from the
+upstream repository, copied verbatim at the plugin owner's instruction. The same file
+feeds `plugin.json#icon`, the ability card and the activity-tab icon (the tab reads
+`ctx.plugin.iconUrl`, so there is exactly one icon in the whole plugin).
 
 ## What is written here
 
@@ -33,15 +34,17 @@ providers the user already connected in Astravia.
 
 | File | Origin | Notes |
 | --- | --- | --- |
-| `assets/icon.png` | Supplied by the plugin owner (`portrait/caterpillar-portrait-hoodie-01.jpg`) | 512×512 full square, opaque; lanczos downscale of the 1024 master; the plugin's only icon |
+| `assets/icon.svg` | Upstream `app/icon.svg`, copied verbatim | 32×32 viewBox, indigo rounded tile with two white panes and a spark; the plugin's only icon |
 | `agent/agents/logo-master.webp` | Derived from the same file | 512×512 WebP, ~37 KB — the same framing and pixel size the reference avatar uses |
 
-Both are the same mark, so the ability card, the sidebar entry and the agent avatar
-never disagree about what this plugin looks like. Both are **unmasked squares**: the
-host draws its own rounded container, so baking a squircle into the file would
-round the corners twice. Replacing one means replacing both —
-`src/test/artwork.test.ts` asserts each file exists, is a supported format, stays
-inside the host's size ceiling and is square.
+The agent avatar is still derived from the owner-supplied mascot, so the assistant and the
+plugin are visually distinct: the tab and the ability card show upstream's mark, the
+avatar shows the character the owner chose for the agent.
 
-No licence is asserted for the upstream repository's content: it does not currently
-ship a `LICENSE` file, so nothing of its own is reproduced here.
+`src/test/artwork.test.ts` asserts the icon exists, is an SVG, stays inside the host's size
+ceiling and keeps a square viewBox.
+
+No licence is asserted for the upstream repository's content: it does not currently ship a
+`LICENSE` file. The mark is used here because the same owner maintains both projects; if
+that stops being true, replace `assets/icon.svg` with an original mark before publishing.
+
