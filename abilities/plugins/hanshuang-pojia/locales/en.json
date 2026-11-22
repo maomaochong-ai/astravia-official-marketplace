@@ -1038,5 +1038,10 @@
   "settings.data.select": "Select {{key}}",
   "settings.data.clearSelected": "Clear selected ({{count}})",
   "settings.data.selectAll": "Select all",
-  "settings.data.selectNone": "Select none"
+  "settings.data.selectNone": "Select none",
+  "probe.source.conversation": "Live",
+  "probe.source.record": "Record",
+  "probe.stale": "from {{model}}",
+  "probe.staleHint": "The host model changed; this record is the previous model's result.",
+  "probe.counter.send": "Send"
 }

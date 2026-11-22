@@ -42,10 +42,10 @@ describe("the probe record keeps the countermeasures", () => {
 		expect(record.advice?.every((item) => item.verdict !== "answered")).toBe(true);
 	});
 
-	it("renders them from the record, not by re-deriving at render time", () => {
+	it("renders them from the recorded advice, not by re-deriving at render time", () => {
 		const card = read("src/features/workbench/components/prompts/probe-refusal-card.tsx");
-		expect(card).toContain("record.advice");
-		// The section says what to do; it must not recompute from rows.
+		// 措施区的数据源是记录里的 advice（其次才是对话里的 live 行），不是渲染时重算。
+		expect(card).toContain("record?.advice");
 		expect(card).toContain('t("probe.counter.title")');
 	});
 });

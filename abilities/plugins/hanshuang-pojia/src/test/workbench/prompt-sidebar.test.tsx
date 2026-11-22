@@ -18,6 +18,10 @@ vi.mock("@astravia-org/plugin-sdk", () => ({
 	useTranslation: () => ({
 		t: (key: string, vars?: Record<string, unknown>) => (vars ? `${key}:${JSON.stringify(vars)}` : key),
 	}),
+	// 面板现在从对话里读实时对照与附件；这一套用例只关心提示词库，所以给空实现。
+	useConversationMessages: () => [],
+	useActiveConversation: () => ({ id: null, cwd: null, sessionPath: null, model: null, isStreaming: false }),
+	usePromptAttachment: () => null,
 }));
 
 /**

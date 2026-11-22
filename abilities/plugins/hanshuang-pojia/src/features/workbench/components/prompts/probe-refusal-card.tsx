@@ -1,7 +1,8 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import {
 	adviceFor,
+	followHostModel,
 	buildProbeBrief,
 	customLadder,
 	profileReady,
@@ -26,6 +27,8 @@ export interface ProbeRefusalCardProps {
 	onBrief(brief: string): void;
 	/** 把当前对照表交给对话，继续分析。 */
 	onDiscuss(): void;
+	/** 对话里解析出来的实时对照（有则优先于文件记录）。 */
+	live?: { model?: string; summary?: string; rows: { level: number; name?: string; verdict: string; kind?: string | null; text?: string; advice?: string }[] } | null;
 	refresh(): void;
 }
 
@@ -58,13 +61,60 @@ const VERDICT_KEY: Record<string, string> = {
  *  5. **改写法再测**。每条被拦的档位都能展开成三档可发送的改写文本，按同一档重测，
  *     并把结论与上一份记录对比 —— 「改了有没有用」是这套功能唯一要回答的问题。
  */
-export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onBrief, onDiscuss, refresh }: ProbeRefusalCardProps) {
+export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onBrief, onDiscuss, live = null, refresh }: ProbeRefusalCardProps) {
 	const { t } = useTranslation();
 	const [ladder, setLadder] = useState<"standard" | "custom">("standard");
 	const [custom, setCustom] = useState("");
 	// 展开哪一档的改写。同时只开一条：改写文本很长，全展开就没法比对。
 	const [rewriteFor, setRewriteFor] = useState<number | null>(null);
 
+	// 宿主换模型后，「要测谁」跟着换 —— 否则表格顶部写着新模型、要测的却是旧的。
+	// 只在用户没手改过 model 时才跟随（followHostModel 的判据）。
+	const lastHost = useRef<string | null>(hostModel?.id ?? null);
+	useEffect(() => {
+		const next = hostModel?.id ?? null;
+		if (lastHost.current === next) return;
+		const before = lastHost.current;
+		lastHost.current = next;
+		if (!next) return;
+		const followed = followHostModel(profile, before, next);
+		if (followed.model !== profile.model) patchProfile(followed);
+	}, [hostModel?.id, profile, patchProfile]);
+
+	/**
+	 * 表格的数据源。
+	 *
+	 * 有实时对照就用它（对话里刚发生的），否则用文件记录。两者都可能是空：
+	 * `record === null` 且 `live === null` 时仍是空态，不假装有数据。
+	 */
+	const liveRows = live?.rows ?? [];
+	/**
+	 * 措施的统一样子：文件记录里的 advice 优先，其次 live 行自带的人话措施。
+	 * `rewrite` 是可以直接发回对话的那句话 —— 落进 buildProbeBrief 的 retest 分支。
+	 */
+	const liveCounter: { level: number; blocked?: string; note: string; rewrite: string }[] = (() => {
+		const fromRecord = (record?.advice ?? [])
+			.filter(item => item.verdict !== "answered")
+			.map(item => {
+				const row = record?.rows.find(entry => entry.probe.level === item.level);
+				const rewrites = row ? rewritesFor(row.probe.text) : [];
+				return {
+					level: item.level,
+					blocked: row?.probe.text,
+					note: item.note,
+					rewrite: rewrites[0]?.text ?? row?.probe.text ?? "",
+				};
+			});
+		if (fromRecord.length > 0) return fromRecord;
+		return liveRows
+			.filter(row => row.verdict !== "answered")
+			.map(row => ({
+				level: row.level,
+				blocked: row.text,
+				note: row.advice ?? row.name ?? String(row.verdict),
+				rewrite: rewritesFor(row.text ?? row.advice ?? "")[0]?.text ?? row.advice ?? "",
+			}));
+	})();
 	const ready = profileReady(profile);
 	const rungs: readonly RefusalProbe[] = ladder === "custom" ? customLadder(custom) : probesFor(profile.lang, profile.level === 0 ? undefined : profile.level);
 	const advice = record ? adviceFor(record.rows) : [];
@@ -277,7 +327,7 @@ export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onB
 				)}
 			</div>
 
-			{record === null ? (
+			{record === null && liveRows.length === 0 ? (
 				<div className="px-3 py-3">
 					<p className="text-[11.5px] leading-relaxed text-text-3">{t("probe.empty")}</p>
 					<p className="mt-1 text-[10.5px] leading-relaxed text-text-4">{t("probe.emptyHint")}</p>
@@ -289,12 +339,26 @@ export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onB
 			) : (
 				<>
 					<div className="flex flex-wrap items-baseline gap-2 border-b border-line-subtle px-3 py-2 text-[10.5px]">
-						<span className="font-mono text-text-2">{record.model}</span>
-						<span className="text-text-4">·</span>
-						<span className="fb-wrap font-mono text-text-4">{record.host}</span>
-						<span className="text-text-4">·</span>
-						<span className="text-text-4">{record.at.slice(0, 19).replace("T", " ")}</span>
-						<span className="min-w-0 flex-1 fb-wrap text-end text-text-2">{record.summary.headline}</span>
+						{/* 来源：对话里刚解析出来的，还是工具写的那份文件。用户永远知道在看哪一份。 */}
+						<span className="shrink-0 rounded bg-surface-3 px-1 py-0.5 text-[9.5px] uppercase tracking-wider text-text-4">
+							{liveRows.length > 0 ? t("probe.source.conversation") : t("probe.source.record")}
+						</span>
+						<span className="font-mono text-text-2">{live?.model ?? record?.model ?? profile.model}</span>
+						{/* 记录来自别的模型时明说：按旧模型的结论做判断是误导。 */}
+						{hostModel && (live?.model ?? record?.model) !== hostModel.id ? (
+							<span className="rounded bg-risk-medium/10 px-1 py-0.5 text-[9.5px] text-risk-medium" title={t("probe.staleHint")}>
+								{t("probe.stale", { model: hostModel.id })}
+							</span>
+						) : null}
+						{record ? (
+							<>
+								<span className="text-text-4">·</span>
+								<span className="fb-wrap font-mono text-text-4">{record.host}</span>
+								<span className="text-text-4">·</span>
+								<span className="text-text-4">{record.at.slice(0, 19).replace("T", " ")}</span>
+							</>
+						) : null}
+						<span className="min-w-0 flex-1 fb-wrap text-end text-text-2">{live?.summary ?? record?.summary.headline ?? ""}</span>
 					</div>
 
 					{previous ? (
@@ -407,25 +471,29 @@ export function ProbeRefusalCard({ record, hostModel, profile, patchProfile, onB
 							<span className="text-[9.5px] uppercase tracking-wider text-text-4">{t("probe.counter.title")}</span>
 							<span className="min-w-0 flex-1 fb-wrap text-[10.5px] text-text-4">{t("probe.counter.hint")}</span>
 						</div>
-						{(record.advice ?? []).filter(item => item.verdict !== "answered").length === 0 ? (
+						{liveCounter.length === 0 ? (
 							<p className="mt-1 text-[10.5px] text-text-3">{t("probe.counter.none")}</p>
 						) : (
 							<ul className="mt-1 space-y-0.5">
-								{(record.advice ?? [])
-									.filter(item => item.verdict !== "answered")
-									.map(item => {
-										const row = record.rows.find(entry => entry.probe.level === item.level);
+								{liveCounter.map(item => {
+										const row = item.blocked;
 										return (
 										<li key={item.level} className="flex min-w-0 items-baseline gap-1.5 text-[10.5px]">
 											<span className="shrink-0 font-mono text-text-4">{item.level}</span>
 											<span className="min-w-0 flex-1 fb-wrap text-text-2">
 												{/* 被拦的是哪一句：自定义梯度下这是用户自己的话，必须能对上。 */}
-												{row ? <span className="me-1 font-mono text-[9.5px] text-text-4">{row.probe.text.slice(0, 60)}</span> : null}
+												{row ? <span className="me-1 font-mono text-[9.5px] text-text-4">{row.slice(0, 60)}</span> : null}
 												{item.note}
 											</span>
-											{item.tiers.length > 0 ? (
-												<span className="shrink-0 font-mono text-[9.5px] text-accent">{item.tiers.join(" → ")}</span>
-											) : null}
+											{/* 措施可以直接发回对话继续执行：可执行，而不只是可读。 */}
+											<button
+												type="button"
+												onClick={() => onBrief(buildProbeBrief(profile, { retest: item.rewrite }))}
+												title={item.rewrite}
+												className="shrink-0 rounded border border-line-subtle px-1.5 py-0.5 text-[9.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+											>
+												{t("probe.counter.send")}
+											</button>
 										</li>
 										);
 									})}

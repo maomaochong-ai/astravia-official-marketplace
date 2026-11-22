@@ -10,6 +10,10 @@ import { publishPanelEvent, publishTaskEvent } from "../../runtime/panel-channel
 
 vi.mock("@astravia-org/plugin-sdk", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
+	// 提示词页会读对话里的实时对照；这套用例不涉及对话，给空实现。
+	useConversationMessages: () => [],
+	useActiveConversation: () => ({ id: null, cwd: null, sessionPath: null, model: null, isStreaming: false }),
+	usePromptAttachment: () => null,
 }));
 
 const TEXT = new TextEncoder().encode("http://example.com/api\0AKIAABCDEFGHIJKLMNOP\0");
