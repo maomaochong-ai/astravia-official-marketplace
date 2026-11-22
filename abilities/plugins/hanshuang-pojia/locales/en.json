@@ -1034,5 +1034,9 @@
   "inject.copy.done": "Body copied",
   "inject.copy.failed": "Copy failed: this window does not allow clipboard writes",
   "inject.lab.title": "lab command: not needed here.",
-  "inject.lab.body": "What gets injected is static text written into the other host's config; that host cannot read this plugin's storage, so the lab switch has no effect on it — the text has to stand on its own. Inside Astravia, lab is on by default, so there is no need to type `lab:` either."
+  "inject.lab.body": "What gets injected is static text written into the other host's config; that host cannot read this plugin's storage, so the lab switch has no effect on it — the text has to stand on its own. Inside Astravia, lab is on by default, so there is no need to type `lab:` either.",
+  "settings.data.select": "Select {{key}}",
+  "settings.data.clearSelected": "Clear selected ({{count}})",
+  "settings.data.selectAll": "Select all",
+  "settings.data.selectNone": "Select none"
 }

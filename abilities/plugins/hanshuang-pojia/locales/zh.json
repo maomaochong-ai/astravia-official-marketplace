@@ -1034,5 +1034,9 @@
   "inject.copy.done": "正文已复制",
   "inject.copy.failed": "复制失败：当前窗口不允许写剪贴板",
   "inject.lab.title": "lab 指令：这里不需要。",
-  "inject.lab.body": "注入出去的是静态正文，写到对方宿主的配置文件里；那个宿主读不到本插件的存储，所以 lab 开关对它不起作用，正文必须自己成立。在 Astravia 自己的对话里 lab 默认就是开的，也不用每次打 lab：。"
+  "inject.lab.body": "注入出去的是静态正文，写到对方宿主的配置文件里；那个宿主读不到本插件的存储，所以 lab 开关对它不起作用，正文必须自己成立。在 Astravia 自己的对话里 lab 默认就是开的，也不用每次打 lab：。",
+  "settings.data.select": "选择 {{key}}",
+  "settings.data.clearSelected": "清理选中（{{count}}）",
+  "settings.data.selectAll": "全选",
+  "settings.data.selectNone": "取消选择"
 }
