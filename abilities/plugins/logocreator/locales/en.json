@@ -72,6 +72,7 @@
   "export.title": "Export",
   "export.webp": "WebP",
   "export.webpUnsupported": "This build cannot encode WebP; saved as PNG instead.",
+  "fileExplorer.openDesign": "Open in LogoCreator",
   "gallery.title": "Your logos",
   "gallery.viewAll": "All {{count}}",
   "hint.aiMode": "The AI path returns a raster image. It exports as PNG only and cannot be rebuilt at a larger size.",

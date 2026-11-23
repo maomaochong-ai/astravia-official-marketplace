@@ -10,6 +10,15 @@
 export const PLUGIN_NAME_KEY = "%name%";
 export const TAB_LABEL_KEY = "%tab.label%";
 export const INPUT_ACTION_LABEL_KEY = "%panel.title%";
+/**
+ * 身份字符串用**字面值**，不用 `%key%`。
+ *
+ * `skillPresentation.displayName` 与编辑器标签这些会进了消息 token / 历史记录的地方，
+ * 一旦宿主某条路径没解析 `%…%`，用户看到的就是 `%name%`（实际发生过）。
+ * 能力卡与 tab 仍走 `%tab.label%`：它们在每次渲染时都重新解析，且有测试盯。
+ */
+export const SKILL_DISPLAY_NAME = "LogoCreator";
+export const OPEN_FOLDER_LABEL_KEY = "%fileExplorer.openDesign%";
 
 export const TOOL_LABELS = {
 	design: "%tool.design.label%",
@@ -31,6 +40,7 @@ export const INPUT_ACTION_ID = "brand";
 
 /** Every `%key%` above, for the catalog-completeness test. */
 export const CONTRIBUTION_LABEL_KEYS = [
+	OPEN_FOLDER_LABEL_KEY,
 	PLUGIN_NAME_KEY,
 	TAB_LABEL_KEY,
 	INPUT_ACTION_LABEL_KEY,

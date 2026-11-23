@@ -79,6 +79,50 @@ describe("image-to-image in the panel", () => {
 });
 
 
+describe("identity strings never leak a variable name", () => {
+	const manifest = JSON.parse(read("plugin.json")) as {
+		agent: { skillPresentation: { skills: Record<string, { displayName?: string }> } };
+	};
+	const locales = {
+		zh: JSON.parse(read("locales/zh.json")) as Record<string, string>,
+		en: JSON.parse(read("locales/en.json")) as Record<string, string>,
+	};
+
+	it("gives the skill a literal display name, because tokens persist it into messages", () => {
+		// 消息里的 skill token 会把 displayName 存下来：宿主某条路径没解析 `%…%` 时，
+		// 用户看到的就是 `%name%`（已经发生过）。身份串用字面值。
+		const display = manifest.agent.skillPresentation.skills.logocreator?.displayName ?? "";
+		expect(display.length).toBeGreaterThan(0);
+		expect(display).not.toMatch(/^%.*%$/);
+	});
+
+	it("keeps no unresolved placeholder in either catalogue", () => {
+		for (const locale of [locales.zh, locales.en]) {
+			for (const [key, value] of Object.entries(locale)) {
+				expect(`${key}=${value}`).not.toMatch(/^[^=]+=%[^%]+%$/);
+			}
+		}
+	});
+
+	it("names the file-tree action in both languages", () => {
+		expect(locales.zh["fileExplorer.openDesign"]).toBeTruthy();
+		expect(locales.en["fileExplorer.openDesign"]).toBeTruthy();
+	});
+});
+
+describe("the panel cannot render nothing", () => {
+	it("declares a minimum height, because the host may hand it zero", () => {
+		// 宿主容器的 h-full 解析成 0 时，绝对定位的stage全被裁掉 —— 面板一片全黑。
+		expect(canvas).toMatch(/min-h-\[320px\]/);
+	});
+
+	it("logs its measured size on mount, so a blank panel is diagnosable", () => {
+		expect(canvas).toContain('"[logocreator] panel mounted"');
+		expect(canvas).toMatch(/height === 0/);
+	});
+});
+
+
 describe("a denied permission must not take the panel down", () => {
 	const handoff = read("src/features/canvas/hooks/use-notes-handoff.ts");
 	const manifest = JSON.parse(read("plugin.json")) as { permissions: string[] };

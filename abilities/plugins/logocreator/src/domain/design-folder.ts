@@ -3,31 +3,34 @@ import { kitSlug } from "./brand-kit";
 import { normalizeSpec, type LogoSpec } from "./spec";
 
 /**
- * 一次设计 = 一个目录，目录里有一份 `design.json`。
+ * 一次设计 = 一个目录，目录名带后缀，里面有一份 `design.json`。
  *
- * 这是对宿主内置设计插件的对齐：它把一份设计写成一个 `*.astravia-design/` 目录，
- * 里面有 `design.json` 与源码，画布读目录而不是读一堆散落的文件。上一版这里写的是
- * `<cwd>/logos/<slug>/<slug>.svg`、`<slug>-2.svg`、`<slug>-3.svg`，品牌套件又写到
- * 兄弟目录 `<cwd>/logos/<slug>-brand-kit/` —— 一次对话下来项目里多了两个平级目录、
- * 十几二十个散文件，而且再跑一次同名设计会覆盖混杂。用户看到的就是「很零乱的目录」。
+ * 这是照宿主内置设计插件的形状做的：它把一份设计写成一个 `*.astravia-design/` 目录，
+ * 画布读目录、不读散文件。我们上一版写的是 `logo-designs/<slug>/`：
+ * 一个额外的容器目录 + 里面再分品牌，既不像设计文档、也没法在文件树里被识别。
  *
- * 现在的形状（一个品牌一个目录，所有产物都在里面）：
+ * 现在的形状（一个品牌一个目录，目录名即设计文档）：
  *
  * ```
- * logo-designs/<slug>/
+ * <project>/acme.logocreator-design/
  *   design.json          机器可读的真相：spec、调色板、各变体、套件清单
  *   mark.svg             主变体（= variants/1.svg，便于直接取用）
  *   variants/1.svg …     这次生成的每个变体，各自带 seed / style
  *   kit/…                品牌套件的全部产物（只有在跑过 brand_kit 之后出现）
  * ```
  *
- * `design.json` 是合并写：同一个品牌再跑一次，只更新 spec/variants/kit，不删已有文件，
- * 也不把上几次的变体列表丢掉（最多保留 `MANIFEST_VARIANTS_CAP` 条，防止无限长）。
+ * 后缀是有意义的：`ui.file-explorer` 的装饰与右键菜单按扩展名认领，
+ * 于是「在文件树里点开这份设计 → 画布打开并载入它」和宿主自己的设计文档一致。
  */
 
 export const DESIGN_MANIFEST = "design.json";
 export const DESIGN_MANIFEST_SCHEMA = 1;
-export const DESIGN_ROOT = "logo-designs";
+/** 目录后缀。带点，与 `*.astravia-design` 同一套读法。 */
+export const DESIGN_FOLDER_SUFFIX = ".logocreator-design";
+/** 文件树的扩展名口径：不带前导点，与宿主拿 `astravia-design` 认领目录一致。 */
+export const DESIGN_EXTENSION = DESIGN_FOLDER_SUFFIX.replace(/^\./, "");
+/** 兼容旧版：早期写在 `logo-designs/<slug>/`，只用于「旧目录仍可打开」。 */
+export const LEGACY_DESIGN_ROOT = "logo-designs";
 /** 清单里最多记多少条历史变体；文件本身不删，只是不再列出。 */
 export const MANIFEST_VARIANTS_CAP = 24;
 
@@ -57,19 +60,39 @@ export interface DesignManifest {
 	updatedAt: string;
 }
 
-export function designRoot(cwd: string, directory?: string): string {
-	const base = cwd.replace(/[/\\]+$/, "");
-	const trimmed = (directory ?? DESIGN_ROOT).replace(/^[/\\]+/, "").replace(/[/\\]+$/, "");
-	return trimmed.length > 0 ? `${base}/${trimmed}` : base;
+function trimSlashes(value: string): string {
+	return value.replace(/^[/\\]+/, "").replace(/[/\\]+$/, "");
 }
 
-/** 一个品牌一个目录：同一品牌反复迭代落在同一处，不再生成 `-2`、`-brand-kit` 兄弟目录。 */
+/**
+ * 设计目录。
+ *
+ * 默认直接放在项目根、用 `<slug>.logocreator-design` 命名 —— 与内置设计插件的
+ * `*.astravia-design/` 同一读法。显式传 `directory` 时才多一层容器目录。
+ */
 export function designFolder(cwd: string, directory: string | undefined, brand: string): string {
-	return `${designRoot(cwd, directory)}/${kitSlug({ brandName: brand })}`;
+	return designFolderForSlug(cwd, directory, kitSlug({ brandName: brand }));
+}
+
+export function designFolderForSlug(cwd: string, directory: string | undefined, slug: string): string {
+	const base = cwd.replace(/[/\\]+$/, "");
+	const container = trimSlashes(directory ?? "");
+	return container.length > 0 ? `${base}/${container}/${slug}` : `${base}/${slug}${DESIGN_FOLDER_SUFFIX}`;
 }
 
 export function variantPath(index: number): string {
 	return `variants/${index + 1}.svg`;
+}
+
+/** 一个路径是不是我们的设计目录（按后缀判定，不看内容）。 */
+export function isDesignFolder(path: string): boolean {
+	return trimSlashes(path).toLowerCase().endsWith(DESIGN_FOLDER_SUFFIX);
+}
+
+/** 目录名里的 slug（去掉后缀）。 */
+export function slugOfFolder(path: string): string {
+	const name = trimSlashes(path).split("/").pop() ?? "";
+	return name.toLowerCase().endsWith(DESIGN_FOLDER_SUFFIX) ? name.slice(0, -DESIGN_FOLDER_SUFFIX.length) : name;
 }
 
 function coerceManifest(raw: unknown, fallback: { brand: string; slug: string }): DesignManifest | null {
@@ -115,7 +138,7 @@ function isVariant(value: unknown): value is ManifestVariant {
 export async function readManifest(fs: PluginFsApi, folder: string, brand: string): Promise<DesignManifest | null> {
 	try {
 		const result = await fs.readFile(`${folder}/${DESIGN_MANIFEST}`);
-		return coerceManifest(JSON.parse(result.content), { brand, slug: folder.split("/").pop() ?? "" });
+		return coerceManifest(JSON.parse(result.content), { brand, slug: slugOfFolder(folder) });
 	} catch {
 		return null;
 	}

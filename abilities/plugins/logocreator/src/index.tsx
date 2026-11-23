@@ -8,9 +8,11 @@ import { LogoImageCard } from "./features/message/logo-image-card";
 import { setPluginContext } from "./plugin-context";
 import { activeScopeKey, canvasInstructions, setActiveConversation, setCanvasEngaged } from "./features/canvas/canvas-prompt";
 import { ROUTER_BLOCK_ID, routerPrompt } from "./features/canvas/router-prompt";
-import { IMAGE_CARD_TYPE, INPUT_ACTION_ID, INPUT_ACTION_LABEL_KEY, TAB_LABEL_KEY } from "./contributions";
-import { IconGenerate, IconImageSize } from "./shared/components/icons";
+import { IMAGE_CARD_TYPE, INPUT_ACTION_ID, INPUT_ACTION_LABEL_KEY, OPEN_FOLDER_LABEL_KEY, TAB_LABEL_KEY } from "./contributions";
+import { IconCanvas, IconGenerate, IconImageSize } from "./shared/components/icons";
 import { LOGO_TAB_ID } from "./tab-ids";
+import { DESIGN_EXTENSION } from "./domain/design-folder";
+import { openDesignFolder } from "./features/canvas/open-folder";
 import { registerTools } from "./tools/register-tools";
 
 /**
@@ -231,7 +233,46 @@ export default definePlugin({
 			});
 		}
 
-		// ── 6. the tools ──────────────────────────────────────────────────────
+		// ── 6. the design folder is a first-class document in the file tree ──
+		//      `*.logocreator-design/` holds one design; opening it loads the canvas,
+		//      exactly like the host's own `*.astravia-design/`.
+		//      `ctx.fileExplorer` 在旧宿主上可能不存在：先看它在不在，不在就跳过。
+		const explorer = ctx.fileExplorer;
+		if (!explorer) console.info("[logocreator] file explorer api unavailable; design folders are not clickable here");
+		if (explorer && ctx.permissions.has("ui.file-explorer.context-menu")) {
+			step("design folder menu", () => {
+				owned.push(
+					explorer.registerContextMenuAction({
+						id: "logocreator-open-design",
+						label: OPEN_FOLDER_LABEL_KEY,
+						icon: <IconCanvas className="size-3.5" />,
+						when: { resourceType: "directory", extensions: [DESIGN_EXTENSION] },
+						run: ({ entry }) => {
+							void openDesignFolder(ctx, entry.path).then(result => {
+								if (!result.opened) console.warn("[logocreator] could not open the design folder", entry.path, result.error);
+							});
+						},
+					}),
+				);
+			});
+		}
+
+		if (explorer && ctx.permissions.has("ui.file-explorer.decorations")) {
+			step("design folder icon", () => {
+				const icon = ctx.plugin.iconUrl;
+				if (!icon) return;
+				owned.push(
+					explorer.registerDecorationProvider({
+						id: "logocreator-design-icon",
+						priority: 100,
+						when: { extensions: [DESIGN_EXTENSION] },
+						provideDecoration: () => ({ icon }),
+					}),
+				);
+			});
+		}
+
+		// ── 7. the tools ──────────────────────────────────────────────────────
 		if (ctx.permissions.has("agent.tools.register")) {
 			step("agent tools", () => {
 				owned.push(...registerTools(ctx));

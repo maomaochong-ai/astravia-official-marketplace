@@ -2,11 +2,14 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PluginFsApi } from "@astravia-org/plugin-sdk";
 import {
+	DESIGN_FOLDER_SUFFIX,
 	DESIGN_MANIFEST,
 	MANIFEST_VARIANTS_CAP,
 	designFolder,
-	designRoot,
+	designFolderForSlug,
+	isDesignFolder,
 	readManifest,
+	slugOfFolder,
 	variantPath,
 	writeManifest,
 } from "../domain/design-folder";
@@ -41,16 +44,23 @@ function memoryFs() {
 const spec = normalizeSpec({ brandName: "Acme", intent: "a leaf mark", primary: "#2F6FF5" });
 
 describe("the design folder layout", () => {
-	it("puts every brand in one root and one folder per brand", () => {
-		expect(designRoot("C:/repo")).toBe("C:/repo/logo-designs");
-		expect(designFolder("C:/repo", undefined, "Acme")).toBe("C:/repo/logo-designs/acme");
-		// 同一个品牌再跑一次落在同一处：不再有 `-2`、`-brand-kit` 兄弟目录。
-		expect(designFolder("C:/repo", undefined, "Acme")).toBe(designFolder("C:/repo", undefined, "ACME"));
+	it("names the folder after the design, like the host's own design document", () => {
+		// 一个品牌一个目录，目录名带后缀：文件树与右键菜单按后缀认领它。
+		expect(designFolder("C:/repo", undefined, "Acme")).toBe(`C:/repo/acme${DESIGN_FOLDER_SUFFIX}`);
+		expect(designFolder("C:/repo", undefined, "ACME")).toBe(`C:/repo/acme${DESIGN_FOLDER_SUFFIX}`);
+		// 后缀与内置设计插件同一套读法：带点，扩展名不给点。
+		expect(DESIGN_FOLDER_SUFFIX).toBe(".logocreator-design");
+	});
+
+	it("recognises its own folders and reads the slug back out", () => {
+		expect(isDesignFolder(`C:/repo/acme${DESIGN_FOLDER_SUFFIX}`)).toBe(true);
+		expect(isDesignFolder("C:/repo/acme")).toBe(false);
+		expect(slugOfFolder(`C:/repo/acme${DESIGN_FOLDER_SUFFIX}/`)).toBe("acme");
 	});
 
 	it("honours a caller-supplied directory and strips separators", () => {
-		expect(designRoot("C:/repo/", "/brand/")).toBe("C:/repo/brand");
-		expect(designFolder("C:/repo", "brand", "Acme")).toBe("C:/repo/brand/acme");
+		expect(designFolder("C:/repo/", "/brand/", "Acme")).toBe("C:/repo/brand/acme");
+		expect(designFolderForSlug("C:/repo", "brand", "acme")).toBe("C:/repo/brand/acme");
 	});
 
 	it("numbers variants inside a variants/ subfolder", () => {

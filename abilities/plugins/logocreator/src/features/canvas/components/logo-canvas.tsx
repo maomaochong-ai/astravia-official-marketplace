@@ -97,6 +97,22 @@ export function LogoCanvas(): JSX.Element {
 		if (generation.lastCreatedId) setSelectedId(generation.lastCreatedId);
 	}, [generation.lastCreatedId]);
 
+	/**
+	 * 面板挂载自检：量一下自己占多大。
+	 *
+	 * “tab 打开了但里面什么都没有” 有两种成因：组件根本没挂载，或者挂载了但宿主给的
+	 * 高度是 0（绝对定位的子元素全被裁掉）。后者单靠看界面分不出来，所以把面积打一行日志：
+	 * 看到 `0×0` 就知道是布局问题，看到有尺寸却黑屏就是渲染问题。
+	 */
+	const rootRef = useRef<HTMLDivElement | null>(null);
+	useEffect(() => {
+		const node = rootRef.current;
+		if (!node) return;
+		const { offsetWidth: width, offsetHeight: height } = node;
+		console.info("[logocreator] panel mounted", { width, height });
+		if (height === 0) console.warn("[logocreator] the host gave the panel zero height; the min-height fallback is what is showing");
+	}, []);
+
 	// A tool created a design while the panel was closed → show that one. Opening the
 	// tab again must not clobber half-finished work, so only an empty form is seeded.
 	const claimedRef = useRef<string | null>(null);
@@ -242,7 +258,12 @@ export function LogoCanvas(): JSX.Element {
 	const imageAvailable = generation.providers.length > 0;
 
 	return (
-		<div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-background text-foreground">
+		/*
+		 * `h-full` 之外给一个**最小高度**：宿主的活动面板容器在某些布局下高度解析为 0，
+		 * 而 `h-full` 在那种容器里也是 0 —— 整块画布的绝对定位子元素就被裁没了，
+		 * 用户看到的是一块全黑的面板（实际发生过）。min-h 保证任何情况下都有可画的面积。
+		 */
+		<div ref={rootRef} className="relative flex h-full min-h-[320px] w-full flex-col overflow-hidden bg-background text-foreground">
 			{/* Stage — the canvas fills it; nothing here scrolls. */}
 			<div className="relative min-h-0 flex-1">
 				<div className="absolute inset-0 flex items-center justify-center p-4 pb-16">

@@ -82,7 +82,8 @@ describe("dialogs stay inside the panel", () => {
 	it("anchors to the panel, not the window", () => {
 		expect(dialog).toContain("absolute inset-0");
 		expect(dialog).not.toContain('className="fixed inset-0');
-		expect(canvas).toContain("relative flex h-full min-h-0 w-full flex-col overflow-hidden");
+		// 根节点是定位上下文，并带一个最小高度：宿主的容器可能把 `h-full` 解析成 0。
+		expect(canvas).toMatch(/relative flex h-full min-h-\[320px\] w-full flex-col overflow-hidden/);
 	});
 });
 

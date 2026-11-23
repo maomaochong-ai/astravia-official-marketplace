@@ -34,7 +34,7 @@ export function createBrandKitTool(): PluginAgentToolRegistration<DesignToolPayl
 		description: [
 			"Build a complete brand kit for one logo and write it into the workspace.",
 			"Writes the lockup and mark as SVG, on-light / on-dark / transparent / mono variants, PNG sizes (512, 1024, 2048, favicons, apple-touch), brand-colors.css and .json, a printable brand-guide.html, a brand-board.png, and a README.",
-			"Everything goes into `logo-designs/<slug>/kit/` — the same folder the design itself lives in — and `design.json` records which files the kit produced.",
+			"Everything goes into `<slug>.logocreator-design/kit/` — the same design folder the profile itself lives in — and `design.json` records which files the kit produced.",
 			"Call logocreator_design first if the user has not settled on a style yet: this tool takes the same fields and re-renders from the spec, so the kit always matches the chosen design.",
 			"Do NOT use it to export a single icon — ask for the design and save the one SVG the user needs instead.",
 		].join("\n"),

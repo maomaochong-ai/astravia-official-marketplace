@@ -72,8 +72,12 @@ describe("host-rendered labels", () => {
 		it(`resolves each one in ${locale}, never to a bare key`, () => {
 			const missing: string[] = [];
 			for (const entry of cases) {
-				// A label that is not `%key%` renders literally; it must at least be prose.
-				expect(entry.raw.startsWith("%")).toBe(true);
+				// A label that is not `%key%` is a literal identity string — it renders as written,
+				// which is exactly the point for values that get persisted into message tokens.
+				if (!entry.raw.startsWith("%")) {
+					expect(entry.raw.trim().length).toBeGreaterThan(0);
+					continue;
+				}
 				const resolved = resolvePluginText(entry.raw, locales, locale, plugin.defaultLocale);
 				if (resolved === entry.raw || resolved === catalogKey(entry.raw)) missing.push(`${entry.label} (${entry.raw})`);
 			}
