@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "skill",
   "slug": "workers-best-practices",
-  "name": "workers-best-practices",
+  "name": "Workers Best Practices",
   "description": "Write and review Cloudflare Workers against production practices for streaming, async work, bindings, secrets and observability.",
   "version": "1.0.2",
   "configVersion": 1,

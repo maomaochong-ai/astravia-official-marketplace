@@ -1,0 +1,34 @@
+{
+  "id": "astravia-memory",
+  "name": "%name%",
+  "version": "0.1.1",
+  "pluginApiVersion": "^2.0.0",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "astravia_memory",
+    "expose": "./plugin"
+  },
+  "styles": [
+    "dist/style.css"
+  ],
+  "permissions": [
+    "ui.slot.workspace-view",
+    "storage.read",
+    "storage.write",
+    "agent.tools.register",
+    "agent.toolHandler.execute",
+    "agent.systemPrompt.write",
+    "agent.hooks.register",
+    "agent.hookHandler.execute",
+    "ai.complete"
+  ],
+  "guidingWords": [
+    "%guidingWords.remember%",
+    "%guidingWords.recall%",
+    "%guidingWords.todo%"
+  ],
+  "description": "%description%",
+  "author": "Astravia",
+  "icon": "assets/icon.png",
+  "defaultLocale": "en"
+}

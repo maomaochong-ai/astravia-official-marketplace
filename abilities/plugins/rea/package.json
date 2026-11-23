@@ -1,15 +1,16 @@
 {
   "name": "@astravia-marketplace/rea",
-  "version": "0.4.17",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "check": "tsc --noEmit",
     "test": "vitest run"
   },
   "devDependencies": {
-    "@astravia-org/plugin-sdk": "^0.3.2",
-    "@astravia-org/plugin-vite": "^0.2.1",
+    "@astravia-org/plugin-sdk": "^0.3.13",
+    "@astravia-org/plugin-vite": "^0.2.4",
     "@iconify-json/lucide": "^1.2.140",
     "@iconify-json/solar": "^1.2.13",
     "@iconify/tailwind4": "^1.2.3",
@@ -25,6 +26,7 @@
     "tailwindcss": "^4.1.12",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@astravia-org/plugin-cli": "^0.1.7"
   }
 }

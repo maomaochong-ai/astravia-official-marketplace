@@ -1,6 +1,6 @@
 {
   "name": "@astravia-marketplace/dbx-pro",
-  "version": "0.4.92",
+  "version": "0.4.93",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,8 +10,8 @@
     "check": "tsc --noEmit"
   },
   "devDependencies": {
-    "@astravia-org/plugin-sdk": "^0.3.2",
-    "@astravia-org/plugin-vite": "^0.2.1",
+    "@astravia-org/plugin-sdk": "^0.3.13",
+    "@astravia-org/plugin-vite": "^0.2.4",
     "@codemirror/autocomplete": "^6.18.0",
     "@codemirror/commands": "^6.6.0",
     "@codemirror/lang-sql": "^6.7.0",
@@ -34,7 +34,8 @@
     "tailwindcss": "^4.1.12",
     "tsx": "^4.23.15",
     "typescript": "^5.9.2",
-    "vite": "^7.1.7"
+    "vite": "^7.1.7",
+    "@astravia-org/plugin-cli": "^0.1.7"
   },
   "dependencies": {
     "echarts": "^5.6.0",

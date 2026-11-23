@@ -43,12 +43,12 @@ CLI），**两者冲突时以它为准**。
 ```bash
 npm run dev            # Vite + Module Federation 开发服务器
 npm run build          # 产出 dist/
-npm run install:astravia  # 打包并装进正在运行的 Astravia（需要 Astravia 已启动）
+npm run install:local  # 打包并装进正在运行的 Astravia（需要 Astravia 已启动）
 npx astravia-plugin-cli watch   # 开热更新：宿主改从本工程目录加载，改完即生效
 npx astravia-plugin-cli uninstall  # 卸载（省略 id 即本工程对应的插件）
 ```
 
-`install:astravia` 走 `astravia-plugin-cli add .`：它找到本工程打出来的归档，交给正在运行的
+`install:local` 走 `astravia-plugin-cli add .`：它找到本工程打出来的归档，交给正在运行的
 Desktop 校验、授权、安装。它**不会**直接写 `~/.astravia/plugins`。
 
 装完若提示有 pending 版本，用 `npx astravia-plugin-cli reload build-apple-apps` 让宿主应用它。

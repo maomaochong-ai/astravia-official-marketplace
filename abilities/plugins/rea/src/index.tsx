@@ -32,6 +32,10 @@ import { activateProviderRecovery } from "./features/rea-workflow/live/provider-
 import { ReaLiveStore } from "./features/rea-workflow/live/session-store";
 import { watchDelivery, type DeliveryOutcome } from "./features/rea-workflow/live/handoff-delivery";
 import { registerReaWorkflowTools } from "./tools/rea-workflow-tools";
+import { createInvestigateActions } from "./features/case-board/services/investigate-command";
+import { registerCaseTools } from "./tools/case-tools";
+import { registerEvidenceHooks } from "./features/case-board/hooks/register-evidence-hook";
+import { clearPluginContext, setNotify, setPluginContext } from "./features/case-board/plugin-context";
 
 const REA_PROVIDER_ID = "rea-agents";
 const REA_TAB_ID = "rea.workflow";
@@ -181,6 +185,14 @@ function activateLiveLayer(ctx: PluginContext, store: ReaLiveStore): Disposable[
 	start("provider-recovery", () => activateProviderRecovery(ctx, store, REA_PROVIDER_ID));
 	start("agent-integration", () => activateReaAgentIntegration(ctx, store));
 	start("tools", () => registerReaWorkflowTools(ctx, store, REA_PROVIDER_ID));
+	// 卷宗层：四个 case_* 工具 + 自动取证钩子。两者都各自降级：
+	// 宿主没有 hook 运行时，工具仍可手动记录；权限不全时整层跳过，不影响 tab。
+	start("case-tools", () => registerCaseTools(ctx));
+	start("case-evidence", () => registerEvidenceHooks(ctx));
+	// 右键菜单：从文件树把目标交给对话。宿主没有文件树槽位时整段跳过。
+	start("investigate-actions", () =>
+		createInvestigateActions(ctx).map((action) => ctx.fileExplorer.registerContextMenuAction(action)),
+	);
 	return disposables;
 }
 
@@ -195,6 +207,10 @@ export default definePlugin({
 		const spawnCommand = createCommandSpawner(ctx);
 		const setPanelWidth = createPanelWidthSetter(ctx);
 		const store = new ReaLiveStore();
+		// 卷宗存储、case_* 工具与取证钩子都通过这个句柄拿 ctx；
+		// token 保证重载时只有当前实例能释放它。
+		const contextToken = setPluginContext(ctx);
+		setNotify(ctx.ui.notify);
 
 		// UI 槽位先注册：它是插件的可见入口，不能因为后面某一层不可用就整个消失。
 		const tabDisposable = ctx.ui.registerActivityTab({
@@ -241,10 +257,11 @@ export default definePlugin({
 		const liveDisposables = activateLiveLayer(ctx, store);
 
 		return {
-			dispose(): void {
+			async dispose(): Promise<void> {
 				for (const disposable of liveDisposables.reverse()) disposable.dispose();
 				actionDisposable.dispose();
 				tabDisposable.dispose();
+				clearPluginContext(contextToken);
 			},
 		};
 	},

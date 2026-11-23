@@ -10,7 +10,7 @@
       "slug": "feishu",
       "name": "Feishu",
       "description": "Use the official lark-cli and its built-in skills for Feishu documents, messages, calendars, Base, tasks and more.",
-      "version": "1.0.7",
+      "version": "1.0.8",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia / Lark Suite",
@@ -52,7 +52,7 @@
       "slug": "cli-proxy-api",
       "name": "CLIProxyAPI",
       "description": "Run a managed local gateway for Gemini CLI, Codex, Claude, Antigravity, Kimi and xAI accounts, then use its models in Astravia.",
-      "version": "1.10.5",
+      "version": "1.11.1",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia / Router For Me",
@@ -178,7 +178,7 @@
             "source": {
               "path": "abilities/plugins/shimo"
             },
-            "version": "1.0.26",
+            "version": "1.0.27",
             "minAppVersion": "0.5.59"
           },
           {
@@ -478,7 +478,7 @@
       "slug": "xiaohongshu",
       "name": "Xiaohongshu Accounts",
       "description": "Manage multiple Xiaohongshu accounts and run built-in MCP tasks concurrently through the account selected for each task.",
-      "version": "1.1.29",
+      "version": "1.1.30",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia / xpzouying",
@@ -600,7 +600,7 @@
       "slug": "astravia-tihu",
       "name": "Pelican Ride",
       "description": "A bicycle-riding pelican mini game in the activity panel. Chat with the AI to change its speed, make it jump, ring the bell or switch between day, dusk, night and rain.",
-      "version": "0.3.3",
+      "version": "0.3.4",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia",
@@ -639,7 +639,7 @@
       "slug": "build-apple-apps",
       "name": "Build Apple Apps",
       "description": "Bring a live iOS Simulator into the activity panel so the AI can build, install, launch and operate your app, with a built-in SwiftUI development guide.",
-      "version": "0.2.5",
+      "version": "0.3.1",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia",
@@ -680,7 +680,7 @@
       "slug": "web-element-picker",
       "name": "Web Element Picker",
       "description": "Open any webpage inside Astravia, click to pick elements, and generate structured context — CSS selectors, XPath, semantic paths, React component chains. Copy instantly or send straight to the AI for code changes.",
-      "version": "0.3.13",
+      "version": "0.3.14",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -723,7 +723,7 @@
       "slug": "dbx-pro",
       "name": "dbx Database",
       "description": "Connect to PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases. Encrypted connection manager, multi-tab SQL editor, sortable result grid, write safety confirmation and query history. Turn any query result into filterable dashboards — 11 chart types, offline single-file export — and let AI read your database through MCP.",
-      "version": "0.4.92",
+      "version": "0.4.93",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -770,7 +770,7 @@
       "slug": "free-model-gateway",
       "name": "Free Model Gateway",
       "description": "Run a managed local gateway that reuses upstream free-model channels, syncs models into Astravia and ships a one-click UI for start/stop, logs and risk.",
-      "version": "0.0.9",
+      "version": "0.0.10",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
@@ -811,7 +811,7 @@
       "slug": "open-ai-canvas",
       "name": "Open AI Canvas",
       "description": "Run the open-source AI canvas locally and use the image and video models you configured there from the host. Text bridges one way, media models register as a host provider, MCP tools cover projects, canvases and tasks, the canvas's 73 built-in skills are readable from the agent, and the runtime updates itself in place when upstream ships a new build.",
-      "version": "0.1.18",
+      "version": "0.1.19",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
@@ -853,7 +853,7 @@
       "slug": "rea",
       "name": "REA",
       "description": "Connect Astravia to REA so the agent can take apart native binaries, .NET assemblies, Electron/JavaScript apps, firmware and browser targets with real debuggers and disassemblers: gather byte-level evidence first, recover the algorithm or protocol next, then prove the conclusion with a runnable reimplementation or patch. Every claim carries its evidence and its limits.",
-      "version": "0.4.17",
+      "version": "0.5.0",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
@@ -896,7 +896,7 @@
       "slug": "strix",
       "name": "Strix",
       "description": "Run an autonomous penetration test from the conversation: Strix agents probe your code, APIs and running apps, then report exploitable findings with proof and fixes.",
-      "version": "1.7.4",
+      "version": "1.7.5",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "usestrix",
@@ -937,7 +937,7 @@
       "slug": "video-downloader",
       "name": "Video Downloader",
       "description": "Paste a video link and download the highest quality locally — 1000+ sites supported, with progress, a queue and a shortcut to the finished file. The engine sets itself up, so there is nothing to install.",
-      "version": "2.7.3",
+      "version": "2.7.4",
       "configVersion": 2,
       "license": "MIT",
       "author": "Astravia",
@@ -978,7 +978,7 @@
       "slug": "hanshuang-pojia",
       "name": "寒霜破甲",
       "description": "Audit an APK, iOS package, ELF, PE or Mach-O file from the chat: permissions, exported components, embedded secrets, section entropy, symbol tables, function-level disassembly with a call graph, and a 0-100 risk score — plus 340 bundled field documents, manuals and full case studies the agent can search mid-investigation.",
-      "version": "2.17.43",
+      "version": "2.17.44",
       "configVersion": 2,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -1019,46 +1019,6 @@
         "path": "abilities/plugins/hanshuang-pojia"
       },
       "minAppVersion": "0.5.60"
-    },
-    {
-      "type": "skill",
-      "slug": "ego-browser",
-      "name": "ego-browser",
-      "description": "Drive websites and browser automation through the ego lite Chromium browser with your own login state, without losing control of your tabs.",
-      "version": "0.0.4",
-      "configVersion": 1,
-      "license": "MIT",
-      "author": "Astravia / Citro Labs",
-      "category": "Automation",
-      "categoryI18n": {
-        "zh": "自动化",
-        "en": "Automation"
-      },
-      "tags": [
-        "browser",
-        "automation",
-        "web",
-        "ego-lite",
-        "scraping"
-      ],
-      "detail": {
-        "i18n": {
-          "zh": {
-            "name": "ego-browser",
-            "description": "通过 ego lite 浏览器驱动网页与浏览器自动化，沿用你自己的登录态，且不抢你标签页的控制权。",
-            "tags": [
-              "浏览器",
-              "自动化",
-              "网页",
-              "ego-lite",
-              "抓取"
-            ]
-          }
-        }
-      },
-      "source": {
-        "path": "abilities/skills/ego-browser"
-      }
     },
     {
       "type": "skill",
@@ -1153,7 +1113,7 @@
       "slug": "mahua-writing-team",
       "name": "Mahua Novels",
       "description": "A multi-agent novel studio: a deterministic engine holds the schedule while an architect plans, a writer drafts, an editor judges and an arbiter rules — with a shelf, a reader, a foreshadowing ledger and continuity auditing behind them.",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia",
@@ -1274,7 +1234,7 @@
       "slug": "photocraft",
       "name": "Photocraft",
       "description": "Edit images with layers, masks, type and real PSD files inside Astravia — the upstream Photocraft editor with a Chinese interface by default, driven from the conversation.",
-      "version": "0.0.36",
+      "version": "0.0.37",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -1314,7 +1274,7 @@
       "slug": "excalidraw",
       "name": "Excalidraw",
       "description": "Sketch diagrams, wireframes and flowcharts on an infinite hand-drawn canvas inside Astravia — the upstream Excalidraw editor, driven from the conversation.",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia",
@@ -1355,7 +1315,7 @@
       "slug": "designcraft",
       "name": "DesignCraft",
       "description": "Lay out pages, spreads and threaded text inside Astravia — the upstream DesignCraft publishing editor, with IDML import and PDF, PNG and EPUB export.",
-      "version": "0.0.31",
+      "version": "0.0.32",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -1395,7 +1355,7 @@
       "slug": "effectcraft",
       "name": "EffectCraft",
       "description": "Build motion-graphics compositions inside Astravia — the upstream EffectCraft compositor with keyframes, 3D camera and lights, 308 effects and a render queue.",
-      "version": "0.0.32",
+      "version": "0.0.33",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -1435,7 +1395,7 @@
       "slug": "filmcraft",
       "name": "FilmCraft",
       "description": "Cut video on a real timeline inside Astravia — the upstream FilmCraft non-linear editor with colour, sound and a WebGL fallback for machines without WebGPU.",
-      "version": "0.0.31",
+      "version": "0.0.32",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -1475,7 +1435,7 @@
       "slug": "lightcraft",
       "name": "LightCraft",
       "description": "Browse a photo library and develop raw files inside Astravia — the upstream LightCraft catalog and darkroom, with camera raw and DNG support.",
-      "version": "0.0.31",
+      "version": "0.0.32",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -1515,7 +1475,7 @@
       "slug": "pdfcraft",
       "name": "PDFCraft",
       "description": "Read and rearrange PDFs inside Astravia — the upstream PDFCraft workbench for merging, splitting, rotating and securing documents, with no account and no telemetry.",
-      "version": "0.0.32",
+      "version": "0.0.33",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -1556,7 +1516,7 @@
       "slug": "vectorcraft",
       "name": "VectorCraft",
       "description": "Draw and edit vectors inside Astravia — the upstream VectorCraft illustration app with bezier paths, fills and SVG output.",
-      "version": "0.0.32",
+      "version": "0.0.33",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -1596,7 +1556,7 @@
       "slug": "cadcraft",
       "name": "CADCraft",
       "description": "Draft and edit drawings inside Astravia — the upstream CADCraft editor, with a real command line, object snaps, layers, dimensions, hatches, blocks, and DXF and DWG files.",
-      "version": "0.0.26",
+      "version": "0.0.27",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -1637,7 +1597,7 @@
       "slug": "deckcraft",
       "name": "DeckCraft",
       "description": "Build slide decks inside Astravia — the upstream DeckCraft editor, with themes, layouts, shapes, charts, transitions and PowerPoint export.",
-      "version": "0.0.26",
+      "version": "0.0.27",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -1677,7 +1637,7 @@
       "slug": "figcraft",
       "name": "FigCraft",
       "description": "Design interfaces and prototypes inside Astravia — the upstream FigCraft editor, with frames, auto layout, components and variants, variables and click-through prototypes.",
-      "version": "0.0.27",
+      "version": "0.0.28",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -1717,7 +1677,7 @@
       "slug": "gridcraft",
       "name": "GridCraft",
       "description": "Work through spreadsheets inside Astravia — the upstream GridCraft editor, with formulas, number formats, charts, pivot tables and .xlsx round-tripping.",
-      "version": "0.0.28",
+      "version": "0.0.29",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -1757,7 +1717,7 @@
       "slug": "wordcraft",
       "name": "WordCraft",
       "description": "Write and revise documents inside Astravia — the upstream WordCraft editor, with a ribbon, styles, tables, tracked changes and .docx round-tripping.",
-      "version": "0.0.28",
+      "version": "0.0.29",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -1797,7 +1757,7 @@
       "slug": "texturecraft",
       "name": "TextureCraft",
       "description": "Paint 3D textures inside Astravia — the upstream TextureCraft editor, with layered PBR painting, bakes and smart materials.",
-      "version": "0.0.27",
+      "version": "0.0.28",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -1837,7 +1797,7 @@
       "slug": "materialcraft",
       "name": "MaterialCraft",
       "description": "Build procedural materials node by node inside Astravia — the upstream MaterialCraft editor, from a first graph to a reusable material.",
-      "version": "0.0.27",
+      "version": "0.0.28",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -1877,7 +1837,7 @@
       "slug": "craft-anything",
       "name": "Craft Anything",
       "description": "Take apart any website, app or game and rebuild it — Craft Anything studies the original and drives an AI agent through the reconstruction.",
-      "version": "0.0.29",
+      "version": "0.0.30",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -1917,7 +1877,7 @@
       "slug": "boardmix",
       "name": "Boardmix Whiteboard",
       "description": "Boardmix's own whiteboard inside a side panel: sign in once and work on your boards without leaving the conversation, while the agent can open the panel and take you to the workspace, a new board or an AI entry.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "configVersion": 1,
       "license": "Proprietary",
       "author": "Astravia",
@@ -2001,7 +1961,7 @@
       "slug": "magpie",
       "name": "Magpie",
       "description": "Connect the magpie gateway on this computer to Astravia, browse its real model catalog and publish those models into the model picker when you choose to. If magpie is not installed yet, the panel installs and starts it.",
-      "version": "0.4.3",
+      "version": "0.4.4",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
@@ -2042,7 +2002,7 @@
       "slug": "todesk",
       "name": "ToDesk Remote",
       "description": "Connect this computer to another one by its ToDesk device code, from the panel or from the conversation. The agent reads the code, opens sessions and can keep this machine reachable — no ToDesk setting to find first.",
-      "version": "0.4.18",
+      "version": "0.4.19",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia",
@@ -2120,6 +2080,215 @@
         "path": "abilities/plugins/logocreator"
       },
       "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "mcp",
+      "slug": "deed-page",
+      "name": "deed.page",
+      "description": "Publish HTML pages and small static sites that Astravia builds to a public URL, then update or delete them. No account or API key needed.",
+      "version": "1.0.1",
+      "configVersion": 1,
+      "author": "Avatar 8 LLC / @f-o-x11",
+      "category": "Development",
+      "categoryI18n": {
+        "zh": "开发",
+        "en": "Development"
+      },
+      "tags": [
+        "deed-page",
+        "publishing",
+        "static-hosting",
+        "html",
+        "remote-mcp"
+      ],
+      "source": {
+        "path": "abilities/mcp/deed-page"
+      },
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "deed.page",
+            "description": "把 Astravia 生成的 HTML 页面和小型静态站点发布到公开地址，之后可更新或删除。无需账号或 API Key。",
+            "tags": [
+              "deed.page",
+              "发布",
+              "静态托管",
+              "HTML",
+              "远端 MCP"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "plugin",
+      "slug": "ego",
+      "name": "Ego Browser",
+      "description": "Let the agent use the ego browser — your own logged-in sites included — and make it the default for browser work and web app testing.",
+      "version": "0.1.0",
+      "configVersion": 1,
+      "license": "MIT",
+      "author": "Astravia",
+      "category": "Browser",
+      "categoryI18n": {
+        "zh": "浏览器",
+        "en": "Browser"
+      },
+      "tags": [
+        "browser",
+        "automation",
+        "testing",
+        "qa",
+        "ego"
+      ],
+      "source": {
+        "path": "abilities/plugins/ego"
+      },
+      "minAppVersion": "0.5.60",
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "ego 浏览器",
+            "description": "让智能体使用 ego 浏览器（包括你已登录的网站），并让它成为浏览器操作与 Web 应用测试的默认选择。",
+            "tags": [
+              "浏览器",
+              "自动化",
+              "测试",
+              "QA",
+              "ego"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "plugin",
+      "slug": "web-access",
+      "name": "Web Access",
+      "description": "Search the web and read pages or PDFs inside a conversation — free by default, or with your own search and reader keys.",
+      "version": "1.0.2",
+      "configVersion": 1,
+      "license": "MIT",
+      "author": "Astravia",
+      "category": "Research",
+      "categoryI18n": {
+        "zh": "研究",
+        "en": "Research"
+      },
+      "tags": [
+        "web-search",
+        "search",
+        "fetch",
+        "research",
+        "exa",
+        "brave",
+        "tavily",
+        "searxng"
+      ],
+      "source": {
+        "path": "abilities/plugins/web-access"
+      },
+      "minAppVersion": "0.5.60",
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "网页访问",
+            "description": "在对话里搜索网页、读取页面与 PDF——默认免密钥可用，也可以填自己的搜索与阅读服务密钥。",
+            "tags": [
+              "网页搜索",
+              "搜索",
+              "抓取",
+              "研究",
+              "Exa",
+              "Brave",
+              "Tavily",
+              "SearXNG"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "plugin",
+      "slug": "astravia-memory",
+      "name": "Memory",
+      "description": "Long-term memory for the AI: preferences, facts and decisions that persist across conversations, plus a daily log and a follow-up checklist, all managed on one page.",
+      "version": "0.1.1",
+      "configVersion": 1,
+      "license": "MIT",
+      "author": "Astravia",
+      "category": "Productivity",
+      "categoryI18n": {
+        "zh": "效率",
+        "en": "Productivity"
+      },
+      "tags": [
+        "memory",
+        "long-term memory",
+        "context",
+        "notes",
+        "todo"
+      ],
+      "source": {
+        "path": "abilities/plugins/astravia-memory"
+      },
+      "minAppVersion": "0.5.59",
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "记忆",
+            "description": "让 AI 拥有跨对话的长期记忆：偏好、事实与决定会被记住，另有每日日志与待办清单，统一在一个页面管理。",
+            "tags": [
+              "记忆",
+              "长期记忆",
+              "上下文",
+              "笔记",
+              "待办"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "plugin",
+      "slug": "astravia-generative-ui",
+      "name": "Generative UI",
+      "description": "Lets the AI answer with interactive views: forms, quick replies, KPI cards, tables, Chart.js charts and layouts that match the app, plus custom HTML in a secure sandbox.",
+      "version": "0.1.1",
+      "configVersion": 1,
+      "license": "MIT",
+      "author": "Astravia",
+      "category": "Productivity",
+      "categoryI18n": {
+        "zh": "效率",
+        "en": "Productivity"
+      },
+      "tags": [
+        "generative ui",
+        "forms",
+        "charts",
+        "dashboard",
+        "html"
+      ],
+      "source": {
+        "path": "abilities/plugins/astravia-generative-ui"
+      },
+      "minAppVersion": "0.5.59",
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "生成式 UI",
+            "description": "让 AI 用可交互的界面回答：表单、快捷回复、指标卡、表格、Chart.js 图表与布局，风格与应用一致；也能在安全沙箱中运行自定义 HTML。",
+            "tags": [
+              "生成式UI",
+              "表单",
+              "图表",
+              "看板",
+              "HTML"
+            ]
+          }
+        }
+      }
     }
   ],
   "version": "0.4.88"

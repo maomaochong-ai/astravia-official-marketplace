@@ -48,8 +48,15 @@ npm run build                      # v3 本地预检可打包；正式 .astravia
 SDK 手册随 `@astravia-org/plugin-sdk` 装进各插件自己的 `node_modules`，因此读到的合同与该插件
 实际编译的版本一致。**不要硬编码 node_modules 路径**，用上面的命令解析。
 
-> 现状：四个插件钉的都是 `^0.1.1` / `^0.2.0`，**早于手册随包发布的 0.3.1**，所以 `docs` 现在
-> 都报找不到。升到 `^0.3.1` 才能用上，但那是跨 0.3.0 破坏性变更的升级，需要逐个插件评估。
+> 现状：全仓插件统一钉 `@astravia-org/plugin-sdk@^0.3.13`、`plugin-cli@^0.1.7`、
+> `plugin-vite@^0.2.4`；用到宿主设计系统的插件另钉 `@astravia-org/ui@^0.1.0` 与
+> `@astravia-org/theme-ui@^0.1.1`。三个包都从仓库内的 `.tooling/open-astravia` 以 junction
+> 链接（锁文件里记作 `link: true` 的相对路径），CI 按 `.astravia/publish.json` 的
+> `toolingCommit` 检出同一份源码。手册随包发布，`astravia-plugin-cli docs` 可直接用。
+>
+> 本地首次装依赖：仓库根没有 `node_modules`，PATH 上的 `npm` 可能属于 Astravia 自带运行时
+> 而没有 npm-cli，用系统 npm 的入口脚本（`node "C:/Program Files/nodejs/node_modules/npm/bin/npm-cli.js" install`）
+> 或 `node scripts/marketplace.mjs build` 自带的解析逻辑。
 
 新建插件工程（仓库根没有 `node_modules`，用全名）：
 

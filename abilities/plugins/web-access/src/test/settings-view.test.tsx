@@ -1,0 +1,267 @@
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const t = (key: string, values?: Record<string, unknown>) =>
+  values && "count" in values ? `${key}:${String(values.count)}` : key;
+
+vi.mock("@astravia-org/plugin-sdk", () => ({
+  useTranslation: () => ({ t })
+}));
+
+/**
+ * 宿主设置外壳（`@astravia-org/theme-ui/plugin-ui`）在本仓库是 `.tooling/open-astravia`
+ * 的 junction，它内部的 `?url` 图标资源位于工程目录之外，vitest 的模块图会拒绝该 id。
+ * 被测的是设置项行为，不是外壳的版式，因此换成等价的纯 DOM 实现。
+ */
+vi.mock("@astravia-org/theme-ui/plugin-ui", async () => {
+  const React = await import("react");
+  type AnyProps = Record<string, any>;
+  const Section = ({ title, children, ...props }: AnyProps) =>
+    React.createElement("section", props, React.createElement("h2", null, title), children);
+  const Row = ({ title, description, children, ...props }: AnyProps) =>
+    React.createElement(
+      "div",
+      props,
+      React.createElement("span", null, title),
+      description ? React.createElement("p", null, description) : null,
+      children
+    );
+  const Select = ({ value, onValueChange, options, ...props }: AnyProps) => {
+    const [open, setOpen] = React.useState(false);
+    const current = (options ?? []).find((option: AnyProps) => option.value === value);
+    return React.createElement(
+      "div",
+      null,
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          role: "button",
+          "aria-label": props["aria-label"],
+          "aria-expanded": open,
+          onClick: () => setOpen((previous: boolean) => !previous)
+        },
+        current?.label
+      ),
+      open
+        ? React.createElement(
+            "div",
+            { role: "listbox" },
+            (options ?? []).map((option: AnyProps) =>
+              React.createElement(
+                "div",
+                {
+                  key: option.value,
+                  role: "option",
+                  "aria-selected": option.value === value,
+                  onClick: () => {
+                    onValueChange(option.value);
+                    setOpen(false);
+                  }
+                },
+                option.label
+              )
+            )
+          )
+        : null
+    );
+  };
+  return {
+    MotionSelect: Select,
+    SettingRow: Row,
+    SettingSection: Section,
+    SettingHeading: ({ children }: AnyProps) => React.createElement("h3", null, children),
+    PROVIDER_ICONS: {},
+  };
+});
+
+vi.mock("@astravia-org/ui", async () => {
+  const React = await import("react");
+  type AnyProps = Record<string, any>;
+  const Pass = (tag: string) => ({ children, ...props }: AnyProps) => React.createElement(tag, props, children);
+  // 弹层只要在 open 时把内容渲染出来，不实现焦点陷阱与遮罩。
+  const Dialog = ({ open = true, children }: AnyProps) => (open ? React.createElement(React.Fragment, null, children) : null);
+  return {
+    Button: Pass("button"),
+    Input: (props: AnyProps) => React.createElement("input", props),
+    cn: (...values: unknown[]) => values.filter(Boolean).join(" "),
+    Dialog,
+    DialogContent: Pass("div"),
+    DialogDescription: Pass("p"),
+    DialogFooter: Pass("div"),
+    DialogHeader: Pass("div"),
+    DialogTitle: Pass("h2"),
+    Switch: ({ checked, onCheckedChange, ...props }: AnyProps) =>
+      React.createElement("input", {
+        ...props,
+        type: "checkbox",
+        role: "switch",
+        "aria-checked": Boolean(checked),
+        checked: Boolean(checked),
+        onChange: (event: { target: { checked: boolean } }) => onCheckedChange?.(event.target.checked),
+      }),
+  };
+});
+import { DEFAULT_SETTINGS } from "../domain/settings";
+import { WebAccessSettingsView } from "../features/settings/components/web-access-settings-view";
+import type { NetworkCall, NetworkResult } from "../services/network";
+import { createSettingsStore, type SettingsBackend } from "../services/settings-store";
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
+
+function memoryBackend(initial: Record<string, string> = {}) {
+  const files = new Map<string, string>(Object.entries(initial));
+  const secrets = new Map<string, string>();
+  const backend: SettingsBackend = {
+    storage: {
+      readFile: async (path) => files.get(path) ?? null,
+      writeFile: async (path, content) => {
+        files.set(path, content);
+      }
+    },
+    secrets: {
+      get: async (key) => secrets.get(key),
+      set: async (key, value) => {
+        secrets.set(key, value);
+      },
+      delete: async (key) => {
+        secrets.delete(key);
+      },
+      keys: async () => [...secrets.keys()]
+    }
+  };
+  return { backend, files, secrets };
+}
+
+const ok = (body: string, headers: Record<string, string> = {}): NetworkResult => ({
+  ok: true,
+  status: 200,
+  statusText: "OK",
+  headers,
+  body
+});
+
+/** Stands in for the free Exa endpoint so the page can be rendered without network. */
+async function fakeSearch(call: NetworkCall): Promise<NetworkResult> {
+  if ((call.json as { method?: string } | undefined)?.method === "initialize") {
+    return ok('event: message\ndata: {"result":{}}\n\n', { "mcp-session-id": "s" });
+  }
+  return ok(
+    'event: message\ndata: {"result":{"content":[{"type":"text","text":"Title: Astravia docs\\nURL: https://docs.open-astravia.com\\nHighlights:\\nHow it works."}]}}\n\n'
+  );
+}
+
+/** The provider picker is the host settings dropdown; its trigger is labelled by the row. */
+const providerTrigger = () => screen.getByRole("button", { name: "settings.search.provider" });
+
+async function chooseProvider(label: string) {
+  const user = userEvent.setup();
+  await user.click(providerTrigger());
+  await user.click(await screen.findByText(label));
+}
+
+const savedSettings = (files: Map<string, string>) =>
+  JSON.parse(files.get("settings.json") ?? "{}") as Record<string, unknown>;
+
+describe("Web Access settings page", () => {
+  it("saves each edit immediately, without a save button", async () => {
+    const { backend, files, secrets } = memoryBackend();
+    const store = createSettingsStore(backend);
+    render(<WebAccessSettingsView store={store} call={fakeSearch} notify={vi.fn()} />);
+
+    await screen.findByRole("button", { name: "settings.search.provider" });
+    expect(providerTrigger().textContent).toContain("provider.auto");
+    // Nothing to press: the page persists edits on its own.
+    expect(screen.queryByRole("button", { name: /settings\.save/u })).toBeNull();
+
+    await chooseProvider("provider.brave · settings.badge.key");
+    await waitFor(() => expect(savedSettings(files).searchProvider).toBe("brave"));
+
+    const count = screen.getByLabelText(/^settings\.search\.count$/u);
+    fireEvent.change(count, { target: { value: "3" } });
+    fireEvent.blur(count);
+    await waitFor(() => expect(savedSettings(files).resultCount).toBe(3));
+
+    const user = userEvent.setup();
+    await user.click(screen.getAllByRole("button", { name: "settings.key.add" })[0]);
+    await user.type(screen.getByPlaceholderText("settings.key.placeholder"), "secret-key");
+    await user.click(screen.getByRole("button", { name: "settings.key.save" }));
+    await waitFor(() => expect(secrets.get("exaApiKey")).toBe("secret-key"));
+    await screen.findByText("settings.key.saved");
+
+    // A saved key never leaks into the settings file.
+    expect(files.get("settings.json")).not.toContain("secret-key");
+  });
+
+  it("keeps the last edit even when the page is left inside the write window", async () => {
+    const { backend, files } = memoryBackend();
+    const store = createSettingsStore(backend);
+    const view = render(<WebAccessSettingsView store={store} call={fakeSearch} notify={vi.fn()} />);
+
+    await screen.findByRole("button", { name: "settings.search.provider" });
+    await chooseProvider("provider.tavily · settings.badge.key");
+    view.unmount();
+
+    await waitFor(() => expect(savedSettings(files).searchProvider).toBe("tavily"));
+  });
+
+  it("runs a real query from the page and shows the answers", async () => {
+    const { backend } = memoryBackend();
+    const store = createSettingsStore(backend);
+    render(<WebAccessSettingsView store={store} call={fakeSearch} notify={vi.fn()} />);
+
+    const user = userEvent.setup();
+    await screen.findByRole("button", { name: "settings.test.run" });
+    await user.click(screen.getByRole("button", { name: "settings.test.run" }));
+
+    await screen.findByText("Astravia docs");
+    expect(screen.getByText("Exa (free)")).toBeTruthy();
+    expect(screen.getByText("settings.test.count:1")).toBeTruthy();
+    expect(screen.getByText("docs.open-astravia.com")).toBeTruthy();
+  });
+
+  it("shows the provider's reason when a test search fails", async () => {
+    const { backend } = memoryBackend({ "settings.json": JSON.stringify({ ...DEFAULT_SETTINGS, searchProvider: "brave" }) });
+    const store = createSettingsStore(backend);
+    const failing = async (call: NetworkCall): Promise<NetworkResult> =>
+      call.url.includes("brave")
+        ? { ok: false, status: 401, statusText: "Unauthorized", headers: {}, body: '{"message":"bad key"}' }
+        : ok("");
+    render(<WebAccessSettingsView store={store} call={failing} notify={vi.fn()} />);
+
+    const user = userEvent.setup();
+    await waitFor(() => expect(providerTrigger().textContent).toContain("provider.brave"));
+    await user.click(screen.getByRole("button", { name: "settings.test.run" }));
+
+    await screen.findByText(/settings.test.failed/u);
+    expect(document.body.textContent).toContain("Brave Search needs an API key");
+  });
+
+  it("reveals the SearXNG address only when it can be used", async () => {
+    const { backend } = memoryBackend();
+    const store = createSettingsStore(backend);
+    render(<WebAccessSettingsView store={store} call={fakeSearch} notify={vi.fn()} />);
+
+    await screen.findByRole("button", { name: "settings.search.provider" });
+    expect(screen.queryByLabelText(/settings\.search\.searxngUrl/u)).toBeTruthy();
+
+    await chooseProvider("provider.brave · settings.badge.key");
+    await waitFor(() => expect(screen.queryByLabelText(/settings\.search\.searxngUrl/u)).toBeNull());
+  });
+
+  it("drives both numeric settings through the host stepper", async () => {
+    const { backend } = memoryBackend();
+    const store = createSettingsStore(backend);
+    render(<WebAccessSettingsView store={store} call={fakeSearch} notify={vi.fn()} />);
+
+    await screen.findByRole("button", { name: "settings.search.provider" });
+    for (const label of ["settings.search.count", "settings.fetch.maxChars"]) {
+      const input = screen.getByLabelText(new RegExp(`^${label}$`, "u"));
+      expect(input.closest("[data-slot='stepper']")).toBeTruthy();
+    }
+  });
+});

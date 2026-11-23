@@ -9,7 +9,7 @@
  * 图标用 lucide，图形必须能代表该分节本身（目标=准星、调用=波形）。
  */
 
-export type ReaSection = "workbench" | "guide" | "targets" | "calls" | "toolchain" | "engine";
+export type ReaSection = "workbench" | "guide" | "targets" | "calls" | "cases" | "toolchain" | "engine";
 
 export type ReaGroupId = "workflow" | "analysis" | "env";
 
@@ -39,6 +39,7 @@ export const REA_SECTION_GROUPS: readonly ReaSectionGroup[] = [
 		labelKey: "ui.nav.group.analysis",
 		items: [
 			{ id: "targets", labelKey: "ui.nav.targets", icon: "icon-[lucide--crosshair]" },
+			{ id: "cases", labelKey: "ui.nav.cases", icon: "icon-[lucide--folder-search]" },
 			{ id: "calls", labelKey: "ui.nav.calls", icon: "icon-[lucide--activity]" },
 		],
 	},

@@ -67,10 +67,10 @@ describe("外壳布局", () => {
 		expect(container.querySelectorAll(".absolute").length).toBe(0);
 	});
 
-	it("六个分节各一个导航项，当前分节只有一个", () => {
+	it("七个分节各一个导航项，当前分节只有一个", () => {
 		const container = renderTab();
 		const aside = container.querySelector("aside");
-		expect(aside?.querySelectorAll("button").length).toBe(6);
+		expect(aside?.querySelectorAll("button").length).toBe(7);
 		expect(aside?.querySelectorAll('[aria-current="page"]').length).toBe(1);
 		// 阶段条与阶段指引各有一份阶段导航，各自只标记当前阶段一个 —— 全文档两个，
 		// 但每个分节内部恰好一个，不会出现「同一页里标了两个当前阶段」。
@@ -87,7 +87,7 @@ describe("分节切换", () => {
 		fireEvent.click(navCalls);
 
 		const pages = Array.from(container.querySelectorAll('main > div[aria-hidden]'));
-		expect(pages.length).toBe(6);
+		expect(pages.length).toBe(7);
 		const visible = pages.filter((page) => page.getAttribute("aria-hidden") === "false");
 		expect(visible.length).toBe(1);
 		expect(visible[0]?.textContent ?? "").toContain("ui.page.calls.title");

@@ -1,7 +1,7 @@
 {
   "id": "rea",
   "name": "%name%",
-  "version": "0.4.17",
+  "version": "0.5.0",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "icon": "assets/icon.svg",
@@ -25,7 +25,13 @@
     "agent.session.read",
     "agent.session.write",
     "agent.command.run",
-    "agent.command.spawn"
+    "agent.command.spawn",
+    "storage.read",
+    "storage.write",
+    "fs.read",
+    "agent.hooks.register",
+    "agent.hookHandler.execute",
+    "ui.file-explorer.context-menu"
   ],
   "commands": [
     "node",
@@ -75,7 +81,8 @@
   },
   "agent": {
     "skillPaths": [
-      "agent/skills/reverse-engineer-anything"
+      "agent/skills/reverse-engineer-anything",
+      "agent/skills/rea-investigation"
     ],
     "skillPresentation": {
       "defaultVisibility": "visible",
@@ -90,6 +97,11 @@
         "reverse-engineer-anything": {
           "displayName": "%skill.name%",
           "displayDescription": "%skill.description%"
+        },
+        "rea-investigation": {
+          "defaultVisibility": "hidden",
+          "displayName": "%skill.investigation.name%",
+          "displayDescription": "%skill.investigation.description%"
         }
       }
     },
@@ -102,7 +114,18 @@
           "mcp"
         ]
       }
-    }
+    },
+    "agents": [
+      {
+        "id": "rea-investigator",
+        "name": "%agent.investigator.name%",
+        "description": "%agent.investigator.description%",
+        "mentionHandle": "rea",
+        "avatar": "agent/agents/rea-investigator.png",
+        "systemPromptPath": "agent/agents/rea-investigator.md",
+        "abilities": "own"
+      }
+    ]
   },
   "description": "%description%",
   "author": "morluto / REA",

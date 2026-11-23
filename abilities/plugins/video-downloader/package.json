@@ -1,6 +1,6 @@
 {
   "name": "@astravia-marketplace/video-downloader",
-  "version": "2.7.3",
+  "version": "2.7.4",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,8 +14,8 @@
     "hls.js": "^1.7.4"
   },
   "devDependencies": {
-    "@astravia-org/plugin-sdk": "^0.3.2",
-    "@astravia-org/plugin-vite": "^0.2.0",
+    "@astravia-org/plugin-sdk": "^0.3.13",
+    "@astravia-org/plugin-vite": "^0.2.4",
     "@iconify-json/solar": "^1.2.5",
     "@iconify/tailwind4": "^1.0.6",
     "@tailwindcss/vite": "^4.1.12",
@@ -29,6 +29,7 @@
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
-    "vitest": "^3.2.6"
+    "vitest": "^3.2.6",
+    "@astravia-org/plugin-cli": "^0.1.7"
   }
 }

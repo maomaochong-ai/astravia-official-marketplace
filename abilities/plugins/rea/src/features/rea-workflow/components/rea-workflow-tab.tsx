@@ -40,6 +40,7 @@ import { TargetsPage } from "./rea-page-targets";
 import { CallsPage } from "./rea-page-calls";
 import { ToolchainPage } from "./rea-page-toolchain";
 import { EnginePage } from "./rea-page-engine";
+import { CaseBoardPage } from "../../case-board/components/case-board-page";
 
 // 桥接类型与实现都在 live/engine-bridge.ts：包名前缀在那里统一补齐。
 import type { ReaProviderBridge } from "../live/engine-bridge";
@@ -265,6 +266,20 @@ export function ReaWorkflowTab({
 					errors={snapshot.errors}
 					callCount={snapshot.callCount}
 					onSelectStage={handleSelect}
+				/>
+
+				<CaseBoardPage
+					active={section === "cases"}
+					cwd={cwd ?? null}
+					onContinue={(prompt) => {
+						// 回执不是证据：「sent」以外都当作没发出去，退回填入输入框。
+						// 只 catch 异常会让 status: "failed" 静默丢消息——按钮看起来生效了，对话里什么都没有。
+						void sendPrompt(prompt)
+							.then((result) => {
+								if (result.status !== "sent") insertPrompt(prompt);
+							})
+							.catch(() => insertPrompt(prompt));
+					}}
 				/>
 
 				<ToolchainPage

@@ -1,6 +1,6 @@
 {
   "name": "@astravia/plugin-open-ai-canvas",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "private": true,
   "type": "module",
   "scripts": {
@@ -29,7 +29,7 @@
     "check:locales": "node scripts/check-locales.mjs"
   },
   "devDependencies": {
-    "@astravia-org/plugin-sdk": "^0.3.10",
+    "@astravia-org/plugin-sdk": "^0.3.13",
     "@astravia-org/plugin-vite": "^0.2.4",
     "@astravia-org/ui": "^0.1.0",
     "@iconify-json/solar": "^1.2.5",
@@ -45,6 +45,7 @@
     "tailwindcss": "^4.1.12",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@astravia-org/plugin-cli": "^0.1.7"
   }
 }

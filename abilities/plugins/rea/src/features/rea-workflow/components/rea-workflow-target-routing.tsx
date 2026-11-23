@@ -39,7 +39,7 @@ export function ReaWorkflowTargetRouting({
 	const conflict = picked && detected !== null && detected !== undefined && active !== detected;
 
 	return (
-		<div aria-label={t("tab.target.sectionAria")} className="flex flex-col gap-2 px-4 py-3">
+		<div aria-label={t("tab.target.sectionAria")} className="flex min-h-0 flex-1 flex-col gap-2 px-4 py-3">
 			<div className="flex min-w-0 items-center justify-between gap-2">
 				<span className="text-micro font-medium text-text-3">{t("tab.target.sectionTitle")}</span>
 				{picked ? (
@@ -55,12 +55,13 @@ export function ReaWorkflowTargetRouting({
 				) : null}
 			</div>
 
-			<div className="grid grid-cols-2 gap-1.5">
+			{/* `auto-rows-fr`：卡片被拉高时，六个目标按钮平铺填满，不在底部留一格空白。 */}
+			<div className="grid h-full auto-rows-fr grid-cols-2 gap-1.5">
 				{TARGETS.map((target) => {
 					const isActive = active === target.kind;
 					const isDetected = detected === target.kind;
 					const cls = [
-						"inline-flex h-8 min-w-0 items-center gap-1.5 rounded-md border px-2 text-caption font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+						"inline-flex min-h-8 min-w-0 items-center gap-1.5 rounded-md border px-2 text-caption font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
 						isActive
 							? "border-purple/50 bg-purple/10 text-purple-ink"
 							: isDetected

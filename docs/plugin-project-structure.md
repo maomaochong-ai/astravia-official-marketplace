@@ -110,6 +110,18 @@ tools/                                  # 只有确实注册 Agent 工具时才�
 
 每个用户可观察流程至少从最接近产品入口的组件或公开服务接口开始测试。登录类流程应覆盖“点击登录 → 等待二维码 → 状态轮询 → 成功或超时反馈”；账号管理流程应覆盖“加载列表 → 切换/重命名/删除 → 刷新后状态一致”。纯函数测试不能替代组件接线测试，外部网络和进程才使用 mock。
 
+### 宿主设计系统在测试里要替身
+
+`@astravia-org/ui` 与 `@astravia-org/theme-ui/plugin-ui` 在本仓是 `.tooling/open-astravia` 的
+junction，那份 checkout 自带一套 react/react-dom。运行时由 Module Federation 共享一个实例，
+测试里没有那一层，两份 React 会让 radix 的 hook 读到空 dispatcher，报
+`Cannot read properties of null (reading 'useState' | 'useMemo')`。
+
+做法：在该测试文件里 `vi.mock('@astravia-org/ui')`（需要时连 theme-ui 的 `plugin-ui` 一起），
+用同形的原生控件替身——弹层给 `role="dialog"` + 标题名，下拉给 `combobox` + `listbox` + `option`，
+开关给 `input role="switch"`。被测的是业务行为，不是 radix 的弹层实现。
+`vite.config.ts` 只保留 `resolve.dedupe: ["react", "react-dom"]`。
+
 统一使用：
 
 ```bash

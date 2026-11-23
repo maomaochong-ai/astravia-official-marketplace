@@ -80,8 +80,14 @@ describe("plugin manifest contract", () => {
 	});
 
 	it("declares the skill path that the presentation rules refer to", () => {
+		// 两个技能：工作流提示（reverse-engineer-anything）与卷宗判定（rea-investigation）。
+		// 每个展示规则指到的技能都必须真的在包内，否则界面上的名字会退回 slug。
 		const paths = manifest.agent?.skillPaths ?? [];
-		expect(paths.length).toBe(1);
-		expect(existsSync(join(pluginDir, paths[0], "SKILL.md"))).toBe(true);
+		expect(paths.length).toBeGreaterThanOrEqual(1);
+		for (const path of paths) expect(existsSync(join(pluginDir, path, "SKILL.md")), path).toBe(true);
+		const presented = Object.keys(manifest.agent?.skillPresentation?.skills ?? {});
+		for (const name of presented) {
+			expect(paths.some((path) => path.endsWith(name)), `${name} is presented but not shipped`).toBe(true);
+		}
 	});
 });

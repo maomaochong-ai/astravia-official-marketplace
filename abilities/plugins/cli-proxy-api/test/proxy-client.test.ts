@@ -3,11 +3,24 @@ import { createProxyClient, isImageOnlyModelId, safeExternalUrl } from "../src/p
 import { OAUTH_PROVIDERS, protocolGroupFor } from "../src/provider-contract";
 import { maintainModelConnection } from "../src/model-connection";
 import { groupModels } from "../src/model-reconciler";
+import { buildProviderPools } from "../src/provider-pools";
 import { fixture } from "./helpers";
 
 afterEach(() => vi.useRealTimers());
 
 describe("CLIProxyAPI contracts", () => {
+  it("does not erase published models when the management API returns an invalid credential list", async () => {
+    const f = fixture();
+    f.setOwnedProviders({ responses: { models: [{ id: "gpt-6.1-sol" }] } });
+    const original = f.handle.getMockImplementation()!;
+    f.handle.mockImplementation(async (request) => request.path === "/v8/management/credentials"
+      ? { error: "management unavailable" } : original(request));
+    const client = createProxyClient(f.context);
+    await expect(client.loadPublishableModels()).rejects.toThrow("Invalid credential list response");
+    expect(f.replaceOwnedProviders).not.toHaveBeenCalled();
+    expect(await client.readPublishedModels()).toEqual([expect.objectContaining({ id: "gpt-6.1-sol" })]);
+  });
+
   it.each([{ levels: [] }, { levels: ["high", 42] }, { levels: [" "] }])("omits malformed or empty upstream level lists: $levels", async ({ levels }) => {
     const f = fixture();
     f.handle.mockImplementation(async ({ path }) => {
@@ -24,8 +37,8 @@ describe("CLIProxyAPI contracts", () => {
     let discovering = true;
     f.handle.mockImplementation(async ({ path }) => {
       if (path === "/v1/models") return { data: discovering ? [{ id: "gpt-6", owned_by: "openai" }] : [] };
-      if (path === "/v0/management/auth-files") return { files: [{ name: "codex.json", provider: "codex" }] };
-      if (path === "/v0/management/model-definitions/codex" && discovering) {
+      if (path === "/v8/management/credentials") return { files: [{ name: "codex.json", provider: "codex" }] };
+      if (path === "/v8/management/routing/model-definitions/codex" && discovering) {
         return { models: [{ id: "gpt-6", owned_by: "openai", thinking: { levels } }] };
       }
       throw new Error("catalog unavailable");
@@ -48,13 +61,14 @@ describe("CLIProxyAPI contracts", () => {
     expect(protocolGroupFor("google", "alias")).toBe("google");
     expect(protocolGroupFor("antigravity", "claude-sonnet")).toBe("anthropic");
     expect(protocolGroupFor("kimi", "alias")).toBe("anthropic");
+    expect(protocolGroupFor("moonshot", "alias")).toBe("anthropic");
     expect(protocolGroupFor("openai", "alias")).toBe("responses");
     expect(protocolGroupFor("openrouter", "gpt-or-claude-or-gemini")).toBe("completions");
     expect(protocolGroupFor("", "gemini")).toBe("completions");
   });
-  it("uses callback forwarders for desktop browser flows and device flows for Kimi/xAI", () => {
+  it("uses callback forwarders for desktop browser flows and provider-specific device flows", () => {
     for (const id of ["claude", "codex", "antigravity"]) expect(OAUTH_PROVIDERS.find((p) => p.id === id)?.authPath).toContain("is_webui=true");
-    expect(OAUTH_PROVIDERS.filter((p) => p.deviceFlow).map((p) => p.id)).toEqual(["kimi", "xai"]);
+    expect(OAUTH_PROVIDERS.filter((p) => p.deviceFlow).map((p) => p.id)).toEqual(["kimi", "xai", "meta", "kimi-ai"]);
     for (const url of ["javascript:alert(1)", "http://localhost", "https://name:secret@example.com"]) expect(() => safeExternalUrl(url)).toThrow();
   });
   it("registers discovered models without leaking the management key and rejects malformed catalogs", async () => {
@@ -88,7 +102,7 @@ describe("CLIProxyAPI contracts", () => {
     expect(models).toEqual([{ id: "gemini-test", ownedBy: "google", contextWindow: 1048576, maxTokens: 65536, reasoning: true }]);
     // The channel listing is what the workspace view renders as "supported models".
     expect(catalog.channels.get("gemini")).toEqual([
-      { id: "gemini-test", contextWindow: 1048576, maxTokens: 65536, reasoning: true }
+      { id: "gemini-test", ownedBy: "google", contextWindow: 1048576, maxTokens: 65536, reasoning: true }
     ]);
     await client.publishModels(groupModels(models));
     expect(f.replaceOwnedProviders).toHaveBeenCalledWith(expect.objectContaining({
@@ -101,7 +115,7 @@ describe("CLIProxyAPI contracts", () => {
     const f = fixture();
     f.handle.mockImplementation(async (request: { path: string }) => {
       if (request.path === "/v1/models") return { data: [{ id: "mystery", owned_by: "kimi" }] };
-      if (request.path === "/v0/management/model-definitions/kimi") {
+      if (request.path === "/v8/management/routing/model-definitions/kimi") {
         // context_length 0 is upstream's "unknown"; publishing it would fail host validation.
         return { models: [{ id: "mystery", owned_by: "kimi", context_length: 0 }] };
       }
@@ -114,6 +128,28 @@ describe("CLIProxyAPI contracts", () => {
     expect(f.replaceOwnedProviders).toHaveBeenCalledWith(expect.objectContaining({
       anthropic: expect.objectContaining({ models: [{ id: "mystery", api: "anthropic-messages" }] })
     }));
+  });
+  it("publishes a Kimi model the user ticked even though the gateway reports its owner as moonshot", async () => {
+    const f = fixture();
+    // Shapes copied from a live gateway: the channel is `kimi`, the owner `moonshot`.
+    f.handle.mockImplementation(async (request: { path: string }) => {
+      if (request.path === "/v1/models") return { data: [{ id: "kimi-k3", owned_by: "moonshot" }] };
+      if (request.path === "/v8/management/credentials") return { files: [{ name: "kimi-1.json", provider: "kimi", type: "kimi" }] };
+      if (request.path === "/v8/management/routing/model-definitions/kimi") {
+        return { channel: "kimi", models: [{ id: "kimi-k3", owned_by: "moonshot", type: "kimi", context_length: 262144 }] };
+      }
+      throw new Error("unknown channel");
+    });
+    const client = createProxyClient(f.context);
+    const { accounts, catalog, models, complete } = await client.loadPublishableModels();
+    // The route key the workspace view stores when the user ticks the model.
+    const [pool] = buildProviderPools(accounts, new Map([[accounts[0]!.key, { models: catalog.channels.get("kimi") ?? [] }]]));
+    const routes = new Set(pool!.models.map((model) => model.routeKey));
+    expect(complete).toBe(true);
+    await client.publishModels(models, () => true, { mode: "custom", routes });
+    expect(f.replaceOwnedProviders).toHaveBeenLastCalledWith({
+      anthropic: expect.objectContaining({ models: [{ id: "kimi-k3", api: "anthropic-messages", contextWindow: 262144 }] })
+    });
   });
   it("reads the provider's limit headers as remaining budget, ignoring what it cannot parse", () => {
     const client = createProxyClient(fixture().context);
@@ -239,16 +275,16 @@ describe("CLIProxyAPI contracts", () => {
       // The gateway answers for codex a beat before antigravity finishes
       // registering — the cold start that used to erase the antigravity models.
       if (request.path === "/v1/models") return { data: [{ id: "gpt-5.5", owned_by: "openai" }] };
-      if (request.path === "/v0/management/auth-files") {
+      if (request.path === "/v8/management/credentials") {
         return { files: [
           { auth_index: "ag-1", name: "ag.json", provider: "antigravity" },
           { auth_index: "codex-1", name: "codex.json", provider: "codex" }
         ] };
       }
-      if (request.path === "/v0/management/model-definitions/antigravity") {
+      if (request.path === "/v8/management/routing/model-definitions/antigravity") {
         return { models: [{ id: "gemini-3-flash", owned_by: "antigravity" }] };
       }
-      if (request.path === "/v0/management/model-definitions/codex") {
+      if (request.path === "/v8/management/routing/model-definitions/codex") {
         return { models: [{ id: "gpt-5.5", owned_by: "openai" }] };
       }
       if (!stable) throw new Error("missing fixture handler");
@@ -281,16 +317,16 @@ describe("CLIProxyAPI contracts", () => {
           ? [{ id: "gpt-5.5", owned_by: "openai" }, { id: "gemini-3-flash", owned_by: "antigravity" }]
           : [{ id: "gpt-5.5", owned_by: "openai" }] };
       }
-      if (request.path === "/v0/management/auth-files") {
+      if (request.path === "/v8/management/credentials") {
         return { files: [
           { auth_index: "ag-1", name: "ag.json", provider: "antigravity" },
           { auth_index: "codex-1", name: "codex.json", provider: "codex" }
         ] };
       }
-      if (request.path === "/v0/management/model-definitions/antigravity") {
+      if (request.path === "/v8/management/routing/model-definitions/antigravity") {
         return { models: [{ id: "gemini-3-flash", owned_by: "antigravity" }] };
       }
-      if (request.path === "/v0/management/model-definitions/codex") {
+      if (request.path === "/v8/management/routing/model-definitions/codex") {
         return { models: [{ id: "gpt-5.5", owned_by: "openai" }] };
       }
       if (!stable) throw new Error("missing fixture handler");

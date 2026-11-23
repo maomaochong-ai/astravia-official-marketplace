@@ -1,6 +1,6 @@
 {
   "name": "@astravia-marketplace/strix",
-  "version": "1.7.4",
+  "version": "1.7.5",
   "private": true,
   "type": "module",
   "scripts": {
@@ -18,8 +18,8 @@
     "vendor-skills": "node scripts/dev/vendor-skills.cjs"
   },
   "devDependencies": {
-    "@astravia-org/plugin-sdk": "^0.3.2",
-    "@astravia-org/plugin-vite": "^0.2.1",
+    "@astravia-org/plugin-sdk": "^0.3.13",
+    "@astravia-org/plugin-vite": "^0.2.4",
     "@tailwindcss/vite": "^4.1.12",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.3.0",
@@ -33,6 +33,7 @@
     "tailwindcss": "^4.1.12",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@astravia-org/plugin-cli": "^0.1.7"
   }
 }

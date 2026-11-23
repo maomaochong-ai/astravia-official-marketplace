@@ -122,13 +122,13 @@ export function WorkbenchPage({
 			{/* 三段栅格：窄面板两列（4+8），宽面板三列（3+5+4）。尾部证据列才有高度约束，
 			    窄的时候仍是内容高度，不会被拉成空盒子。 */}
 			<div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 @min-[1040px]:grid-cols-12">
-				<div className="flex min-w-0 flex-col gap-3 self-start @min-[1040px]:col-span-4 @min-[1440px]:col-span-3">
-					<Panel>
+				<div className="flex min-h-0 min-w-0 flex-col gap-3 @min-[1040px]:col-span-4 @min-[1440px]:col-span-3">
+					<Panel className="min-h-0 flex-1">
 						<PanelHeader title={t("ui.panel.compose")} hint={t("ui.panel.composeHint")} />
 						<ReaWorkbench workbench={workbench} detected={snapshot.detectedTarget ?? snapshot.hintedTarget} />
 					</Panel>
 
-					<Panel>
+					<Panel className="min-h-0 flex-1">
 						<PanelHeader
 							title={t("ui.panel.targets")}
 							hint={t("ui.panel.targetsHint")}
@@ -153,13 +153,13 @@ export function WorkbenchPage({
 						/>
 					</Panel>
 
-					<Panel>
+					<Panel className="min-h-0 flex-1">
 						<PanelHeader title={t("ui.panel.shortcuts")} hint={t("ui.panel.shortcutsHint")} />
-						<div className="flex flex-col divide-y divide-border-subtle">
+						<div className="flex min-h-0 flex-1 flex-col divide-y divide-border-subtle">
 							<button
 								type="button"
 								onClick={() => onGoTo("toolchain")}
-								className="flex items-center justify-between gap-2 px-4 py-2.5 text-left text-caption text-text-2 transition-colors hover:bg-surface-hover hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+								className="flex flex-1 items-center justify-between gap-2 px-4 py-2.5 text-left text-caption text-text-2 transition-colors hover:bg-surface-hover hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
 							>
 								<span className="flex items-center gap-2">
 									<span aria-hidden className="icon-[lucide--wrench] size-3.5 text-text-3" />
@@ -170,7 +170,7 @@ export function WorkbenchPage({
 							<button
 								type="button"
 								onClick={() => onGoTo("engine")}
-								className="flex items-center justify-between gap-2 px-4 py-2.5 text-left text-caption text-text-2 transition-colors hover:bg-surface-hover hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+								className="flex flex-1 items-center justify-between gap-2 px-4 py-2.5 text-left text-caption text-text-2 transition-colors hover:bg-surface-hover hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
 							>
 								<span className="flex items-center gap-2">
 									<span aria-hidden className="icon-[lucide--server] size-3.5 text-text-3" />
@@ -182,8 +182,9 @@ export function WorkbenchPage({
 					</Panel>
 				</div>
 
-				<div className="flex min-w-0 flex-col gap-3 self-start @min-[1040px]:col-span-8 @min-[1440px]:col-span-5">
-					<Panel>
+				<div className="flex min-h-0 min-w-0 flex-col gap-3 @min-[1040px]:col-span-8 @min-[1440px]:col-span-5">
+					{/* 三列同一套规则：每列最后一个面板 flex-1，高度不够时由它吸收。 */}
+					<Panel className="min-h-0 flex-1">
 						<PanelHeader
 							title={t("ui.panel.stage")}
 							hint={t(stage.headingKey)}
@@ -201,11 +202,11 @@ export function WorkbenchPage({
 
 				{/* 右：实时证据。宽面板下它独占一列，把剩下的高度全给调用日志。 */}
 				<div className="flex min-h-0 min-w-0 flex-col gap-3 @min-[1040px]:col-span-12 @min-[1440px]:col-span-4">
-					<div className="grid min-h-0 min-w-0 items-start gap-3 @min-[1040px]:grid-cols-2 @min-[1440px]:flex-1 @min-[1440px]:grid-cols-1 @min-[1440px]:items-stretch">
-						<Panel>
+					<div className="grid min-h-0 min-w-0 flex-1 items-stretch gap-3 @min-[1040px]:grid-cols-2 @min-[1440px]:grid-cols-1">
+						<Panel className="min-h-0 overflow-hidden">
 							<ReaLoopConsole snapshot={snapshot} />
 						</Panel>
-						<Panel className="min-h-0 overflow-hidden">
+						<Panel className="min-h-0 flex-1 overflow-hidden">
 							<PanelHeader
 								title={t("ui.panel.recentCalls")}
 								badge={calls.length}

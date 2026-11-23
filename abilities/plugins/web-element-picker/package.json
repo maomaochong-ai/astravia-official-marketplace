@@ -1,6 +1,6 @@
 {
   "name": "@astravia-marketplace/web-element-picker",
-  "version": "0.3.13",
+  "version": "0.3.14",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,7 +14,7 @@
     "@types/react": "19.1.1",
     "@types/react-dom": "19.1.1",
     "@astravia-org/plugin-cli": "^0.1.7",
-    "@astravia-org/plugin-sdk": "^0.3.10",
+    "@astravia-org/plugin-sdk": "^0.3.13",
     "@astravia-org/plugin-vite": "^0.2.4",
     "react": "19.1.1",
     "react-dom": "19.1.1",
