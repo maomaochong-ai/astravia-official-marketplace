@@ -29,13 +29,13 @@
 
 | | 引擎 | 图像服务 |
 | --- | --- | --- |
-| 文件 | `<slug>.logocreator-design/variants/N.svg` + `design.astravia-log` | 宿主 blob（PNG），记录里只有 blobId |
-| 可重建 | 参数 + seed 相同 → 字节相同 | 不能重建，只能重生成 |
+| 文件 | `<slug>.logocreator-design/variants/N.svg`（512×512 画布）+ `design.astravia-log` | 宿主 blob（PNG，面板请求 1024×1024），记录里只有 blobId |
+| 可重建 | `renderLogo()` 参数 + seed 相同 → 字节相同 | 不能重建，只能重生成 |
 | 可编辑 | 改字段即改图 | 只能图生图微调 |
 | 计费 | 无 | 每张一次调用，走用户自己的额度 |
 
 ## 交付话术
 
-- 引擎：给 SVG + `design.astravia-log`，告诉他改哪个字段会变什么。
+- 引擎：给 SVG + `design.astravia-log`，告诉他改哪个字段会变什么（改 `style` 不动 seed 即可对照）。
 - 图像服务：**先说明**这是 PNG、不能放大、不能出品牌套件；再给图。
   用户如果要印刷件，回到引擎重出一版矢量，而不是把 PNG 塞进印刷稿。
