@@ -7,14 +7,14 @@ import { clearCanvasPromptState, setActiveConversation } from "../features/canva
 import { LOGO_TAB_ID } from "../tab-ids";
 
 /**
- * "Image generation works, but the canvas never opens."
+ * 「对话里做完了，tab 里什么都没有」。
  *
- * Two causes, both fixed here and both pinned by a test:
- *  1. the open call passed the *tool's* cwd. The SDK says to omit it for "the
- *     conversation the host is displaying"; passing a mismatched cwd records the tab
- *     against a conversation nobody is watching.
- *  2. a throwing `setActivityTabVisible` skipped `openActivityTab` entirely, and the
- *     failure was swallowed by an empty catch.
+ * 三个成因，全部钉在这里：
+ *  1. 宿主对「cwd 与会话不匹配」常常是**静默无操作**，不抛错 —— 所以「抛错才重试带 cwd」
+ *     永远不会触发。现在两种目标各调一次，不靠异常做判据；
+ *  2. 参考插件（astravia-ui-design）的工具显式传 `{ cwd: session.cwd }`，SDK 文档也说
+ *     tool handler 应当传自己的 cwd；只传不带 cwd 的那一种在某些宿主里根本不开面板；
+ *  3. 一次 `setActivityTabVisible` 抛错曾把 `openActivityTab` 一起跳过，失败还被吞掉。
  */
 
 function host(options: { failVisible?: boolean } = {}) {
@@ -27,7 +27,7 @@ function host(options: { failVisible?: boolean } = {}) {
 }
 
 describe("bringing the canvas up", () => {
-	it("opens the tab for the conversation the host is showing, not a tool cwd", () => {
+	it("attaches and opens for the tool session as well as the visible conversation", () => {
 		clearPendingDesigns();
 		clearCanvasPromptState();
 		const { ctx, setActivityTabVisible, openActivityTab } = host();
@@ -35,9 +35,26 @@ describe("bringing the canvas up", () => {
 		const result = revealInCanvas(ctx, "C:/repo/demo", "design-1");
 
 		expect(result.opened).toBe(true);
-		// No positional cwd and no `{cwd}`: both calls default to the visible conversation.
-		expect(setActivityTabVisible.mock.calls[0]).toEqual([LOGO_TAB_ID, true]);
-		expect(openActivityTab.mock.calls[0]).toEqual([LOGO_TAB_ID, { width: "max" }]);
+		// 两条路径都走：带 cwd（SDK 对 tool handler 的约定）与不带 cwd（前台会话）。
+		expect(setActivityTabVisible.mock.calls).toEqual([
+			[LOGO_TAB_ID, true, { cwd: "C:/repo/demo" }],
+			[LOGO_TAB_ID, true, undefined],
+		]);
+		expect(openActivityTab.mock.calls).toEqual([
+			[LOGO_TAB_ID, { width: "max", cwd: "C:/repo/demo" }],
+			[LOGO_TAB_ID, { width: "max" }],
+		]);
+	});
+
+	it("still opens the visible conversation when there is no tool cwd", () => {
+		clearPendingDesigns();
+		clearCanvasPromptState();
+		const { ctx, setActivityTabVisible, openActivityTab } = host();
+
+		revealInCanvas(ctx, null, "design-x");
+
+		expect(setActivityTabVisible.mock.calls).toEqual([[LOGO_TAB_ID, true, undefined]]);
+		expect(openActivityTab.mock.calls).toEqual([[LOGO_TAB_ID, { width: "max" }]]);
 	});
 
 	it("hands the design over under both scopes, so whichever the panel reads matches", () => {
@@ -48,7 +65,6 @@ describe("bringing the canvas up", () => {
 
 		revealInCanvas(ctx, "C:/repo/other", "design-2");
 
-		// The tool's cwd and the active conversation can differ; both keys carry the id.
 		expect(claimPendingDesignId("C:/repo/other")).toBe("design-2");
 		expect(claimPendingDesignId("C:/repo/demo")).toBe("design-2");
 	});
@@ -62,7 +78,7 @@ describe("bringing the canvas up", () => {
 
 		expect(result.opened).toBe(false);
 		expect(String(result.error)).toMatch(/permission denied/i);
-		// One failing call must not skip the one that actually shows the tab.
+		// 一次失败不能跳过真正把面板显示出来的调用。
 		expect(openActivityTab).toHaveBeenCalled();
 	});
 });

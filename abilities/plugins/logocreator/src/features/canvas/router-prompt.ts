@@ -18,6 +18,7 @@ export function routerPrompt(): string {
 		"- Raster marks (photographic texture, a character in a pose, anything the engine's 26 pictograms cannot draw): `logocreator_image`. It spends the user's own image provider.",
 		"- Unsure which structure/style to pick: `logocreator_plan` turns one sentence into three concrete specs with reasons.",
 		"- The user pinned notes on the canvas: `logocreator_notes` lists them; resolve each one after the fix.",
+		"Output layout: one folder per brand — `logo-designs/<slug>/` — holding `design.json` (spec, palette, every variant, kit file list), `mark.svg` and `variants/N.svg`; the brand kit goes to `logo-designs/<slug>/kit/`. Never scatter SVGs loose in the project root or invent an extra export directory.",
 		"Both paths store into the same canvas history; after a run the panel opens on the new design, so do not tell the user to open it themselves.",
 		"Read the `logocreator` skill before a multi-step identity task; it carries the decision rules and the limits of each path.",
 	].join("\n");
