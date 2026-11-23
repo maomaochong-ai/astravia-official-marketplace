@@ -72,6 +72,7 @@
   "export.title": "导出与格式",
   "export.webp": "WebP",
   "export.webpUnsupported": "当前环境不支持 WebP，已改存 PNG。",
+  "fileExplorer.openDesign": "在 LogoCreator 中打开",
   "gallery.title": "你的标志",
   "gallery.viewAll": "全部 {{count}} 个",
   "hint.aiMode": "AI 路径返回的是位图：只能导出 PNG，也无法放大重绘。",
