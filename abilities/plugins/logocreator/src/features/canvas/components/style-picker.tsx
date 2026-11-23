@@ -1,8 +1,7 @@
 import { useMemo, useState, type JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { STYLE_ENTRIES } from "../../../domain/catalog";
-import { normalizeSpec } from "../../../domain/spec";
-import { cachedRender } from "../preview-cache";
+import { styleSampleUrl } from "../../../domain/sample-mark";
 import { FOCUS_RING } from "../../../shared/styles/tokens";
 import type { StyleId } from "../../../domain/spec";
 
@@ -12,48 +11,20 @@ export interface StylePickerProps {
 }
 
 /**
- * Eight styles, each previewed by its own sample.
+ * 八个风格，每格是**同一枚中性徽标**在该风格下的真实渲染。
  *
- * Two decisions here, both from a real defect:
+ * 上一版每格画一只动物：差异来自「动物画得好不好」，看起来像手绘（用户原话）。
+ * 现在固定图形、只变风格配方，差别落在笔画重量、圆角与渐变上 —— 那才是这一格要回答的问题。
  *
- *  - The tiles used to render *the user's current brief* in eight styles, which made
- *    them all look like the same leaf — indistinguishable placeholder art — and cost
- *    eight renders + eight data-URL encodes on every keystroke. Each tile now draws a
- *    fixed sample that is chosen to show what that style actually does (a cup for
- *    hand-drawn, a shield for geometric, an aperture for 3d), computed once and cached.
- *  - The samples are our own engine output, not stock images: a downloaded photo would
- *    not be what the style does, so it would misrepresent the choice.
+ * 样张是引擎的产物而不是下载的图：外部图片不会是「这个风格做出来的东西」，
+ * 用它预览等于骗选择。渲染结果按风格缓存一次，切表单不重算。
  */
-const SAMPLES: Record<StyleId, { brand: string; intent: string; type: "icon-name" | "icon" }> = {
-	minimal: { brand: "Moss", intent: "a leaf mark for a garden studio", type: "icon-name" },
-	geometric: { brand: "Quanta", intent: "a shield mark for security software", type: "icon-name" },
-	gradient: { brand: "Tidewell", intent: "a wave mark for an ocean data platform", type: "icon-name" },
-	mascot: { brand: "Hootly", intent: "a friendly owl mascot", type: "icon-name" },
-	"hand-drawn": { brand: "Kettle Lane", intent: "a hand-drawn cup for a coffee roastery", type: "icon-name" },
-	luxury: { brand: "Auric", intent: "a pillar mark for a private law firm", type: "icon-name" },
-	retro: { brand: "Vintage", intent: "a flame badge for a grill house", type: "icon-name" },
-	"3d": { brand: "Ember", intent: "a spark mark for a gaming studio", type: "icon-name" },
-};
-
 export function StylePicker({ value, onChange }: StylePickerProps): JSX.Element {
 	const { t } = useTranslation();
 	const [hovered, setHovered] = useState<StyleId | null>(null);
 
-	// Computed once per mount, first paint only: the samples do not depend on the form.
 	const previews = useMemo(
-		() =>
-			STYLE_ENTRIES.map((entry) => {
-				const sample = SAMPLES[entry.id];
-				const spec = normalizeSpec({
-					brandName: sample.brand,
-					intent: sample.intent,
-					type: sample.type,
-					style: entry.id,
-					detail: "minimal",
-					seed: 11,
-				});
-				return { id: entry.id, url: cachedRender(spec, { markOnly: true, idSalt: `sample-${entry.id}` }).url };
-			}),
+		() => STYLE_ENTRIES.map(entry => ({ id: entry.id, url: styleSampleUrl(entry.id) })),
 		[],
 	);
 
@@ -72,12 +43,12 @@ export function StylePicker({ value, onChange }: StylePickerProps): JSX.Element 
 						onMouseEnter={() => setHovered(entry.id)}
 						onMouseLeave={() => setHovered(null)}
 						title={t(entry.hintKey)}
-						className={`${FOCUS_RING} overflow-hidden rounded-lg border transition-colors ${
-							active ? "border-primary" : "border-border hover:border-foreground/25"
+						className={`${FOCUS_RING} overflow-hidden rounded-md border-0 transition-colors ${
+							active ? "bg-primary/10 ring-1 ring-primary" : "bg-muted/40 hover:bg-muted/70"
 						}`}
 					>
-						<span className={`block aspect-square w-full ${active ? "bg-primary/10" : "bg-muted/40"}`}>
-							<img src={preview?.url} alt="" className="size-full object-contain p-1" draggable={false} />
+						<span className="block aspect-square w-full">
+							<img src={preview?.url} alt="" className="size-full object-contain p-1.5" draggable={false} />
 						</span>
 						<span
 							className={`block truncate px-1 pb-1 text-[10px] font-medium ${

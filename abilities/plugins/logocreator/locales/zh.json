@@ -162,6 +162,7 @@
   "panel.crashTitle": "LogoCreator 面板没能渲染",
   "panel.history": "历史",
   "panel.localBadge": "本地",
+  "panel.openingEngine": "正在打开 Logo 设计引擎…",
   "panel.previewAlt": "当前标志预览",
   "panel.reset": "重置表单",
   "panel.subtitle": "标志设计画布：图形、组合、配色与整套品牌套件，都在这一个面板里完成。",

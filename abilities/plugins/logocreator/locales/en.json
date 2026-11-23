@@ -162,6 +162,7 @@
   "panel.crashTitle": "LogoCreator could not render",
   "panel.history": "History",
   "panel.localBadge": "Local",
+  "panel.openingEngine": "Opening the Logo engine…",
   "panel.previewAlt": "Current logo preview",
   "panel.reset": "Reset the form",
   "panel.subtitle": "A logo canvas: mark, lockup, palette and a complete brand kit, all in one panel.",

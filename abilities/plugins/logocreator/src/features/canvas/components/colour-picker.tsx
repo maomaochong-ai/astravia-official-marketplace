@@ -6,6 +6,7 @@ import { isHexColor, normalizeHex } from "../../../domain/palette";
 import { AUTO } from "../../../domain/spec";
 import { reportError } from "../../../plugin-context";
 import { FOCUS_RING } from "../../../shared/styles/tokens";
+import { IconEyedropper } from "../../../shared/components/icons";
 
 export interface ColourPickerProps {
 	value: string;
@@ -60,8 +61,8 @@ export function ColourPicker({ value, autoHex, onChange, swatches, labels }: Col
 				onClick={() => onChange(AUTO)}
 				aria-pressed={isAuto}
 				title={labels.auto}
-				className={`${FOCUS_RING} flex h-7 items-center gap-1.5 rounded-full border px-2 text-[11px] font-medium transition-colors ${
-					isAuto ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
+				className={`${FOCUS_RING} flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full px-2 text-[11px] font-medium transition-colors ${
+					isAuto ? "bg-primary/10 text-foreground ring-1 ring-primary" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
 				}`}
 			>
 				<span
@@ -91,7 +92,7 @@ export function ColourPicker({ value, autoHex, onChange, swatches, labels }: Col
 			})}
 
 			<label
-				className="relative flex size-7 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-dashed border-border text-muted-foreground transition-colors hover:text-foreground"
+				className="relative flex size-7 cursor-pointer items-center justify-center overflow-hidden rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
 				title={labels.custom}
 			>
 				<input
@@ -103,19 +104,17 @@ export function ColourPicker({ value, autoHex, onChange, swatches, labels }: Col
 					className="absolute inset-0 cursor-pointer opacity-0"
 					aria-label={labels.custom}
 				/>
-				<svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-					<path d="M12 5v14M5 12h14" strokeLinecap="round" />
-				</svg>
+				<IconEyedropper className="size-3.5" />
 			</label>
 
 			<button
 				type="button"
 				onClick={() => fileRef.current?.click()}
 				disabled={busy}
-				className={`${FOCUS_RING} flex h-7 items-center gap-1 rounded-full border border-border px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50`}
+				className={`${FOCUS_RING} flex h-7 items-center gap-1 whitespace-nowrap rounded-full px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground disabled:opacity-50`}
 				title={labels.fromImage}
 			>
-				{busy ? "…" : labels.fromImage}
+				{busy ? <span className="size-3.5" /> : <IconEyedropper className="size-3.5" />}
 			</button>
 			<input
 				ref={fileRef}

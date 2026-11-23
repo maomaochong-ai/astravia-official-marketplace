@@ -70,11 +70,28 @@ export function useGeneration(messages: {
 	const [aiDenied, setAiDenied] = useState(false);
 	const [lastCreatedId, setLastCreatedId] = useState<string | null>(null);
 	const busy = useRef(false);
+	/** 用户自己切过模式：之后不再被「自动选图像服务」覆盖。 */
+	const choseMode = useRef(false);
 
 	const refreshProviders = useCallback(async () => {
 		try {
-			setProviders(await listImageProviders(getPluginContext()));
+			const next = await listImageProviders(getPluginContext());
+			setProviders(next);
 			setAiDenied(false);
+			/*
+			 * 宿主已经配了图像服务就**自动选它**。
+			 *
+			 * 用户要的是成图质量：本地矢量引擎是兜底，不是首选。反过来，用户一旦自己
+			 * 切到矢量（choseMode），就不再被自动改回去 —— 那是他的选择，不是默认值。
+			 */
+			if (next.length > 0 && !choseMode.current) {
+				setMode("ai");
+				setSettings(current =>
+					current.providerId && next.some(provider => provider.id === current.providerId)
+						? current
+						: { ...current, providerId: next[0]?.id },
+				);
+			}
 		} catch (cause) {
 			// Two very different situations collapse into "the AI mode cannot run":
 			// the host has no provider, or the host never granted the permission (an
@@ -199,7 +216,11 @@ export function useGeneration(messages: {
 
 	return {
 		mode,
-		setMode,
+		// 用户手动切模式时打上「已选择」标记，自动选图像服务就不再覆盖它。
+		setMode: (next: EngineMode) => {
+			choseMode.current = true;
+			setMode(next);
+		},
 		running,
 		settings,
 		updateSettings,

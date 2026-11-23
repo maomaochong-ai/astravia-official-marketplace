@@ -23,7 +23,9 @@ import { normalizeSpec, type LogoSpec } from "./spec";
  * 于是「在文件树里点开这份设计 → 画布打开并载入它」和宿主自己的设计文档一致。
  */
 
-export const DESIGN_MANIFEST = "design.json";
+export const DESIGN_MANIFEST = "design.astravia-log";
+/** 旧版本写过的名字：仍要能读，否则升级后打不开自己的设计。 */
+export const LEGACY_MANIFEST = "design.json";
 export const DESIGN_MANIFEST_SCHEMA = 1;
 /** 目录后缀。带点，与 `*.astravia-design` 同一套读法。 */
 export const DESIGN_FOLDER_SUFFIX = ".logocreator-design";
@@ -135,7 +137,10 @@ function isVariant(value: unknown): value is ManifestVariant {
 /** 读不到、坏了、版本不认识 —— 一律返回 null，让调用方按「新建」处理，不让它抛。 */
 export async function readManifest(fs: PluginFsApi, folder: string, brand: string): Promise<DesignManifest | null> {
 	try {
-		const result = await fs.readFile(`${folder}/${DESIGN_MANIFEST}`);
+		// 新名字读不到就退回旧名字：升级不能把用户已有的设计文件变成「不存在」。
+		const result = await fs
+			.readFile(`${folder}/${DESIGN_MANIFEST}`)
+			.catch(() => fs.readFile(`${folder}/${LEGACY_MANIFEST}`));
 		return coerceManifest(JSON.parse(result.content), { brand, slug: slugOfFolder(folder) });
 	} catch {
 		return null;

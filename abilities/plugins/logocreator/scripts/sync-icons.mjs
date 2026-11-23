@@ -51,6 +51,7 @@ const ICONS = {
 	eye: "eye-bold",
 	vector: "layers-minimalistic-bold",
 	palette: "palette-bold",
+	eyedropper: "pipette-bold",
 	imageSize: "ruler-cross-pen-bold",
 	folder: "folder-bold",
 };

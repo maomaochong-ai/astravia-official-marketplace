@@ -77,6 +77,7 @@ agent 说走图像生成，插件却只有一个矢量工具。现在两条路�
 
 | 文件 | 读它的时候 |
 | --- | --- |
+| `references/engine-vs-image.md` | **第一步**：选矢量引擎还是宿主图像服务；宿主已配服务时面板会自动选它 |
 | `references/directions.md` | brief 四栏 → 四个参数的决定顺序、该问什么 |
 | `references/structure.md` | 定 `type`：六种结构的几何与长度上限 |
 | `references/style-fit.md` | 定 `style`：八种风格的参数表与行业对照 |

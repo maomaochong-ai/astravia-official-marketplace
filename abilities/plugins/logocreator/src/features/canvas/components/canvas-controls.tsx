@@ -97,8 +97,8 @@ export function CanvasControls({
 								type="button"
 								onClick={() => patch({ surface: option.id })}
 								aria-pressed={active}
-								className={`flex h-7 items-center gap-1.5 rounded-full border px-2 text-[11px] font-medium transition-colors ${
-									active ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
+								className={`flex h-7 items-center gap-1.5 rounded-full px-2 text-[11px] font-medium whitespace-nowrap transition-colors ${
+									active ? "bg-primary/10 text-foreground ring-1 ring-primary" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
 								}`}
 							>
 								<span
@@ -124,9 +124,6 @@ export function CanvasControls({
 				aiMode={aiMode}
 			/>
 
-			<div className={`${CARD} bg-muted/30 px-2 py-2 text-[11px] leading-snug text-muted-foreground`}>
-				{t("hint.localEngine")}
-			</div>
 		</div>
 	);
 }

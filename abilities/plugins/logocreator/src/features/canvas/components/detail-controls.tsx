@@ -17,10 +17,12 @@ export interface DetailControlsProps {
 }
 
 /**
- * Detail level, monochrome, variation count and the freeform brief.
+ * 细节档、单色、变体数与自由描述。
  *
- * The subject readout is not decoration: it is how a user learns that "warm
- * roastery" produced a cup rather than a leaf, without opening the debug tools.
+ * - 描述框 `resize-y`：长 brief 是常态，固定两行时用户看不到自己刚写的那半句；
+ * - 「单色」与「变体数」两枚控件都窄，标签一律 `whitespace-nowrap`，数字框只留三位宽 ——
+ *   上一版换行时「变体数」被拆成竖排两个字。
+ * - subject 回显不是装饰：它让用户看到「温暖的烘焙店」被读成了杯子而不是叶子。
  */
 export function DetailControls({ spec, onPatch, variations, onVariations, subject, aiMode }: DetailControlsProps): JSX.Element {
 	const { t } = useTranslation();
@@ -40,7 +42,7 @@ export function DetailControls({ spec, onPatch, variations, onVariations, subjec
 			<div>
 				<span className={SECTION_LABEL}>{t("label.intent")}</span>
 				<textarea
-					className={TEXTAREA}
+					className={`${TEXTAREA} min-h-14 resize-y`}
 					rows={2}
 					value={spec.intent}
 					onChange={(event) => onPatch({ intent: event.target.value })}
@@ -54,7 +56,7 @@ export function DetailControls({ spec, onPatch, variations, onVariations, subjec
 			</div>
 
 			<div className="flex flex-wrap items-center justify-between gap-2">
-				<label className="flex cursor-pointer items-center gap-2 text-[12px] text-foreground">
+				<label className="flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap text-[12px] text-foreground">
 					<input
 						type="checkbox"
 						checked={spec.monochrome}
@@ -64,7 +66,7 @@ export function DetailControls({ spec, onPatch, variations, onVariations, subjec
 					{t("label.monochrome")}
 				</label>
 
-				<label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+				<label className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[12px] text-muted-foreground">
 					{t("label.variations")}
 					<input
 						type="number"
@@ -72,17 +74,11 @@ export function DetailControls({ spec, onPatch, variations, onVariations, subjec
 						max={8}
 						value={variations}
 						onChange={(event) => onVariations(Number(event.target.value) || 1)}
-						className={`${INPUT} h-7 w-14 px-2 text-center text-[12px]`}
+						className={`${INPUT} h-7 w-12 px-1 text-center tabular-nums text-[12px]`}
 						aria-label={t("label.variations")}
 					/>
 				</label>
 			</div>
-
-			{aiMode ? (
-				<p className="rounded-lg bg-muted/60 px-2 py-1.5 text-[11px] leading-snug text-muted-foreground">
-					{t("hint.aiMode")}
-				</p>
-			) : null}
 		</div>
 	);
 }

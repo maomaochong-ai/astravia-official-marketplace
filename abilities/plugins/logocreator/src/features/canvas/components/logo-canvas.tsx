@@ -273,6 +273,18 @@ export function LogoCanvas(): JSX.Element {
 			<div className="relative min-h-0 flex-1">
 				<div className="absolute inset-0 flex items-center justify-center p-4 pb-16">
 					<div className="w-full max-w-[min(100%,34rem)]">
+						{/*
+						 * 首次打开：设计历史还在从宿主存储里读，先给一句「正在打开 Logo 设计引擎」。
+						 * 第二次起存储已在本进程内 hydrate 完，`history.ready` 首帧就是 true，不会闪。
+						 * 这不是装饰：面板刚从宿主滑出时如果直接画空白，用户会以为插件挂了。
+						 */}
+						{history.ready ? null : (
+							<div data-testid="engine-skeleton" className="flex h-64 flex-col items-center justify-center gap-2 text-muted-foreground">
+								<span className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+								<span className="text-[11.5px]">{t("panel.openingEngine")}</span>
+							</div>
+						)}
+						{history.ready ? (
 						<CanvasSurface
 							previewUrl={preview}
 							alt={t("panel.previewAlt")}
@@ -282,11 +294,12 @@ export function LogoCanvas(): JSX.Element {
 							// Empty = nothing typed and nothing stored: show the cover, not a logo for
 							// a brand called "Untitled".
 							empty={!form.spec.brandName.trim() && !rasterUrl && history.items.length === 0}
-						rasterUrl={rasterUrl}
-						onPlace={async (point, text, scope, part) =>
-							notes.add({ designId: selectedId, text, ...point, scope, part })
-						}
+							rasterUrl={rasterUrl}
+							onPlace={async (point, text, scope, part) =>
+								notes.add({ designId: selectedId, text, ...point, scope, part })
+							}
 						/>
+						) : null}
 					</div>
 				</div>
 
@@ -366,31 +379,12 @@ export function LogoCanvas(): JSX.Element {
 					</button>
 				</div>
 
-				{/* Recent results, floating over the stage's lower edge — visible the
-				    moment a run lands, without stealing the stage. */}
-				{history.ready ? (
-					<div className="absolute inset-x-0 bottom-16 z-20 px-3">
-						<ResultGrid
-							compact
-							records={history.items.slice(0, 8)}
-							ready={history.ready}
-							selectedId={selectedId}
-							locale={locale}
-							label={history.label}
-							onSelect={(record) => {
-								form.load(record.spec);
-								setSelectedId(record.id);
-							}}
-							onToggleFavorite={(record) => void history.setFavorite(record.id, !record.favorite)}
-							onSaveSvg={handleSaveSvg}
-							onSavePng={(record) => void handleSavePng(record)}
-							onOpenKit={setKitRecord}
-							onDelete={(record) => void history.remove(record.id)}
-							t={t}
-							emptyState={<span />}
-						/>
-					</div>
-				) : null}
+				{/*
+				 * 浮动结果栏已移除。
+				 *
+				 * 它把最近 8 份设计缩略图铺在画布下半部分（截图里那排小图标），与画布本身抢注意力，
+				 * 而历史已经是右上市一个按钮 + 一个完整抽屉。同一份数据两个入口，代价是画布看不见了。
+				 */}
 
 				<CanvasDock
 					canGenerate={canGenerate}

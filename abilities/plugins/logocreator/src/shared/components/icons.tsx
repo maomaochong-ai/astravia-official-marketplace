@@ -67,6 +67,7 @@ export const IconRename = glyph("rename");
 export const IconEye = glyph("eye");
 export const IconVector = glyph("vector");
 export const IconPalette = glyph("palette");
+export const IconEyedropper = glyph("eyedropper");
 
 /** 旧名字保留成别名：画布与对话框里还有调用点，改名不该顺手改动那些文件。 */
 export const IconCanvas = IconVector;
