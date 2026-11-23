@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { IconExport, IconGenerate, IconImageSize, IconNote, IconReference, IconShuffle, IconSliders } from "../../../shared/components/icons";
+import { IconExport, IconGenerate, IconNote, IconRaster, IconReference, IconShuffle, IconSliders } from "../../../shared/components/icons";
 import { FOCUS_RING } from "../../../shared/styles/tokens";
 
 export interface CanvasDockProps {
@@ -118,7 +118,7 @@ export function CanvasDock({
 							label={t("dock.image")}
 							disabled={running || !canGenerate}
 							onClick={onGenerateImage}
-							icon={<IconImageSize />}
+							icon={<IconRaster />}
 						/>
 						{onGenerateFromReference ? (
 							// 「改这一张」：面板里的 image-to-image。以前只有对话里的工具能做，

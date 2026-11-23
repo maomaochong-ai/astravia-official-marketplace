@@ -100,7 +100,8 @@ beforeEach(() => {
 		useActiveConversation: () => ({}) as never,
 		useConversationMessages: () => [],
 		usePromptAttachment: () => null,
-		useSidebarState: () => ({ visible: true, collapsed: false, narrow: false }),
+		useSidebarState: () => ({ visible: true, collapsed: false, narrow: false, width: 240 }),
+	ModelPicker: () => null,
 		conversation: {} as never,
 	});
 });

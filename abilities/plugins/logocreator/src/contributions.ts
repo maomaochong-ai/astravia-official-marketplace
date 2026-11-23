@@ -10,14 +10,14 @@
 export const PLUGIN_NAME_KEY = "%name%";
 export const TAB_LABEL_KEY = "%tab.label%";
 export const INPUT_ACTION_LABEL_KEY = "%panel.title%";
-/**
+/*
  * 身份字符串用**字面值**，不用 `%key%`。
  *
- * `skillPresentation.displayName` 与编辑器标签这些会进了消息 token / 历史记录的地方，
- * 一旦宿主某条路径没解析 `%…%`，用户看到的就是 `%name%`（实际发生过）。
- * 能力卡与 tab 仍走 `%tab.label%`：它们在每次渲染时都重新解析，且有测试盯。
+ * `skillPresentation.displayName` 与编辑器标签这些会进消息 token / 历史记录的地方，
+ * 一旦宿主某条路径没解析 `%…%`，用户看到的就是 `%name%`（实际发生过）。所以那个字段写在
+ * `plugin.json` 里是字面值，不在这里留一份可能漂移的常量。
+ * 能力卡与 tab 仍走 `%tab.label%`：每次渲染都重新解析，且 `host-labels.test.ts` 逐条验证。
  */
-export const SKILL_DISPLAY_NAME = "LogoCreator";
 export const OPEN_FOLDER_LABEL_KEY = "%fileExplorer.openDesign%";
 
 export const TOOL_LABELS = {

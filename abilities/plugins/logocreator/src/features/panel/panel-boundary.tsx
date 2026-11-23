@@ -46,7 +46,20 @@ export class PanelBoundary extends Component<PanelBoundaryProps, PanelBoundarySt
 	}
 
 	render(): ReactNode {
-		if (this.state.message === null) return <div key={this.props.resetKey}>{this.props.children}</div>;
+		if (this.state.message === null) {
+			/*
+			 * 包层必须**把高度传下去**。
+			 *
+			 * 这里原来是一个裸 `<div key>`：它高度 auto，于是里面画布的 `h-full` 解析成 0，
+			 * 而画布的区域全是绝对定位的子元素 —— 全被裁掉，面板只剩一条背景色。
+			 * 「tab 打开了但里面是空的」就是这个包层造成的。
+			 */
+			return (
+				<div key={this.props.resetKey} className="flex h-full min-h-0 w-full flex-col">
+					{this.props.children}
+				</div>
+			);
+		}
 		return (
 			<div className="flex h-full min-h-0 w-full flex-col items-center justify-center gap-2 bg-background px-6 py-10 text-center text-foreground">
 				<p className="text-[13px] font-semibold">{this.props.title}</p>

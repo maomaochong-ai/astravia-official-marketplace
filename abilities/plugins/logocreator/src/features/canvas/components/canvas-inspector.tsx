@@ -102,6 +102,17 @@ export function CanvasInspector({
 					<div className="space-y-3">
 						<BriefPlanner onPlan={onPlan} />
 						<CanvasControls {...controls} />
+						{/*
+						 * 参数面板与宿主 AI 的关系必须写在这里，而不是靠用户猜。
+						 * “侧边栏改了参数，发到宿主到底带没带上？”是真实疑问；答案是：每次请求都带。
+						 */}
+						<section
+							data-testid="inspector-host-note"
+							className="rounded-lg border border-border/60 bg-background/60 px-2.5 py-2"
+						>
+							<p className="text-[11px] font-medium text-foreground">{t("inspector.hostNote")}</p>
+							<p className="mt-1 text-[10.5px] leading-relaxed text-muted-foreground">{t("inspector.hostNoteBody")}</p>
+						</section>
 					</div>
 				) : (
 					<div className="space-y-3">

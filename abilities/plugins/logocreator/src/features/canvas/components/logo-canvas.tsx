@@ -18,6 +18,7 @@ import { publishCanvasSpec } from "../canvas-prompt";
 import { useRasterUrl } from "../hooks/use-raster-url";
 import { useNotesHandoff } from "../hooks/use-notes-handoff";
 import { cachedRender } from "../preview-cache";
+import { describeSpec } from "../describe-spec";
 import { AiSettingsDialog } from "./ai-settings-dialog";
 import { BrandKitDialog } from "./brand-kit-dialog";
 import { CanvasDock } from "./canvas-dock";
@@ -67,7 +68,11 @@ export function LogoCanvas(): JSX.Element {
 	});
 	// Reference-aligned hand-off: it knows when to create a session, when the agent is
 		// already running, and when the conversation belongs to another project.
-	const handoff = useNotesHandoff(cwd);
+	const handoff = useNotesHandoff(
+		cwd,
+		// “对话式修改”要能真的改到这份稿：把参数一起交底，agent 才不会另猜一套。
+		describeSpec(form.spec),
+	);
 	const notes = useCanvasNotes({
 		sendFailed: t("error.notesSend"),
 		addFailed: t("error.notesAdd"),

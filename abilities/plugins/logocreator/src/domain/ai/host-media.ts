@@ -192,6 +192,14 @@ export async function generateMarksWithHost(ctx: PluginContext, request: HostGen
 
 	for (let index = 0; index < Math.max(1, Math.min(8, request.count)); index += 1) {
 		try {
+			/*
+			 * `inputs` 是**必填数组**，即使文生图没有输入图。
+			 *
+			 * SDK 的 TS 类型写的是 `inputs?`，但宿主运行时的校验 schema 把
+			 * `inputs: Type.Array(mediaInputType)` 放在 generate 分支的必填项里（与 ownerId 并列）。
+			 * 省掉它就同时不匹配 generate / compose / transcode 三个分支，于是报
+			 * 「Capability input validation failed: / Expected union value」—— 光看类型是看不出来的。
+			 */
 			const job = await ctx.media.submit({
 				operation: "generate",
 				providerId: provider.id,
@@ -200,17 +208,15 @@ export async function generateMarksWithHost(ctx: PluginContext, request: HostGen
 				prompt,
 				...(provider.modelId ? { modelId: provider.modelId } : {}),
 				dimensions: { width: 1024, height: 1024 },
-				...(request.referenceBlobId
-					? {
-							inputs: [
-								{
-									kind: "image" as const,
-									mimeType: "image/png",
-									source: { type: "plugin-blob" as const, blobId: request.referenceBlobId },
-								},
-							],
-						}
-					: {}),
+				inputs: request.referenceBlobId
+					? [
+							{
+								kind: "image" as const,
+								mimeType: "image/png",
+								source: { type: "plugin-blob" as const, blobId: request.referenceBlobId },
+							},
+						]
+					: [],
 			});
 
 			// A provider may refuse synchronously (bad prompt, not signed in). Waiting on a

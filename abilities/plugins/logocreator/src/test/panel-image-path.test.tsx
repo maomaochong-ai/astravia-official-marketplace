@@ -114,7 +114,8 @@ beforeEach(() => {
 		useActiveConversation: () => ({ id: "s1", cwd: "C:/repo/demo", sessionPath: null, model: null, isStreaming: false }) as never,
 		useConversationMessages: () => [],
 		usePromptAttachment: () => null,
-		useSidebarState: () => ({ visible: true, collapsed: false, narrow: false }),
+		useSidebarState: () => ({ visible: true, collapsed: false, narrow: false, width: 240 }),
+	ModelPicker: () => null,
 		conversation: {} as never,
 	});
 });

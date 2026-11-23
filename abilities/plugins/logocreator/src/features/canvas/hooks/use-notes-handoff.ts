@@ -31,9 +31,16 @@ export interface NotesHandoff {
 
 const AUTO_DISPATCH_MS = 1_200;
 
-function dispatchPrompt(): string {
+/**
+ * 交给宿主的那句话。
+ *
+ * 只点名「读哪些备注」不够：用户刚在侧边栏改过结构 / 风格 / 主色，如果这句话不带参数，
+ * agent 就会自己去猜一套值，改出来的稿跟面板里的不是同一份。所以把当前参数一起交底。
+ */
+function dispatchPrompt(design: string): string {
 	return [
 		"The user has pinned notes on the LogoCreator canvas.",
+		...(design ? [`Current design: ${design}`] : []),
 		"Call logocreator_notes with no arguments to list every pending note — each one names the part of the mark it is about (the mark, the wordmark, the tagline, the background) or is marked as a whole-brand rule.",
 		"Work through them one at a time: change the fields a note names and re-render with logocreator_design, keeping the seed unless the note is about the mark's shape.",
 		"Then call logocreator_notes with action \"resolve\" and the id you actually addressed. Repeat until it reports nothing pending — including notes the user adds while you work.",
@@ -41,9 +48,16 @@ function dispatchPrompt(): string {
 	].join(" ");
 }
 
-export function useNotesHandoff(cwd: string | null): NotesHandoff {
+/**
+ * @param cwd     面板所属会话的工作区
+ * @param design  当前设计的参数摘要（由画布提供）；空串表示还没有稿
+ */
+export function useNotesHandoff(cwd: string | null, design = ""): NotesHandoff {
 	const { t } = useTranslation();
 	const [version, setVersion] = useState(0);
+	// 参数摘要每帧都可能变，但 send 的依赖不该跟着变：用 ref 取最新值。
+	const designRef = useRef(design);
+	designRef.current = design;
 
 	/**
 	 * 会话事件的订阅是**可降级**的。
@@ -118,7 +132,7 @@ export function useNotesHandoff(cwd: string | null): NotesHandoff {
 				if (needsSession && cwd !== null) {
 					await conversationApi.createSession(cwd);
 				}
-				await conversationApi.sendPrompt(dispatchPrompt());
+				await conversationApi.sendPrompt(dispatchPrompt(designRef.current));
 				return true;
 			} catch (error) {
 				getPluginContext().ui.notify({ message: t("notes.handoff.failed"), error });

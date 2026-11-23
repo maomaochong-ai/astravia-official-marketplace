@@ -29,8 +29,6 @@ export const DESIGN_MANIFEST_SCHEMA = 1;
 export const DESIGN_FOLDER_SUFFIX = ".logocreator-design";
 /** 文件树的扩展名口径：不带前导点，与宿主拿 `astravia-design` 认领目录一致。 */
 export const DESIGN_EXTENSION = DESIGN_FOLDER_SUFFIX.replace(/^\./, "");
-/** 兼容旧版：早期写在 `logo-designs/<slug>/`，只用于「旧目录仍可打开」。 */
-export const LEGACY_DESIGN_ROOT = "logo-designs";
 /** 清单里最多记多少条历史变体；文件本身不删，只是不再列出。 */
 export const MANIFEST_VARIANTS_CAP = 24;
 

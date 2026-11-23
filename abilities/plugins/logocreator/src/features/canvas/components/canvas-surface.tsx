@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type JSX, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type JSX, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { CanvasNote, NoteScope } from "../../../domain/notes";
 import { partAt } from "../../../domain/note-parts";
@@ -35,7 +35,27 @@ export interface CanvasSurfaceProps {
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 /** Screen pixels before a press counts as a drag rather than a click. */
+/** Screen pixels before a press counts as a drag rather than a click. */
 const DRAG_THRESHOLD = 4;
+/** 气泡宽度：与 class 里的 w-56 一致，用来在右/下边缘向内收。 */
+const POPOVER_WIDTH = 224;
+const POPOVER_HEIGHT = 176;
+/**
+ * 气泡定位：贴在点击点上，左右不越界。
+ *
+ * 只做水平钳位与竖向翻转（点击位置靠下时翻到上方），不做完整碰撞检测 ——
+ * 画布本身可平移，一个被推到边上的气泡反而更难看得懂它指的是哪个点。
+ */
+function popoverStyle(point: { x: number; y: number }): CSSProperties {
+	const half = (POPOVER_WIDTH / 2 / 100) * 100;
+	const left = Math.min(96, Math.max(4, point.x * 100));
+	const flipUp = point.y * 100 > 58;
+	return {
+		left: `calc(${left}% - ${half}px)`,
+		...(flipUp ? { bottom: `calc(${(1 - point.y) * 100}% + 12px)` } : { top: `calc(${point.y * 100}% + 12px)` }),
+		maxWidth: `calc(100% - 8px)`,
+	};
+}
 
 /**
  * The canvas itself: artwork, pins, pan/zoom, and the one-line note you drop on it.
@@ -197,11 +217,91 @@ export function CanvasSurface({
 						{index + 1}
 					</span>
 				))}
+
+				{/*
+				 * 备注气泡：点哪里就在哪里出现。
+				 *
+				 * 上一版把编辑器放在画布**下面**：点一下图，下方才出现一个输入框，中间还能拖动画布 ——
+				 * 用户得在两个地方之间来回看，而且气泡会被底部 dock 遮住。现在编辑器沿点击点弹出，
+				 * 贴着图、带箭头、不遮 dock：所见即所指。
+				 */}
 				{draft ? (
-					<span
-						className={`pointer-events-none absolute size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed ${NOTE_RING}`}
-						style={{ left: `${draft.x * 100}%`, top: `${draft.y * 100}%` }}
-					/>
+					<div
+						key="note-popover"
+						role="dialog"
+						aria-label={t("notes.add")}
+						data-testid="note-popover"
+						style={popoverStyle(draft)}
+						className="absolute z-50 w-56 rounded-xl border border-border/80 bg-popover p-2 text-popover-foreground shadow-lg ring-1 ring-black/5"
+						onPointerDown={(event) => event.stopPropagation()}
+						onClick={(event) => event.stopPropagation()}
+					>
+						<div className="pb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+							{t(`notes.part.${partAt({ type: spec.type }, draft.y)}`)}
+						</div>
+						{/* 作用域：两个选项的差别要说在选项里，不能只依赖两行小字说明。 */}
+						<div role="radiogroup" aria-label={t("notes.scope")} className="flex items-center gap-1 pb-1.5">
+							{(
+								[
+									{ id: "design" as const, label: t("notes.scopeDesign"), hint: t("notes.scopeDesignHint") },
+									{ id: "global" as const, label: t("notes.scopeGlobal"), hint: t("notes.scopeGlobalHint") },
+								]
+							).map((option) => (
+								<button
+									key={option.id}
+									type="button"
+									role="radio"
+									aria-checked={scope === option.id}
+									title={option.hint}
+									onClick={() => setScope(option.id)}
+									className={`rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors ${
+										scope === option.id
+											? "border-primary bg-primary/10 text-foreground"
+											: "border-border text-muted-foreground hover:text-foreground"
+									}`}
+								>
+									{option.label}
+								</button>
+							))}
+						</div>
+						<textarea
+							className="min-h-14 w-full resize-none rounded-md border border-border bg-background px-2 py-1 text-[12px] text-foreground outline-none focus:border-primary"
+							rows={2}
+							autoFocus
+							value={text}
+							onChange={(event) => setText(event.target.value)}
+							onKeyDown={(event) => {
+								if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) void submit();
+								if (event.key === "Escape") {
+									setDraft(null);
+									setText("");
+								}
+							}}
+							placeholder={t("notes.placeholder")}
+							aria-label={t("notes.placeholder")}
+							maxLength={600}
+						/>
+						<div className="flex items-center gap-1.5 pt-1.5">
+							<button
+								type="button"
+								onClick={() => void submit()}
+								disabled={saving || !text.trim()}
+								className={`${BUTTON_PRIMARY} ${FOCUS_RING} h-7 px-2.5 text-[11.5px]`}
+							>
+								{t("notes.add")}
+							</button>
+							<button
+								type="button"
+								onClick={() => {
+									setDraft(null);
+									setText("");
+								}}
+								className="text-[11px] text-muted-foreground hover:text-foreground"
+							>
+								{t("notes.cancel")}
+							</button>
+						</div>
+					</div>
 				) : null}
 
 				{/* Zoom readout doubles as the reset control, like the host's canvas. */}
@@ -221,69 +321,6 @@ export function CanvasSurface({
 					</button>
 				) : null}
 			</div>
-
-			{draft ? (
-				<div className="space-y-1.5">
-					<div role="radiogroup" aria-label={t("notes.scope")} className="flex items-center gap-1">
-						{(
-							[
-								{ id: "design" as const, label: t("notes.scopeDesign") },
-								{ id: "global" as const, label: t("notes.scopeGlobal") },
-							]
-						).map((option) => (
-							<button
-								key={option.id}
-								type="button"
-								role="radio"
-								aria-checked={scope === option.id}
-								onClick={() => setScope(option.id)}
-								className={`rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors ${
-									scope === option.id
-										? "border-primary bg-primary/10 text-foreground"
-										: "border-border text-muted-foreground hover:text-foreground"
-								}`}
-							>
-								{option.label}
-							</button>
-						))}
-						<span className="min-w-0 flex-1 truncate text-[10px] text-muted-foreground">
-							{t(`notes.part.${partAt({ type: spec.type }, draft.y)}`)}
-						</span>
-					</div>
-					<textarea
-						className={TEXTAREA}
-						rows={2}
-						autoFocus
-						value={text}
-						onChange={(event) => setText(event.target.value)}
-						placeholder={t("notes.placeholder")}
-						aria-label={t("notes.placeholder")}
-						maxLength={600}
-					/>
-					<div className="flex items-center gap-1.5">
-						<button
-							type="button"
-							onClick={() => void submit()}
-							disabled={saving || !text.trim()}
-							className={`${BUTTON_PRIMARY} ${FOCUS_RING} h-8 px-3 text-[12px]`}
-						>
-							{t("notes.add")}
-						</button>
-						<button
-							type="button"
-							onClick={() => {
-								setDraft(null);
-								setText("");
-							}}
-							className="text-[11px] text-muted-foreground hover:text-foreground"
-						>
-							{t("notes.cancel")}
-						</button>
-						<span className="flex-1" />
-						<span className="text-[10px] text-muted-foreground">{t("notes.hint")}</span>
-					</div>
-				</div>
-			) : null}
 		</div>
 	);
 }
