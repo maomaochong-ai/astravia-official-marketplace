@@ -37,6 +37,8 @@ export interface NotesHandoff {
 	blocked: HandoffBlock | null;
 	blockedReason: string | null;
 	isStreaming: boolean;
+	/** 会话在另一个工作区：仍然发进当前会话，面板只写一行提示。 */
+	workspaceMismatch: boolean;
 	/** A session will be created on send — the panel says so before the click. */
 	needsSession: boolean;
 	sendAll: () => Promise<boolean>;
@@ -111,20 +113,18 @@ export function useNotesHandoff(cwd: string | null, design = ""): NotesHandoff {
 	}, []);
 
 	const pending = getNoteStore().pending();
-	const needsSession = !conversation?.cwd && cwd !== null;
+	/**
+	 * 只有「宿主此刻没有任何活跃会话」才需要新建。
+	 *
+	 * 上一版用 `!conversation?.cwd` 判断，于是用户开着一个没有工作区的对话（在宿主里很常见）
+	 * 时，点「交给智能体」会另开一个会话，备注永远进不到他正在看的那个里。
+	 */
+	const needsSession = !conversation?.id && cwd !== null;
 
-	const blocked: HandoffBlock | null =
-		pending.length === 0
-			? "no-notes"
-			: needsSession
-				? null
-				: !conversation?.cwd
-					? "no-workspace"
-					: !sameWorkspace(conversation.cwd, cwd)
-						? "other-workspace"
-						: conversation.isStreaming
-							? "streaming"
-							: null;
+	const mismatch = cwd !== null && conversation?.cwd != null && !sameWorkspace(conversation.cwd, cwd);
+	// 只拦「没有备注」。工作区不一致与 streaming 都不是障碍：前者仍然发进用户正看着的会话，
+	// 后者宿主会排队（回执 status: "queued"），拦下来只会让按钮看起来没反应。
+	const blocked: HandoffBlock | null = pending.length === 0 ? "no-notes" : null;
 
 	const messages: Record<HandoffBlock, string> = {
 		"no-notes": t("notes.handoff.noNotes"),
@@ -138,15 +138,46 @@ export function useNotesHandoff(cwd: string | null, design = ""): NotesHandoff {
 			const conversationApi = getPluginContext().conversation;
 			const notes = getNoteStore().pending();
 			if (notes.length === 0) return false;
+			const prompt = dispatchPrompt(designRef.current);
 			try {
 				if (needsSession && cwd !== null) {
 					await conversationApi.createSession(cwd);
 				}
-				await conversationApi.sendPrompt(dispatchPrompt(designRef.current));
-				// 标记放在发送成功之后：先标会让失败的发送看起来像已交付，用户再点也发不出去。
+				const result = await conversationApi.sendPrompt(prompt);
+				if (result.status === "failed") {
+					throw new Error(result.error?.message ?? "The host refused the prompt.");
+				}
 				await getNoteStore().markDispatched(notes.map((note) => note.id));
+				getPluginContext().ui.notify({
+					message: result.status === "queued" ? t("notes.handoff.queued") : t("notes.handoff.sent"),
+					variant: "success",
+				});
 				return true;
 			} catch (error) {
+				// 没有活跃会话时 sendPrompt 抛错：这时才建一个（有 cwd 才建），再发一次。
+				if (cwd !== null) {
+					try {
+						await conversationApi.createSession(cwd);
+						const retry = await conversationApi.sendPrompt(prompt);
+						if (retry.status !== "failed") {
+							await getNoteStore().markDispatched(notes.map((note) => note.id));
+							getPluginContext().ui.notify({
+								message: retry.status === "queued" ? t("notes.handoff.queued") : t("notes.handoff.sent"),
+								variant: "success",
+							});
+							return true;
+						}
+					} catch (retryError) {
+						// 落下去给用户看的原因：建会话也失败。
+						error = retryError;
+					}
+				}
+				// 最后一道：至少把话填进输入框，用户能看到它、手动发。
+				try {
+					conversationApi.insertText(prompt);
+				} catch {
+					// insertText 不可用时只能报错。
+				}
 				getPluginContext().ui.notify({ message: t("notes.handoff.failed"), error });
 				return false;
 			}
@@ -165,10 +196,7 @@ export function useNotesHandoff(cwd: string | null, design = ""): NotesHandoff {
 		const fresh = getNoteStore().undispatched();
 		if (fresh.length === 0) return;
 		// A running turn will read the ledger itself; marking them stops the nagging.
-		if (blocked === "streaming") {
-			void getNoteStore().markDispatched(fresh.map((note) => note.id));
-			return;
-		}
+		// streaming 时宿主会把 prompt 排队（回执 queued），这里不拦：拦下来只会让按钮看起来失效。
 		if (blocked !== null) return;
 		const timer = window.setTimeout(() => {
 			void sendRef.current();
@@ -178,6 +206,7 @@ export function useNotesHandoff(cwd: string | null, design = ""): NotesHandoff {
 
 	return {
 		blocked,
+		workspaceMismatch: mismatch,
 		blockedReason: blocked === null ? null : messages[blocked],
 		isStreaming: conversation?.isStreaming ?? false,
 		needsSession,

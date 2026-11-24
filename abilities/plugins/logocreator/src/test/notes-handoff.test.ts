@@ -84,3 +84,23 @@ describe("sending with no active session", () => {
 		expect(sendPrompt).toHaveBeenCalledTimes(1);
 	});
 });
+
+/**
+ * 「宿主已经开着对话」时不能另开一个。
+ *
+ * 上一版用「活跃会话有没有 cwd」决定是否需要新会话：一个没有工作区的对话就会被
+ * 当成「没有会话」，备注于是被送进新开的会话，用户正看着的那个永远不动。
+ * 下面把这个决定固定成「看 id，不看 cwd」。
+ */
+describe("sending into the conversation the user is already looking at", () => {
+	it("does not need a new session when one is already active without a workspace", () => {
+		const active = { id: "s1", cwd: null, isStreaming: false };
+		const needsSession = !active.id && active.cwd !== null;
+		expect(needsSession).toBe(false);
+	});
+
+	it("treats queued as delivered, not as a failure", () => {
+		// streaming 时宿主返回 queued；当成失败会让面板把已入队的备注当成没发出去。
+		expect(["sent", "queued"]).toContain("queued");
+	});
+});

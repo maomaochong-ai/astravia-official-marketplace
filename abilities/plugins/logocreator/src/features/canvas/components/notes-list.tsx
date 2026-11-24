@@ -47,7 +47,7 @@ export function NotesList({
 				<button
 					type="button"
 					onClick={onHandToAgent}
-					disabled={busy}
+					disabled={busy || pending.length === 0}
 					aria-label={t("notes.handToAgent")}
 					title={blockedReason ?? (needsSession ? t("notes.handoff.willCreate") : t("notes.handToAgent"))}
 					className={`${BUTTON_SECONDARY} ${FOCUS_RING} h-7 text-[11px]`}

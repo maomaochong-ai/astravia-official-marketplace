@@ -2044,7 +2044,7 @@
       "slug": "logocreator",
       "name": "LogoCreator",
       "description": "A logo canvas in Astravia with two production lines: a local vector engine for print-ready marks, and the host's own image providers for anything the engine cannot draw. Raster results appear inline in the conversation with open-in-canvas, copy and edit-this-image.",
-      "version": "0.10.3",
+      "version": "0.10.4",
       "configVersion": 1,
       "author": "Astravia",
       "category": "Design",
@@ -2125,7 +2125,7 @@
       "slug": "ego",
       "name": "Ego Browser",
       "description": "Let the agent use the ego browser — your own logged-in sites included — and make it the default for browser work and web app testing.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia",
@@ -2148,7 +2148,7 @@
       "detail": {
         "i18n": {
           "zh": {
-            "name": "ego 浏览器",
+            "name": "Ego 浏览器",
             "description": "让智能体使用 ego 浏览器（包括你已登录的网站），并让它成为浏览器操作与 Web 应用测试的默认选择。",
             "tags": [
               "浏览器",
