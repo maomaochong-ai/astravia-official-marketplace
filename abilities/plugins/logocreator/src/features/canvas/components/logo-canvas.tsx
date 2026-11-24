@@ -65,6 +65,7 @@ export function LogoCanvas(): JSX.Element {
 		aiUnavailable: t("notify.aiUnavailable"),
 		aiNoProvider: t("notify.aiNoProvider"),
 		aiFailed: t("notify.aiFailed"),
+		aiFailedHint: t("notify.aiFailedHint"),
 		localFailed: t("notify.localFailed"),
 		aiDone: (count) => t("notify.aiDone", { count }),
 		aiPartial: (failed) => t("notify.aiPartial", { failed }),

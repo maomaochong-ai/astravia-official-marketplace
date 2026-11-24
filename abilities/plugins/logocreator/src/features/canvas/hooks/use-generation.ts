@@ -58,6 +58,8 @@ export function useGeneration(messages: {
 	/** Shown when the raster path was asked for but nothing is connected. */
 	aiNoProvider: string;
 	aiFailed: string;
+	/** 图像服务连上了但没产出图片时的可执行说明。 */
+	aiFailedHint: string;
 	localFailed: string;
 	aiDone: (count: number) => string;
 	aiPartial: (failed: number) => string;
@@ -194,7 +196,8 @@ export function useGeneration(messages: {
 			} catch (cause) {
 				if (cause instanceof HostMediaError) {
 					ctx.ui.notify({
-						message: cause.message,
+						// 原始 message 是 provider 的原话，直接摆给用户看不出下一步该做什么。
+						message: cause.code === "provider-failed" ? messages.aiFailedHint : cause.message,
 						title: messages.aiUnavailable,
 						variant: "error",
 						error: cause,

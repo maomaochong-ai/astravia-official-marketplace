@@ -60,6 +60,30 @@ export function BrandKitDialog({ record, onClose, t }: BrandKitDialogProps): JSX
 	const fs = () => getPluginContext().fs;
 
 	const variants = record && record.engine === "local" ? renderLogo(record.spec) : null;
+
+	/**
+	 * AI 记录是一张 PNG，之前这个面板对它什么都不给：既没有 SVG 也没有套装，
+	 * 于是「导出」点开是空的。这里把那张图存成文件，按钮才有反馈。
+	 */
+	const saveAiImage = async (): Promise<void> => {
+		if (!record?.blobId) return;
+		try {
+			const blob = await getPluginContext().storage.readBlob(record.blobId);
+			if (!blob) throw new Error("The generated image is no longer on this device.");
+			const slug = (record.spec.brandName || record.subject || "logo")
+				.replace(/[^\p{L}\p{N}-]+/gu, "-")
+				.replace(/^-+|-+$/gu, "")
+				.slice(0, 40);
+			// saveAs 让用户自己选落盘位置；不写进项目目录，也不在未确认时落盘。
+			const saved = await getPluginContext().fs.saveAs(`${slug || "logo"}-ai-1024.png`, blob.data, "base64", {
+				title: t("export.pngSize", { size: 1024 }),
+				filters: [{ name: "PNG", extensions: ["png"] }],
+			});
+			if (saved) getPluginContext().ui.notify({ message: t("export.saved"), variant: "success" });
+		} catch (cause) {
+			reportError(t("export.failed"), cause);
+		}
+	};
 	const previews = variants
 		? [
 				{ id: "onLight", label: t("kit.onLight"), svg: variants.svg, bg: "#ffffff" },
@@ -105,9 +129,22 @@ export function BrandKitDialog({ record, onClose, t }: BrandKitDialogProps): JSX
 			}
 		>
 			{record && record.engine !== "local" ? (
-				<p className="rounded-lg bg-muted/60 px-3 py-2 text-[12px] leading-relaxed text-muted-foreground">
-					{t("kit.aiNote")}
-				</p>
+				<div className="space-y-2">
+					<p className="rounded-lg bg-muted/60 px-3 py-2 text-[12px] leading-relaxed text-muted-foreground">
+						{t("kit.aiNote")}
+					</p>
+					<div className="flex flex-wrap items-center gap-1.5">
+						<button
+							type="button"
+							disabled={!record.blobId}
+							onClick={() => void saveAiImage()}
+							className={`${BUTTON_PRIMARY} ${FOCUS_RING}`}
+						>
+							{t("export.pngSize", { size: 1024 })}
+						</button>
+						<span className="text-[11px] text-muted-foreground">{t("kit.aiFormats")}</span>
+					</div>
+				</div>
 			) : null}
 
 			{stage ? (
@@ -138,10 +175,10 @@ export function BrandKitDialog({ record, onClose, t }: BrandKitDialogProps): JSX
 			) : null}
 
 			{record && record.engine === "local" && variants ? (
-				<div className="mt-3 space-y-1.5">
+				<div className="mt-3 space-y-1.5 rounded-lg border border-border/60 bg-muted/30 px-3 py-2.5">
 					<span className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
 						<IconImageSize className="size-3" />
-						{t("kit.saveSvg")} / PNG / WebP
+						{t("kit.formatsTitle")}
 					</span>
 					<div className="flex flex-wrap gap-1.5">
 						<button

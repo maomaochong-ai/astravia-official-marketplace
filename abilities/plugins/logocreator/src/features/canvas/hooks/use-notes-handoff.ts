@@ -20,6 +20,19 @@ import { getNoteStore, getPluginContext } from "../../../plugin-context";
 
 export type HandoffBlock = "no-workspace" | "other-workspace" | "streaming" | "no-notes";
 
+/**
+ * 两个工作区是否同一个。
+ *
+ * Windows 上同一个目录可能写成 `D:\\proj` / `D:/proj` / 末尾多一个分隔符，大小写也不固定；
+ * 直接用 !== 比会把「当前会话」误判成「另一个项目」，点按钮就静默不发了。
+ */
+function sameWorkspace(a: string | null, b: string | null): boolean {
+	if (!a || !b) return false;
+	const normalise = (value: string) =>
+		value.replace(/\\/gu, "/").replace(/\/+$/u, "").toLowerCase();
+	return normalise(a) === normalise(b);
+}
+
 export interface NotesHandoff {
 	blocked: HandoffBlock | null;
 	blockedReason: string | null;
@@ -107,7 +120,7 @@ export function useNotesHandoff(cwd: string | null, design = ""): NotesHandoff {
 				? null
 				: !conversation?.cwd
 					? "no-workspace"
-					: cwd !== null && conversation.cwd !== cwd
+					: !sameWorkspace(conversation.cwd, cwd)
 						? "other-workspace"
 						: conversation.isStreaming
 							? "streaming"
@@ -125,14 +138,13 @@ export function useNotesHandoff(cwd: string | null, design = ""): NotesHandoff {
 			const conversationApi = getPluginContext().conversation;
 			const notes = getNoteStore().pending();
 			if (notes.length === 0) return false;
-			// Mark first: a send that never lands must not look un-sent, and a note the
-			// agent already has must not be re-sent by the debounce.
-			await getNoteStore().markDispatched(notes.map((note) => note.id));
 			try {
 				if (needsSession && cwd !== null) {
 					await conversationApi.createSession(cwd);
 				}
 				await conversationApi.sendPrompt(dispatchPrompt(designRef.current));
+				// 标记放在发送成功之后：先标会让失败的发送看起来像已交付，用户再点也发不出去。
+				await getNoteStore().markDispatched(notes.map((note) => note.id));
 				return true;
 			} catch (error) {
 				getPluginContext().ui.notify({ message: t("notes.handoff.failed"), error });

@@ -250,7 +250,7 @@ export async function generateMarksWithHost(ctx: PluginContext, request: HostGen
 	}
 
 	if (images.length === 0 && failures.length > 0) {
-		throw new HostMediaError(failures[0]);
+		throw new HostMediaError(failures[0], "provider-failed");
 	}
 	return { images, failures };
 }

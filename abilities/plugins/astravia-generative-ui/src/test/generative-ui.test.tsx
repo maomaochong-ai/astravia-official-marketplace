@@ -35,19 +35,24 @@ vi.mock("@astravia-org/ui", async () => {
     const SelectTrigger = (_props: AnyProps) => null;
     const SelectValue = (_props: AnyProps) => null;
     const SelectContent = (_props: AnyProps) => null;
+    /**
+     * 遍历 `React.Children` 时，`forEach` 的回调把元素推成 `never`（jsx-runtime 的类型收窄），
+     * 用一个局部 `isElement` 守卫把元素取回 `ReactElement`，避免在调用处到处写 `as`。
+     */
+    const isElement = (node: unknown): node is React.ReactElement<AnyProps> => React.isValidElement(node);
     const findProps = (node: unknown, type: unknown): AnyProps | undefined => {
         let found: AnyProps | undefined;
-        React.Children.forEach(node as never, (child) => {
-            if (found || !React.isValidElement(child)) return;
-            found = child.type === type ? (child.props as AnyProps) : findProps((child.props as AnyProps)?.children, type);
+        React.Children.forEach(node, (child) => {
+            if (found || !isElement(child)) return;
+            found = child.type === type ? child.props : findProps(child.props?.children, type);
         });
         return found;
     };
     const collectOptions = (node: unknown, out: AnyProps[] = []): AnyProps[] => {
-        React.Children.forEach(node as never, (child) => {
-            if (!React.isValidElement(child)) return;
-            if (child.type === SelectItem) out.push(child.props as AnyProps);
-            else collectOptions((child.props as AnyProps)?.children, out);
+        React.Children.forEach(node, (child) => {
+            if (!isElement(child)) return;
+            if (child.type === SelectItem) out.push(child.props);
+            else collectOptions(child.props?.children, out);
         });
         return out;
     };
@@ -231,7 +236,8 @@ describe("unavailable view notice", () => {
         const { deps } = setup();
         render(<RenderUiSlot toolCall={{ ...call("render_ui", {}, "error"), isError: true, result: "bad field" }} deps={deps} />);
         expect(screen.queryByRole("alert")).toBeNull();
-        expect(screen.getByText("Astravia Generative UI")).toBeTruthy();
+        // 安装前后同名：清单里叫 Generative UI，界面也只显示这个名字。
+        expect(screen.getByText("Generative UI")).toBeTruthy();
         expect(screen.getByText("This view isn't available right now")).toBeTruthy();
         expect(screen.getByText("bad field").closest("details")).toBeTruthy();
     });
