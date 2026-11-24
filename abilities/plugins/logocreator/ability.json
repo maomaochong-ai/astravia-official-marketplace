@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "plugin",
   "slug": "logocreator",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "icon": "assets/icon.svg",
   "detail": {
     "format": "blocks",

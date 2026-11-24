@@ -45,6 +45,8 @@
   "colour.custom": "自定义颜色",
   "colour.fromImage": "从图片取色",
   "description": "设计可直接使用的品牌标志，并导出完整品牌套件——内置矢量引擎无需密钥、不联网，也可用宿主里已接好的图像服务做 AI 生成。",
+  "design.switcher": "设计稿",
+  "design.switcherLoading": "扫描设计稿…",
   "detail.balanced": "均衡",
   "detail.detailed": "丰富",
   "detail.minimal": "极简",

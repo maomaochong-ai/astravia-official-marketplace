@@ -17,6 +17,8 @@ import { getHistoryStore } from "../../../plugin-context";
 import { publishCanvasSpec } from "../canvas-prompt";
 import { useRasterUrl } from "../hooks/use-raster-url";
 import { useNotesHandoff } from "../hooks/use-notes-handoff";
+import { invalidateDesignDocuments, listDesignDocuments, type DesignDocumentRef } from "../../../domain/design-library";
+import { readManifest } from "../../../domain/design-folder";
 import { cachedRender } from "../preview-cache";
 import { describeSpec } from "../describe-spec";
 import { AiSettingsDialog } from "./ai-settings-dialog";
@@ -24,6 +26,7 @@ import { BrandKitDialog } from "./brand-kit-dialog";
 import { CanvasDock } from "./canvas-dock";
 import { CanvasInspector } from "./canvas-inspector";
 import { CanvasSurface } from "./canvas-surface";
+import { DesignSwitcher } from "./design-switcher";
 import { HistorySheet } from "./history-sheet";
 import { ResultGrid } from "./result-grid";
 
@@ -80,6 +83,9 @@ export function LogoCanvas(): JSX.Element {
 	});
 
 	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const [openFolder, setOpenFolder] = useState<string | null>(null);
+	const [docs, setDocs] = useState<DesignDocumentRef[]>([]);
+	const [docsLoading, setDocsLoading] = useState(true);
 	const [kitRecord, setKitRecord] = useState<DesignRecord | null>(null);
 	const [aiOpen, setAiOpen] = useState(false);
 	const [historyOpen, setHistoryOpen] = useState(false);
@@ -101,6 +107,45 @@ export function LogoCanvas(): JSX.Element {
 	useEffect(() => {
 		if (generation.lastCreatedId) setSelectedId(generation.lastCreatedId);
 	}, [generation.lastCreatedId]);
+
+	/**
+	 * 工作区里的设计稿清单。
+	 *
+	 * 首次等 `history.ready` 再扫：面板刚挂上是读取高峰，此时再递归列文件只会拖慢首帧。
+	 * 生成完一份新稿后（`lastCreatedId` 变化）清缓存重扫，切换器立刻能看到它。
+	 */
+	useEffect(() => {
+		if (!history.ready) return;
+		let alive = true;
+		setDocsLoading(true);
+		void listDesignDocuments(getPluginContext().fs, cwd, Boolean(generation.lastCreatedId))
+			.then(items => {
+				if (alive) setDocs(items);
+			})
+			.finally(() => {
+				if (alive) setDocsLoading(false);
+			});
+		return () => {
+			alive = false;
+		};
+	}, [history.ready, cwd, generation.lastCreatedId]);
+
+	/**
+	 * 切到另一份设计稿。
+	 *
+	 * 直接读它的 `.astravia-log` 并载入 spec，不新建历史记录 —— 用户只是在看已有的稿，
+	 * 不是又生成了一份。
+	 */
+	const openDocument = useCallback(
+		async (doc: DesignDocumentRef) => {
+			const manifest = await readManifest(getPluginContext().fs, doc.folder, doc.slug);
+			if (!manifest) return;
+			form.load(manifest.spec);
+			setSelectedId(null);
+			setOpenFolder(doc.folder);
+		},
+		[form],
+	);
 
 	/**
 	 * 面板挂载自检：量一下自己占多大。
@@ -303,14 +348,23 @@ export function LogoCanvas(): JSX.Element {
 					</div>
 				</div>
 
-				{/* Title slot: the design's own name, editable in place (reference keeps a
-				    rename field here too). No engine badge — this plugin runs on the host's
-				    own models and has no engine of its own to advertise. */}
+				{/*
+				 * 标题区：左边是设计稿切换器 + 可改写的稿名。
+				 * 切换器就是「打开的画布要能看到已有的设计稿，并且能切」——
+				 * 设计稿是磁盘上的 `.astravia-log` 文件，一份文件一份稿。
+				 */}
 				<div
-					className={`absolute left-3 top-3 z-40 flex max-w-[calc(100%-5.5rem)] items-center gap-1 transition-opacity ${
+					data-testid="stage-title-slot"
+					className={`absolute left-3 top-3 z-40 flex max-w-[calc(100%-5.5rem)] flex-wrap items-center gap-1 transition-opacity ${
 						inspectorOpen ? "pointer-events-none opacity-0" : "opacity-100"
 					}`}
 				>
+					<DesignSwitcher
+						docs={docs}
+						current={docs.find(doc => doc.slug === selectedRecord?.spec.brandName?.toLowerCase().replace(/[^a-z0-9]+/g, "-"))?.folder ?? null}
+						loading={docsLoading}
+						onSelect={(doc) => void openDocument(doc)}
+					/>
 					{editingName ? (
 						<input
 							autoFocus

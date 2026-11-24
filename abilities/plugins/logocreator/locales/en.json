@@ -45,6 +45,8 @@
   "colour.custom": "Pick a colour",
   "colour.fromImage": "From image",
   "description": "Design a brand-ready logo and export a full brand kit — a built-in vector engine that needs no key and no network, plus optional AI marks that run on the image providers you already connected in Astravia.",
+  "design.switcher": "Design",
+  "design.switcherLoading": "Scanning…",
   "detail.balanced": "Balanced",
   "detail.detailed": "Detailed",
   "detail.minimal": "Minimal",
