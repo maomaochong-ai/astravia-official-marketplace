@@ -5,7 +5,7 @@
       "type": "hero",
       "eyebrow": "Managed local model gateway",
       "title": "Use subscription-backed models through one local endpoint",
-      "description": "Connect supported provider accounts with CLIProxyAPI, discover their routable models and add protocol-aware providers to Astravia without copying or forking the upstream project.",
+      "description": "Connect your existing model subscriptions, choose their models for conversations in Astravia, and view account health and quota in one place.",
       "badges": [
         "Pinned releases",
         "Loopback only",
@@ -21,29 +21,29 @@
       "type": "feature-grid",
       "items": [
         {
-          "icon": "assets/icons/shield-check-bold.svg",
+          "icon": "solar:shield-check-bold",
           "title": "Upgradeable without a fork",
-          "description": "The marketplace pins CLIProxyAPI 7.2.147 and Gemini provider 1.0.5 by release URL and SHA-256. A plugin patch can move both locks after review, without a Desktop code change."
+          "description": "The marketplace pins CLIProxyAPI 8.0.52 and Gemini provider 1.0.5 by release URL and SHA-256. A plugin patch can move both locks after review, without a Desktop code change."
         },
         {
-          "icon": "assets/icons/login-3-bold.svg",
-          "title": "Six OAuth account routes",
-          "description": "Browser OAuth: Gemini CLI, Codex, Claude Code and Antigravity. Device-code OAuth: Kimi and xAI. Gemini CLI comes from the separately pinned native provider plugin."
+          "icon": "solar:login-3-bold",
+          "title": "Nine account sign-in options",
+          "description": "Connect Gemini CLI, Codex, Claude Code, Antigravity and Devin in your browser; use device codes for Kimi Code (kimi.com), xAI, Meta Muse Code and Kimi Code (kimi.ai). A provider account and model access are required."
         },
         {
-          "icon": "assets/icons/server-minimalistic-bold.svg",
+          "icon": "solar:server-minimalistic-bold",
           "title": "One model list per supplier",
           "description": "Accounts from the same supplier form one routing pool. Each model and protocol route appears once, while every enabled account remains available for balancing and failover."
         },
         {
-          "icon": "assets/icons/gallery-add-bold.svg",
+          "icon": "solar:gallery-add-bold",
           "title": "OpenAI and Google image models",
           "description": "Image-capable OpenAI, Google and Antigravity routes appear as individual image models. Requests use the matching Images or generateContent adapter for text-to-image and supported image-to-image work."
         },
         {
-          "icon": "assets/icons/chart-square-bold.svg",
+          "icon": "solar:chart-square-bold",
           "title": "Health at a glance",
-          "description": "Each credential card carries its own request history, so a failing account is visible before it becomes a failing conversation. Its model list opens on demand rather than crowding the page."
+          "description": "See request history, reported quota and cooldowns per account, and refresh credentials when needed. Model lists show upstream input and search capabilities; availability depends on your account and Astravia support."
         }
       ]
     },
@@ -60,7 +60,7 @@
         },
         {
           "title": "Sync models",
-          "description": "Fetch the live /v1/models catalog, choose routes by supplier, and publish text protocol groups into the plugin-owned Astravia namespace. Image-capable routes appear in Astravia's image model settings."
+          "description": "Select the models you want to use in Astravia and apply. Image generation models appear in image model settings. Your selections survive restarts."
         },
         {
           "title": "Run it from the CPA setup page",
@@ -69,8 +69,9 @@
       ]
     },
     {
-      "type": "markdown",
-      "content": "### Supported configuration channels\n\nCLIProxyAPI also supports Gemini, Gemini Interactions, Claude, Codex, xAI and Vertex API-key configuration, Vertex service-account import, and explicit OpenAI-compatible upstreams. The initial plugin release deliberately exposes the six OAuth paths first; it does not proxy the unrestricted management `/api-call` endpoint or the upstream plugin store. API-key forms require provider-specific secret-handling UX and will be added in a later plugin release without changing Desktop.\n\n### Runtime boundary\n\nDesktop only supplies the generic managed-service lifecycle and plugin-owned model registry. Every CLIProxyAPI endpoint, provider name, OAuth state transition and protocol mapping lives in this marketplace package."
+      "type": "callout",
+      "tone": "info",
+      "content": "Quota appears only when the provider supplies it; clearing local cooldowns does not increase your provider allowance. Image input in chat requires a supporting Astravia version. Audio, video and native search labels describe upstream capabilities, not available Astravia inputs or search tools. See the technical documentation for advanced configuration."
     }
   ]
 }

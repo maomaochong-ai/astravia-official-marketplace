@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "type": "plugin",
+  "slug": "astravia-memory",
+  "version": "0.1.1",
+  "icon": "assets/icon.png",
+  "detail": {
+    "format": "blocks",
+    "path": "detail.json",
+    "fallback": "README.md",
+    "i18n": {
+      "zh": {
+        "path": "detail.zh.json",
+        "meta": [
+          {
+            "label": "设计参考",
+            "value": "https://www.npmjs.com/package/pi-memory"
+          },
+          {
+            "label": "文档",
+            "value": "https://github.com/maomaochong-ai/astravia-official-marketplace/blob/main/abilities/plugins/astravia-memory/README.md"
+          }
+        ]
+      }
+    },
+    "meta": [
+      {
+        "label": "Inspired by",
+        "value": "https://www.npmjs.com/package/pi-memory"
+      },
+      {
+        "label": "Docs",
+        "value": "https://github.com/maomaochong-ai/astravia-official-marketplace/blob/main/abilities/plugins/astravia-memory/README.md"
+      }
+    ]
+  }
+}

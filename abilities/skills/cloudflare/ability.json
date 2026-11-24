@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "skill",
   "slug": "cloudflare",
-  "name": "cloudflare",
+  "name": "Cloudflare Platform",
   "description": "Choose, configure and connect Cloudflare services with retrieval-first guidance across Workers, storage, AI, networking and security.",
   "version": "1.0.2",
   "configVersion": 1,
