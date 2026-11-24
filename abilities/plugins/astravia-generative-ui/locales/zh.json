@@ -1,5 +1,5 @@
 {
-  "name": "Astravia生成式UI",
+  "name": "生成式 UI",
   "description": "让 AI 用可交互的界面回答，而不只是文字：表单、选项、指标卡、表格、Chart.js 图表与布局，风格与应用一致；也能在安全沙箱中运行自定义 HTML。",
   "guidingWords.form": "帮我规划一次旅行，用表单问我需要的信息",
   "guidingWords.dashboard": "把上季度销售数据做成带指标卡和图表的看板",

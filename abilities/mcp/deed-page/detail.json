@@ -6,7 +6,11 @@
       "eyebrow": "PUBLISH TO A URL",
       "title": "Turn a page Astravia built into a link you can send",
       "description": "Publish an HTML report, prototype or small static site to a public deed.page URL. No account or API key is needed to start.",
-      "badges": ["No sign-up", "Update or delete later", "Optional expiry"]
+      "badges": [
+        "No sign-up",
+        "Update or delete later",
+        "Optional expiry"
+      ]
     },
     {
       "type": "showcase",
@@ -14,25 +18,46 @@
         "template": "chat-thread",
         "brand_name": "Astravia",
         "user_prompt": "Publish the summary page you just made so I can send it to the team, and make it expire in a week.",
-        "assistant_reply": "I'll publish index.html to a deed.page URL with a seven-day expiry and send you the link. Keep the owner token from this publish private, or paste it into the connection settings, because anyone who has it can update or delete your sites."
+        "assistant_reply": "I'll publish index.html with a seven-day expiry and send you the link. Save the owner token from this publish privately — anyone holding it can update or delete your sites."
       }
     },
     {
       "type": "feature-grid",
       "title": "What you can ask Astravia to do",
       "items": [
-        { "title": "Share a finished page", "description": "Publish one HTML file or a few files with their paths kept, and get the live URL back.", "icon": "solar:upload-linear" },
-        { "title": "Revise in place", "description": "Update the same slug after edits, list your sites or restore an earlier version.", "icon": "solar:refresh-linear" },
-        { "title": "Take it down", "description": "Delete a site with its owner token, or set an expiry when you publish.", "icon": "solar:trash-bin-minimalistic-linear" }
+        {
+          "title": "Share a finished page",
+          "description": "Publish one HTML file or a few files with their paths kept, and get the live URL back.",
+          "icon": "solar:upload-linear"
+        },
+        {
+          "title": "Revise in place",
+          "description": "Update the same slug after edits, list your sites or restore an earlier version.",
+          "icon": "solar:refresh-linear"
+        },
+        {
+          "title": "Take it down",
+          "description": "Delete a site with its owner token, or set an expiry when you publish.",
+          "icon": "solar:trash-bin-minimalistic-linear"
+        }
       ]
     },
     {
       "type": "steps",
       "title": "Start in Astravia",
       "items": [
-        { "title": "Install the connection", "description": "Leave the optional token field empty the first time." },
-        { "title": "Ask Astravia to publish", "description": "Say what to publish and, if you like, a slug or an expiry." },
-        { "title": "Keep the token", "description": "Save the owner token from the first publish privately, or paste it into the connection settings to reuse it." }
+        {
+          "title": "Install the connection",
+          "description": "Leave the optional token field empty the first time."
+        },
+        {
+          "title": "Ask Astravia to publish",
+          "description": "Say what to publish and, if you like, a slug or an expiry."
+        },
+        {
+          "title": "Keep the token",
+          "description": "Save the owner token from the first publish privately, or paste it into the connection settings to reuse it."
+        }
       ]
     },
     {

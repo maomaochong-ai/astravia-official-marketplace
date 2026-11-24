@@ -1,5 +1,5 @@
 {
-  "name": "Astravia Generative UI",
+  "name": "Generative UI",
   "description": "Lets the AI answer with interactive views instead of plain text: forms, choices, KPI cards, tables, Chart.js charts and layouts that match the app, plus custom HTML in a secure sandbox.",
   "guidingWords.form": "Help me plan a trip: ask me what you need in a form",
   "guidingWords.dashboard": "Show last quarter's sales as a dashboard with KPIs and a chart",
