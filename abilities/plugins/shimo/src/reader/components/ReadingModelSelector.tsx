@@ -95,6 +95,10 @@ export function ReadingModelSelector({
         cloudOnly: t("ai.cloudOnly"),
         visionBadge: t("ai.vision"),
         defaultBadge: t("ai.defaultModel"),
+        favoritesHeader: t("ai.favoritesHeader"),
+        favorite: t("ai.favorite"),
+        unfavorite: t("ai.unfavorite"),
+        searchResultsHeader: t("ai.searchResultsHeader"),
         levelLabel: (level) => level
       }}
       className="w-48"

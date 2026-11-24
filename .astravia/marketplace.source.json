@@ -134,7 +134,7 @@
       "slug": "shimo",
       "name": "Shimo",
       "description": "An immersive bilingual reading workspace for books, poetry and study notes in Astravia, with Shimo reading Skills shipped inside the reader plugin.",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia",
@@ -178,7 +178,7 @@
             "source": {
               "path": "abilities/plugins/shimo"
             },
-            "version": "1.0.26",
+            "version": "1.0.27",
             "minAppVersion": "0.5.59"
           },
           {
