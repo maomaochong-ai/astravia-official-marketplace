@@ -273,7 +273,11 @@ export default definePlugin({
 						id: "logocreator-design-icon",
 						priority: 100,
 						when: { extensions: [DESIGN_EXTENSION] },
-						provideDecoration: () => ({ icon }),
+						// `icon` 要的是 ReactNode，不是字符串：直接给字符串会把 URL 当成正文
+						// 画进文件树（截图里那行悬浮的多余文字就是它）。
+						provideDecoration: () => ({
+							icon: <img src={icon} alt="" className="size-3.5 object-contain" draggable={false} />,
+						}),
 					}),
 				);
 			});

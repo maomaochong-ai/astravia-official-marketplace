@@ -28,7 +28,8 @@ import { CanvasInspector } from "./canvas-inspector";
 import { CanvasSurface } from "./canvas-surface";
 import { VariantGrid } from "./variant-grid";
 import { DesignSwitcher } from "./design-switcher";
-import { HistorySheet } from "./history-sheet";
+import { VersionsSheet } from "./versions-sheet";
+import { specForVersion } from "../../../domain/design-versions";
 import { ResultGrid } from "./result-grid";
 
 
@@ -564,21 +565,28 @@ export function LogoCanvas(): JSX.Element {
 
 				<BrandKitDialog record={kitRecord} onClose={() => setKitRecord(null)} t={t} />
 
-				<HistorySheet
-				open={historyOpen}
-				records={history.items}
-				label={history.label}
-				locale={locale}
-				onClose={() => setHistoryOpen(false)}
-				onSelect={(record) => {
-					form.load(record.spec);
-					setSelectedId(record.id);
-				}}
-				onToggleFavorite={(record) => void history.setFavorite(record.id, !record.favorite)}
-				onDelete={(record) => void history.remove(record.id)}
-				onClear={() => void history.clear()}
-				t={t}
-			/>
+				{/*
+				 * 历史面板 = 设计包的版本清单，不是生成过的图片。
+				 * 点某版把画布切到它：矢量按 seed/style 复现（纯函数），位图标注 AI。
+				 */}
+				<VersionsSheet
+					open={historyOpen}
+					fs={getPluginContext().fs}
+					cwd={cwd}
+					locale={locale}
+					onClose={() => setHistoryOpen(false)}
+					onOpen={(pkg, version) => {
+						form.load(specForVersion(pkg, version));
+						setSelectedId(null);
+						setOpenFolder(pkg.folder);
+						// 切到某一版后回到单张画布：网格是本批的视图，不是版本视图。
+						setBatchIds([]);
+						setStaged(false);
+					}}
+					// 版本来自磁盘，刷新同时让切换器重扫一次。
+					onRefresh={() => setForceScan((value) => !value)}
+					t={t}
+				/>
 
 			<AiSettingsDialog
 				open={aiOpen}

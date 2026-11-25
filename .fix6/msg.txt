@@ -1,0 +1,18 @@
+fix(logocreator): 文件树多余文字；版本面板改列设计包版本
+
+0.12.0。
+
+1) 宿主界面里悬浮的多余文字（截图里叠在文件树上的那行）
+   `PluginFileExplorerDecoration.icon` 要的是 ReactNode，而 decoration provider 直接
+   返回了 `ctx.plugin.iconUrl` 这个字符串 —— React 把 URL 当正文画进了文件树。
+   改为 `<img src={icon} alt="" …>`：图标仍然来自宿主解析的地址，只是以元素形式给。
+
+2) 历史面板列的是「生成过的图片」，与磁盘上的包对不上
+   改为版本面板（VersionsSheet）：按 `<slug>.logocreator-design/` 分组，展开是该包
+   `design.astravia-log` 里 variants 的版本（新的在上）。点某一版把画布切到它：
+   矢量版本按 seed + style 复现（引擎是纯函数），位图版本标注 AI。
+   面板可搜索、可重新扫描；旧的 HistorySheet 删除。
+
+   附带：点版本会清空本批网格，回到单张画布 —— 网格是本次生成的视图，不是版本视图。
+
+tsc 通过，281 个测试通过（versions-sheet 3 条新增）。

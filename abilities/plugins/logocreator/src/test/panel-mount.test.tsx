@@ -135,7 +135,8 @@ describe("the canvas mounts", () => {
 		expect(await screen.findByText("Untitled")).toBeTruthy();
 		expect(screen.getByLabelText("Design settings")).toBeTruthy();
 		expect(screen.getByLabelText("Canvas notes")).toBeTruthy();
-		expect(screen.getByLabelText("History")).toBeTruthy();
+		// 历史按钮现在指向「设计版本」：它列的是磁盘上设计包的版本，不是生成过的图片。
+		expect(screen.getByLabelText("Design versions")).toBeTruthy();
 		// The form itself is not on the stage: it opens in the rail.
 		expect(screen.queryByPlaceholderText("Fern & Field")).toBeNull();
 	});
