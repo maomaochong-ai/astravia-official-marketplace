@@ -198,7 +198,7 @@
   "panel.crashHint": "历史、备注或插件权限里有一项读不出来。先点重试；如果错误里写着「permission denied」，去 设置 → 能力 → 插件 重新授权这个插件。",
   "panel.crashRetry": "重试",
   "panel.crashTitle": "LogoCreator 面板没能渲染",
-  "panel.history": "历史",
+  "panel.history": "设计版本",
   "panel.localBadge": "本地",
   "panel.openingEngine": "正在打开 Logo 设计引擎…",
   "panel.previewAlt": "当前标志预览",
@@ -277,5 +277,16 @@
   "type.monogram.structure": "首字母",
   "type.wordmark": "文字标志",
   "type.wordmark.hint": "只用字体，配一条装饰线。",
-  "type.wordmark.structure": "纯文字"
+  "type.wordmark.structure": "纯文字",
+  "versions.description": "磁盘上 {{packages}} 个设计包、{{versions}} 个版本",
+  "versions.empty": "还没有设计包。先生成一份，或打开一个 *.logocreator-design 目录。",
+  "versions.engine.ai": "AI",
+  "versions.engine.local": "矢量",
+  "versions.hint": "点某一版即可放到画布上",
+  "versions.loading": "正在读取项目…",
+  "versions.noVersions": "这个包有清单，但里面没有记录变体。",
+  "versions.packageMeta": "{{count}} 个版本 · {{folder}}",
+  "versions.refresh": "重新扫描",
+  "versions.search": "搜索设计包与版本",
+  "versions.title": "设计版本"
 }

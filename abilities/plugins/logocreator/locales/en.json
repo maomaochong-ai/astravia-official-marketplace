@@ -198,7 +198,7 @@
   "panel.crashHint": "The history, the notes or a plugin permission could not be read. Retry first; if the message says “permission denied”, re-authorise this plugin in Settings → Abilities → Plugins.",
   "panel.crashRetry": "Retry",
   "panel.crashTitle": "LogoCreator could not render",
-  "panel.history": "History",
+  "panel.history": "Design versions",
   "panel.localBadge": "Local",
   "panel.openingEngine": "Opening the Logo engine…",
   "panel.previewAlt": "Current logo preview",
@@ -277,5 +277,16 @@
   "type.monogram.structure": "initials",
   "type.wordmark": "Wordmark",
   "type.wordmark.hint": "Typography only, with an accent rule.",
-  "type.wordmark.structure": "text only"
+  "type.wordmark.structure": "text only",
+  "versions.description": "{{packages}} design package(s), {{versions}} version(s) on disk",
+  "versions.empty": "No design package yet. Generate one, or open a *.logocreator-design folder.",
+  "versions.engine.ai": "AI",
+  "versions.engine.local": "vector",
+  "versions.hint": "Click a version to put it on the canvas",
+  "versions.loading": "Reading the project…",
+  "versions.noVersions": "This package has a manifest but no recorded variants.",
+  "versions.packageMeta": "{{count}} version(s) · {{folder}}",
+  "versions.refresh": "Rescan",
+  "versions.search": "Search packages and versions",
+  "versions.title": "Design versions"
 }
