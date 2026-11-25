@@ -128,11 +128,13 @@ export function createImageTool(): PluginAgentToolRegistration<ImageToolInput> {
 				lastDesignId = designId;
 			}
 
-			// The panel comes up on this design — same path as the vector tool. Reported
+			// The panel comes up on this batch — same path as the vector tool. Reported
 			// rather than swallowed: a failure to open is information the user needs.
-			const reveal = lastDesignId
-				? revealInCanvas(ctx, session.cwd, lastDesignId)
-				: { opened: false, error: undefined };
+			// 整批一起交给画布：一次出三张就铺三张，而不是只留最后一张。
+			const reveal =
+				designIds.length > 0
+					? revealInCanvas(ctx, session.cwd, designIds)
+					: { opened: false, error: undefined };
 
 			return {
 				ok: true,

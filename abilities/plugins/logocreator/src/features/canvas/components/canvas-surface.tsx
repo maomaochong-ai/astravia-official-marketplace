@@ -189,7 +189,8 @@ export function CanvasSurface({
 					dragRef.current = null;
 				}}
 				onWheel={onWheel}
-				onDoubleClick={resetView}
+				// 双击不再兼「复位」：一次双击会先落一枚备注（pointerup），再被当成复位，
+				// 两个行为抢同一个手势。复位移到画布右上角的显式按钮。
 				role="button"
 				tabIndex={0}
 				aria-label={t("notes.surface")}
@@ -197,6 +198,33 @@ export function CanvasSurface({
 					if (event.key === "Enter" || event.key === " ") setDraft({ x: 0.5, y: 0.5 });
 				}}
 			>
+				{/*
+				 * 复位 / 缩放提示：1× 时拖拽本来就不动（画布保持居中），之前没有任何说明，
+				 * 用户会以为手势没生效。这里给一个可点的复位，并说明放大后可拖动。
+				 */}
+				{empty ? null : (
+					<div className="absolute right-2 top-2 z-20 flex items-center gap-1">
+						{zoom > 1 ? (
+							<button
+								type="button"
+								onClick={(event) => {
+									event.stopPropagation();
+									resetView();
+								}}
+								title={t("canvas.resetView")}
+								aria-label={t("canvas.resetView")}
+								className="flex h-6 items-center gap-1 rounded-md border border-border/70 bg-popover/90 px-1.5 text-[10px] text-text-2 backdrop-blur-none transition-colors hover:bg-accent"
+							>
+								<span aria-hidden className="icon-[lucide--maximize-2] size-3" />
+								{Math.round(zoom * 100)}%
+							</button>
+						) : (
+							<span className="rounded-md bg-popover/70 px-1.5 py-0.5 text-[10px] text-text-3">
+								{t("canvas.zoomHint")}
+							</span>
+						)}
+					</div>
+				)}
 				{empty ? (
 					<CanvasPlaceholder />
 				) : (

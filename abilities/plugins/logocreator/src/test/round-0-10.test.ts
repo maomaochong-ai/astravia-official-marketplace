@@ -109,7 +109,8 @@ describe("what the panel sends to the host agent", () => {
 
 	it("travels with the notes hand-off", () => {
 		const handoff = read("src/features/canvas/hooks/use-notes-handoff.ts");
-		expect(handoff).toContain("dispatchPrompt(designRef.current)");
+		// prompt 现在带上本次要处理的备注 id，避免自动派发把已处理的再发一遍。
+		expect(handoff).toMatch(/dispatchPrompt\(designRef\.current, notes\.map/);
 		expect(handoff).toMatch(/Current design: \$\{design\}/);
 		const canvas = read("src/features/canvas/components/logo-canvas.tsx");
 		expect(canvas).toContain("describeSpec(form.spec)");

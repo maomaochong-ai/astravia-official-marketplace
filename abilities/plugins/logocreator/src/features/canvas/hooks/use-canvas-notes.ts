@@ -5,6 +5,8 @@ import type { LogoPart } from "../../../domain/note-parts";
 /** What the canvas hands the store when a pin is placed. */
 export interface NoteDraft {
 	designId: string | null;
+	/** 备注所属工作区；品牌级备注为 null。 */
+	cwd?: string | null;
 	text: string;
 	x: number;
 	y: number;

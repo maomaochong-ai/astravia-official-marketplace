@@ -150,10 +150,16 @@ export default definePlugin({
 		//      面板自己走 `useActiveConversation()`（不需要额外权限）。所以这里只在有权限时订，
 		//      没权限时一句话说清楚该去哪儿授权，而不是让它静默失败。
 		if (!ctx.permissions.has("agent.session.read")) {
-			console.warn(
-				"[logocreator] agent.session.read not granted: the tab will not follow conversation switches until you re-authorise the plugin " +
-					"(Settings → Abilities → Plugins), and a hidden tab will not be restored per conversation.",
-			);
+			// 不只写控制台：用户看不到控制台，只会感觉「切了会话画布就没了」。
+			// 一次性提示，带去处（设置 → 能力 → 插件重新授权）。
+			try {
+				ctx.ui.notify({
+					message: ctx.i18n.t("perm.sessionRead"),
+					variant: "warning",
+				});
+			} catch {
+				console.warn("[logocreator] agent.session.read not granted; conversation following is disabled");
+			}
 		} else {
 			step("conversation subscription", () => {
 				owned.push(
@@ -221,7 +227,8 @@ export default definePlugin({
 							// not close it (the panel may hold work nobody asked to discard).
 							if (active) {
 								ctx.ui.setActivityTabVisible(LOGO_TAB_ID, true);
-								ctx.ui.openActivityTab(LOGO_TAB_ID);
+								// 与图片卡片的「在画布中打开」保持同一宽度：画布是主舞台，窄栏里什么都看不清。
+								ctx.ui.openActivityTab(LOGO_TAB_ID, { width: "max" });
 							}
 						},
 						decoratePrompt: () => {

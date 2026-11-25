@@ -14,10 +14,13 @@ const inspector = readFileSync(join(ROOT, "src/features/canvas/components/canvas
 const panel = readFileSync(join(ROOT, "src/features/canvas/components/logo-canvas.tsx"), "utf8");
 
 describe("the stage can be moved", () => {
-	it("pans on drag, zooms on a modified wheel, and resets on double click", () => {
+	it("pans on drag, zooms on a modified wheel, and resets from an explicit control", () => {
 		expect(surface).toContain("onPointerDown={onPointerDown}");
 		expect(surface).toContain("onPointerMove={onPointerMove}");
-		expect(surface).toContain("onDoubleClick={resetView}");
+		// 双击会让 pointerup 先落一枚备注，再被当成复位——两个行为抢同一手势。
+		// 现在双击什么都不做，复位是画布右上角的显式按钮。
+		expect(surface).not.toContain("onDoubleClick={resetView}");
+		expect(surface).toContain('t("canvas.resetView")');
 		// A plain wheel belongs to the panel's scroll; stealing it traps the user.
 		expect(surface).toContain("!event.ctrlKey && !event.metaKey");
 	});

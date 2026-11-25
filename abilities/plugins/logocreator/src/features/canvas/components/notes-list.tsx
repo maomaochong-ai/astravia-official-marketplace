@@ -71,7 +71,19 @@ export function NotesList({
 						<span className={`mt-[1px] flex size-4 shrink-0 items-center justify-center rounded-full ${NOTE_DOT} text-[9px] font-semibold text-white`}>
 							{index + 1}
 						</span>
-						<span className="min-w-0 flex-1 break-words text-[11px] leading-snug text-foreground">{note.text}</span>
+						<span className="min-w-0 flex-1 break-words text-[11px] leading-snug text-foreground">
+							{note.text}
+							{/* 部位是「点了哪里」的直接反馈：算出来了就该看到，否则用户不知道这条指标志还是字标。 */}
+							{note.part ? (
+								<span className="ml-1 whitespace-nowrap rounded bg-background/70 px-1 py-px text-[9px] text-muted-foreground">
+									{t(`notes.part.${note.part}`)}
+								</span>
+							) : note.scope === "global" ? (
+								<span className="ml-1 whitespace-nowrap rounded bg-background/70 px-1 py-px text-[9px] text-muted-foreground">
+									{t("notes.scopeExplain")}
+								</span>
+							) : null}
+						</span>
 						<button
 							type="button"
 							onClick={() => onRemove(note.id)}

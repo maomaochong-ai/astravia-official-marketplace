@@ -51,12 +51,13 @@ describe("the panel never renders a blank frame", () => {
 describe("a design that arrives while the panel is open", () => {
 	it("claims a pending hand-off only once the record exists", () => {
 		// peek → lookup → claim. Claiming first lost the design when the store had not caught up.
-		expect(canvas).toMatch(/const pendingId = peekPendingDesignId\(cwd\);[\s\S]{0,900}claimPendingDesignId\(cwd\);/);
-		expect(canvas.indexOf("peekPendingDesignId(cwd)")).toBeLessThan(canvas.lastIndexOf("claimPendingDesignId(cwd)"));
+		// 批次 API：一次工具调用可能产出多张，认领的是整个列表。
+		expect(canvas).toMatch(/const pendingIds = peekPendingDesignIds\(cwd\);[\s\S]{0,900}claimPendingDesignIds\(cwd\);/);
+		expect(canvas.indexOf("peekPendingDesignIds(cwd)")).toBeLessThan(canvas.lastIndexOf("claimPendingDesignIds(cwd)"));
 	});
 
 	it("drops a hand-off that never resolves, so a later one is not blocked", () => {
-		expect(canvas).toMatch(/setTimeout\([\s\S]{0,300}claimPendingDesignId\(cwd\)/);
+		expect(canvas).toMatch(/setTimeout\([\s\S]{0,320}claimPendingDesignIds\(cwd\)/);
 	});
 
 	it("follows the newest AI record when the conversation just produced one", () => {

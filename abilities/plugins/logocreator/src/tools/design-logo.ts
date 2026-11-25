@@ -68,6 +68,8 @@ export function createDesignTool(): PluginAgentToolRegistration<DesignToolPayloa
 			const variants: NonNullable<Parameters<typeof writeManifest>[2]["variants"]>[number][] = [];
 			let lastSubject = "";
 			let lastDesignId: string | null = null;
+			// 本次调用的全部稿：画布要把它们一起铺开，而不是只显示最后一张。
+			const batchIds: string[] = [];
 			let palette: Record<string, string> = {};
 
 			for (let index = 0; index < count; index += 1) {
@@ -86,6 +88,7 @@ export function createDesignTool(): PluginAgentToolRegistration<DesignToolPayloa
 					.add({ id: recordId, spec: variant, engine: "local", subject: rendered.subject })
 					.then(() => {
 						lastDesignId = recordId;
+						batchIds.push(recordId);
 					})
 					.catch((cause) => {
 						notes.push(`The design was written but not stored in the panel history: ${describe(cause)}`);
@@ -126,7 +129,7 @@ export function createDesignTool(): PluginAgentToolRegistration<DesignToolPayloa
 			// displaying — a tool-session cwd that differs from it records the tab somewhere
 			// nobody is looking.
 			if (lastDesignId) {
-				const reveal = revealInCanvas(getPluginContext(), session.cwd, lastDesignId);
+				const reveal = revealInCanvas(getPluginContext(), session.cwd, batchIds.length > 0 ? batchIds : lastDesignId);
 				if (!reveal.opened) notes.push(`The design is stored but the canvas could not be opened: ${reveal.error ?? "unknown"}`);
 			}
 

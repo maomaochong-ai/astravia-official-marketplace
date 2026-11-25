@@ -12,7 +12,7 @@ import { useDesignHistory } from "../hooks/use-design-history";
 import { useGeneration } from "../hooks/use-generation";
 import { useLogoForm } from "../hooks/use-logo-form";
 import { savePngFile, saveSvgFile } from "../services/export-files";
-import { claimPendingDesignId, onPendingDesignChanged, peekPendingDesignId } from "../pending-design";
+import { claimPendingDesignIds, onPendingDesignChanged, peekPendingDesignIds } from "../pending-design";
 import { getHistoryStore } from "../../../plugin-context";
 import { publishCanvasSpec } from "../canvas-prompt";
 import { useRasterUrl } from "../hooks/use-raster-url";
@@ -26,6 +26,7 @@ import { BrandKitDialog } from "./brand-kit-dialog";
 import { CanvasDock } from "./canvas-dock";
 import { CanvasInspector } from "./canvas-inspector";
 import { CanvasSurface } from "./canvas-surface";
+import { BatchRail } from "./batch-rail";
 import { DesignSwitcher } from "./design-switcher";
 import { HistorySheet } from "./history-sheet";
 import { ResultGrid } from "./result-grid";
@@ -70,12 +71,19 @@ export function LogoCanvas(): JSX.Element {
 		aiDone: (count) => t("notify.aiDone", { count }),
 		aiPartial: (failed) => t("notify.aiPartial", { failed }),
 	});
+
+	// 选中的稿 + 本批 id 必须先于 handoff 声明：备注的分流依赖它们。
+	const [selectedId, setSelectedId] = useState<string | null>(null);
+	/** 本批（一次工具调用）产出的全部稿 id；缩略图轨据此渲染。 */
+	const [batchIds, setBatchIds] = useState<string[]>([]);
 	// Reference-aligned hand-off: it knows when to create a session, when the agent is
 		// already running, and when the conversation belongs to another project.
 	const handoff = useNotesHandoff(
 		cwd,
 		// “对话式修改”要能真的改到这份稿：把参数一起交底，agent 才不会另猜一套。
 		describeSpec(form.spec),
+		// 备注按稿分流：面板上看到的集合 = 会被发出去的集合。
+		selectedId,
 	);
 	const notes = useCanvasNotes({
 		sendFailed: t("error.notesSend"),
@@ -83,7 +91,6 @@ export function LogoCanvas(): JSX.Element {
 		removeFailed: t("error.notesRemove"),
 	});
 
-	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [openFolder, setOpenFolder] = useState<string | null>(null);
 	const [docs, setDocs] = useState<DesignDocumentRef[]>([]);
 	const [docsLoading, setDocsLoading] = useState(true);
@@ -102,7 +109,11 @@ export function LogoCanvas(): JSX.Element {
 	// each miss costs an SVG build plus a URI-encoded copy of it.
 	const preview = useMemo(() => cachedRender(deferredSpec).url, [deferredSpec]);
 	const canGenerate = Boolean(form.spec.brandName.trim()) || form.spec.type === "wordmark";
-	const visibleNotes = notes.notes.filter((note) => note.designId === null || note.designId === selectedId);
+	const visibleNotes = notes.notes.filter(
+		(note) =>
+			// 品牌级备注（designId === null）跨稿共用；挂在某一稿上的备注还要同一工作区。
+			(note.designId === null || note.designId === selectedId) && (note.cwd == null || note.cwd === cwd),
+	);
 	const pendingCount = visibleNotes.filter((note) => note.status === "pending").length;
 
 	useEffect(() => {
@@ -177,7 +188,9 @@ export function LogoCanvas(): JSX.Element {
 		// lookup missed, and the id was already gone — so the canvas kept showing the
 		// previous design. That is exactly the "image generated but the canvas did not
 		// switch" report. Peeking keeps the hand-off alive until the record exists.
-		const pendingId = peekPendingDesignId(cwd);
+		const pendingIds = peekPendingDesignIds(cwd);
+		const pendingId = pendingIds[0] ?? null;
+		if (!pendingId || claimedRef.current === pendingId) return;
 		if (!pendingId || claimedRef.current === pendingId) return;
 		const record = history.items.find((item) => item.id === pendingId);
 		if (!record) {
@@ -187,8 +200,8 @@ export function LogoCanvas(): JSX.Element {
 			if (!waitedRef.current.has(pendingId)) {
 				waitedRef.current.add(pendingId);
 				setTimeout(() => {
-					if (peekPendingDesignId(cwd) === pendingId && !getHistoryStore().get(pendingId)) {
-						claimPendingDesignId(cwd);
+					if (peekPendingDesignIds(cwd)[0] === pendingId && !getHistoryStore().get(pendingId)) {
+						claimPendingDesignIds(cwd);
 					}
 				}, 4000);
 			}
@@ -196,14 +209,16 @@ export function LogoCanvas(): JSX.Element {
 		}
 		claimedRef.current = pendingId;
 		waitedRef.current.delete(pendingId);
-		claimPendingDesignId(cwd);
+		claimPendingDesignIds(cwd);
+		// 整批交给缩略图轨：一次出三张就铺三张；主图仍是最后生成的那张。
+		setBatchIds(pendingIds.filter((id) => getHistoryStore().get(id)));
 		form.load(record.spec);
 		setSelectedId(record.id);
 	}, [cwd, history.items, form]);
 
 	useEffect(() => {
 		if (!history.ready) return;
-		if (peekPendingDesignId(cwd)) {
+		if (peekPendingDesignIds(cwd).length > 0) {
 			revealPending();
 			return;
 		}
@@ -226,7 +241,7 @@ export function LogoCanvas(): JSX.Element {
 	 * never stolen: it has a brand name in the form and the check stops.
 	 */
 	useEffect(() => {
-		if (!history.ready || peekPendingDesignId(cwd)) return;
+		if (!history.ready || peekPendingDesignIds(cwd).length > 0) return;
 		const newest = history.items[0];
 		if (!newest || newest.engine !== "ai") return;
 		if (newest.id === selectedId) return;
@@ -302,6 +317,10 @@ export function LogoCanvas(): JSX.Element {
 	};
 
 	const selectedRecord = selectedId ? history.items.find((item) => item.id === selectedId) : undefined;
+	// 本批记录按生成顺序解析；存储里查不到的（工具写了 id 但记录没落地）直接丢弃。
+	const batchRecords = batchIds
+		.map((id) => history.items.find((item) => item.id === id))
+		.filter((item): item is NonNullable<typeof item> => Boolean(item));
 	// Raster designs are drawn from their blob; vector ones from the spec.
 	const rasterUrl = useRasterUrl(selectedRecord);
 	// Auto-detected on mount (and after the AI dialog refreshes it): the dock shows the
@@ -342,11 +361,25 @@ export function LogoCanvas(): JSX.Element {
 							empty={!form.spec.brandName.trim() && !rasterUrl && history.items.length === 0}
 							rasterUrl={rasterUrl}
 							onPlace={async (point, text, scope, part) =>
-								notes.add({ designId: selectedId, text, ...point, scope, part })
+								notes.add({ designId: selectedId, cwd, text, ...point, scope, part })
 							}
 						/>
 						) : null}
 					</div>
+
+					{/*
+					 * 本批缩略图轨：一次工具调用出多张时，主图只能放一张，其余的在这里并排。
+					 * 点击切换主图；关闭后下一次工具调用会重新把它拉出来。
+					 */}
+					<BatchRail
+						records={batchRecords}
+						selectedId={selectedId}
+						onSelect={(record) => {
+							form.load(record.spec);
+							setSelectedId(record.id);
+						}}
+						onDismiss={() => setBatchIds([])}
+					/>
 				</div>
 
 				{/*

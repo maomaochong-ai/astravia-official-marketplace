@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useActiveConversation, useTranslation } from "@astravia-org/plugin-sdk";
 import { getNoteStore, getPluginContext } from "../../../plugin-context";
+import type { CanvasNote } from "../../../domain/notes";
 
 /**
  * Handing notes to the conversation — modelled on the reference design plugin's
@@ -41,7 +42,7 @@ export interface NotesHandoff {
 	workspaceMismatch: boolean;
 	/** A session will be created on send — the panel says so before the click. */
 	needsSession: boolean;
-	sendAll: () => Promise<boolean>;
+	sendAll: (mode?: "auto" | "manual") => Promise<boolean>;
 }
 
 const AUTO_DISPATCH_MS = 1_200;
@@ -52,22 +53,24 @@ const AUTO_DISPATCH_MS = 1_200;
  * 只点名「读哪些备注」不够：用户刚在侧边栏改过结构 / 风格 / 主色，如果这句话不带参数，
  * agent 就会自己去猜一套值，改出来的稿跟面板里的不是同一份。所以把当前参数一起交底。
  */
-function dispatchPrompt(design: string): string {
+function dispatchPrompt(design: string, ids: readonly string[]): string {
 	return [
-		"The user has pinned notes on the LogoCreator canvas.",
+		`The user has pinned ${ids.length} note${ids.length === 1 ? "" : "s"} on the LogoCreator canvas (ids: ${ids.join(", ")}).`,
 		...(design ? [`Current design: ${design}`] : []),
-		"Call logocreator_notes with no arguments to list every pending note — each one names the part of the mark it is about (the mark, the wordmark, the tagline, the background) or is marked as a whole-brand rule.",
+		// 点名 id：自动派发可能连续发生两次，后者不该把已经处理过的再读一遍。
+		`Call logocreator_notes with no arguments to list every pending note; work only on the ids above. Each one names the part of the mark it is about (the mark, the wordmark, the tagline, the background) or is marked as a whole-brand rule.`,
 		"Work through them one at a time: change the fields a note names and re-render with logocreator_design, keeping the seed unless the note is about the mark's shape.",
-		"Then call logocreator_notes with action \"resolve\" and the id you actually addressed. Repeat until it reports nothing pending — including notes the user adds while you work.",
+		'Then call logocreator_notes with action "resolve" and the id you actually addressed. Repeat until it reports nothing pending — including notes the user adds while you work.',
 		"Write each reply in the language the user wrote that note in.",
 	].join(" ");
 }
 
 /**
- * @param cwd     面板所属会话的工作区
- * @param design  当前设计的参数摘要（由画布提供）；空串表示还没有稿
+ * @param cwd      面板所属会话的工作区
+ * @param design   当前设计的参数摘要（由画布提供）；空串表示还没有稿
+ * @param designId 当前选中的稿；备注按它分流，避免把别的设计稿的备注一起发出去
  */
-export function useNotesHandoff(cwd: string | null, design = ""): NotesHandoff {
+export function useNotesHandoff(cwd: string | null, design = "", designId: string | null = null): NotesHandoff {
 	const { t } = useTranslation();
 	const [version, setVersion] = useState(0);
 	// 参数摘要每帧都可能变，但 send 的依赖不该跟着变：用 ref 取最新值。
@@ -112,7 +115,14 @@ export function useNotesHandoff(cwd: string | null, design = ""): NotesHandoff {
 		return store.subscribe(() => setVersion((value) => value + 1));
 	}, []);
 
-	const pending = getNoteStore().pending();
+	/**
+	 * 面板上看得见的那批备注：本稿的 + 品牌级的（designId === null）。
+	 *
+	 * 之前直接取 `pending()`（全部稿），于是在设计 A 上点「交给智能体」，设计 B 的备注
+	 * 也一起被发了出去 —— 面板里看不到的东西不该被发出。
+	 */
+	const scopeFilter = (note: CanvasNote): boolean => note.designId === null || note.designId === designId;
+	const pending = getNoteStore().pending().filter(scopeFilter);
 	/**
 	 * 只有「宿主此刻没有任何活跃会话」才需要新建。
 	 *
@@ -133,12 +143,22 @@ export function useNotesHandoff(cwd: string | null, design = ""): NotesHandoff {
 		streaming: t("notes.handoff.streaming"),
 	};
 
+	/**
+	 * 发出去。`mode` 决定“发哪些”：
+	 *   auto   —— 只发还没派发过的（自动派发场景）。之前用 `pending()`，第二次留备注会把
+	 *             第一已派发的再发一遍，会话里出现重复指令。
+	 *   manual —— 面板上看得见的所有待处理备注（用户主动重发）。
+	 */
 	const send = useCallback(
-		async (): Promise<boolean> => {
+		async (mode: "auto" | "manual" = "manual"): Promise<boolean> => {
 			const conversationApi = getPluginContext().conversation;
-			const notes = getNoteStore().pending();
+			const store = getNoteStore();
+			const notes =
+				mode === "auto"
+					? store.undispatched().filter((note) => note.designId === null || note.designId === designId)
+					: store.pending().filter((note) => note.designId === null || note.designId === designId);
 			if (notes.length === 0) return false;
-			const prompt = dispatchPrompt(designRef.current);
+			const prompt = dispatchPrompt(designRef.current, notes.map((note) => note.id));
 			try {
 				if (needsSession && cwd !== null) {
 					await conversationApi.createSession(cwd);
@@ -147,7 +167,7 @@ export function useNotesHandoff(cwd: string | null, design = ""): NotesHandoff {
 				if (result.status === "failed") {
 					throw new Error(result.error?.message ?? "The host refused the prompt.");
 				}
-				await getNoteStore().markDispatched(notes.map((note) => note.id));
+				await store.markDispatched(notes.map((note) => note.id));
 				getPluginContext().ui.notify({
 					message: result.status === "queued" ? t("notes.handoff.queued") : t("notes.handoff.sent"),
 					variant: "success",
@@ -160,7 +180,7 @@ export function useNotesHandoff(cwd: string | null, design = ""): NotesHandoff {
 						await conversationApi.createSession(cwd);
 						const retry = await conversationApi.sendPrompt(prompt);
 						if (retry.status !== "failed") {
-							await getNoteStore().markDispatched(notes.map((note) => note.id));
+							await store.markDispatched(notes.map((note) => note.id));
 							getPluginContext().ui.notify({
 								message: retry.status === "queued" ? t("notes.handoff.queued") : t("notes.handoff.sent"),
 								variant: "success",
@@ -182,7 +202,7 @@ export function useNotesHandoff(cwd: string | null, design = ""): NotesHandoff {
 				return false;
 			}
 		},
-		[cwd, needsSession, t],
+		[cwd, needsSession, t, designId],
 	);
 
 	/**
@@ -193,13 +213,15 @@ export function useNotesHandoff(cwd: string | null, design = ""): NotesHandoff {
 	const sendRef = useRef(send);
 	sendRef.current = send;
 	useEffect(() => {
-		const fresh = getNoteStore().undispatched();
+		// 只看本稿的未派发备注：别的稿的交给它们自己的面板，不在这一页自动设。
+		const fresh = getNoteStore()
+			.undispatched()
+			.filter((note) => note.designId === null || note.designId === designId);
 		if (fresh.length === 0) return;
-		// A running turn will read the ledger itself; marking them stops the nagging.
 		// streaming 时宿主会把 prompt 排队（回执 queued），这里不拦：拦下来只会让按钮看起来失效。
 		if (blocked !== null) return;
 		const timer = window.setTimeout(() => {
-			void sendRef.current();
+			void sendRef.current("auto");
 		}, AUTO_DISPATCH_MS);
 		return () => window.clearTimeout(timer);
 	}, [blocked, version]);

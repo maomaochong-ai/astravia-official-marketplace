@@ -37,6 +37,13 @@ export interface CanvasNote {
 	id: string;
 	/** Design the note is about; null means "the form currently open". */
 	designId: string | null;
+	/**
+	 * 备注属于哪个工作区。
+	 *
+	 * 品牌级备注（`designId === null`）故意跨项目共享：一套品牌规则所有稿适用；
+	 * 但挂在具体某一稿上的备注不该跑到另一个项目里。旧记录没有这个字段，按共享处理。
+	 */
+	cwd?: string | null;
 	scope: NoteScope;
 	/** Which structural part the pin landed on; null for a global note. */
 	part: LogoPart | null;
@@ -77,6 +84,7 @@ export function coerceNote(raw: unknown): CanvasNote | null {
 	const createdAt = Number(value.createdAt);
 	return {
 		id: value.id,
+		cwd: typeof value.cwd === "string" && value.cwd ? value.cwd : null,
 		designId: typeof value.designId === "string" && value.designId ? value.designId : null,
 		scope: value.scope === "global" ? "global" : "design",
 		part: (value.part as LogoPart | undefined) ?? null,
@@ -179,10 +187,12 @@ export class NoteStore {
 		y: number;
 		scope?: NoteScope;
 		part?: LogoPart | null;
+		cwd?: string | null;
 	}): Promise<CanvasNote> {
 		await this.ready();
 		const note = coerceNote({
 			id: newNoteId(),
+			cwd: draft.scope === "global" ? null : (draft.cwd ?? null),
 			designId: draft.scope === "global" ? null : draft.designId,
 			scope: draft.scope === "global" ? "global" : "design",
 			part: draft.scope === "global" ? null : (draft.part ?? null),

@@ -1,6 +1,6 @@
 import type { PluginContext } from "@astravia-org/plugin-sdk";
 import { activeScopeKey } from "./canvas-prompt";
-import { setPendingDesignId } from "./pending-design";
+import { setPendingDesignIds } from "./pending-design";
 import { LOGO_TAB_ID } from "../../tab-ids";
 
 /**
@@ -30,11 +30,13 @@ export interface RevealResult {
 export function revealInCanvas(
 	ctx: PluginContext,
 	cwd: string | null | undefined,
-	designId: string,
+	designId: string | readonly string[],
 ): RevealResult {
-	// 交接给面板：它挂载或重渲染时认领。
-	setPendingDesignId(cwd ?? undefined, designId);
-	setPendingDesignId(activeScopeKey(), designId);
+	// 交接给面板：它挂载或重渲染时认领。整批都留下，面板才会把所有新图铺开。
+	// 之前只记一个 id，于是「对话里出了三张，画布上只有一张」。
+	const ids = typeof designId === "string" ? [designId] : [...designId];
+	setPendingDesignIds(cwd ?? undefined, ids);
+	setPendingDesignIds(activeScopeKey(), ids);
 
 	const errors: string[] = [];
 
