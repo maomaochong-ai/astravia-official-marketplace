@@ -36,7 +36,7 @@ export function createDesignTool(): PluginAgentToolRegistration<DesignToolPayloa
 		description: [
 			"Design a logo with the built-in vector engine and write the SVG files into the workspace.",
 			"Every file is real vector art: a 512×512 canvas with the mark, the wordmark and the palette resolved from the brief. The same fields plus the same seed reproduce the same bytes, so a design can be regenerated later.",
-			"Files land in ONE folder per design — `<slug>.logocreator-design/` at the project root, the same convention as the host's own `*.astravia-design/` — with `design.json` (spec, palette, every variant), `mark.svg` (the primary one) and `variants/1.svg …`. There is no per-run folder explosion: a second run updates the same manifest and adds variants beside the old ones.",
+			"Files land in ONE folder per design — `<slug>.logocreator-design/` at the project root, the same convention as the host's own `*.astravia-design/` — with `design.astravia-log` (spec, palette, every variant), `mark.svg` (the primary one) and `variants/1.svg …`. There is no per-run folder explosion: a second run updates the same manifest and adds variants beside the old ones.",
 			"The panel opens on the newest design automatically.",
 			"Use it when the user asks for a logo, an app icon, a wordmark or a brand mark. Prefer describing the subject in `intent` (\"a leaf mark for a plant nursery\") over naming a motif directly; the engine picks the first subject word it recognises.",
 			"For a full kit (variants, palette files, brand guide) call logocreator_brand_kit afterwards.",

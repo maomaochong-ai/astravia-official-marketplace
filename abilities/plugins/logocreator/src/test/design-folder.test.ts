@@ -58,9 +58,11 @@ describe("the design folder layout", () => {
 		expect(slugOfFolder(`C:/repo/acme${DESIGN_FOLDER_SUFFIX}/`)).toBe("acme");
 	});
 
-	it("honours a caller-supplied directory and strips separators", () => {
-		expect(designFolder("C:/repo/", "/brand/", "Acme")).toBe("C:/repo/brand/acme");
-		expect(designFolderForSlug("C:/repo", "brand", "acme")).toBe("C:/repo/brand/acme");
+	it("honours a caller-supplied directory and keeps the package suffix", () => {
+		expect(designFolder("C:/repo/", "/brand/", "Acme")).toBe("C:/repo/brand/acme.logocreator-design");
+		expect(designFolderForSlug("C:/repo", "brand", "acme")).toBe("C:/repo/brand/acme.logocreator-design");
+		// 传了目录也必须能被认出来，否则这些包既点不开也进不了切换器。
+		expect(isDesignFolder(designFolderForSlug("C:/repo", "brand", "acme"))).toBe(true);
 	});
 
 	it("numbers variants inside a variants/ subfolder", () => {

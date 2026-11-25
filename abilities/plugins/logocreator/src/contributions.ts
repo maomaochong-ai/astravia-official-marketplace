@@ -27,6 +27,7 @@ export const TOOL_LABELS = {
 	notes: "%tool.notes.label%",
 	plan: "%tool.plan.label%",
 	image: "%tool.image.label%",
+	openDesign: "%tool.openDesign.label%",
 } as const;
 
 /**

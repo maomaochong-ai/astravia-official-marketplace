@@ -26,7 +26,7 @@ import { BrandKitDialog } from "./brand-kit-dialog";
 import { CanvasDock } from "./canvas-dock";
 import { CanvasInspector } from "./canvas-inspector";
 import { CanvasSurface } from "./canvas-surface";
-import { BatchRail } from "./batch-rail";
+import { VariantGrid } from "./variant-grid";
 import { DesignSwitcher } from "./design-switcher";
 import { HistorySheet } from "./history-sheet";
 import { ResultGrid } from "./result-grid";
@@ -76,6 +76,10 @@ export function LogoCanvas(): JSX.Element {
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	/** 本批（一次工具调用）产出的全部稿 id；缩略图轨据此渲染。 */
 	const [batchIds, setBatchIds] = useState<string[]>([]);
+	/** 本批多张时默认铺网格；「放大」某张后进入单张画布（备注/缩放在那里）。 */
+	const [staged, setStaged] = useState(false);
+	/** 手动重扫设计包清单：用户刚在对话里生成一份，切换器要能立刻看到。 */
+	const [forceScan, setForceScan] = useState(false);
 	// Reference-aligned hand-off: it knows when to create a session, when the agent is
 		// already running, and when the conversation belongs to another project.
 	const handoff = useNotesHandoff(
@@ -130,7 +134,7 @@ export function LogoCanvas(): JSX.Element {
 		if (!history.ready) return;
 		let alive = true;
 		setDocsLoading(true);
-		void listDesignDocuments(getPluginContext().fs, cwd, Boolean(generation.lastCreatedId))
+		void listDesignDocuments(getPluginContext().fs, cwd, forceScan)
 			.then(items => {
 				if (alive) setDocs(items);
 			})
@@ -140,7 +144,7 @@ export function LogoCanvas(): JSX.Element {
 		return () => {
 			alive = false;
 		};
-	}, [history.ready, cwd, generation.lastCreatedId]);
+	}, [history.ready, cwd, generation.lastCreatedId, forceScan]);
 
 	/**
 	 * 切到另一份设计稿。
@@ -336,51 +340,60 @@ export function LogoCanvas(): JSX.Element {
 		<div ref={rootRef} className="relative flex h-full min-h-[320px] w-full flex-col overflow-hidden bg-background text-foreground">
 			{/* Stage — the canvas fills it; nothing here scrolls. */}
 			<div className="relative min-h-0 flex-1">
-				<div className="absolute inset-0 flex items-center justify-center p-4 pb-16">
-					<div className="w-full max-w-[min(100%,34rem)]">
-						{/*
-						 * 首次打开：设计历史还在从宿主存储里读，先给一句「正在打开 Logo 设计引擎」。
-						 * 第二次起存储已在本进程内 hydrate 完，`history.ready` 首帧就是 true，不会闪。
-						 * 这不是装饰：面板刚从宿主滑出时如果直接画空白，用户会以为插件挂了。
-						 */}
-						{history.ready ? null : (
-							<div data-testid="engine-skeleton" className="flex h-64 flex-col items-center justify-center gap-2 text-muted-foreground">
-								<span className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-								<span className="text-[11.5px]">{t("panel.openingEngine")}</span>
-							</div>
-						)}
-						{history.ready ? (
-						<CanvasSurface
-							previewUrl={preview}
-							alt={t("panel.previewAlt")}
-							notes={visibleNotes}
-							dark={form.spec.surface === "dark"}
-							spec={form.spec}
-							// Empty = nothing typed and nothing stored: show the cover, not a logo for
-							// a brand called "Untitled".
-							empty={!form.spec.brandName.trim() && !rasterUrl && history.items.length === 0}
-							rasterUrl={rasterUrl}
-							onPlace={async (point, text, scope, part) =>
-								notes.add({ designId: selectedId, cwd, text, ...point, scope, part })
-							}
-						/>
-						) : null}
-					</div>
-
-					{/*
-					 * 本批缩略图轨：一次工具调用出多张时，主图只能放一张，其余的在这里并排。
-					 * 点击切换主图；关闭后下一次工具调用会重新把它拉出来。
-					 */}
-					<BatchRail
+				{/*
+				 * 一次生成多张时，画布主体就是这一批：铺成网格，点哪张选中哪张，
+				 * 「放大」进单张画布（备注与缩放都在那里）。单张时退回原来的画布。
+				 * 上一版把这一批放在 dock 上方，两者抢同一块底部空间、直接叠在一起。
+				 */}
+				{history.ready && batchRecords.length > 1 && !staged ? (
+					<VariantGrid
 						records={batchRecords}
 						selectedId={selectedId}
 						onSelect={(record) => {
 							form.load(record.spec);
 							setSelectedId(record.id);
 						}}
-						onDismiss={() => setBatchIds([])}
+						onStage={(record) => {
+							form.load(record.spec);
+							setSelectedId(record.id);
+							setStaged(true);
+						}}
 					/>
-				</div>
+				) : (
+					<div className="absolute inset-0 flex items-center justify-center p-4 pb-16">
+						<div className="w-full max-w-[min(100%,34rem)]">
+							{/*
+							 * 首次打开：设计历史还在从宿主存储里读，先给一句「正在打开 Logo 设计引擎」。
+							 * 第二次起存储已在本进程内 hydrate 完，`history.ready` 首帧就是 true，不会闪。
+							 * 这不是装饰：面板刚从宿主滑出时如果直接画空白，用户会以为插件挂了。
+							 */}
+							{history.ready ? null : (
+								<div data-testid="engine-skeleton" className="flex h-64 flex-col items-center justify-center gap-2 text-muted-foreground">
+									<span className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+									<span className="text-[11.5px]">{t("panel.openingEngine")}</span>
+								</div>
+							)}
+							{history.ready ? (
+							<CanvasSurface
+								previewUrl={preview}
+								alt={t("panel.previewAlt")}
+								notes={visibleNotes}
+								dark={form.spec.surface === "dark"}
+								spec={form.spec}
+								// Empty = nothing typed and nothing stored: show the cover, not a logo for
+								// a brand called "Untitled".
+								empty={!form.spec.brandName.trim() && !rasterUrl && history.items.length === 0}
+								rasterUrl={rasterUrl}
+								onPlace={async (point, text, scope, part) =>
+									notes.add({ designId: selectedId, cwd, text, ...point, scope, part })
+								}
+							/>
+							) : null}
+						</div>
+					</div>
+				)}
+			</div>
+
 
 				{/*
 				 * 标题区：左边是设计稿切换器 + 可改写的稿名。
@@ -395,9 +408,19 @@ export function LogoCanvas(): JSX.Element {
 				>
 					<DesignSwitcher
 						docs={docs}
-						current={docs.find(doc => doc.slug === selectedRecord?.spec.brandName?.toLowerCase().replace(/[^a-z0-9]+/g, "-"))?.folder ?? null}
+						// 当前稿：优先用「打开过的包」（openFolder），再用品牌名匹配。
+						current={
+							openFolder ??
+							docs.find(
+								(doc) =>
+									doc.slug ===
+									selectedRecord?.spec.brandName?.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+							)?.folder ??
+							null
+						}
 						loading={docsLoading}
 						onSelect={(doc) => void openDocument(doc)}
+						onRefresh={() => setForceScan((value) => !value)}
 					/>
 					{editingName ? (
 						<input
@@ -538,11 +561,10 @@ export function LogoCanvas(): JSX.Element {
 					workspaceMismatch={handoff.workspaceMismatch}
 					busy={generation.running}
 				/>
-			</div>
 
-			<BrandKitDialog record={kitRecord} onClose={() => setKitRecord(null)} t={t} />
+				<BrandKitDialog record={kitRecord} onClose={() => setKitRecord(null)} t={t} />
 
-			<HistorySheet
+				<HistorySheet
 				open={historyOpen}
 				records={history.items}
 				label={history.label}

@@ -1,6 +1,7 @@
 import type { PluginAgentToolRegistration, PluginImageRef } from "@astravia-org/plugin-sdk";
 import { generateMarksWithHost, HostMediaError } from "../domain/ai/host-media";
 import { newDesignId } from "../domain/history-store";
+import { designFolder, writeManifest } from "../domain/design-folder";
 import { normalizeSpec } from "../domain/spec";
 import { getHistoryStore, getPluginContext } from "../plugin-context";
 import { revealInCanvas } from "../features/canvas/reveal";
@@ -109,9 +110,36 @@ export function createImageTool(): PluginAgentToolRegistration<ImageToolInput> {
 			const images: PluginImageRef[] = [];
 			const designIds: string[] = [];
 			let lastDesignId: string | null = null;
-			for (const image of generated.images) {
+			// 位图也要落成带后缀的设计包：否则画布能看、文件树里却找不到它，
+			// 「对话生成一个可打开的包」对 AI 稿就是空承诺。
+			// `fs` 是可选通道（旧宿主或未授 `fs.write` 时不在）：没有就只写历史，不宣称落盘。
+			const fsApi = ctx.fs ?? null;
+			const folder = session.cwd && fsApi ? designFolder(session.cwd, undefined, spec.brandName) : null;
+			if (folder && fsApi) {
+				await fsApi.createDirectory(folder).catch(() => undefined);
+				await fsApi.createDirectory(`${folder}/variants`).catch(() => undefined);
+			}
+			const variants: NonNullable<Parameters<typeof writeManifest>[2]["variants"]>[number][] = [];
+
+			for (const [index, image] of generated.images.entries()) {
 				const designId = newDesignId();
 				await history.add({ id: designId, spec, engine: "ai", subject: image.modelId ?? "image", blobId: image.blobId });
+
+				if (folder && fsApi) {
+					const blob = await ctx.storage.readBlob(image.blobId).catch(() => null);
+					if (blob) {
+						const relative = `variants/${index + 1}.png`;
+						await fsApi.writeFile(`${folder}/${relative}`, blob.data, "base64").catch(() => undefined);
+						variants.push({
+							file: relative,
+							subject: image.modelId ?? "image",
+							seed: spec.seed,
+							style: spec.style,
+							engine: "ai",
+						});
+					}
+				}
+
 				// The card needs a URL, not a blob id: resolve the same ref the host would, so
 				// what the conversation shows is exactly what the panel stored.
 				const ref = await ctx.storage.getBlobRef(image.blobId).catch(() => null);
@@ -126,6 +154,18 @@ export function createImageTool(): PluginAgentToolRegistration<ImageToolInput> {
 					designIds.push(designId);
 				}
 				lastDesignId = designId;
+			}
+
+			if (folder && variants.length > 0) {
+				// 位图没有 SVG 主图：`primary` 留空，清单只列 PNG。
+				await writeManifest(fsApi, folder, {
+					brand: spec.brandName,
+					slug: folder.split("/").pop() ?? spec.brandName,
+					primary: "",
+					spec,
+					palette: {},
+					variants,
+				}).catch(() => undefined);
 			}
 
 			// The panel comes up on this batch — same path as the vector tool. Reported

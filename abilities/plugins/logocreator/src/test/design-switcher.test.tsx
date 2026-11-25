@@ -27,10 +27,15 @@ describe("design switcher", () => {
 		expect(select.value).toBe("acme.logocreator-design");
 	});
 
-	it("stays out of the way when there is nothing to switch between", () => {
-		const { container } = render(<DesignSwitcher docs={[docs[0]!]} current={docs[0]!.folder} onSelect={() => {}} />);
+	it("still renders for a single package, so the open one is confirmable", () => {
+		// 上一版只有一份包时整块不渲染，「展不开」的下拉就此消失；现在单份也显示。
+		render(<DesignSwitcher docs={[docs[0]!]} current={docs[0]!.folder} onSelect={() => {}} />);
+		expect(screen.getByTestId("design-switcher")).toBeTruthy();
+	});
+
+	it("renders nothing when the project has no package at all", () => {
+		const { container } = render(<DesignSwitcher docs={[]} current={null} onSelect={() => {}} />);
 		expect(container.firstChild).toBeNull();
-		expect(screen.queryByTestId("design-switcher")).toBeNull();
 	});
 
 	it("says it is scanning on the first open, instead of showing an empty control", () => {

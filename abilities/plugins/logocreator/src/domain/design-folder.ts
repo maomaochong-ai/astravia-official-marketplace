@@ -77,7 +77,11 @@ export function designFolder(cwd: string, directory: string | undefined, brand: 
 export function designFolderForSlug(cwd: string, directory: string | undefined, slug: string): string {
 	const base = cwd.replace(/[/\\]+$/, "");
 	const container = trimSlashes(directory ?? "");
-	return container.length > 0 ? `${base}/${container}/${slug}` : `${base}/${slug}${DESIGN_FOLDER_SUFFIX}`;
+	// 后缀两处都要有：文件树的装饰与右键菜单按扩展名认领，`openDesignFolder` 也用它判定。
+	// 上一版传了 `directory` 时丢了后缀，结果包装盘了却既点不开也进不了切换器。
+	return container.length > 0
+		? `${base}/${container}/${slug}${DESIGN_FOLDER_SUFFIX}`
+		: `${base}/${slug}${DESIGN_FOLDER_SUFFIX}`;
 }
 
 export function variantPath(index: number): string {
