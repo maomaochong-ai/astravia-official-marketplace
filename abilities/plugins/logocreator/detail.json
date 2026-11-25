@@ -6,7 +6,11 @@
       "eyebrow": "Logo design",
       "title": "A brand's mark, drawn as real vector art",
       "description": "Type a name, choose a structure and a style, and the built-in engine draws the mark, the wordmark and the palette as one standalone SVG. No key, no network, no waiting — and the same numbers always produce the same logo.",
-      "badges": ["Offline engine", "Real SVG", "Brand kit"]
+      "badges": [
+        "Offline engine",
+        "Real SVG",
+        "Brand kit"
+      ]
     },
     {
       "type": "showcase",
@@ -61,7 +65,7 @@
         },
         {
           "title": "Design, then take the kit",
-          "description": "Design logos writes a few variations into your history. From any tile, save the SVG, a 2048 px PNG, or the full brand kit as a zip."
+          "description": "Design logos writes a few variations into your history using the engine picked under AI settings — the built-in vector engine needs nothing, a connected image model produces a raster PNG. From any tile, save the SVG, a 2048 px PNG, or the full brand kit as a zip."
         }
       ]
     },
