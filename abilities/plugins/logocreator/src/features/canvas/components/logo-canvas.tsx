@@ -466,12 +466,14 @@ export function LogoCanvas(): JSX.Element {
 							: undefined
 					}
 					onSurprise={() => void generation.generate(form.spec, { surprise: true })}
+					onOpenAiSettings={() => setAiOpen(true)}
 					onOpenNotes={() => openInspector("notes")}
 					onToggleInspector={() => (inspectorOpen ? setInspectorOpen(false) : openInspector("design"))}
+					// 没选中稿时不静默无反应：禁用由 canExport 管，这里只处理真正能导出的情况。
 					onOpenKit={() => {
 						if (selectedRecord) setKitRecord(selectedRecord);
-						else setInspectorOpen(true);
 					}}
+					canExport={Boolean(selectedRecord)}
 				/>
 
 				<CanvasInspector
@@ -500,6 +502,7 @@ export function LogoCanvas(): JSX.Element {
 					onHandToAgent={() => void handoff.sendAll()}
 					blockedReason={handoff.blockedReason}
 					needsSession={handoff.needsSession}
+					workspaceMismatch={handoff.workspaceMismatch}
 					busy={generation.running}
 				/>
 			</div>
@@ -527,10 +530,13 @@ export function LogoCanvas(): JSX.Element {
 				settings={generation.settings}
 				providers={generation.providers}
 				denied={generation.aiDenied}
+				mode={generation.mode}
+				onChooseMode={generation.setMode}
 				onClose={() => setAiOpen(false)}
 				onChooseProvider={(providerId) => {
 					generation.updateSettings({ providerId });
-					generation.setMode(providerId ? "ai" : "local");
+					// 选了 provider 就把引擎切到位图：这是他的选择，不再由自动探测覆盖。
+					if (providerId) generation.setMode("ai");
 				}}
 				onRefresh={generation.refreshProviders}
 				t={t}

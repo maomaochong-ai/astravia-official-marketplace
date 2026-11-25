@@ -22,6 +22,8 @@ export interface CanvasInspectorProps {
 	blockedReason?: string | null;
 	/** A session will be created for this send. */
 	needsSession?: boolean;
+	/** 会话在另一个工作区：仍然发，但面板先说明。 */
+	workspaceMismatch?: boolean;
 	busy: boolean;
 }
 
@@ -48,6 +50,7 @@ export function CanvasInspector({
 	onHandToAgent,
 	blockedReason,
 	needsSession,
+	workspaceMismatch = false,
 	busy,
 }: CanvasInspectorProps): JSX.Element | null {
 	const { t } = useTranslation();
@@ -122,6 +125,7 @@ export function CanvasInspector({
 							onHandToAgent={onHandToAgent}
 							blockedReason={blockedReason}
 							needsSession={needsSession}
+							workspaceMismatch={workspaceMismatch}
 							busy={busy}
 						/>
 						<p className="text-[11px] leading-relaxed text-muted-foreground">{t("notes.emptyHint")}</p>

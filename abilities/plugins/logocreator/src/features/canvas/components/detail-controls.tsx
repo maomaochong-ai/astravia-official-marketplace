@@ -67,7 +67,8 @@ export function DetailControls({ spec, onPatch, variations, onVariations, subjec
 				</label>
 
 				<label className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[12px] text-muted-foreground">
-					{t("label.variations")}
+					{/* 两个引擎的数量语义不同：矢量引擎是“出几版”，AI 是“同一稿生成几张变体”。 */}
+					{aiMode ? t("label.variationsAi") : t("label.variations")}
 					<input
 						type="number"
 						min={1}
@@ -75,7 +76,7 @@ export function DetailControls({ spec, onPatch, variations, onVariations, subjec
 						value={variations}
 						onChange={(event) => onVariations(Number(event.target.value) || 1)}
 						className={`${INPUT} h-7 w-12 px-1 text-center tabular-nums text-[12px]`}
-						aria-label={t("label.variations")}
+						aria-label={aiMode ? t("label.variationsAi") : t("label.variations")}
 					/>
 				</label>
 			</div>

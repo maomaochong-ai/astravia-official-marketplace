@@ -40,6 +40,8 @@ export function CanvasPlaceholder(): JSX.Element {
 			<div className="relative flex flex-col items-center gap-0.5 px-6 text-center">
 				<span className="text-[12px] font-medium text-foreground">{t("placeholder.title")}</span>
 				<span className="text-[10.5px] leading-snug text-muted-foreground">{t("placeholder.body")}</span>
+				{/* 提醒画布本身可点击：不然用户不知道备注要“在画布上点一下”才留得下。 */}
+				<span className="text-[10px] leading-snug text-muted-foreground/80">{t("notes.surfaceHint")}</span>
 			</div>
 		</div>
 	);

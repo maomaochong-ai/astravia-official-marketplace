@@ -19,13 +19,19 @@ export interface CanvasDockProps {
 	onGenerateImage: () => void;
 	/** Present only when the selected design is an AI image: regenerate from it. */
 	onGenerateFromReference?: () => void;
+	/** 没有可用图像模型时，点 AI 入口直接去设置，而不是给一个点不动的灰按钮。 */
+	onOpenAiSettings: () => void;
 	onOpenNotes: () => void;
 	onToggleInspector: () => void;
 	onOpenKit: () => void;
+	/** 只有选中了一张稿才能导出；否则按钮点下去什么也不会发生。 */
+	canExport: boolean;
 }
 
 interface SlotProps {
 	label: string;
+	/** 悬停提示；与 label 不同时用来补充「为什么是这个状态」。 */
+	title?: string;
 	icon: JSX.Element;
 	onClick: () => void;
 	active?: boolean;
@@ -35,7 +41,7 @@ interface SlotProps {
 	primary?: boolean;
 }
 
-function DockSlot({ label, icon, onClick, active, disabled, badge, primary }: SlotProps): JSX.Element {
+function DockSlot({ label, title, icon, onClick, active, disabled, badge, primary }: SlotProps): JSX.Element {
 	return (
 		<button
 			type="button"
@@ -43,7 +49,7 @@ function DockSlot({ label, icon, onClick, active, disabled, badge, primary }: Sl
 			disabled={disabled}
 			aria-pressed={active}
 			aria-label={label}
-			title={label}
+			title={title ?? label}
 			className={`${FOCUS_RING} relative flex size-8 shrink-0 items-center justify-center rounded-[22%] border border-transparent transition-colors ${
 				primary
 					? "bg-primary text-primary-foreground hover:opacity-90"
@@ -71,6 +77,10 @@ function DockSlot({ label, icon, onClick, active, disabled, badge, primary }: Sl
  * actually repeats (generate, re-roll, inspect, notes) inside the canvas viewport,
  * and the label appears on hover so the icons stay dense.
  *
+ * 主按钮的文案**不再随引擎变**：它执行的是「用当前引擎跑一遍」，两个引擎共用同一个动词。
+ * 上一版在 `Design logos` / `Generate with AI` 之间切换，看起来像两个功能，点下去却是同一段
+ * 代码，用户没法预判这次会不会扣费。现在引擎写在悬停提示里，AI 只留 Image mark 一个入口。
+ *
  * Deliberately no `backdrop-blur`: the surface behind it repaints on every edit,
  * and a blur would re-read those pixels each frame.
  */
@@ -81,6 +91,7 @@ export function CanvasDock({
 	imageAvailable,
 	onGenerateFromReference,
 	onGenerateImage,
+	onOpenAiSettings,
 	pendingNotes,
 	inspectorOpen,
 	inspectorTab,
@@ -89,51 +100,46 @@ export function CanvasDock({
 	onOpenNotes,
 	onToggleInspector,
 	onOpenKit,
+	canExport,
 }: CanvasDockProps): JSX.Element {
 	const { t } = useTranslation();
+	const engine = t(mode === "ai" ? "dock.engine.ai" : "dock.engine.local");
 
 	return (
 		<div className="pointer-events-none absolute bottom-3 left-1/2 z-40 -translate-x-1/2">
 			<div className="pointer-events-auto flex max-w-[calc(100vw-2rem)] flex-wrap items-end justify-center gap-1 rounded-2xl border border-border/80 bg-popover px-2 py-1.5 shadow-md">
 				<DockSlot
 					primary
-					label={
-						running
-							? t("action.working")
-							: canGenerate
-								? mode === "ai"
-									? t("action.generateAi")
-									: t("action.generate")
-								: t("dock.locked")
-					}
+					label={running ? t("action.working") : canGenerate ? t("action.generate") : t("dock.locked")}
+					title={canGenerate ? t("dock.generateHint", { engine }) : t("dock.locked")}
 					disabled={running || !canGenerate}
 					onClick={onGenerate}
 					icon={<IconGenerate />}
 				/>
-				{imageAvailable ? (
-					// The raster path is offered only when the host can actually run it, so the
-					// button never leads to an error the user cannot act on.
-					<>
-						<DockSlot
-							label={t("dock.image")}
-							disabled={running || !canGenerate}
-							onClick={onGenerateImage}
-							icon={<IconRaster />}
-						/>
-						{onGenerateFromReference ? (
-							// 「改这一张」：面板里的 image-to-image。以前只有对话里的工具能做，
-							// 而用户看着画布想改的时机比在对话里多。
-							<DockSlot
-								label={t("dock.reference")}
-								disabled={running}
-								onClick={onGenerateFromReference}
-								icon={<IconReference />}
-							/>
-						) : null}
-					</>
+				{/*
+				 * 图像模型没连上时按钮仍然在：把它藏起来，用户既发现不了 AI 能力，
+				 * 也不知道为什么没有。点一下直接去设置，设置里写着下一步做什么。
+				 */}
+				<DockSlot
+					label={imageAvailable ? t("dock.image") : t("dock.imageOff")}
+					title={imageAvailable ? t("dock.imageHint") : t("notify.aiNoProvider")}
+					disabled={imageAvailable && (running || !canGenerate)}
+					onClick={() => (imageAvailable ? onGenerateImage() : onOpenAiSettings())}
+					icon={<IconRaster />}
+				/>
+				{imageAvailable && onGenerateFromReference ? (
+					// 「改这一张」：面板里的 image-to-image。以前只有对话里的工具能做，
+					// 而用户看着画布想改的时机比在对话里多。
+					<DockSlot
+						label={t("dock.reference")}
+						disabled={running}
+						onClick={onGenerateFromReference}
+						icon={<IconReference />}
+					/>
 				) : null}
 				<DockSlot
 					label={t("action.surprise")}
+					title={t("dock.surpriseHint")}
 					disabled={running || !canGenerate}
 					onClick={onSurprise}
 					icon={<IconShuffle />}
@@ -153,7 +159,9 @@ export function CanvasDock({
 					icon={<IconNote />}
 				/>
 				<DockSlot
-					label={t("dock.export")}
+					label={canExport ? t("dock.export") : t("dock.exportOff")}
+					title={canExport ? t("dock.exportHint") : t("dock.exportOff")}
+					disabled={!canExport}
 					onClick={onOpenKit}
 					icon={<IconExport />}
 				/>

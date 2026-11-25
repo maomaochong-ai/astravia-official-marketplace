@@ -17,6 +17,8 @@ export interface NotesListProps {
 	blockedReason?: string | null;
 	/** A session will be created for this send — worth saying before the click. */
 	needsSession?: boolean;
+	/** 会话属于另一个工作区：仍然会发进它，但要先告诉用户。 */
+	workspaceMismatch?: boolean;
 }
 
 /**
@@ -33,6 +35,7 @@ export function NotesList({
 	busy,
 	blockedReason,
 	needsSession,
+	workspaceMismatch = false,
 }: NotesListProps): JSX.Element | null {
 	const { t } = useTranslation();
 	const pending = notes.filter((note) => note.status === "pending");
@@ -56,6 +59,11 @@ export function NotesList({
 					{t("notes.handToAgent")}
 				</button>
 			</div>
+			{/* 交互说明只在列表顶部出现一次：用户需要知道这些备注会被逐条交给 agent。 */}
+			<p className="text-[10px] leading-snug text-muted-foreground">{t("notes.hint")}</p>
+			{workspaceMismatch ? (
+				<p className="text-[10px] leading-snug text-muted-foreground">{t("notes.handoff.otherWorkspaceHint")}</p>
+			) : null}
 			{blockedReason ? <p className="text-[10px] leading-snug text-muted-foreground">{blockedReason}</p> : null}
 			<ul className="space-y-1">
 				{pending.map((note, index) => (

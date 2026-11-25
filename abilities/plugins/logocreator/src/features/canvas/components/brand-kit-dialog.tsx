@@ -101,14 +101,19 @@ export function BrandKitDialog({ record, onClose, t }: BrandKitDialogProps): JSX
 			size="wide"
 			footer={
 				<div className="flex flex-wrap items-center gap-1.5">
-					<button
-						type="button"
-						disabled={!kit}
-						onClick={() => kit && void saveKitFile(fs(), kit)}
-						className={`${BUTTON_PRIMARY} ${FOCUS_RING}`}
-					>
-						{t("kit.downloadZip")}
-					</button>
+					{/* 位图没有品牌套装：与其放一个永远灰的 zip 按钮，不如直接说清楚。 */}
+					{record?.engine === "local" ? (
+						<button
+							type="button"
+							disabled={!kit}
+							onClick={() => kit && void saveKitFile(fs(), kit)}
+							className={`${BUTTON_PRIMARY} ${FOCUS_RING}`}
+						>
+							{t("kit.downloadZip")}
+						</button>
+					) : (
+						<span className="text-[11px] text-muted-foreground">{t("kit.aiNoKit")}</span>
+					)}
 					<button
 						type="button"
 						disabled={!record || record.engine !== "local" || !variants}
