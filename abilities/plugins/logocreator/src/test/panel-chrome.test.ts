@@ -69,7 +69,8 @@ describe("image-to-image in the panel", () => {
 	it("passes the reference through and keeps it to one result", () => {
 		const generation = read("src/features/canvas/hooks/use-generation.ts");
 		expect(generation).toContain("referenceBlobId: options.reference");
-		expect(generation).toContain("count: options.reference ? 1 : count");
+		// 编辑只出一张：换风格就不是「改这张」了，所以 reference 时固定 count = 1。
+		expect(generation).toMatch(/const count = options\.reference \? 1/);
 	});
 
 	it("offers the action only for an AI design that still has its blob", () => {

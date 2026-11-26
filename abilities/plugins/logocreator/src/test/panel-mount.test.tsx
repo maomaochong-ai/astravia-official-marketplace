@@ -159,7 +159,7 @@ describe("the canvas mounts", () => {
 		expect(notifyOf(ctx)).not.toHaveBeenCalled();
 	});
 
-	it("designs three vectors from the stage and stores them", async () => {
+	it("will not generate before an image model is connected", async () => {
 		const { ctx, storage } = fakeContext();
 		setPluginContext(ctx);
 		renderPanel();
@@ -167,30 +167,24 @@ describe("the canvas mounts", () => {
 		fireEvent.click(await screen.findByLabelText("Design settings"));
 		const nameInput = (await screen.findByPlaceholderText("Fern & Field")) as HTMLInputElement;
 		fireEvent.change(nameInput, { target: { value: "Fern & Field" } });
-		const intent = (await screen.findByPlaceholderText("a minimal leaf mark, organic and calm")) as HTMLTextAreaElement;
-		fireEvent.change(intent, { target: { value: "a leaf mark for a garden studio" } });
 		fireEvent.click(screen.getByLabelText("Close the panel"));
 
-		fireEvent.click(screen.getByLabelText("Design logos"));
+		// 这一版只有宿主 AI 一条生成路径：没连模型时点主按钮 -> 打开 AI 设置，
+		// 不再本地渲染入库（那会让人误以为「AI 出图不需要模型」）。
+		// 没有 provider 时主按钮是「AI 需要图像模型」，点它直接去设置。
+		fireEvent.click(await screen.findByLabelText("AI needs an image model"));
 
-		await waitFor(() => {
-			expect(storage.files["designs.json"]).toBeTruthy();
-		});
-		const saved = JSON.parse(storage.files["designs.json"]);
-		expect(saved.items).toHaveLength(3);
-		expect(saved.items[0].spec.brandName).toBe("Fern & Field");
-		// The brief was read as a leaf, which is the whole point of `intent`.
-		expect(saved.items[0].subject).toBe("leaf");
+		await waitFor(() => expect(storage.files["designs.json"]).toBeUndefined());
+		expect(await screen.findByText("AI image source")).toBeTruthy();
 	});
 
-	it("refuses to design without a name, before the click", async () => {
+	it("refuses to generate without a name, before the click", async () => {
 		const { ctx, storage } = fakeContext();
 		setPluginContext(ctx);
 		renderPanel();
 
-		// Disabled, with the reason in the control's own title/aria-label. No separate
-		// hint line under the dock: that stray paragraph was the "extra text" the dock
-		// stacked below itself.
+		// 禁用 + 原因写在控件自身的 title 里（dock 下面不再挂一行说明文字）。
+		// 缺名字时 label 就是 dock.locked，不是动作名。
 		const button = (await screen.findByLabelText("Type a brand name first")) as HTMLButtonElement;
 		expect(button.disabled).toBe(true);
 		expect(button.getAttribute("title")).toBe("Type a brand name first");

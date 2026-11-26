@@ -68,7 +68,6 @@ export function LogoCanvas(): JSX.Element {
 		aiNoProvider: t("notify.aiNoProvider"),
 		aiFailed: t("notify.aiFailed"),
 		aiFailedHint: t("notify.aiFailedHint"),
-		localFailed: t("notify.localFailed"),
 		aiDone: (count) => t("notify.aiDone", { count }),
 		aiPartial: (failed) => t("notify.aiPartial", { failed }),
 	});
@@ -263,14 +262,27 @@ export function LogoCanvas(): JSX.Element {
 		publishCanvasSpec(cwd, form.spec);
 	}, [cwd, form.spec]);
 
-	/** The offline planner's bridge: three planned specs become three stored designs. */
+	/**
+	 * 「一句话起步」的桥：规划出三个方向后，**逐张交给宿主 AI** 生成。
+	 *
+	 * 上一版在这里本地 `renderLogo` 直接入库 —— 不需要任何图像服务就能出图，
+	 * 那是另一种产物（矢量草稿），而用户要的是 AI 成图。
+	 */
 	const handlePlan = async (candidates: { spec: typeof form.spec }[]) => {
-		for (const candidate of candidates) {
-			const rendered = renderLogo(candidate.spec);
-			// The hook owns error reporting; the id is ours so the reveal can point at it.
-			await history.add({ id: newDesignId(), spec: candidate.spec, engine: "local", subject: rendered.subject });
+		if (generation.providers.length === 0) {
+			setAiOpen(true);
+			return;
 		}
-		// Select the first candidate: the planner's order is the recommendation order.
+		const ids: string[] = [];
+		for (const candidate of candidates) {
+			const batch = await generation.generate(candidate.spec, { count: 1 });
+			ids.push(...batch.ids);
+		}
+		if (ids.length > 0) {
+			setBatchIds(ids);
+			setStaged(false);
+		}
+		// 选中第一个方向：规划顺序就是推荐顺序。
 		if (candidates[0]) form.load(candidates[0].spec);
 	};
 
@@ -418,13 +430,15 @@ export function LogoCanvas(): JSX.Element {
 				 * 标题区：左边是设计稿切换器 + 可改写的稿名。
 				 * 设计稿是磁盘上的 `.astravia-log` 文件，一份文件一份稿。
 				 *
-				 * 侧栏打开时**不**隐藏这一行：改参数时看不到自己在改哪一版，
-				 * 是这个面板最容易迷路的地方；只把右侧让出侧栏宽度。
+				 * 侧栏在**左侧**：打开时整个标题区右移让位，而不是继续压在侧栏上
+				 * （上一版只给了 padding-right，起点仍在 left-3，所以跟侧栏重叠）。
 				 */}
 				<div
 					data-testid="stage-title-slot"
-					className={`absolute left-3 top-3 z-40 flex flex-wrap items-center gap-1 transition-[padding] ${
-						inspectorOpen ? "pr-[clamp(15rem,88%,20rem)]" : "max-w-[calc(100%-5.5rem)]"
+					className={`absolute top-3 z-40 flex flex-wrap items-center gap-1 transition-[left,max-width] ${
+						inspectorOpen
+							? "left-[calc(clamp(15rem,88%,20rem)+0.5rem)] max-w-[calc(100%-clamp(15rem,88%,20rem)-3rem)]"
+							: "left-3 max-w-[calc(100%-5.5rem)]"
 					}`}
 				>
 					<DesignSwitcher
@@ -513,28 +527,22 @@ export function LogoCanvas(): JSX.Element {
 				<CanvasDock
 					canGenerate={canGenerate}
 					running={generation.running}
-					mode={generation.mode}
 					pendingNotes={pendingCount}
 					inspectorOpen={inspectorOpen}
 					inspectorTab={inspectorTab}
+					// 只有一个生成动词：宿主 AI 出图。
 					onGenerate={() => void runBatch()}
 					imageAvailable={imageAvailable}
-					onGenerateImage={() => {
-						// Ask for this batch on the raster line explicitly: flipping the mode and
-						// calling generate in the same tick would still run the vector path.
-						void runBatch({ mode: "ai" });
-					}}
-					// Only when the open design is an AI image: a vector design has no bitmap to edit.
+					// 只当选中一张 AI 图时出现：拿它当参考图重生成。
 					onGenerateFromReference={
 						selectedRecord?.engine === "ai" && selectedRecord.blobId
 							? () => {
 									const reference = selectedRecord.blobId;
 									if (!reference) return;
-									void runBatch({ mode: "ai", reference });
+									void runBatch({ reference });
 								}
 							: undefined
 					}
-					onSurprise={() => void runBatch({ surprise: true })}
 					onOpenAiSettings={() => setAiOpen(true)}
 					onOpenVersions={() => setHistoryOpen(true)}
 					onOpenNotes={() => openInspector("notes")}
@@ -559,7 +567,8 @@ export function LogoCanvas(): JSX.Element {
 						variations: generation.settings.variations,
 						onVariations: generation.updateVariations,
 						subject,
-						aiMode: generation.mode === "ai",
+						// 只有宿主 AI 一条生成路径，数量标签固定用「每次生成几张」。
+						aiMode: true,
 						imageLabels: {
 							fromImage: t("colour.fromImage"),
 							imageFailed: t("error.imageRead"),
@@ -567,6 +576,10 @@ export function LogoCanvas(): JSX.Element {
 						},
 					}}
 					onPlan={handlePlan}
+					needsProvider={generation.providers.length === 0}
+					onOpenAiSettings={() => setAiOpen(true)}
+					// 把当前描述交给会话：画布上的改动以 prompt 形式继续在宿主对话里生成。
+					onSendToChat={() => void handoff.sendAll("manual")}
 					notes={visibleNotes}
 					onRemoveNote={(id) => void notes.remove(id)}
 					onHandToAgent={() => void handoff.sendAll()}
@@ -606,14 +619,8 @@ export function LogoCanvas(): JSX.Element {
 				settings={generation.settings}
 				providers={generation.providers}
 				denied={generation.aiDenied}
-				mode={generation.mode}
-				onChooseMode={generation.setMode}
 				onClose={() => setAiOpen(false)}
-				onChooseProvider={(providerId) => {
-					generation.updateSettings({ providerId });
-					// 选了 provider 就把引擎切到位图：这是他的选择，不再由自动探测覆盖。
-					if (providerId) generation.setMode("ai");
-				}}
+				onChooseProvider={(providerId) => generation.updateSettings({ providerId })}
 				onRefresh={generation.refreshProviders}
 				t={t}
 			/>

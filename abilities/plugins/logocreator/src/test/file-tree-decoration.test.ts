@@ -35,8 +35,9 @@ describe("the dock has one entry per verb", () => {
 		expect(entry).not.toContain('t("panel.history")');
 	});
 
-	it("folds Surprise into the generate menu instead of its own slot", () => {
-		expect(dock).toContain('aria-haspopup="menu"');
-		expect(dock).toContain('t("action.surprise")');
+	it("keeps one generate verb and no caret menu", () => {
+		// 上一版把「惊喜我」挂在生成按钮右侧的 ▾ 上：不对称也不协调，已移进设置面板。
+		expect(dock).not.toContain('aria-haspopup="menu"');
+		expect(dock).not.toContain('t("action.surprise")');
 	});
 });

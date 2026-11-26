@@ -132,8 +132,9 @@ describe("the panel's image path", () => {
 			</__PluginI18nContext.Provider>,
 		);
 
-		// Detection is async; the dock must show the slot without the user opening a dialog.
-		expect(await screen.findByLabelText(en["dock.image"])).toBeTruthy();
+		// 检测是异步的：有 provider 时主按钮不再处于「缺模型」态。
+		await screen.findByLabelText(en["dock.inspector"]);
+		await waitFor(() => expect(screen.queryByLabelText(en["dock.imageOff"])).toBeNull());
 	});
 
 	it("generates a raster record and shows it on the stage", async () => {
@@ -151,7 +152,7 @@ describe("the panel's image path", () => {
 		fireEvent.change(nameInput, { target: { value: "Hootly" } });
 		fireEvent.click(screen.getByLabelText(en["inspector.close"]));
 
-		fireEvent.click(await screen.findByLabelText(en["dock.image"]));
+		fireEvent.click(await screen.findByLabelText(en["action.generateAi"]));
 
 		await waitFor(() => expect(files["designs.json"]).toBeTruthy());
 		const saved = JSON.parse(files["designs.json"]);
@@ -179,8 +180,10 @@ describe("the panel's image path", () => {
 		);
 
 		await screen.findByLabelText(en["dock.inspector"]);
-		// No image slot when it cannot work — and no crash from the refusal.
-		expect(screen.queryByLabelText(en["dock.image"])).toBeNull();
+		// 权限被拒 → 没有「Generate with AI」这一态：按钮要么是缺模型、要么是缺名字，
+		// 都不会假装能生成。
+		await screen.findByLabelText(en["dock.inspector"]);
+		await waitFor(() => expect(screen.queryByLabelText(en["action.generateAi"])).toBeNull());
 	});
 });
 

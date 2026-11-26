@@ -10,9 +10,6 @@ export interface AiSettingsDialogProps {
 	providers: HostImageProvider[];
 	/** `media.generate` was refused by the host; only re-authorising fixes it. */
 	denied: boolean;
-	/** Which engine the next run uses. Without this the vector line is unreachable. */
-	mode: "local" | "ai";
-	onChooseMode: (mode: "local" | "ai") => void;
 	onClose: () => void;
 	onChooseProvider: (providerId: string | undefined) => void;
 	onRefresh: () => Promise<void>;
@@ -20,21 +17,18 @@ export interface AiSettingsDialogProps {
 }
 
 /**
- * Where marks come from — and which of the two engines runs.
+ * Where marks come from.
  *
- * 早先这里只列 provider：一旦宿主连了任何图像模型，`use-generation` 就把模式自动切成
- * AI，而界面上没有任何地方能切回矢量引擎 —— 想再要 SVG / 品牌手册只能等 AI 失败。
- * 所以引擎选择放在这里：它是「这次生成花不花钱、出不出矢量」的决定，与选哪家模型同类。
+ * 插件只有一条生成路径（宿主图像模型）。这里挑「用哪个模型、刷新一下看有哪些」，
+ * 不再提供矢量/位图切换：本地渲染只用于画布上的排版预览，不是产物来源。
  *
- * 凭据仍然是只读的：provider、账户与计费都在 Astravia 自己的设置里，这里只挑花谁的钱。
+ * 凭据是只读的：provider、账户与计费都在 Astravia 自己的设置里。
  */
 export function AiSettingsDialog({
 	open,
 	settings,
 	providers,
 	denied,
-	mode,
-	onChooseMode,
 	onClose,
 	onChooseProvider,
 	onRefresh,
@@ -83,43 +77,6 @@ export function AiSettingsDialog({
 			}
 		>
 			<div className="space-y-3">
-				<div>
-					<span className={SECTION_LABEL}>{t("ai.mode.title")}</span>
-					<div className="grid gap-1">
-						{(
-							[
-								{ id: "local" as const, label: t("ai.mode.local"), hint: t("ai.mode.localHint") },
-								{ id: "ai" as const, label: t("ai.mode.ai"), hint: t("ai.mode.aiHint") },
-							]
-						).map((option) => {
-							const selected = mode === option.id;
-							const unavailable = option.id === "ai" && providers.length === 0 && !denied;
-							return (
-								<button
-									key={option.id}
-									type="button"
-									onClick={() => onChooseMode(option.id)}
-									aria-pressed={selected}
-									className={`${FOCUS_RING} flex w-full items-start justify-between gap-2 rounded-lg border px-2 py-1.5 text-left transition-colors ${
-										selected ? "border-primary bg-primary/10" : "border-border hover:border-foreground/25"
-									}`}
-								>
-									<span className="min-w-0">
-										<span className="block truncate text-[12px] font-medium text-foreground">{option.label}</span>
-										<span className="block text-[10px] leading-snug text-muted-foreground">
-											{unavailable ? t("ai.mode.aiUnavailable") : option.hint}
-										</span>
-									</span>
-									{selected ? (
-										<svg viewBox="0 0 24 24" className="mt-0.5 size-4 shrink-0 text-primary" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
-											<path d="M5 12.5l4.5 4.5L19 7" strokeLinecap="round" strokeLinejoin="round" />
-										</svg>
-									) : null}
-								</button>
-							);
-						})}
-					</div>
-				</div>
 
 				{providers.length === 0 ? (
 					<p

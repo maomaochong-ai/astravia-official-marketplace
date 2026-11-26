@@ -1,113 +1,93 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { PluginContext } from "@astravia-org/plugin-sdk";
 import { generateMarksWithHost, HostMediaError, listImageProviders, type HostImageProvider } from "../../../domain/ai/host-media";
-import { renderLogo } from "../../../domain/engine/compose";
-import { newDesignId } from "../../../domain/history-store";
+import { newDesignId, type DesignRecord } from "../../../domain/history-store";
 import { DEFAULT_SETTINGS, loadSettings, saveSettings, type PluginSettings } from "../../../domain/settings";
-import { STYLE_IDS, type LogoSpec } from "../../../domain/spec";
-import { getHistoryStore, getPluginContext, reportError } from "../../../plugin-context";
+import type { LogoSpec } from "../../../domain/spec";
+import { getHistoryStore, getPluginContext } from "../../../plugin-context";
 
-export type EngineMode = "local" | "ai";
+/**
+ * One "run": N marks from one brief, **always through the host's image model**.
+ *
+ * 这个插件不再自带离线出图：logo 的质量来自宿主的图像模型，本地引擎画出来的东西
+ * 是另一类产物（矢量草稿），混在一起只会让人以为「点了就能出图、只是难看」。
+ * 画布上的二次编辑（改描述、留备注、导出）仍然保留，改动以 prompt 的形式回到会话。
+ *
+ * 没有连接图像服务时不假装成功：返回空批次，面板负责引导去设置。
+ */
+
+export type GenerateMode = "ai";
 
 export interface GenerateOptions {
-	/** Roll a different style for each variation, like a deck of cards. */
-	surprise?: boolean;
-	/**
-	 * Run this one batch on a specific line, regardless of the current toggle.
-	 * Needed because "switch mode, then generate" in one handler reads the previous
-	 * state — the vector path would run while the button said "image".
-	 */
-	mode?: EngineMode;
-	/**
-	 * A previously generated image to regenerate from (image-to-image).
-	 *
-	 * The agent tool has had this since 0.6.0; the panel did not, so "take this mark and
-	 * change it" was only possible from the conversation. Passing it forces one result —
-	 * two variations of one edit is two different edits.
-	 */
+	/** Existing blob to edit instead of generating from text (image-to-image). */
 	reference?: string;
+	/** Walk the style list instead of repeating one style. */
+	surprise?: boolean;
+	/** Overrides the panel setting for this run. */
+	count?: number;
+}
+
+export interface GenerateBatch {
+	/** Ids of the records this run actually stored, in generation order. */
+	ids: string[];
+	engine: "ai";
 }
 
 export interface GenerationApi {
-	mode: EngineMode;
-	setMode: (mode: EngineMode) => void;
 	running: boolean;
-	settings: PluginSettings;
-	updateSettings: (patch: Partial<PluginSettings>) => void;
-	updateVariations: (value: number) => void;
-	/** Host image providers that can do text-to-image, refreshed on demand. */
+	/** Host image models that can do text-to-image right now. */
 	providers: HostImageProvider[];
 	/** The host denied `media.generate` — the user has to re-authorise the plugin. */
 	aiDenied: boolean;
 	refreshProviders: () => Promise<void>;
-	/**
-	 * 跑一批。返回本次真正入库的 id（按生成顺序），画布据此铺网格；
-	 * 失败或没 provider 时返回 `{ ids: [], engine }`，不抛。
-	 */
+	settings: PluginSettings;
+	updateSettings: (patch: Partial<PluginSettings>) => void;
+	updateVariations: (value: number) => void;
 	generate: (spec: LogoSpec, options?: GenerateOptions) => Promise<GenerateBatch>;
 	lastCreatedId: string | null;
 }
 
-export interface GenerateBatch {
-	ids: string[];
-	engine: "local" | "ai";
-}
+const STYLE_WALK: LogoSpec["style"][] = [
+	"minimal",
+	"geometric",
+	"luxury",
+	"retro",
+	"hand-drawn",
+	"3d",
+	"mascot",
+	"gradient",
+];
 
-const SEED_STRIDE = 7919;
-
-/**
- * One "run": N designs from one spec.
- *
- * The local engine is a pure function, so its run finishes synchronously — the
- * gallery is the only feedback needed. The AI branch goes through the host's media
- * providers (`ctx.media`), which is why this plugin asks for no API key, no network
- * permission and no vault access.
- */
 export function useGeneration(messages: {
 	aiUnavailable: string;
-	/** Shown when the raster path was asked for but nothing is connected. */
+	/** Shown when nothing is connected: the panel then opens the AI settings. */
 	aiNoProvider: string;
 	aiFailed: string;
 	/** 图像服务连上了但没产出图片时的可执行说明。 */
 	aiFailedHint: string;
-	localFailed: string;
 	aiDone: (count: number) => string;
 	aiPartial: (failed: number) => string;
 }): GenerationApi {
-	const [mode, setMode] = useState<EngineMode>("local");
 	const [running, setRunning] = useState(false);
 	const [settings, setSettings] = useState<PluginSettings>(DEFAULT_SETTINGS);
 	const [providers, setProviders] = useState<HostImageProvider[]>([]);
-	/** True when the host denied `media.generate`; the dialog then points at re-authorising. */
 	const [aiDenied, setAiDenied] = useState(false);
 	const [lastCreatedId, setLastCreatedId] = useState<string | null>(null);
 	const busy = useRef(false);
-	/** 用户自己切过模式：之后不再被「自动选图像服务」覆盖。 */
-	const choseMode = useRef(false);
 
 	const refreshProviders = useCallback(async () => {
 		try {
 			const next = await listImageProviders(getPluginContext());
 			setProviders(next);
 			setAiDenied(false);
-			/*
-			 * 宿主已经配了图像服务就**自动选它**。
-			 *
-			 * 用户要的是成图质量：本地矢量引擎是兜底，不是首选。反过来，用户一旦自己
-			 * 切到矢量（choseMode），就不再被自动改回去 —— 那是他的选择，不是默认值。
-			 */
-			if (next.length > 0 && !choseMode.current) {
-				setMode("ai");
-				setSettings(current =>
-					current.providerId && next.some(provider => provider.id === current.providerId)
-						? current
-						: { ...current, providerId: next[0]?.id },
-				);
-			}
+			// 记住可用的第一个：用户没选过就默认用它，选过就尊重选择。
+			setSettings((current) =>
+				current.providerId && next.some((provider) => provider.id === current.providerId)
+					? current
+					: { ...current, providerId: next[0]?.id },
+			);
 		} catch (cause) {
-			// Two very different situations collapse into "the AI mode cannot run":
-			// the host has no provider, or the host never granted the permission (an
-			// upgrade does not carry new permissions). Keep them apart so the dialog can
-			// tell the user which one to fix.
+			// 两种情况在这里必须分开：宿主没配 provider，或权限没给（升级不带新权限）。
 			setProviders([]);
 			setAiDenied(cause instanceof HostMediaError && cause.code === "permission-denied");
 			if (cause instanceof Error) console.warn("[logocreator] image providers unavailable", cause.message);
@@ -122,151 +102,116 @@ export function useGeneration(messages: {
 
 	const updateSettings = useCallback((patch: Partial<PluginSettings>) => {
 		setSettings((current) => {
-			const next = normalizeNext(current, patch);
-			void saveSettings(getPluginContext().storage, next).catch((cause) =>
-				reportError("Could not save the studio settings", cause),
-			);
+			const next = { ...current, ...patch };
+			void saveSettings(getPluginContext().storage, next).catch(() => undefined);
 			return next;
 		});
 	}, []);
 
 	const updateVariations = useCallback(
 		(value: number) => {
-			updateSettings({ variations: Number.isFinite(value) ? value : DEFAULT_SETTINGS.variations });
+			const variations = Math.max(1, Math.min(8, Math.round(Number(value) || 1)));
+			updateSettings({ variations });
 		},
 		[updateSettings],
 	);
 
 	const generate = useCallback(
 		async (spec: LogoSpec, options: GenerateOptions = {}): Promise<GenerateBatch> => {
-			// 已经在跑：不再开一批，返回空批次而不是 undefined。
-			if (busy.current) return { ids: [], engine: options.mode ?? mode };
+			if (busy.current) return { ids: [], engine: "ai" };
+			const ctx: PluginContext = getPluginContext();
+
+			if (providers.length === 0) {
+				ctx.ui.notify({ message: messages.aiNoProvider, variant: "warning" });
+				return { ids: [], engine: "ai" };
+			}
+
 			busy.current = true;
 			setRunning(true);
 			const history = getHistoryStore();
-			const ctx = getPluginContext();
-			const count = Math.max(1, Math.min(8, settings.variations));
-			const runMode = options.mode ?? mode;
+			const baseCount = Math.max(1, Math.min(8, options.count ?? settings.variations));
+			// 「每种风格各出一张」= 数量 = 风格数；编辑只出一张（换风格就不是「改这张」了）。
+			const count = options.reference ? 1 : options.surprise ? STYLE_WALK.length : baseCount;
 
+			const ids: string[] = [];
+			const failures: string[] = [];
 			try {
-				if (runMode === "ai") {
-					// Auto-detect first: a mode set before the provider disappeared must not
-					// surface as a bare exception.
-					if (providers.length === 0) {
-						ctx.ui.notify({ message: messages.aiNoProvider, variant: "warning" });
-						setMode("local");
-						return { ids: [], engine: "ai" as const };
-					}
-					const { images, failures } = await generateMarksWithHost(ctx, {
-						spec,
-						// An edit produces one result by definition.
-						count: options.reference ? 1 : count,
-						providerId: settings.providerId,
-						...(options.reference ? { referenceBlobId: options.reference } : {}),
-					});
-					const ids: string[] = [];
-					for (const image of images) {
-						const record = await history.add({
-							id: newDesignId(),
-							spec,
-							engine: "ai",
-							subject: image.modelId ?? image.providerId,
-							blobId: image.blobId,
+				// 逐张提交：每张的 style 不同（surprise），失败也只影响那一张。
+				for (let index = 0; index < count; index += 1) {
+					const style = options.surprise ? STYLE_WALK[index % STYLE_WALK.length]! : spec.style;
+					try {
+						const { images, failures: partial } = await generateMarksWithHost(ctx, {
+							spec: { ...spec, style },
+							count: 1,
+							providerId: settings.providerId,
+							...(options.reference ? { referenceBlobId: options.reference } : {}),
 						});
-						ids.push(record.id);
+						failures.push(...partial);
+						for (const image of images) {
+							const record: DesignRecord = await history.add({
+								id: newDesignId(),
+								spec: { ...spec, style },
+								engine: "ai",
+								subject: image.modelId ?? image.providerId,
+								blobId: image.blobId,
+							});
+							ids.push(record.id);
+						}
+					} catch (cause) {
+						failures.push(cause instanceof Error ? cause.message : String(cause));
 					}
-					if (ids.length > 0) setLastCreatedId(ids[ids.length - 1]!);
-					if (images.length > 0) {
-						ctx.ui.notify({ message: messages.aiDone(images.length), variant: "success" });
-					}
-					if (failures.length > 0) {
-						ctx.ui.notify({ message: messages.aiPartial(failures.length), variant: "warning" });
-					}
-					// 整批 id 一起返回：画布要把这一批铺成网格，而不是只显示最后一张。
-					return { ids, engine: "ai" as const };
 				}
 
-				const ids: string[] = [];
-				const styles = options.surprise ? shuffledStyles(spec.seed) : null;
-				for (let index = 0; index < count; index += 1) {
-					const variant: LogoSpec = {
-						...spec,
-						seed: (spec.seed + index * SEED_STRIDE) >>> 0,
-						...(styles ? { style: styles[index % styles.length] } : {}),
-					};
-					const rendered = renderLogo(variant);
-					const record = await history.add({
-						id: newDesignId(),
-						spec: variant,
-						engine: "local",
-						subject: rendered.subject,
-					});
-					ids.push(record.id);
-				}
 				if (ids.length > 0) setLastCreatedId(ids[ids.length - 1]!);
-				return { ids, engine: "local" as const };
+				if (ids.length > 0) {
+					ctx.ui.notify({ message: messages.aiDone(ids.length), variant: "success" });
+				}
+				if (failures.length > 0) {
+					ctx.ui.notify({ message: messages.aiPartial(failures.length), variant: "warning" });
+				}
+				if (ids.length === 0) {
+					ctx.ui.notify({ message: messages.aiFailedHint, variant: "error" });
+				}
 			} catch (cause) {
 				if (cause instanceof HostMediaError) {
 					ctx.ui.notify({
-						// 原始 message 是 provider 的原话，直接摆给用户看不出下一步该做什么。
 						message: cause.code === "provider-failed" ? messages.aiFailedHint : cause.message,
 						title: messages.aiUnavailable,
 						variant: "error",
 						error: cause,
 					});
-					// Do not leave the user on a mode that cannot run.
-					setMode("local");
-				} else if (runMode === "ai") {
-					ctx.ui.notify({ message: messages.aiFailed, error: cause });
 				} else {
-					ctx.ui.notify({ message: messages.localFailed, error: cause });
+					ctx.ui.notify({ message: messages.aiFailed, error: cause });
 				}
-				// 走到这里 = 抛错了：返回空批次，调用方不需要自己 try。
-				return { ids: [], engine: runMode };
 			} finally {
 				setRunning(false);
 				busy.current = false;
 			}
+
+			return { ids, engine: "ai" };
 		},
-		[messages, mode, providers.length, settings.providerId, settings.variations],
+		[messages, providers.length, settings.providerId, settings.variations],
 	);
 
 	return {
-		mode,
-		// 用户手动切模式时打上「已选择」标记，自动选图像服务就不再覆盖它。
-		setMode: (next: EngineMode) => {
-			choseMode.current = true;
-			setMode(next);
-		},
 		running,
-		settings,
-		updateSettings,
-		updateVariations,
 		providers,
 		aiDenied,
 		refreshProviders,
+		settings,
+		updateSettings,
+		updateVariations,
 		generate,
 		lastCreatedId,
 	};
 }
 
-function normalizeNext(current: PluginSettings, patch: Partial<PluginSettings>): PluginSettings {
-	const merged = { ...current, ...patch };
-	const variations = Math.max(1, Math.min(8, Math.round(Number(merged.variations) || DEFAULT_SETTINGS.variations)));
-	return { variations, providerId: merged.providerId?.trim() || undefined };
-}
-
-function shuffledStyles(seed: number): readonly LogoSpec["style"][] {
-	const names = [...STYLE_IDS];
-	let state = seed || 1;
-	const random = () => {
-		state = (state * 1103515245 + 12345) & 0x7fffffff;
-		return state / 0x7fffffff;
-	};
-	for (let i = names.length - 1; i > 0; i -= 1) {
-		const j = Math.floor(random() * (i + 1));
-		[names[i], names[j]] = [names[j], names[i]];
+/** 供面板之外复用的选择器：宿主有没有可用的图像模型。 */
+export async function hasImageModel(ctx: PluginContext): Promise<boolean> {
+	try {
+		return (await listImageProviders(ctx)).length > 0;
+	} catch {
+		return false;
 	}
-	return names;
 }
 

@@ -35,7 +35,11 @@ export function VariantGrid({ records, selectedId, onSelect, onStage, pending = 
 
 	return (
 		<div className="absolute inset-0 overflow-y-auto overscroll-contain p-3 pb-24">
-			<div className="grid grid-cols-2 gap-2 @min-[560px]:grid-cols-3">
+			{/*
+			 * 居中式排布：网格容器自身居中、列宽自适应，
+			 * 2–3 张时不再靠左留一大片空白（截图里的问题）。
+			 */}
+			<div className="mx-auto grid w-fit max-w-full grid-cols-[repeat(auto-fit,minmax(9.5rem,13rem))] justify-center gap-2">
 				{records.map((record, index) => (
 					<VariantTile
 						key={record.id}

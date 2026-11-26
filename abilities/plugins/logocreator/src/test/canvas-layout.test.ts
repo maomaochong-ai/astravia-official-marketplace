@@ -37,7 +37,9 @@ describe("the stage", () => {
 	});
 
 	it("floats the title slot and the action rail over it", () => {
-		at(canvas, 'absolute left-3 top-3 z-40');
+		// 侧栏在左侧：标题区用 left 偏移让位（打开侧栏时右移），不再靠 padding 顶。
+		at(canvas, "absolute top-3 z-40");
+		at(canvas, 'left-[calc(clamp(15rem,88%,20rem)+0.5rem)]');
 		at(canvas, 'absolute right-2 top-2 z-40');
 	});
 
@@ -58,7 +60,8 @@ describe("the dock", () => {
 
 	it("carries the canvas verbs and the notes badge", () => {
 		// 「惊喜我」收进了生成下拉（同一个函数，只差一个选项），但选项本身必须还在。
-		for (const key of ["action.generate", "action.surprise", "dock.versions", "dock.inspector", "dock.export"]) {
+		// 「惊喜我」移进设置面板：dock 只留动词，不再有同函数变体。
+		for (const key of ["action.generateAi", "dock.versions", "dock.inspector", "dock.export"]) {
 			expect(dock, `dock is missing ${key}`).toContain(key);
 		}
 		expect(dock).toContain("badge={");

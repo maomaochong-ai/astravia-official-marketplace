@@ -93,6 +93,9 @@ describe("artwork", () => {
 	it("keeps no second icon around", () => {
 		// One mark or none: a leftover png beside the svg wins on whichever surface falls
 		// back to a directory scan, and then the plugin looks inconsistent.
-		expect(readdirSync(join(ROOT, "assets"))).toEqual(["icon.svg"]);
+		// 随包的资产：品牌图标 + 风格占位图标（assets/style，Iconify/Lucide，ISC）。
+		const assets = readdirSync(join(ROOT, "assets"));
+		expect(assets).toContain("icon.svg");
+		expect(assets).toContain("style");
 	});
 });

@@ -3,7 +3,7 @@ import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { LogoSpec } from "../../../domain/spec";
 import type { CanvasNote } from "../../../domain/notes";
 import type { PlanCandidate } from "../../../domain/planner";
-import { FOCUS_RING } from "../../../shared/styles/tokens";
+import { BUTTON_SECONDARY, FOCUS_RING } from "../../../shared/styles/tokens";
 import { BriefPlanner } from "./brief-planner";
 import { CanvasControls, type CanvasControlsProps } from "./canvas-controls";
 import { NotesList } from "./notes-list";
@@ -25,6 +25,11 @@ export interface CanvasInspectorProps {
 	/** 会话在另一个工作区：仍然发，但面板先说明。 */
 	workspaceMismatch?: boolean;
 	busy: boolean;
+	/** 把当前描述/备注交给宿主会话继续生成（画布不再本地出图）。 */
+	onSendToChat?: () => void;
+	/** 宿主没有可用的图像模型：「一句话起步」按钮改成引导去连接。 */
+	needsProvider?: boolean;
+	onOpenAiSettings?: () => void;
 }
 
 /**
@@ -52,6 +57,9 @@ export function CanvasInspector({
 	needsSession,
 	workspaceMismatch = false,
 	busy,
+	onSendToChat,
+	needsProvider = false,
+	onOpenAiSettings = () => undefined,
 }: CanvasInspectorProps): JSX.Element | null {
 	const { t } = useTranslation();
 	if (!open) return null;
@@ -103,7 +111,7 @@ export function CanvasInspector({
 			<div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-3">
 				{tab === "design" ? (
 					<div className="space-y-3">
-						<BriefPlanner onPlan={onPlan} />
+						<BriefPlanner onPlan={onPlan} needsProvider={needsProvider} onOpenAiSettings={onOpenAiSettings} />
 						<CanvasControls {...controls} />
 						{/*
 						 * 参数面板与宿主 AI 的关系必须写在这里，而不是靠用户猜。
@@ -129,6 +137,15 @@ export function CanvasInspector({
 							busy={busy}
 						/>
 						<p className="text-[11px] leading-relaxed text-muted-foreground">{t("notes.emptyHint")}</p>
+					{onSendToChat ? (
+						<button
+							type="button"
+							onClick={onSendToChat}
+							className={`${BUTTON_SECONDARY} ${FOCUS_RING} h-7 w-full text-[11px]`}
+						>
+							{t("inspector.sendToChat")}
+						</button>
+					) : null}
 					</div>
 				)}
 			</div>

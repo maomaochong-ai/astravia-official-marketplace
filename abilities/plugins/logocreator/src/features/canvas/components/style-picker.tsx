@@ -1,9 +1,31 @@
-import { useMemo, useState, type JSX } from "react";
+import { useState, type JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { STYLE_ENTRIES } from "../../../domain/catalog";
-import { styleSampleUrl } from "../../../domain/sample-mark";
 import { FOCUS_RING } from "../../../shared/styles/tokens";
 import type { StyleId } from "../../../domain/spec";
+
+// 风格占位图标：来自 Iconify 的 Lucide 集合（ISC 许可），随包分发、离线可用。
+// 上一版每格用本地引擎渲染同一枚徽标：差异落在笔画与圆角上，看着像手绘草图，
+// 也无法说明「这个风格是哪一类」。这里换成有语义的线性图标。
+import minimalUrl from "../../../../assets/style/minimal.svg?url";
+import geometricUrl from "../../../../assets/style/geometric.svg?url";
+import luxuryUrl from "../../../../assets/style/luxury.svg?url";
+import retroUrl from "../../../../assets/style/retro.svg?url";
+import handDrawnUrl from "../../../../assets/style/hand-drawn.svg?url";
+import threeDUrl from "../../../../assets/style/3d.svg?url";
+import mascotUrl from "../../../../assets/style/mascot.svg?url";
+import gradientUrl from "../../../../assets/style/gradient.svg?url";
+
+const STYLE_ICONS: Record<StyleId, string> = {
+	minimal: minimalUrl,
+	geometric: geometricUrl,
+	luxury: luxuryUrl,
+	retro: retroUrl,
+	"hand-drawn": handDrawnUrl,
+	"3d": threeDUrl,
+	mascot: mascotUrl,
+	gradient: gradientUrl,
+};
 
 export interface StylePickerProps {
 	value: StyleId;
@@ -11,28 +33,19 @@ export interface StylePickerProps {
 }
 
 /**
- * 八个风格，每格是**同一枚中性徽标**在该风格下的真实渲染。
+ * 八个风格，每格一个语义图标 + 名称。
  *
- * 上一版每格画一只动物：差异来自「动物画得好不好」，看起来像手绘（用户原话）。
- * 现在固定图形、只变风格配方，差别落在笔画重量、圆角与渐变上 —— 那才是这一格要回答的问题。
- *
- * 样张是引擎的产物而不是下载的图：外部图片不会是「这个风格做出来的东西」，
- * 用它预览等于骗选择。渲染结果按风格缓存一次，切表单不重算。
+ * 图标表示风格的**取向**（几何 / 奢华 / 复古 / 手绘 / 立体 / 吉祥物 / 渐变），
+ * 不再假装是「这个风格渲染出来的样子」—— 真正的样子由宿主 AI 出图后出现在画布上。
  */
 export function StylePicker({ value, onChange }: StylePickerProps): JSX.Element {
 	const { t } = useTranslation();
 	const [hovered, setHovered] = useState<StyleId | null>(null);
 
-	const previews = useMemo(
-		() => STYLE_ENTRIES.map(entry => ({ id: entry.id, url: styleSampleUrl(entry.id) })),
-		[],
-	);
-
 	return (
 		<div role="radiogroup" aria-label={t("label.style")} className="grid grid-cols-4 gap-1.5">
-			{STYLE_ENTRIES.map((entry, index) => {
+			{STYLE_ENTRIES.map((entry) => {
 				const active = entry.id === value;
-				const preview = previews[index];
 				return (
 					<button
 						key={entry.id}
@@ -47,8 +60,13 @@ export function StylePicker({ value, onChange }: StylePickerProps): JSX.Element 
 							active ? "bg-primary/10 ring-1 ring-primary" : "bg-muted/40 hover:bg-muted/70"
 						}`}
 					>
-						<span className="block aspect-square w-full">
-							<img src={preview?.url} alt="" className="size-full object-contain p-1.5" draggable={false} />
+						<span className="flex aspect-square w-full items-center justify-center">
+							<img
+								src={STYLE_ICONS[entry.id]}
+								alt=""
+								className={`size-1/2 object-contain ${active ? "opacity-100" : "opacity-70"}`}
+								draggable={false}
+							/>
 						</span>
 						<span
 							className={`block truncate px-1 pb-1 text-[10px] font-medium ${

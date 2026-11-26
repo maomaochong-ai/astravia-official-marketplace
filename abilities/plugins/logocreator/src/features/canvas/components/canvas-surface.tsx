@@ -47,13 +47,17 @@ const POPOVER_HEIGHT = 176;
  * 画布本身可平移，一个被推到边上的气泡反而更难看得懂它指的是哪个点。
  */
 function popoverStyle(point: { x: number; y: number }): CSSProperties {
-	const half = (POPOVER_WIDTH / 2 / 100) * 100;
-	const left = Math.min(96, Math.max(4, point.x * 100));
-	const flipUp = point.y * 100 > 58;
+	// 用 clamp 在 CSS 里做双向钳位：气泡宽高固定，四边各留 8px。
+	// 上一版只用百分比居中，靠左/靠右/靠下点击时仍会有半截超出画布（截图里的遮挡）。
+	const xPercent = Math.min(100, Math.max(0, point.x * 100));
+	const yPercent = Math.min(100, Math.max(0, point.y * 100));
+	const flipUp = yPercent > 58;
 	return {
-		left: `calc(${left}% - ${half}px)`,
-		...(flipUp ? { bottom: `calc(${(1 - point.y) * 100}% + 12px)` } : { top: `calc(${point.y * 100}% + 12px)` }),
-		maxWidth: `calc(100% - 8px)`,
+		left: `clamp(0.5rem, calc(${xPercent}% - ${POPOVER_WIDTH / 2}px), calc(100% - ${POPOVER_WIDTH}px - 0.5rem))`,
+		...(flipUp
+			? { bottom: `clamp(0.5rem, calc(${100 - yPercent}% + 12px), calc(100% - ${POPOVER_HEIGHT}px - 0.5rem))` }
+			: { top: `clamp(0.5rem, calc(${yPercent}% + 12px), calc(100% - ${POPOVER_HEIGHT}px - 0.5rem))` }),
+		maxWidth: `calc(100% - 1rem)`,
 	};
 }
 
@@ -176,9 +180,13 @@ export function CanvasSurface({
 
 	return (
 		<div className="space-y-2">
+			{/*
+			 * 不再 overall overflow-hidden：备注气泡贴在边缘时会被整个裁掉（就是截图里的遮挡）。
+			 * 裁剪下放给内层 art 层，缩放/平移仍然不会溢出圆角。
+			 */}
 			<div
 				ref={surfaceRef}
-				className={`relative w-full select-none overflow-hidden rounded-xl border border-border/60 ${
+				className={`relative w-full select-none rounded-xl border border-border/60 ${
 					empty ? "" : zoom > 1 ? "cursor-grab active:cursor-grabbing" : "cursor-crosshair"
 				}`}
 				style={dark ? { background: "#121210" } : { background: "#ffffff" }}
@@ -225,16 +233,19 @@ export function CanvasSurface({
 						)}
 					</div>
 				)}
-				{empty ? (
-					<CanvasPlaceholder />
-				) : (
-					<div
-						className="origin-center transition-transform duration-75"
-						style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})` }}
-					>
-						<img src={rasterUrl ?? previewUrl} alt={alt} className="block w-full" draggable={false} />
-					</div>
-				)}
+				{/* 图形层：只有它需要裁剪（缩放/平移时不能溢出圆角）。 */}
+				<div className="absolute inset-0 overflow-hidden rounded-xl">
+					{empty ? (
+						<CanvasPlaceholder />
+					) : (
+						<div
+							className="origin-center transition-transform duration-75"
+							style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})` }}
+						>
+							<img src={rasterUrl ?? previewUrl} alt={alt} className="block w-full" draggable={false} />
+						</div>
+					)}
+				</div>
 				{pins.map((note, index) => (
 					<span
 						key={note.id}

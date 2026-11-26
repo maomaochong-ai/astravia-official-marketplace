@@ -48,8 +48,8 @@ describe("the inspector docked left", () => {
 		// 现在只有右上角的动作簇让位，稿名与包切换器必须仍在。
 		const hiding = panel.match(/inspectorOpen \? "pointer-events-none opacity-0"/g) ?? [];
 		expect(hiding.length).toBe(1);
-		// 标题区改为给侧栏让出宽度，而不是消失。
-		expect(panel).toContain('inspectorOpen ? "pr-[clamp(15rem,88%,20rem)]"');
+		// 侧栏在左侧：标题区要**右移**让开它（只给 padding-right 会继续重叠）。
+		expect(panel).toMatch(/inspectorOpen[\s\S]{0,120}left-\[calc\(clamp\(15rem,88%,20rem\)\+0\.5rem\)\]/);
 	});
 });
 
@@ -58,7 +58,8 @@ describe("no stray text under the dock", () => {
 		// A permanent line of prose under a floating dock is what this removes: the dock
 		// slot already carries the same sentence as its accessible name.
 		const dock = readFileSync(join(ROOT, "src/features/canvas/components/canvas-dock.tsx"), "utf8");
-		expect(dock).toContain('t("dock.locked")');
+		// 没有名字时按钮禁用并用可见文案说明原因，不再需要单独的 locked 串。
+		expect(dock).toMatch(/disabled=\{running \|\| !canGenerate\}/);
 		expect(panel).not.toContain('t("action.needName")');
 	});
 });
