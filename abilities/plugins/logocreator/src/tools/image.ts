@@ -108,6 +108,8 @@ export function createImageTool(): PluginAgentToolRegistration<ImageToolInput> {
 			}
 
 			const images: PluginImageRef[] = [];
+			// 写盘失败等要告诉用户的事：不往清单塞假文件，但也不能静默。
+			const notes: string[] = [];
 			const designIds: string[] = [];
 			let lastDesignId: string | null = null;
 			// 位图也要落成带后缀的设计包：否则画布能看、文件树里却找不到它，
@@ -125,18 +127,31 @@ export function createImageTool(): PluginAgentToolRegistration<ImageToolInput> {
 				const designId = newDesignId();
 				await history.add({ id: designId, spec, engine: "ai", subject: image.modelId ?? "image", blobId: image.blobId });
 
+				// 先登记：即使拿不到可展示的 URL，这张也已经入库，画布必须为它留一格。
+				// 上一版把它写在 `if (ref?.url)` 里面，getBlobRef 失败就整批少一格。
+				designIds.push(designId);
+
 				if (folder && fsApi) {
 					const blob = await ctx.storage.readBlob(image.blobId).catch(() => null);
 					if (blob) {
-						const relative = `variants/${index + 1}.png`;
-						await fsApi.writeFile(`${folder}/${relative}`, blob.data, "base64").catch(() => undefined);
-						variants.push({
-							file: relative,
-							subject: image.modelId ?? "image",
-							seed: spec.seed,
-							style: spec.style,
-							engine: "ai",
-						});
+						// 位图用 `-ai` 后缀：同一个包里矢量与位图共存时序号不再撞车。
+						const relative = `variants/${index + 1}-ai.png`;
+						const written = await fsApi
+							.writeFile(`${folder}/${relative}`, blob.data, "base64")
+							.then(() => true)
+							.catch(() => false);
+						if (written) {
+							variants.push({
+								file: relative,
+								subject: image.modelId ?? "image",
+								seed: spec.seed,
+								style: spec.style,
+								engine: "ai",
+							});
+						} else {
+							// 不往清单里记没写成功的文件；图片仍在面板历史里。
+							notes.push(`The image is in the panel history, but ${relative} could not be written to the package.`);
+						}
 					}
 				}
 
@@ -151,7 +166,6 @@ export function createImageTool(): PluginAgentToolRegistration<ImageToolInput> {
 						providerId: image.providerId,
 						rootId: reference ?? ref.id,
 					});
-					designIds.push(designId);
 				}
 				lastDesignId = designId;
 			}
@@ -189,8 +203,12 @@ export function createImageTool(): PluginAgentToolRegistration<ImageToolInput> {
 						: [],
 				failures: generated.failures,
 				notes: [
-					"Raster output: PNG only, no SVG or brand kit, cannot be enlarged.",
+					// 位图现在也落包：文案要说清楚它能交付什么、不能交付什么。
+					folder
+						? `Files: \`${folder}\` — \`variants/N-ai.png\` plus \`design.astravia-log\`. Raster only: no SVG, no brand kit, cannot be enlarged.`
+						: "Raster only: PNG, no SVG or brand kit, cannot be enlarged. The panel history keeps the image.",
 					"Vector designs and raster marks live in the same history; the panel labels them AI or Vector.",
+					...notes,
 					...(reveal.opened
 						? []
 						: [

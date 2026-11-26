@@ -11,6 +11,8 @@ export interface VariantGridProps {
 	onSelect: (record: DesignRecord) => void;
 	/** 放大到单张画布（备注、缩放都在那里）。 */
 	onStage: (record: DesignRecord) => void;
+	/** 本批还在跑的格子数（骨架）：画布侧生成时用。 */
+	pending?: number;
 }
 
 /**
@@ -26,9 +28,10 @@ export interface VariantGridProps {
  *
  * 缩略图与主图同源：矢量走预览缓存（同步，不重算），位图走 blob URL。
  */
-export function VariantGrid({ records, selectedId, onSelect, onStage }: VariantGridProps): JSX.Element | null {
+export function VariantGrid({ records, selectedId, onSelect, onStage, pending = 0 }: VariantGridProps): JSX.Element | null {
 	const { t } = useTranslation();
-	if (records.length < 2) return null;
+	// 本批还在跑：有骨架就显示骨架；既无成品又无骨架时整个网格不出现。
+	if (records.length < 2 && pending === 0) return null;
 
 	return (
 		<div className="absolute inset-0 overflow-y-auto overscroll-contain p-3 pb-24">
@@ -43,6 +46,16 @@ export function VariantGrid({ records, selectedId, onSelect, onStage }: VariantG
 						onStage={() => onStage(record)}
 						stageLabel={t("grid.stage")}
 					/>
+				))}
+				{/* 正在生成的格子：数量由调用方给（= 本次设置要出几张）。 */}
+				{Array.from({ length: pending }, (_, offset) => (
+					<div
+						key={`pending-${offset}`}
+						className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-border/70 bg-muted/20"
+					>
+						<span className="size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+						<span className="text-[9.5px] text-muted-foreground">{t("grid.pending")}</span>
+					</div>
 				))}
 			</div>
 		</div>

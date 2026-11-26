@@ -190,7 +190,11 @@ export async function generateMarksWithHost(ctx: PluginContext, request: HostGen
 	const images: HostImageResult[] = [];
 	const failures: string[] = [];
 
-	for (let index = 0; index < Math.max(1, Math.min(8, request.count)); index += 1) {
+	// 并发跑，但不当刷屏：8 张一起打给同一个 provider 容易被限流。
+	// 3 路并发把「串行 8 次往返」压到约 1/3 的墙钟时间，同时保留单张失败不影响其它张。
+	const PARALLEL = 3;
+	const total = Math.max(1, Math.min(8, request.count));
+	const runOne = async (): Promise<void> => {
 		try {
 			/*
 			 * `inputs` 是**必填数组**，即使文生图没有输入图。
@@ -223,31 +227,42 @@ export async function generateMarksWithHost(ctx: PluginContext, request: HostGen
 			// job that is already failed only adds a round trip.
 			if (job.status === "failed") {
 				failures.push(describeCode(job.error?.code, job.error?.message ?? "The image job was rejected."));
-				continue;
+				return;
 			}
 
 			const settled = await ctx.jobs.wait(job);
 			if (settled.status !== "succeeded") {
 				failures.push(describeCode(settled.error?.code, settled.error?.message ?? "The image job did not finish."));
-				continue;
+				return;
 			}
 
 			const artifact = settled.artifacts[0];
 			if (!artifact) {
 				failures.push("The image job finished without producing a file.");
-				continue;
+				return;
 			}
 
 			const persisted = await ctx.artifacts.persist(artifact, { type: "plugin-blob" });
 			if (persisted.type !== "plugin-blob") {
 				failures.push("The generated image could not be stored on this device.");
-				continue;
+				return;
 			}
 			images.push({ blobId: persisted.blobId, prompt, providerId: provider.id, modelId: provider.modelId });
 		} catch (cause) {
 			failures.push(cause instanceof Error ? cause.message : String(cause));
 		}
-	}
+	};
+
+	let cursor = 0;
+	const workerCount = Math.min(PARALLEL, total);
+	await Promise.all(
+		Array.from({ length: workerCount }, async () => {
+			while (cursor < total) {
+				cursor += 1;
+				await runOne();
+			}
+		}),
+	);
 
 	if (images.length === 0 && failures.length > 0) {
 		throw new HostMediaError(failures[0], "provider-failed");

@@ -134,8 +134,7 @@ describe("the canvas mounts", () => {
 		// Stage chrome: the title chip (untitled), the dock, the action rail.
 		expect(await screen.findByText("Untitled")).toBeTruthy();
 		expect(screen.getByLabelText("Design settings")).toBeTruthy();
-		expect(screen.getByLabelText("Canvas notes")).toBeTruthy();
-		// 历史按钮现在指向「设计版本」：它列的是磁盘上设计包的版本，不是生成过的图片。
+		// 备注与设置合并成一个入口（同一个 rail 的两个 tab），不再单独占一个按钮位。
 		expect(screen.getByLabelText("Design versions")).toBeTruthy();
 		// The form itself is not on the stage: it opens in the rail.
 		expect(screen.queryByPlaceholderText("Fern & Field")).toBeNull();

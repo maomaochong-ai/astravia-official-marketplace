@@ -332,6 +332,22 @@ export function LogoCanvas(): JSX.Element {
 	// image slot only when this is true.
 	const imageAvailable = generation.providers.length > 0;
 
+	/**
+	 * 跑一批并把这一批交给画布。
+	 *
+	 * 上一版这里直接调 `generation.generate`：它只 `setLastCreatedId`（最后一张），
+	 * 于是「面板生成 4 张」在画布上只会有 1 张——网格只对工具生成的批次生效。
+	 * 现在把整批 id 拿回来，网格才真的是「这一批」。
+	 */
+	const runBatch = useCallback(
+		async (options?: Parameters<typeof generation.generate>[1]) => {
+			setStaged(false);
+			const batch = await generation.generate(form.spec, options);
+			if (batch.ids.length > 0) setBatchIds(batch.ids);
+		},
+		[generation, form.spec],
+	);
+
 	return (
 		/*
 		 * `h-full` 之外给一个**最小高度**：宿主的活动面板容器在某些布局下高度解析为 0，
@@ -346,7 +362,7 @@ export function LogoCanvas(): JSX.Element {
 				 * 「放大」进单张画布（备注与缩放都在那里）。单张时退回原来的画布。
 				 * 上一版把这一批放在 dock 上方，两者抢同一块底部空间、直接叠在一起。
 				 */}
-				{history.ready && batchRecords.length > 1 && !staged ? (
+				{(history.ready && batchRecords.length > 1 && !staged) || generation.running ? (
 					<VariantGrid
 						records={batchRecords}
 						selectedId={selectedId}
@@ -359,6 +375,8 @@ export function LogoCanvas(): JSX.Element {
 							setSelectedId(record.id);
 							setStaged(true);
 						}}
+						// 生成中先铺骨架：格子数 = 本次设置要出几张。
+						pending={generation.running ? generation.settings.variations : 0}
 					/>
 				) : (
 					<div className="absolute inset-0 flex items-center justify-center p-4 pb-16">
@@ -398,13 +416,15 @@ export function LogoCanvas(): JSX.Element {
 
 				{/*
 				 * 标题区：左边是设计稿切换器 + 可改写的稿名。
-				 * 切换器就是「打开的画布要能看到已有的设计稿，并且能切」——
 				 * 设计稿是磁盘上的 `.astravia-log` 文件，一份文件一份稿。
+				 *
+				 * 侧栏打开时**不**隐藏这一行：改参数时看不到自己在改哪一版，
+				 * 是这个面板最容易迷路的地方；只把右侧让出侧栏宽度。
 				 */}
 				<div
 					data-testid="stage-title-slot"
-					className={`absolute left-3 top-3 z-40 flex max-w-[calc(100%-5.5rem)] flex-wrap items-center gap-1 transition-opacity ${
-						inspectorOpen ? "pointer-events-none opacity-0" : "opacity-100"
+					className={`absolute left-3 top-3 z-40 flex flex-wrap items-center gap-1 transition-[padding] ${
+						inspectorOpen ? "pr-[clamp(15rem,88%,20rem)]" : "max-w-[calc(100%-5.5rem)]"
 					}`}
 				>
 					<DesignSwitcher
@@ -459,18 +479,10 @@ export function LogoCanvas(): JSX.Element {
 						inspectorOpen ? "pointer-events-none opacity-0" : "opacity-100"
 					}`}
 				>
-					<button
-						type="button"
-						onClick={() => setHistoryOpen(true)}
-						title={t("panel.history")}
-						aria-label={t("panel.history")}
-						className={`${FOCUS_RING} relative flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground`}
-					>
-						<IconHistory />
-						{history.items.length > 0 ? (
-							<span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-primary" aria-hidden />
-						) : null}
-					</button>
+					{/*
+					 * 历史（设计版本）只在 dock 里一个入口：
+					 * 同一块面板两个按钮位、两个不同图标，是这一版最明显的冗余。
+					 */}
 					<button
 						type="button"
 						onClick={() => setAiOpen(true)}
@@ -505,12 +517,12 @@ export function LogoCanvas(): JSX.Element {
 					pendingNotes={pendingCount}
 					inspectorOpen={inspectorOpen}
 					inspectorTab={inspectorTab}
-					onGenerate={() => void generation.generate(form.spec)}
+					onGenerate={() => void runBatch()}
 					imageAvailable={imageAvailable}
 					onGenerateImage={() => {
 						// Ask for this batch on the raster line explicitly: flipping the mode and
 						// calling generate in the same tick would still run the vector path.
-						void generation.generate(form.spec, { mode: "ai" });
+						void runBatch({ mode: "ai" });
 					}}
 					// Only when the open design is an AI image: a vector design has no bitmap to edit.
 					onGenerateFromReference={
@@ -518,12 +530,13 @@ export function LogoCanvas(): JSX.Element {
 							? () => {
 									const reference = selectedRecord.blobId;
 									if (!reference) return;
-									void generation.generate(form.spec, { mode: "ai", reference });
+									void runBatch({ mode: "ai", reference });
 								}
 							: undefined
 					}
-					onSurprise={() => void generation.generate(form.spec, { surprise: true })}
+					onSurprise={() => void runBatch({ surprise: true })}
 					onOpenAiSettings={() => setAiOpen(true)}
+					onOpenVersions={() => setHistoryOpen(true)}
 					onOpenNotes={() => openInspector("notes")}
 					onToggleInspector={() => (inspectorOpen ? setInspectorOpen(false) : openInspector("design"))}
 					// 没选中稿时不静默无反应：禁用由 canExport 管，这里只处理真正能导出的情况。

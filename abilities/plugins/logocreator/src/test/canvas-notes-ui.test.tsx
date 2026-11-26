@@ -146,7 +146,9 @@ describe("canvas notes", () => {
 		expect(saved.items[0].y).toBeCloseTo(0.75, 1);
 
 		// The hand-off lives in the notes rail now.
-		fireEvent.click(screen.getByLabelText(copy("dock.notes")));
+		// 备注与设置同一个入口：先开 rail，再切到备注 tab。
+		fireEvent.click(screen.getByLabelText(copy("dock.inspector")));
+		fireEvent.click(await screen.findByRole("tab", { name: copy("inspector.tabNotes") }));
 		fireEvent.click(await screen.findByLabelText(copy("notes.handToAgent")));
 
 		await waitFor(() => expect(sendPrompt).toHaveBeenCalledTimes(1));
@@ -171,8 +173,10 @@ describe("canvas notes", () => {
 		);
 
 		// The dock is the stage's permanent chrome, so this much renders immediately.
-		expect(await screen.findByLabelText(copy("dock.notes"))).toBeTruthy();
-		fireEvent.click(screen.getByLabelText(copy("dock.notes")));
+		// dock 是画布常驻的 chrome，这一层立刻就有。
+		expect(await screen.findByLabelText(copy("dock.inspector"))).toBeTruthy();
+		fireEvent.click(screen.getByLabelText(copy("dock.inspector")));
+		fireEvent.click(await screen.findByRole("tab", { name: copy("inspector.tabNotes") }));
 		// No pins → the notes rail has nothing to offer. A hand-off button that can
 		// never be enabled reads as a broken feature; an absent one reads as "nothing
 		// to send".

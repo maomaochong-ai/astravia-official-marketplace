@@ -39,8 +39,17 @@ export interface GenerationApi {
 	/** The host denied `media.generate` — the user has to re-authorise the plugin. */
 	aiDenied: boolean;
 	refreshProviders: () => Promise<void>;
-	generate: (spec: LogoSpec, options?: GenerateOptions) => Promise<void>;
+	/**
+	 * 跑一批。返回本次真正入库的 id（按生成顺序），画布据此铺网格；
+	 * 失败或没 provider 时返回 `{ ids: [], engine }`，不抛。
+	 */
+	generate: (spec: LogoSpec, options?: GenerateOptions) => Promise<GenerateBatch>;
 	lastCreatedId: string | null;
+}
+
+export interface GenerateBatch {
+	ids: string[];
+	engine: "local" | "ai";
 }
 
 const SEED_STRIDE = 7919;
@@ -129,8 +138,9 @@ export function useGeneration(messages: {
 	);
 
 	const generate = useCallback(
-		async (spec: LogoSpec, options: GenerateOptions = {}) => {
-			if (busy.current) return;
+		async (spec: LogoSpec, options: GenerateOptions = {}): Promise<GenerateBatch> => {
+			// 已经在跑：不再开一批，返回空批次而不是 undefined。
+			if (busy.current) return { ids: [], engine: options.mode ?? mode };
 			busy.current = true;
 			setRunning(true);
 			const history = getHistoryStore();
@@ -145,7 +155,7 @@ export function useGeneration(messages: {
 					if (providers.length === 0) {
 						ctx.ui.notify({ message: messages.aiNoProvider, variant: "warning" });
 						setMode("local");
-						return;
+						return { ids: [], engine: "ai" as const };
 					}
 					const { images, failures } = await generateMarksWithHost(ctx, {
 						spec,
@@ -154,7 +164,7 @@ export function useGeneration(messages: {
 						providerId: settings.providerId,
 						...(options.reference ? { referenceBlobId: options.reference } : {}),
 					});
-					let lastId: string | null = null;
+					const ids: string[] = [];
 					for (const image of images) {
 						const record = await history.add({
 							id: newDesignId(),
@@ -163,19 +173,20 @@ export function useGeneration(messages: {
 							subject: image.modelId ?? image.providerId,
 							blobId: image.blobId,
 						});
-						lastId = record.id;
+						ids.push(record.id);
 					}
-					setLastCreatedId(lastId);
+					if (ids.length > 0) setLastCreatedId(ids[ids.length - 1]!);
 					if (images.length > 0) {
 						ctx.ui.notify({ message: messages.aiDone(images.length), variant: "success" });
 					}
 					if (failures.length > 0) {
 						ctx.ui.notify({ message: messages.aiPartial(failures.length), variant: "warning" });
 					}
-					return;
+					// 整批 id 一起返回：画布要把这一批铺成网格，而不是只显示最后一张。
+					return { ids, engine: "ai" as const };
 				}
 
-				let lastId: string | null = null;
+				const ids: string[] = [];
 				const styles = options.surprise ? shuffledStyles(spec.seed) : null;
 				for (let index = 0; index < count; index += 1) {
 					const variant: LogoSpec = {
@@ -190,9 +201,10 @@ export function useGeneration(messages: {
 						engine: "local",
 						subject: rendered.subject,
 					});
-					lastId = record.id;
+					ids.push(record.id);
 				}
-				setLastCreatedId(lastId);
+				if (ids.length > 0) setLastCreatedId(ids[ids.length - 1]!);
+				return { ids, engine: "local" as const };
 			} catch (cause) {
 				if (cause instanceof HostMediaError) {
 					ctx.ui.notify({
@@ -209,6 +221,8 @@ export function useGeneration(messages: {
 				} else {
 					ctx.ui.notify({ message: messages.localFailed, error: cause });
 				}
+				// 走到这里 = 抛错了：返回空批次，调用方不需要自己 try。
+				return { ids: [], engine: runMode };
 			} finally {
 				setRunning(false);
 				busy.current = false;

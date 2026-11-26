@@ -43,11 +43,13 @@ describe("the inspector docked left", () => {
 		expect(inspector).not.toContain("absolute inset-y-0 right-0");
 	});
 
-	it("hides the canvas chrome while it is open", () => {
-		// Chrome belongs to the visible part of the stage; leaving it under the rail
-		// means two overlapping control clusters.
+	it("keeps the title chip visible while the rail is open", () => {
+		// 上一版整块隐藏 chrome，于是改参数时看不到自己在改哪一版。
+		// 现在只有右上角的动作簇让位，稿名与包切换器必须仍在。
 		const hiding = panel.match(/inspectorOpen \? "pointer-events-none opacity-0"/g) ?? [];
-		expect(hiding.length).toBe(2);
+		expect(hiding.length).toBe(1);
+		// 标题区改为给侧栏让出宽度，而不是消失。
+		expect(panel).toContain('inspectorOpen ? "pr-[clamp(15rem,88%,20rem)]"');
 	});
 });
 

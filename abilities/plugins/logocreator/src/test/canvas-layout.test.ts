@@ -56,11 +56,13 @@ describe("the dock", () => {
 		expect(dock).not.toMatch(/className="[^"]*backdrop-blur/);
 	});
 
-	it("carries the four canvas verbs and a notes badge", () => {
-		for (const key of ["action.generate", "action.surprise", "dock.inspector", "dock.notes", "dock.export"]) {
+	it("carries the canvas verbs and the notes badge", () => {
+		// 「惊喜我」收进了生成下拉（同一个函数，只差一个选项），但选项本身必须还在。
+		for (const key of ["action.generate", "action.surprise", "dock.versions", "dock.inspector", "dock.export"]) {
 			expect(dock, `dock is missing ${key}`).toContain(key);
 		}
-		expect(dock).toContain("badge={pendingNotes}");
+		expect(dock).toContain("badge={");
+		expect(dock).toContain("pendingNotes");
 	});
 });
 
