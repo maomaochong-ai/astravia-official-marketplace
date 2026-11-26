@@ -21,7 +21,7 @@
     "@astravia-org/plugin-cli": "^0.1.7"
   },
   "name": "@astravia/plugin-logocreator",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "private": true,
   "type": "module",
   "scripts": {

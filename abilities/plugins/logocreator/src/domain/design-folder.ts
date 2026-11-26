@@ -74,14 +74,15 @@ export function designFolder(cwd: string, directory: string | undefined, brand: 
 	return designFolderForSlug(cwd, directory, kitSlug({ brandName: brand }));
 }
 
-export function designFolderForSlug(cwd: string, directory: string | undefined, slug: string): string {
+export function designFolderForSlug(cwd: string, _directory: string | undefined, slug: string): string {
 	const base = cwd.replace(/[/\\]+$/, "");
-	const container = trimSlashes(directory ?? "");
-	// 后缀两处都要有：文件树的装饰与右键菜单按扩展名认领，`openDesignFolder` 也用它判定。
-	// 上一版传了 `directory` 时丢了后缀，结果包装盘了却既点不开也进不了切换器。
-	return container.length > 0
-		? `${base}/${container}/${slug}${DESIGN_FOLDER_SUFFIX}`
-		: `${base}/${slug}${DESIGN_FOLDER_SUFFIX}`;
+	const clean = slug.trim();
+	// 没有 slug 就没有包：上一版回退成 "brand"，于是磁盘上出现 brand.logocreator-design
+	// 这种谁也没要过的占位包。抛错让工具如实失败，比悄悄造一个空包好。
+	if (!clean) throw new Error("a design package needs a brand name");
+	// 只落项目根：容器目录会让同一份设计散在多处（logos/brand…、tmp/brand…），
+	// 切换器里也因此出现一堆同名的包。
+	return `${base}/${clean}${DESIGN_FOLDER_SUFFIX}`;
 }
 
 export function variantPath(index: number): string {

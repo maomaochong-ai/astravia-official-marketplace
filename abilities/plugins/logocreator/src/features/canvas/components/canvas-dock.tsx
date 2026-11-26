@@ -1,6 +1,16 @@
 import type { JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { IconExport, IconGenerate, IconHistory, IconRaster, IconReference, IconSliders } from "../../../shared/components/icons";
+import {
+	IconExport,
+	IconGenerate,
+	IconHand,
+	IconHistory,
+	IconRaster,
+	IconReference,
+	IconSliders,
+	IconZoomIn,
+	IconZoomOut,
+} from "../../../shared/components/icons";
 import { FOCUS_RING } from "../../../shared/styles/tokens";
 
 export interface CanvasDockProps {
@@ -21,6 +31,14 @@ export interface CanvasDockProps {
 	onOpenNotes: () => void;
 	onToggleInspector: () => void;
 	onOpenVersions: () => void;
+	/** 画布缩放：dock 里也能缩，不必记 ⌘+滚轮。 */
+	zoom: number;
+	onZoomIn: () => void;
+	onZoomOut: () => void;
+	onZoomReset: () => void;
+	/** 手型工具：任何缩放级别下拖动都是平移。 */
+	handMode: boolean;
+	onToggleHand: () => void;
 	onOpenKit: () => void;
 	/** 只有选中了一张稿才能导出；否则按钮点下去什么也不会发生。 */
 	canExport: boolean;
@@ -94,6 +112,12 @@ export function CanvasDock({
 	onOpenNotes,
 	onToggleInspector,
 	onOpenVersions,
+	zoom,
+	onZoomIn,
+	onZoomOut,
+	onZoomReset,
+	handMode,
+	onToggleHand,
 	onOpenKit,
 	canExport,
 }: CanvasDockProps): JSX.Element {
@@ -132,6 +156,20 @@ export function CanvasDock({
 						icon={<IconReference />}
 					/>
 				) : null}
+				<span className="mx-0.5 h-5 w-px bg-border/70" aria-hidden />
+				{/* 缩放与手型：以前只有 ⌘+滚轮和「放大后才能拖」，dock 里没有入口。 */}
+				<DockSlot label={t("dock.zoomOut")} disabled={zoom <= 1} onClick={onZoomOut} icon={<IconZoomOut />} />
+				<button
+					type="button"
+					onClick={onZoomReset}
+					title={t("dock.zoomReset")}
+					aria-label={t("dock.zoomReset")}
+					className={`${FOCUS_RING} flex h-8 min-w-9 shrink-0 items-center justify-center rounded-[22%] border border-transparent bg-muted/55 px-1 text-[10px] font-medium tabular-nums text-foreground transition-colors hover:bg-muted`}
+				>
+					{Math.round(zoom * 100)}%
+				</button>
+				<DockSlot label={t("dock.zoomIn")} disabled={zoom >= 4} onClick={onZoomIn} icon={<IconZoomIn />} />
+				<DockSlot label={t("canvas.handTool")} active={handMode} onClick={onToggleHand} icon={<IconHand />} />
 				<span className="mx-0.5 h-5 w-px bg-border/70" aria-hidden />
 				<DockSlot label={t("dock.versions")} onClick={onOpenVersions} icon={<IconHistory />} />
 				<DockSlot

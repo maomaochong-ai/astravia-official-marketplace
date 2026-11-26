@@ -30,6 +30,12 @@ export interface CanvasSurfaceProps {
 	 * logo". The cover says the opposite: pick a structure, or type a name.
 	 */
 	empty?: boolean;
+	/** 受控缩放（dock 的缩放按钮也改它）。 */
+	zoom: number;
+	onZoomChange: (next: number) => void;
+	/** 手型工具：任何缩放级别下拖动都是平移，单点仍然落备注。 */
+	handMode: boolean;
+	onToggleHand: () => void;
 }
 
 const MIN_ZOOM = 1;
@@ -85,20 +91,23 @@ export function CanvasSurface({
 	spec,
 	rasterUrl,
 	empty = false,
+	zoom,
+	onZoomChange,
+	handMode,
+	onToggleHand,
 }: CanvasSurfaceProps): JSX.Element {
 	const { t } = useTranslation();
 	const [draft, setDraft] = useState<{ x: number; y: number } | null>(null);
 	const [text, setText] = useState("");
 	const [saving, setSaving] = useState(false);
 	const [scope, setScope] = useState<NoteScope>("design");
-	const [zoom, setZoom] = useState(1);
 	const [offset, setOffset] = useState({ x: 0, y: 0 });
 
 	const dragRef = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number; moved: boolean } | null>(null);
 	const surfaceRef = useRef<HTMLDivElement | null>(null);
 
 	const resetView = useCallback(() => {
-		setZoom(1);
+		onZoomChange(1);
 		setOffset({ x: 0, y: 0 });
 		setDraft(null);
 	}, []);
@@ -140,7 +149,8 @@ export function CanvasSurface({
 		if (!drag.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
 		drag.moved = true;
 		// Zoomed art pans freely; at 1× it stays centred so the frame cannot be lost.
-		setOffset(zoom === 1 ? { x: 0, y: 0 } : { x: drag.originX + dx, y: drag.originY + dy });
+		// 手型工具下 1× 也能平移（放大前想挪一挪画布是很自然的事）。
+		setOffset(zoom === 1 && !handMode ? { x: 0, y: 0 } : { x: drag.originX + dx, y: drag.originY + dy });
 	};
 
 	const onPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -157,11 +167,9 @@ export function CanvasSurface({
 		// the panel's scroll, and stealing it traps the user.
 		if (!event.ctrlKey && !event.metaKey) return;
 		event.preventDefault();
-		setZoom((current) => {
-			const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, current * (event.deltaY < 0 ? 1.12 : 0.89)));
-			if (next === 1) setOffset({ x: 0, y: 0 });
-			return next;
-		});
+		const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * (event.deltaY < 0 ? 1.12 : 0.89)));
+		if (next === 1) setOffset({ x: 0, y: 0 });
+		onZoomChange(next);
 	};
 
 	const submit = async () => {
@@ -187,7 +195,7 @@ export function CanvasSurface({
 			<div
 				ref={surfaceRef}
 				className={`relative w-full select-none rounded-xl border border-border/60 ${
-					empty ? "" : zoom > 1 ? "cursor-grab active:cursor-grabbing" : "cursor-crosshair"
+					empty ? "" : handMode || zoom > 1 ? "cursor-grab active:cursor-grabbing" : "cursor-crosshair"
 				}`}
 				style={dark ? { background: "#121210" } : { background: "#ffffff" }}
 				onPointerDown={onPointerDown}
@@ -212,6 +220,21 @@ export function CanvasSurface({
 				 */}
 				{empty ? null : (
 					<div className="absolute right-2 top-2 z-20 flex items-center gap-1">
+						<button
+							type="button"
+							onClick={(event) => {
+								event.stopPropagation();
+								onToggleHand();
+							}}
+							aria-pressed={handMode}
+							title={t("canvas.handTool")}
+							aria-label={t("canvas.handTool")}
+							className={`flex size-6 items-center justify-center rounded-md border border-border/70 transition-colors ${
+								handMode ? "bg-primary/15 text-primary" : "bg-popover/90 text-text-2 hover:bg-accent"
+							}`}
+						>
+							<span aria-hidden className="icon-[lucide--hand] size-3" />
+						</button>
 						{zoom > 1 ? (
 							<button
 								type="button"

@@ -41,6 +41,10 @@ const ICONS = {
 	history: "history-bold",
 	ai: "magic-wand-bold",
 	reset: "restart-bold",
+	// 画布缩放与手型工具（dock 入口）
+	zoomIn: "magnifier-zoom-in-bold",
+	zoomOut: "magnifier-zoom-out-bold",
+	hand: "cursor-bold",
 	// 通用动作
 	close: "close-bold",
 	check: "check-bold",

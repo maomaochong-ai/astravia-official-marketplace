@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
 import type { PluginFsApi } from "@astravia-org/plugin-sdk";
+import { kitSlug } from "../domain/brand-kit";
 import {
 	DESIGN_FOLDER_SUFFIX,
 	DESIGN_MANIFEST,
@@ -58,11 +59,18 @@ describe("the design folder layout", () => {
 		expect(slugOfFolder(`C:/repo/acme${DESIGN_FOLDER_SUFFIX}/`)).toBe("acme");
 	});
 
-	it("honours a caller-supplied directory and keeps the package suffix", () => {
-		expect(designFolder("C:/repo/", "/brand/", "Acme")).toBe("C:/repo/brand/acme.logocreator-design");
-		expect(designFolderForSlug("C:/repo", "brand", "acme")).toBe("C:/repo/brand/acme.logocreator-design");
-		// 传了目录也必须能被认出来，否则这些包既点不开也进不了切换器。
+	it("always lands at the project root, keeping the package suffix", () => {
+		// 容器目录会让同一份设计散在多处（logos/brand…、tmp/brand…），切换器里出现一堆
+		// 同名包。现在传入 directory 也一律落在项目根。
+		expect(designFolder("C:/repo/", "/brand/", "Acme")).toBe("C:/repo/acme.logocreator-design");
+		expect(designFolderForSlug("C:/repo", "brand", "acme")).toBe("C:/repo/acme.logocreator-design");
 		expect(isDesignFolder(designFolderForSlug("C:/repo", "brand", "acme"))).toBe(true);
+	});
+
+	it("refuses to build a package for an unnamed brand", () => {
+		// 上一版回退成 "brand"，磁盘上因此出现过 brand.logocreator-design 这种占位包。
+		expect(() => designFolderForSlug("C:/repo", undefined, "  ")).toThrow(/brand name/);
+		expect(kitSlug({ brandName: "" })).toBe("untitled");
 	});
 
 	it("numbers variants inside a variants/ subfolder", () => {

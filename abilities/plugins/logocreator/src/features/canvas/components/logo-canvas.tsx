@@ -76,6 +76,9 @@ export function LogoCanvas(): JSX.Element {
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	/** 本批（一次工具调用）产出的全部稿 id；缩略图轨据此渲染。 */
 	const [batchIds, setBatchIds] = useState<string[]>([]);
+	/** 画布缩放与手型工具：dock 按钮与手势共用同一份状态。 */
+	const [zoom, setZoom] = useState(1);
+	const [handMode, setHandMode] = useState(false);
 	/** 本批多张时默认铺网格；「放大」某张后进入单张画布（备注/缩放在那里）。 */
 	const [staged, setStaged] = useState(false);
 	/** 手动重扫设计包清单：用户刚在对话里生成一份，切换器要能立刻看到。 */
@@ -134,6 +137,9 @@ export function LogoCanvas(): JSX.Element {
 		if (!history.ready) return;
 		let alive = true;
 		setDocsLoading(true);
+		// 生成完只需清掉缓存让下一次读取拿到新包：force 会在每个大项目里走一遍全目录，
+		// 那正是「用着卡」的来源之一。手点刷新（forceScan）才真正强制重扫。
+		if (generation.lastCreatedId) invalidateDesignDocuments(cwd);
 		void listDesignDocuments(getPluginContext().fs, cwd, forceScan)
 			.then(items => {
 				if (alive) setDocs(items);
@@ -259,7 +265,9 @@ export function LogoCanvas(): JSX.Element {
 
 	// Publish the open design so the composer chip can carry it into a prompt.
 	useEffect(() => {
-		publishCanvasSpec(cwd, form.spec);
+		// 250ms 节流：输入过程中不必每一帧都广播。
+		const timer = window.setTimeout(() => publishCanvasSpec(cwd, form.spec), 250);
+		return () => window.clearTimeout(timer);
 	}, [cwd, form.spec]);
 
 	/**
@@ -415,6 +423,10 @@ export function LogoCanvas(): JSX.Element {
 								// a brand called "Untitled".
 								empty={!form.spec.brandName.trim() && !rasterUrl && history.items.length === 0}
 								rasterUrl={rasterUrl}
+								zoom={zoom}
+								onZoomChange={setZoom}
+								handMode={handMode}
+								onToggleHand={() => setHandMode((value) => !value)}
 								onPlace={async (point, text, scope, part) =>
 									notes.add({ designId: selectedId, cwd, text, ...point, scope, part })
 								}
@@ -545,6 +557,12 @@ export function LogoCanvas(): JSX.Element {
 					}
 					onOpenAiSettings={() => setAiOpen(true)}
 					onOpenVersions={() => setHistoryOpen(true)}
+					zoom={zoom}
+					onZoomIn={() => setZoom((value) => Math.min(4, Number((value * 1.25).toFixed(2))))}
+					onZoomOut={() => setZoom((value) => Math.max(1, Number((value / 1.25).toFixed(2))))}
+					onZoomReset={() => setZoom(1)}
+					handMode={handMode}
+					onToggleHand={() => setHandMode((value) => !value)}
 					onOpenNotes={() => openInspector("notes")}
 					onToggleInspector={() => (inspectorOpen ? setInspectorOpen(false) : openInspector("design"))}
 					// 没选中稿时不静默无反应：禁用由 canExport 管，这里只处理真正能导出的情况。

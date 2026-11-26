@@ -44,11 +44,13 @@ export interface KitOptions {
 const DARK_SURFACE = "#121210";
 
 export function kitSlug(spec: { brandName: string }): string {
-	const base = (spec.brandName || "brand")
+	const base = (spec.brandName || "")
 		.toLowerCase()
 		.replace(/[^a-z0-9]+/g, "-")
 		.replace(/^-+|-+$/g, "");
-	return base || "brand";
+	// 空品牌不给默认 slug：调用方（工具）必须已经拒绝过无名请求，
+	// 这里的兜底只用来避免生成非法文件名。
+	return base || "untitled";
 }
 
 export function paletteCss(palette: BrandPalette): string {

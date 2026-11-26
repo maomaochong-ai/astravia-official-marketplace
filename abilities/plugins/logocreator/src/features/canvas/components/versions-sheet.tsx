@@ -33,12 +33,15 @@ export function VersionsSheet({ open, fs, cwd, locale, onClose, onOpen, onRefres
 	const [query, setQuery] = useState("");
 	const [expanded, setExpanded] = useState<string | null>(null);
 	const [nonce, setNonce] = useState(0);
+	/** 只有用户点刷新时才绕过缓存。 */
+	const [force, setForce] = useState(false);
 
 	useEffect(() => {
 		if (!open) return;
 		let alive = true;
 		setLoading(true);
-		void listDesignVersions(fs, cwd, true)
+		// 打开时用缓存（4s TTL）；用户点「重新扫描」才 force。
+		void listDesignVersions(fs, cwd, force)
 			.then((items) => {
 				if (!alive) return;
 				setPackages(items);
@@ -51,7 +54,7 @@ export function VersionsSheet({ open, fs, cwd, locale, onClose, onOpen, onRefres
 		return () => {
 			alive = false;
 		};
-	}, [open, fs, cwd, nonce]);
+	}, [open, fs, cwd, nonce, force]);
 
 	const visible = useMemo(() => {
 		const needle = query.trim().toLowerCase();
@@ -78,6 +81,7 @@ export function VersionsSheet({ open, fs, cwd, locale, onClose, onOpen, onRefres
 					<button
 						type="button"
 						onClick={() => {
+							setForce(true);
 							setNonce((value) => value + 1);
 							onRefresh?.();
 						}}

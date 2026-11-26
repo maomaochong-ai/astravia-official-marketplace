@@ -1,6 +1,7 @@
-import type { JSX } from "react";
+import { useEffect, useRef, useState, type JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { DesignDocumentRef } from "../../../domain/design-library";
+import { FOCUS_RING } from "../../../shared/styles/tokens";
 import { IconVector } from "../../../shared/components/icons";
 
 export interface DesignSwitcherProps {
@@ -10,69 +11,127 @@ export interface DesignSwitcherProps {
 	onSelect(doc: DesignDocumentRef): void;
 	/** 首次扫描还没回来。 */
 	loading?: boolean;
-	/** 重新扫一遍工作区（用户刚在对话里生成了一份）。 */
+	/** 重新扫一遍工作区。 */
 	onRefresh?: () => void;
 }
 
 /**
- * 设计包切换器。
+ * 设计包切换器（自定义下拉）。
  *
- * 每个 `<slug>.logocreator-design/` 就是一份设计包，画布读它的 `design.astravia-log`。
- * 之前有两点让它在实际使用中「展不开」：
+ * 上一版用原生 `<select>`：列表由操作系统绘制，深色主题下是白底蓝选，和面板完全两个世界
+ * （截图里那块突兀的白色）。原生下拉也无法给每项加图标与副标题，所以改成自绘 listbox：
+ * 触发器用面板的 chip 样式，弹层用 popover 背景 + 主题色高亮。
  *
- *   1. `docs.length <= 1` 时整块不渲染 —— 只有一份包时下拉根本不存在；
- *   2. 传了 `directory` 写出来的目录没有后缀，列表按后缀筛，于是那些包永远不出现。
- *
- * 现在：只要扫描到包就渲染（单份也显示，用于确认「画布读的就是磁盘上这一份」），
- * 路径带一层目录时显示成 `brands/acme`，用户能分清同名不同目录的包。
+ * 标签只显示包名（`acme`）；只有当末段重名时才补一层父目录，避免把 `tmp/brand` 这种
+ * 临时路径直接摆到用户面前。
  */
 export function DesignSwitcher({ docs, current, onSelect, loading = false, onRefresh }: DesignSwitcherProps): JSX.Element | null {
 	const { t } = useTranslation();
+	const [open, setOpen] = useState(false);
+	const rootRef = useRef<HTMLDivElement | null>(null);
+
+	useEffect(() => {
+		if (!open) return;
+		const onDown = (event: MouseEvent): void => {
+			if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+		};
+		const onKey = (event: KeyboardEvent): void => {
+			if (event.key === "Escape") setOpen(false);
+		};
+		document.addEventListener("mousedown", onDown);
+		document.addEventListener("keydown", onKey);
+		return () => {
+			document.removeEventListener("mousedown", onDown);
+			document.removeEventListener("keydown", onKey);
+		};
+	}, [open]);
+
 	if (!loading && docs.length === 0) return null;
 
-	const label = (doc: DesignDocumentRef): string => {
-		const parts = doc.folder.split("/").filter(Boolean);
-		// 末段是 `<slug>.logocreator-design`，它本身就是「acme」；有外层目录时带上。
-		return parts.length > 1 ? parts.slice(-2).join("/").replace(/\.logocreator-design$/u, "") : doc.slug;
+	// 末段重名时才显示父目录：正常情况下只给包名。
+	const segments = docs.map((doc) => doc.folder.split("/").filter(Boolean));
+	const shortNames = segments.map((parts) => parts.at(-1)?.replace(/\.logocreator-design$/u, "") ?? "");
+	const duplicated = new Set(shortNames.filter((name, index) => shortNames.indexOf(name) !== index));
+	const labelOf = (doc: DesignDocumentRef, index: number): string => {
+		const short = shortNames[index] ?? doc.slug;
+		if (!duplicated.has(short)) return short;
+		const parent = segments[index]?.at(-2);
+		return parent ? `${parent}/${short}` : short;
 	};
 
+	const activeIndex = docs.findIndex((doc) => doc.folder === current);
+	const activeLabel = activeIndex >= 0 ? labelOf(docs[activeIndex]!, activeIndex) : null;
+
 	return (
-		<label className="flex min-w-0 items-center gap-1 rounded-md bg-popover/95 px-1.5 py-0.5 text-[11px] shadow-sm ring-1 ring-border/60">
-			<IconVector className="size-3 shrink-0 text-muted-foreground" />
-			<span className="sr-only">{t("design.switcher")}</span>
-			{loading && docs.length === 0 ? (
-				<span className="text-muted-foreground">{t("design.switcherLoading")}</span>
-			) : (
-				<select
-					value={current ?? ""}
-					onChange={(event) => {
-						const next = docs.find((doc) => doc.folder === event.target.value);
-						if (next) onSelect(next);
-					}}
-					data-testid="design-switcher"
-					title={current ?? t("design.switcherHint", { count: docs.length })}
-					className="min-w-0 max-w-[11rem] cursor-pointer appearance-none bg-transparent pr-1 font-medium text-foreground outline-none"
+		<div ref={rootRef} className="relative flex min-w-0 items-center gap-1">
+			<button
+				type="button"
+				onClick={() => setOpen((value) => !value)}
+				aria-haspopup="listbox"
+				aria-expanded={open}
+				data-testid="design-switcher"
+				title={activeLabel ?? t("design.switcherHint", { count: docs.length })}
+				className={`${FOCUS_RING} flex min-w-0 items-center gap-1 rounded-md bg-popover px-1.5 py-0.5 text-[11px] font-medium text-foreground shadow-sm ring-1 ring-border/60 hover:bg-accent`}
+			>
+				<IconVector className="size-3 shrink-0 text-muted-foreground" />
+				<span className="sr-only">{t("design.switcher")}</span>
+				<span className="min-w-0 max-w-[10rem] truncate">
+					{loading && docs.length === 0
+						? t("design.switcherLoading")
+						: (activeLabel ?? t("design.switcherCurrent"))}
+				</span>
+				<span aria-hidden className="shrink-0 text-[9px] text-muted-foreground">
+					▾
+				</span>
+			</button>
+
+			{open ? (
+				<ul
+					role="listbox"
+					aria-label={t("design.switcher")}
+					className="absolute left-0 top-full z-50 mt-1 max-h-64 w-56 overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg"
 				>
-					{/* 当前稿不在列表里（刚生成、还没扫到）时给一个占位项，避免 select 显示成第一项。 */}
-					{current && !docs.some((doc) => doc.folder === current) ? <option value={current}>{t("design.switcherCurrent")}</option> : null}
-					{docs.map((doc) => (
-						<option key={doc.folder} value={doc.folder} title={doc.path}>
-							{label(doc)}
-						</option>
-					))}
-				</select>
-			)}
-			{onRefresh ? (
-				<button
-					type="button"
-					onClick={onRefresh}
-					title={t("design.switcherRefresh")}
-					aria-label={t("design.switcherRefresh")}
-					className="shrink-0 rounded px-0.5 text-muted-foreground transition-colors hover:text-foreground"
-				>
-					<span aria-hidden className="icon-[lucide--refresh-cw] size-3" />
-				</button>
+					{docs.map((doc, index) => {
+						const active = doc.folder === current;
+						return (
+							<li key={doc.folder}>
+								<button
+									type="button"
+									role="option"
+									aria-selected={active}
+									onClick={() => {
+										setOpen(false);
+										onSelect(doc);
+									}}
+									title={doc.path}
+									className={`${FOCUS_RING} flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-[11px] transition-colors ${
+										active ? "bg-primary/12 text-primary" : "text-foreground hover:bg-muted"
+									}`}
+								>
+									<IconVector className="size-3 shrink-0 opacity-70" />
+									<span className="min-w-0 flex-1 truncate">{labelOf(doc, index)}</span>
+									{active ? <span aria-hidden className="shrink-0 text-[9px]">✓</span> : null}
+								</button>
+							</li>
+						);
+					})}
+					{onRefresh ? (
+						<li className="border-t border-border/60 pt-1">
+							<button
+								type="button"
+								onClick={() => {
+									setOpen(false);
+									onRefresh();
+								}}
+								className={`${FOCUS_RING} flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground`}
+							>
+								<span aria-hidden className="icon-[lucide--refresh-cw] size-3" />
+								{t("design.switcherRefresh")}
+							</button>
+						</li>
+					) : null}
+				</ul>
 			) : null}
-		</label>
+		</div>
 	);
 }

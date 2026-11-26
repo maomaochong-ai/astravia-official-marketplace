@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@astravia-org/plugin-sdk", () => ({
@@ -22,9 +22,25 @@ const docs = [
 describe("design switcher", () => {
 	it("lists every design document once there is more than one", () => {
 		render(<DesignSwitcher docs={docs} current={docs[0]!.folder} onSelect={() => {}} />);
-		const select = screen.getByTestId("design-switcher") as HTMLSelectElement;
-		expect([...select.options].map(option => option.value)).toEqual(["acme.logocreator-design", "moss.logocreator-design"]);
-		expect(select.value).toBe("acme.logocreator-design");
+		const trigger = screen.getByTestId("design-switcher");
+		// 触发器显示当前包的短名（不是整条路径）。
+		expect(trigger.textContent).toContain("acme");
+
+		fireEvent.click(trigger);
+		const options = screen.getAllByRole("option");
+		expect(options).toHaveLength(2);
+		expect(options[0]!.textContent).toContain("acme");
+		expect(options[1]!.textContent).toContain("moss");
+		// 当前包被标记，方便键盘/视觉确认。
+		expect(options[0]!.getAttribute("aria-selected")).toBe("true");
+	});
+
+	it("reports the chosen package", () => {
+		const onSelect = vi.fn();
+		render(<DesignSwitcher docs={docs} current={docs[0]!.folder} onSelect={onSelect} />);
+		fireEvent.click(screen.getByTestId("design-switcher"));
+		fireEvent.click(screen.getAllByRole("option")[1]!);
+		expect(onSelect).toHaveBeenCalledWith(docs[1]);
 	});
 
 	it("still renders for a single package, so the open one is confirmable", () => {

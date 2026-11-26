@@ -18,7 +18,7 @@ export function routerPrompt(): string {
 		"- Raster marks (photographic texture, a character in a pose, anything the engine's 26 pictograms cannot draw): `logocreator_image`. It spends the user's own image provider.",
 		"- Unsure which structure/style to pick: `logocreator_plan` turns one sentence into three concrete specs with reasons.",
 		"- The user pinned notes on the canvas: `logocreator_notes` lists them; resolve each one after the fix.",
-		"Output layout: one folder per design, named `<slug>.logocreator-design/` at the project root (the same convention as the host's own `*.astravia-design/`), holding `design.json` (spec, palette, every variant, kit file list), `mark.svg` and `variants/N.svg`; the brand kit goes to `<slug>.logocreator-design/kit/`. Never scatter SVGs loose in the project root or invent an extra export directory.",
+		"Output layout: one folder per design, named `<slug>.logocreator-design/` at the project root (the same convention as the host's own `*.astravia-design/`), holding `design.astravia-log` (spec, palette, every variant, kit file list), `mark.svg` and `variants/N.svg`; the brand kit goes to `<slug>.logocreator-design/kit/`. Never scatter SVGs loose in the project root, never add a container directory, and never create a package for an unnamed brand — if the user has not named it, ask for the name first.",
 		"Both paths store into the same canvas history; after a run the panel opens on the new design, so do not tell the user to open it themselves.",
 		"Read the `logocreator` skill before a multi-step identity task; it carries the decision rules and the limits of each path.",
 	].join("\n");
