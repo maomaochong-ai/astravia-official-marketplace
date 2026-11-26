@@ -2044,7 +2044,7 @@
       "slug": "logocreator",
       "name": "LogoCreator",
       "description": "A logo canvas in Astravia with two production lines: a local vector engine for print-ready marks, and the host's own image providers for anything the engine cannot draw. Raster results appear inline in the conversation with open-in-canvas, copy and edit-this-image.",
-      "version": "0.15.0",
+      "version": "0.16.0",
       "configVersion": 1,
       "author": "Astravia",
       "category": "Design",

@@ -73,9 +73,13 @@ describe("image-to-image in the panel", () => {
 		expect(generation).toMatch(/const count = options\.reference \? 1/);
 	});
 
-	it("offers the action only for an AI design that still has its blob", () => {
-		expect(canvas).toMatch(/selectedRecord\?\.engine === "ai" && selectedRecord\.blobId/);
-		expect(dock).toContain("onGenerateFromReference");
+	it("offers the action for any selected design, not only AI images", () => {
+		// 上一版只对 AI 位图开放，且忽略表单里刚改的参数：看矢量稿想照它再出一版时没有入口。
+		expect(canvas).toMatch(/onGenerateFromReference=\{\s*selectedRecord\s*\?/);
+		// AI 稿额外带上图片做 image-to-image；矢量稿只带参数。
+		expect(canvas).toMatch(/selectedRecord\.engine === "ai" \? selectedRecord\.blobId : undefined/);
+		// 先载回该稿的 spec，再按当前表单重跑。
+		expect(canvas).toMatch(/form\.load\(selectedRecord\.spec\);[\s\S]{0,160}runBatch\(/);
 		expect(dock).toContain('t("dock.reference")');
 	});
 });

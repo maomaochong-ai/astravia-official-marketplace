@@ -1,4 +1,7 @@
 // @vitest-environment node
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import type { PluginContext } from "@astravia-org/plugin-sdk";
 import { normalizeSpec } from "../domain/spec";
@@ -50,6 +53,21 @@ function host() {
 	} as unknown as PluginContext;
 	return { ctx, media, add, files };
 }
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+
+describe("the package a raster run leaves behind", () => {
+	it("writes vector code as the primary variant and keeps the PNG as a reference", () => {
+		const tool = readFileSync(join(ROOT, "src/tools/image.ts"), "utf8");
+		// 纯代码包：清单主图是引擎渲染的 SVG（可放大、可重绘、可进品牌套件）。
+		expect(tool).toContain("renderLogo(spec)");
+		expect(tool).toMatch(/variants\/\$\{index \+ 1\}\.svg/);
+		// AI 的 PNG 只作为参考件留在旁边，不是包的内容。
+		expect(tool).toMatch(/variants\/\$\{index \+ 1\}-ai\.png/);
+		// primary 指向 svg，而不是空串（位图不能放大重绘）。
+		expect(tool).toMatch(/primary: variants\.find/);
+	});
+});
 
 describe("the raster tool", () => {
 	it("stores each image as an ai record with its blob and opens the panel", async () => {

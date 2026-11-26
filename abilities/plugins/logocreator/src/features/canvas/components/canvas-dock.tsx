@@ -24,7 +24,13 @@ export interface CanvasDockProps {
 	onGenerate: () => void;
 	/** True when the host reports a usable image provider (see probeImageProviders). */
 	imageAvailable: boolean;
-	/** Present only when the selected design is an AI image: regenerate from it. */
+	/**
+	 * 以选中稿为参考重新生成。
+	 *
+	 * 上一版只对 AI 位图开放（image-to-image），于是「我在看一张矢量稿，想照它再出一版」
+	 * 没有任何入口；而它的实现也只看 blobId，忽略表单里刚改的参数。
+	 * 现在只要有选中稿就给入口，矢量稿用参数、AI 稿额外带上图片。
+	 */
 	onGenerateFromReference?: () => void;
 	/** 没有可用图像模型时，点生成入口直接去设置，而不是给一个点不动的灰按钮。 */
 	onOpenAiSettings: () => void;
@@ -158,7 +164,7 @@ export function CanvasDock({
 				) : null}
 				<span className="mx-0.5 h-5 w-px bg-border/70" aria-hidden />
 				{/* 缩放与手型：以前只有 ⌘+滚轮和「放大后才能拖」，dock 里没有入口。 */}
-				<DockSlot label={t("dock.zoomOut")} disabled={zoom <= 1} onClick={onZoomOut} icon={<IconZoomOut />} />
+				<DockSlot label={t("dock.zoomOut")} disabled={zoom <= 0.4} onClick={onZoomOut} icon={<IconZoomOut />} />
 				<button
 					type="button"
 					onClick={onZoomReset}

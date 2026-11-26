@@ -547,11 +547,12 @@ export function LogoCanvas(): JSX.Element {
 					imageAvailable={imageAvailable}
 					// 只当选中一张 AI 图时出现：拿它当参考图重生成。
 					onGenerateFromReference={
-						selectedRecord?.engine === "ai" && selectedRecord.blobId
+						selectedRecord
 							? () => {
-									const reference = selectedRecord.blobId;
-									if (!reference) return;
-									void runBatch({ reference });
+									// 以选中稿为基准：先把它的 spec 载回表单，再按当前填的值重跑。
+									form.load(selectedRecord.spec);
+									const reference = selectedRecord.engine === "ai" ? selectedRecord.blobId : undefined;
+									void runBatch(reference ? { reference } : undefined);
 								}
 							: undefined
 					}
@@ -559,7 +560,7 @@ export function LogoCanvas(): JSX.Element {
 					onOpenVersions={() => setHistoryOpen(true)}
 					zoom={zoom}
 					onZoomIn={() => setZoom((value) => Math.min(4, Number((value * 1.25).toFixed(2))))}
-					onZoomOut={() => setZoom((value) => Math.max(1, Number((value / 1.25).toFixed(2))))}
+					onZoomOut={() => setZoom((value) => Math.max(0.4, Number((value / 1.25).toFixed(2))))}
 					onZoomReset={() => setZoom(1)}
 					handMode={handMode}
 					onToggleHand={() => setHandMode((value) => !value)}

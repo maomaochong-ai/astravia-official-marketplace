@@ -3,6 +3,7 @@ import { generateMarksWithHost, HostMediaError } from "../domain/ai/host-media";
 import { newDesignId } from "../domain/history-store";
 import { designFolder, writeManifest } from "../domain/design-folder";
 import { normalizeSpec } from "../domain/spec";
+import { renderLogo } from "../domain/engine/compose";
 import { getHistoryStore, getPluginContext } from "../plugin-context";
 import { revealInCanvas } from "../features/canvas/reveal";
 import { TOOL_LABELS } from "../contributions";
@@ -132,6 +133,24 @@ export function createImageTool(): PluginAgentToolRegistration<ImageToolInput> {
 				designIds.push(designId);
 
 				if (folder && fsApi) {
+					// 纯代码包：先按 spec 渲染出 SVG（引擎产物，可放大、可重绘、可进品牌套件），
+					// AI 的 PNG 只作为参考件留在旁边 —— 它不是包的内容。
+					const rendered = renderLogo(spec);
+					const codeFile = `variants/${index + 1}.svg`;
+					const codeWritten = await fsApi
+						.writeFile(`${folder}/${codeFile}`, rendered.svg, "utf8")
+						.then(() => true)
+						.catch(() => false);
+					if (codeWritten) {
+						variants.push({
+							file: codeFile,
+							subject: rendered.subject,
+							seed: spec.seed,
+							style: spec.style,
+							engine: "local",
+						});
+					}
+
 					const blob = await ctx.storage.readBlob(image.blobId).catch(() => null);
 					if (blob) {
 						// 位图用 `-ai` 后缀：同一个包里矢量与位图共存时序号不再撞车。
@@ -175,9 +194,10 @@ export function createImageTool(): PluginAgentToolRegistration<ImageToolInput> {
 				await writeManifest(fsApi, folder, {
 					brand: spec.brandName,
 					slug: folder.split("/").pop() ?? spec.brandName,
-					primary: "",
+					// 主图是代码渲染出的 SVG：位图不能放大重绘，也不能进品牌套件。
+					primary: variants.find((item) => item.file.endsWith(".svg"))?.file ?? "",
 					spec,
-					palette: {},
+					palette: renderLogo(spec).palette as unknown as Record<string, string>,
 					variants,
 				}).catch(() => undefined);
 			}

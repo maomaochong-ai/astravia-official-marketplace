@@ -38,7 +38,7 @@ export interface CanvasSurfaceProps {
 	onToggleHand: () => void;
 }
 
-const MIN_ZOOM = 1;
+const MIN_ZOOM = 0.4;
 const MAX_ZOOM = 4;
 /** Screen pixels before a press counts as a drag rather than a click. */
 /** Screen pixels before a press counts as a drag rather than a click. */
@@ -214,10 +214,7 @@ export function CanvasSurface({
 					if (event.key === "Enter" || event.key === " ") setDraft({ x: 0.5, y: 0.5 });
 				}}
 			>
-				{/*
-				 * 复位 / 缩放提示：1× 时拖拽本来就不动（画布保持居中），之前没有任何说明，
-				 * 用户会以为手势没生效。这里给一个可点的复位，并说明放大后可拖动。
-				 */}
+				{/* 空态没有图可缩放：控件只在有图时出现。 */}
 				{empty ? null : (
 					<div className="absolute right-2 top-2 z-20 flex items-center gap-1">
 						<button
@@ -256,8 +253,18 @@ export function CanvasSurface({
 						)}
 					</div>
 				)}
-				{/* 图形层：只有它需要裁剪（缩放/平移时不能溢出圆角）。 */}
-				<div className="absolute inset-0 overflow-hidden rounded-xl">
+				{/*
+				 * 图形层：只有它需要裁剪（缩放/平移时不能溢出圆角）。
+				 * 空态时不绝对定位 —— 父级没有高度，absolute 子元素会把整块塌成一条边框线
+				 * （用户截图里那条横线）。给它 aspect-square 撑出画布面积。
+				 */}
+				<div
+					className={
+						empty
+							? "relative aspect-square w-full overflow-hidden rounded-xl"
+							: "absolute inset-0 overflow-hidden rounded-xl"
+					}
+				>
 					{empty ? (
 						<CanvasPlaceholder />
 					) : (
