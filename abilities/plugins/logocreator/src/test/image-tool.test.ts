@@ -70,7 +70,8 @@ describe("the package a raster run leaves behind", () => {
 });
 
 describe("the raster tool", () => {
-	it("stores each image as an ai record with its blob and opens the panel", async () => {
+	// 这条要起两次假 provider 批处理，并行跑全套时会摸到 vitest 的 5s 默认超时（负载下偶发）。
+	it("stores each image as an ai record with its blob and opens the panel", { timeout: 20000 }, async () => {
 		const { ctx, add, files } = host();
 		vi.resetModules();
 		const { getHistoryStore, getPluginContext, setPluginContext } = await import("../plugin-context");

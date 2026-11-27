@@ -4,7 +4,6 @@ import type { CanvasNote, NoteScope } from "../../../domain/notes";
 import { partAt } from "../../../domain/note-parts";
 import type { LogoSpec } from "../../../domain/spec";
 import { BUTTON_PRIMARY, FOCUS_RING, NOTE_DOT, NOTE_RING, TEXTAREA } from "../../../shared/styles/tokens";
-import { IconReset } from "../../../shared/components/icons";
 import { CanvasPlaceholder } from "./canvas-placeholder";
 
 export interface CanvasSurfaceProps {
@@ -35,7 +34,6 @@ export interface CanvasSurfaceProps {
 	onZoomChange: (next: number) => void;
 	/** 手型工具：任何缩放级别下拖动都是平移，单点仍然落备注。 */
 	handMode: boolean;
-	onToggleHand: () => void;
 }
 
 const MIN_ZOOM = 0.4;
@@ -94,7 +92,6 @@ export function CanvasSurface({
 	zoom,
 	onZoomChange,
 	handMode,
-	onToggleHand,
 }: CanvasSurfaceProps): JSX.Element {
 	const { t } = useTranslation();
 	const [draft, setDraft] = useState<{ x: number; y: number } | null>(null);
@@ -214,45 +211,6 @@ export function CanvasSurface({
 					if (event.key === "Enter" || event.key === " ") setDraft({ x: 0.5, y: 0.5 });
 				}}
 			>
-				{/* 空态没有图可缩放：控件只在有图时出现。 */}
-				{empty ? null : (
-					<div className="absolute right-2 top-2 z-20 flex items-center gap-1">
-						<button
-							type="button"
-							onClick={(event) => {
-								event.stopPropagation();
-								onToggleHand();
-							}}
-							aria-pressed={handMode}
-							title={t("canvas.handTool")}
-							aria-label={t("canvas.handTool")}
-							className={`flex size-6 items-center justify-center rounded-md border border-border/70 transition-colors ${
-								handMode ? "bg-primary/15 text-primary" : "bg-popover/90 text-text-2 hover:bg-accent"
-							}`}
-						>
-							<span aria-hidden className="icon-[lucide--hand] size-3" />
-						</button>
-						{zoom > 1 ? (
-							<button
-								type="button"
-								onClick={(event) => {
-									event.stopPropagation();
-									resetView();
-								}}
-								title={t("canvas.resetView")}
-								aria-label={t("canvas.resetView")}
-								className="flex h-6 items-center gap-1 rounded-md border border-border/70 bg-popover/90 px-1.5 text-[10px] text-text-2 backdrop-blur-none transition-colors hover:bg-accent"
-							>
-								<span aria-hidden className="icon-[lucide--maximize-2] size-3" />
-								{Math.round(zoom * 100)}%
-							</button>
-						) : (
-							<span className="rounded-md bg-popover/70 px-1.5 py-0.5 text-[10px] text-text-3">
-								{t("canvas.zoomHint")}
-							</span>
-						)}
-					</div>
-				)}
 				{/*
 				 * 图形层：只有它需要裁剪（缩放/平移时不能溢出圆角）。
 				 * 空态时不绝对定位 —— 父级没有高度，absolute 子元素会把整块塌成一条边框线
@@ -371,23 +329,6 @@ export function CanvasSurface({
 							</button>
 						</div>
 					</div>
-				) : null}
-
-				{/* Zoom readout doubles as the reset control, like the host's canvas. */}
-				{!empty ? (
-					<button
-						type="button"
-						onPointerDown={(event) => event.stopPropagation()}
-						onClick={(event) => {
-							event.stopPropagation();
-							resetView();
-						}}
-						title={t("canvas.resetView")}
-						className={`${FOCUS_RING} absolute bottom-1.5 right-1.5 flex items-center gap-1 rounded-md bg-popover/90 px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground shadow-sm ring-1 ring-border/60 hover:text-foreground`}
-					>
-						<IconReset className="size-3" />
-						{Math.round(zoom * 100)}%
-					</button>
 				) : null}
 			</div>
 		</div>

@@ -426,7 +426,6 @@ export function LogoCanvas(): JSX.Element {
 								zoom={zoom}
 								onZoomChange={setZoom}
 								handMode={handMode}
-								onToggleHand={() => setHandMode((value) => !value)}
 								onPlace={async (point, text, scope, part) =>
 									notes.add({ designId: selectedId, cwd, text, ...point, scope, part })
 								}

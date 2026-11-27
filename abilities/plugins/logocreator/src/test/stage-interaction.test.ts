@@ -18,9 +18,11 @@ describe("the stage can be moved", () => {
 		expect(surface).toContain("onPointerDown={onPointerDown}");
 		expect(surface).toContain("onPointerMove={onPointerMove}");
 		// 双击会让 pointerup 先落一枚备注，再被当成复位——两个行为抢同一手势。
-		// 现在双击什么都不做，复位是画布右上角的显式按钮。
+		// 现在双击什么都不做；缩放/复位/手型全部搬到 dock，画布上不再挂视口控件。
 		expect(surface).not.toContain("onDoubleClick={resetView}");
-		expect(surface).toContain('t("canvas.resetView")');
+		expect(surface).not.toContain("onToggleHand");
+		expect(surface).not.toContain('t("canvas.handTool")');
+		expect(surface).not.toContain('t("canvas.resetView")');
 		// A plain wheel belongs to the panel's scroll; stealing it traps the user.
 		expect(surface).toContain("!event.ctrlKey && !event.metaKey");
 	});
@@ -61,5 +63,19 @@ describe("no stray text under the dock", () => {
 		// 没有名字时按钮禁用并用可见文案说明原因，不再需要单独的 locked 串。
 		expect(dock).toMatch(/disabled=\{running \|\| !canGenerate\}/);
 		expect(panel).not.toContain('t("action.needName")');
+	});
+});
+
+describe("the dock owns the viewport controls", () => {
+	it("keeps zoom and the hand tool in the dock, off the canvas", () => {
+		// 用户报的问题：手型按钮浮在画布上（还带一句永久的快捷键文案），而 dock 里
+		// 已经有一套缩放/抓手。画布只画作品，视口控件只在一个地方。
+		const dock = readFileSync(join(ROOT, "src/features/canvas/components/canvas-dock.tsx"), "utf8");
+		expect(dock).toContain('t("canvas.handTool")');
+		expect(dock).toContain('t("dock.zoomIn")');
+		expect(dock).toContain('t("dock.zoomOut")');
+		expect(dock).toContain('t("dock.zoomReset")');
+		// 手型是一个开关（再点一次退出），不是一次性动作。
+		expect(dock).toMatch(/active=\{handMode\}/);
 	});
 });
