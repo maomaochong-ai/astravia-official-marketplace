@@ -34,6 +34,18 @@ const plugin = JSON.parse(readFileSync(join(ROOT, "plugin.json"), "utf8")) as {
 	};
 };
 
+describe("contribution labels", () => {
+	it("no contribution label reaches the host as a placeholder", () => {
+		// 消息 chip / 卡片标题这些路径不保证加载语言目录：一旦是 `%key%`，用户就看到 `%name%`。
+		// 所以身份与工具名用字面值，这条守住「不再交出去未解析的占位符」。
+		for (const label of CONTRIBUTION_LABEL_KEYS) {
+			expect(label, label).not.toMatch(/^%[^%]+%$/);
+			expect(label.trim().length, label).toBeGreaterThan(0);
+		}
+		expect(catalogKey("LogoCreator")).toBe("LogoCreator");
+	});
+});
+
 describe("host-rendered labels", () => {
 	const cases: { label: string; raw: string }[] = [
 		{ label: "plugin name", raw: plugin.name },

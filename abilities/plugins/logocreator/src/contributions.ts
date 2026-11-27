@@ -7,9 +7,16 @@
  * read `panel.title` instead of `LogoCreator`. One module means one place to check,
  * one loop to test, and no label that quietly drifted away from the catalog.
  */
-export const PLUGIN_NAME_KEY = "%name%";
-export const TAB_LABEL_KEY = "%tab.label%";
-export const INPUT_ACTION_LABEL_KEY = "%panel.title%";
+/**
+ * 展示给用户的字符串：**字面值**。
+ *
+ * 这些值会出现在消息 chip、卡片标题、工具条与文件树菜单里。`%key%` 依赖宿主在渲染那一刻
+ * 加载并解析本插件的语言目录，任何一条路径没接上，用户看到的就是占位符本身（这次又出现了）。
+ * 本地化仍由 locales 提供（tab / 设置页走 key），但随消息走的那几处用字面值。
+ */
+export const PLUGIN_NAME_KEY = "LogoCreator";
+export const TAB_LABEL_KEY = "LogoCreator";
+export const INPUT_ACTION_LABEL_KEY = "LogoCreator";
 /*
  * 身份字符串用**字面值**，不用 `%key%`。
  *
@@ -18,16 +25,16 @@ export const INPUT_ACTION_LABEL_KEY = "%panel.title%";
  * `plugin.json` 里是字面值，不在这里留一份可能漂移的常量。
  * 能力卡与 tab 仍走 `%tab.label%`：每次渲染都重新解析，且 `host-labels.test.ts` 逐条验证。
  */
-export const OPEN_FOLDER_LABEL_KEY = "%fileExplorer.openDesign%";
+export const OPEN_FOLDER_LABEL_KEY = "Open in LogoCreator";
 
 export const TOOL_LABELS = {
-	design: "%tool.design.label%",
-	kit: "%tool.kit.label%",
-	catalog: "%tool.catalog.label%",
-	notes: "%tool.notes.label%",
-	plan: "%tool.plan.label%",
-	image: "%tool.image.label%",
-	openDesign: "%tool.openDesign.label%",
+	design: "Design a logo",
+	kit: "Build the brand kit",
+	catalog: "Browse the logo vocabulary",
+	notes: "Canvas notes",
+	plan: "Plan three directions",
+	image: "Generate an image mark",
+	openDesign: "Open a design package",
 } as const;
 
 /**

@@ -205,10 +205,12 @@ export function createImageTool(): PluginAgentToolRegistration<ImageToolInput> {
 			// The panel comes up on this batch — same path as the vector tool. Reported
 			// rather than swallowed: a failure to open is information the user needs.
 			// 整批一起交给画布：一次出三张就铺三张，而不是只留最后一张。
+			// 打开画布用的 id 与「有没有可展示的 URL」无关：图已经入库，就该让用户看到它。
+			const revealIds = designIds.length > 0 ? designIds : lastDesignId ? [lastDesignId] : [];
 			const reveal =
-				designIds.length > 0
-					? revealInCanvas(ctx, session.cwd, designIds)
-					: { opened: false, error: undefined };
+				revealIds.length > 0
+					? revealInCanvas(ctx, session.cwd, revealIds)
+					: { opened: false, error: "no design id was produced" };
 
 			return {
 				ok: true,
